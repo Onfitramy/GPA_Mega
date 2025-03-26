@@ -2,7 +2,8 @@
 
 ## Software for GPA Mega flight controller
 
-![alt text](https://github.com/g2721/Athmo3/blob/main/Athmo_logo.jpg)
+![grafik](https://github.com/user-attachments/assets/2845562c-0ee8-4852-91cd-a0b50965161c)
+
 
 
 ## Install Required Software:
