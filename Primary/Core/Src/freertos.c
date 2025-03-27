@@ -118,16 +118,20 @@ void StartDefaultTask(void *argument)
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN StartDefaultTask */
-  uint8_t R = 255;
-  uint8_t G = 0;
-  uint8_t B = 0;
+  uint8_t R = 100;
+  uint8_t G = 100;
+  uint8_t B = 100;
   /* Infinite loop */
   for(;;)
   {
+    // Cycle through colors for a more intense "disco" effect
+    R = (R + 50) % 255;
+    G = (G + 25) % 255;
+    B = (B + 15) % 255;
     Set_LED(0, R, G, B);
     Set_Brightness(45);
     WS2812_Send();
-    osDelay(500);
+    osDelay(100);
     HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
   }
   /* USER CODE END StartDefaultTask */
