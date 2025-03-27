@@ -55,23 +55,23 @@ void WS2812_Send (void)
 		{
 			if (color&(1<<i))
 			{
-				pwmData[indx] = 50;  // 2/3 of 75
+				pwmData[indx] = 50;  //50 2/3 of 75
 			}
 
-			else pwmData[indx] = 25;  // 1/3 of 75
+			else pwmData[indx] = 25;  //25 1/3 of 75
 
 			indx++;
 		}
 
 	}
 
-	for (int i=0; i<50; i++)
+	/*for (int i=0; i<50; i++)
 	{
 		pwmData[indx] = 0;
 		indx++;
-	}
+	}*/
 
-	HAL_TIM_PWM_Start_DMA(&htim3, TIM_CHANNEL_1, (uint32_t *)pwmData, indx);
+	HAL_TIM_PWM_Start_DMA(&htim3, TIM_CHANNEL_1, (uint32_t *)pwmData, (24*MAX_LED));
 	while (!datasentflag){}; // !FIX! This blocks the thread until the DMA transfer is complete if the DMA transfer is not complete, the thread will not continue
 	datasentflag = 0;
 }

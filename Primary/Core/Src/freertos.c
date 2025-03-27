@@ -52,7 +52,7 @@
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .stack_size = 128 * 12,
+  .stack_size = 128 * 24,
   .priority = (osPriority_t) osPriorityNormal,
 };
 
@@ -118,7 +118,7 @@ void StartDefaultTask(void *argument)
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN StartDefaultTask */
-  uint8_t R = 200;
+  uint8_t R = 255;
   uint8_t G = 0;
   uint8_t B = 0;
   /* Infinite loop */

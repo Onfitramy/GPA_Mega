@@ -111,7 +111,7 @@ void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 2;
+  htim3.Init.Prescaler = 1;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim3.Init.Period = 75;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -232,7 +232,7 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef* tim_baseHandle)
     /* TIM3_CH1 Init */
     hdma_tim3_ch1.Instance = DMA1_Stream0;
     hdma_tim3_ch1.Init.Request = DMA_REQUEST_TIM3_CH1;
-    hdma_tim3_ch1.Init.Direction = DMA_PERIPH_TO_MEMORY;
+    hdma_tim3_ch1.Init.Direction = DMA_MEMORY_TO_PERIPH;
     hdma_tim3_ch1.Init.PeriphInc = DMA_PINC_DISABLE;
     hdma_tim3_ch1.Init.MemInc = DMA_MINC_ENABLE;
     hdma_tim3_ch1.Init.PeriphDataAlignment = DMA_PDATAALIGN_HALFWORD;
