@@ -27,6 +27,7 @@ target_include_directories(stm32cubemx INTERFACE
     ../../Drivers/CMSIS/Device/ST/STM32H7xx/Include
     ../../Drivers/CMSIS/Include
     ../../Drivers/Components/LED
+    ../../Drivers/Components/IMU1
 )
 
 target_sources(stm32cubemx INTERFACE
@@ -91,6 +92,7 @@ target_sources(stm32cubemx INTERFACE
     ../../startup_stm32h723xx.s
 
     ../../Drivers/Components/LED/ws2812.c
+    ../../Drivers/Components/IMU1/LSM6DSR.c
 )
 
 target_link_directories(stm32cubemx INTERFACE
