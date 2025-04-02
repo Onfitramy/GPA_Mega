@@ -32,7 +32,7 @@ void IMU2_read_reg(uint8_t address, uint8_t *data)
     txData[0] = 0x80 | address;
     txData[1] = 0xFF;
     activate_imu();
-    IMU2_SPI_status =  HAL_SPI_TransmitReceive(&IMU2_SPI, txData, rxData, 2, 100);
+    IMU2_SPI_status = HAL_SPI_TransmitReceive(&IMU2_SPI, txData, rxData, 2, 100);
     deactivate_imu();
     if(IMU2_SPI_status == HAL_OK & rxData[1] == 0x6B){
         *data = rxData[1];

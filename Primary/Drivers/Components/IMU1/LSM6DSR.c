@@ -1,4 +1,5 @@
 #include "LSM6DSR.h"
+#include "main.h" //ONLY FOR TESTING WITHE LED
 
 HAL_StatusTypeDef IMU1_SPI_status;
 
@@ -22,19 +23,26 @@ void IMU1_write_reg(uint8_t reg, uint8_t data)
 
 void IMU1_read_reg(uint8_t address, uint8_t *data)
 {
-    uint8_t temp_data = 0x03;//0x80|address;
+    /*uint8_t temp_data = 0x03;//0x80|address;
     activate_imu();
     HAL_Delay(2);
     IMU1_SPI_status = HAL_SPI_Transmit(&IMU1_SPI, &temp_data, 1, 100);
     //IMU1_SPI_status = HAL_SPI_Receive(&IMU1_SPI, data, 1, 100);
-    deactivate_imu();
+    deactivate_imu();*/
 
-    /*uint8_t txData[2], rxData[2];
+    uint8_t txData[2], rxData[2];
     txData[0] = 0x80 | address;
     txData[1] = 0xFF;
     activate_imu();
     IMU1_SPI_status =  HAL_SPI_TransmitReceive(&IMU1_SPI, txData, rxData, 2, 100);
-    deactivate_imu();*/
+    deactivate_imu();
+    if(IMU1_SPI_status == HAL_OK & rxData[1] == 0x6B){
+        *data = rxData[1];
+        HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
+    }
+    else{
+        *data = 0;
+    }
 }
 
 bool LSM6DSR_SelfTest(void){
