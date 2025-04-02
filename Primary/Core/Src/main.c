@@ -31,6 +31,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "ws2812.h"
+#include "LSM6DSR.h"
+#include "ISM330DHCX.h"
 
 /* USER CODE END Includes */
 
@@ -122,13 +124,13 @@ int main(void)
   /* USER CODE END 2 */
 
   /* Init scheduler */
-  osKernelInitialize();
+  //osKernelInitialize();
 
   /* Call init function for freertos objects (in cmsis_os2.c) */
-  MX_FREERTOS_Init();
+  //MX_FREERTOS_Init();
 
   /* Start scheduler */
-  osKernelStart();
+  //osKernelStart();
 
   /* We should never get here as control is now taken by the scheduler */
 
@@ -137,7 +139,9 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
+    //LSM6DSR_SelfTest();
+    ISM330DHCX_SelfTest();
+    HAL_Delay(1000);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */

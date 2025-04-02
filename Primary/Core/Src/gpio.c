@@ -53,10 +53,12 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, IMU1_CS_Pin|GPIO14_Pin|GNSS_RST_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, GPIO14_Pin|GNSS_RST_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, IMU1_CS_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOC, MAG_CS_Pin|PYRO1_Pin|PYRO2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, PYRO1_Pin|PYRO2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOC, MAG_CS_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GPIO11_Pin|GPIO12_Pin|GPIO13_Pin|EXT2_CS_Pin
@@ -69,14 +71,14 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Pin = IMU1_CS_Pin|GPIO14_Pin|GNSS_RST_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pins : MAG_CS_Pin PYRO1_Pin PYRO2_Pin */
   GPIO_InitStruct.Pin = MAG_CS_Pin|PYRO1_Pin|PYRO2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : IMU1_INT1_Pin IMU1_INT2_Pin BMP_INT_Pin */
