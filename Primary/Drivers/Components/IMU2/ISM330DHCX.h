@@ -4,6 +4,8 @@
 #include "stm32h7xx_hal.h"
 #include "stdbool.h"
 
+#include "main.h" //ONLY FOR TESTING WITHE LED
+
 extern SPI_HandleTypeDef hspi3;
 
 #define IMU2_SPI        hspi3

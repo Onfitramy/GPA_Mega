@@ -22,18 +22,25 @@ void IMU2_write_reg(uint8_t reg, uint8_t data)
 
 void IMU2_read_reg(uint8_t address, uint8_t *data)
 {
-    uint8_t temp_data = 0x80|address;
+    /* temp_data = 0x80|address;
     activate_imu();
     IMU2_SPI_status = HAL_SPI_Transmit(&IMU2_SPI, &temp_data, 1, 100);
     IMU2_SPI_status = HAL_SPI_Receive(&IMU2_SPI, data, 1, 100);
-    deactivate_imu();
+    deactivate_imu();*/
 
-    /*uint8_t txData[2], rxData[2];
+    uint8_t txData[2], rxData[2];
     txData[0] = 0x80 | address;
     txData[1] = 0xFF;
     activate_imu();
     IMU2_SPI_status =  HAL_SPI_TransmitReceive(&IMU2_SPI, txData, rxData, 2, 100);
-    deactivate_imu();*/
+    deactivate_imu();
+    if(IMU2_SPI_status == HAL_OK & rxData[1] == 0x6B){
+        *data = rxData[1];
+        HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
+    }
+    else{
+        *data = 0;
+    }
 }
 
 bool ISM330DHCX_SelfTest(void){
