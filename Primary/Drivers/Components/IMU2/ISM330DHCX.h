@@ -4,7 +4,7 @@
 #include "stm32h7xx_hal.h"
 #include "stdbool.h"
 
-#include "main.h" //ONLY FOR TESTING WITHE LED
+#include "main.h" //ONLY FOR TESTING WITH THE LED
 
 extern SPI_HandleTypeDef hspi3;
 

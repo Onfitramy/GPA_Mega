@@ -133,6 +133,11 @@ void StartDefaultTask(void *argument)
     Set_LED(0, R, G, B);
     Set_Brightness(45);
     WS2812_Send();
+
+    ISM330DHCX_SelfTest();
+    LSM6DSR_SelfTest();
+    LIS3MDL_SelfTest();
+
     osDelay(1000);
     HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
   }

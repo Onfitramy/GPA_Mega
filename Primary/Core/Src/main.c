@@ -33,6 +33,7 @@
 #include "ws2812.h"
 #include "LSM6DSR.h"
 #include "ISM330DHCX.h"
+#include "LIS3MDL.h"
 
 /* USER CODE END Includes */
 
@@ -128,13 +129,13 @@ int main(void)
   /* USER CODE END 2 */
 
   /* Init scheduler */
-  //osKernelInitialize();
+  osKernelInitialize();
 
   /* Call init function for freertos objects (in cmsis_os2.c) */
-  //MX_FREERTOS_Init();
+  MX_FREERTOS_Init();
 
   /* Start scheduler */
-  //osKernelStart();
+  osKernelStart();
 
   /* We should never get here as control is now taken by the scheduler */
 
@@ -143,10 +144,8 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-    ISM330DHCX_SelfTest();
-    //LSM6DSR_SelfTest();
     //HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
-    HAL_Delay(1000);
+    //HAL_Delay(1000);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -182,7 +181,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLM = 1;
   RCC_OscInitStruct.PLL.PLLN = 31;
   RCC_OscInitStruct.PLL.PLLP = 1;
-  RCC_OscInitStruct.PLL.PLLQ = 20;
+  RCC_OscInitStruct.PLL.PLLQ = 10;
   RCC_OscInitStruct.PLL.PLLR = 2;
   RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_3;
   RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
