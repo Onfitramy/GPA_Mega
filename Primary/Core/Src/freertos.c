@@ -29,6 +29,7 @@
 #include "LSM6DSR.h"
 #include "ISM330DHCX.h"
 #include "LIS3MDL.h"
+#include "bmp390.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -153,6 +154,7 @@ void StartDefaultTask(void *argument)
       WS2812_Send();
     }
 
+    BMP390_SelfTest();
     osDelay(1000);
     HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
   }
