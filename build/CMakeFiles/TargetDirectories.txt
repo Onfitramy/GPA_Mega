@@ -1,0 +1,5 @@
+C:/Users/benno/OneDrive - Fachhochschule Aachen/Dokumente/GitHub/GPA_Mega/build/CMakeFiles/Primary.dir
+C:/Users/benno/OneDrive - Fachhochschule Aachen/Dokumente/GitHub/GPA_Mega/build/CMakeFiles/edit_cache.dir
+C:/Users/benno/OneDrive - Fachhochschule Aachen/Dokumente/GitHub/GPA_Mega/build/CMakeFiles/rebuild_cache.dir
+C:/Users/benno/OneDrive - Fachhochschule Aachen/Dokumente/GitHub/GPA_Mega/build/cmake/stm32cubemx/CMakeFiles/edit_cache.dir
+C:/Users/benno/OneDrive - Fachhochschule Aachen/Dokumente/GitHub/GPA_Mega/build/cmake/stm32cubemx/CMakeFiles/rebuild_cache.dir

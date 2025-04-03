@@ -27,6 +27,7 @@
 /* USER CODE BEGIN Includes */
 #include "ws2812.h"
 #include "LSM6DSR.h"
+#include "bmp390.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -134,10 +135,7 @@ void StartDefaultTask(void *argument)
     Set_Brightness(45);
     WS2812_Send();
 
-    ISM330DHCX_SelfTest();
-    LSM6DSR_SelfTest();
-    LIS3MDL_SelfTest();
-
+    BMP390_SelfTest();
     osDelay(1000);
     HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
   }
