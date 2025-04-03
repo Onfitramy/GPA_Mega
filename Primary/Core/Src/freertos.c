@@ -27,6 +27,8 @@
 /* USER CODE BEGIN Includes */
 #include "ws2812.h"
 #include "LSM6DSR.h"
+#include "ISM330DHCX.h"
+#include "LIS3MDL.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -119,24 +121,37 @@ void StartDefaultTask(void *argument)
   MX_USB_DEVICE_Init();
   HAL_Delay(10); // Wait for USB and other Peripherals to initialize
   /* USER CODE BEGIN StartDefaultTask */
-  uint8_t R = 100;
-  uint8_t G = 100;
-  uint8_t B = 100;
+  uint8_t R = 255;
+  uint8_t G = 0;
+  uint8_t B = 0;
 
   /* Infinite loop */
   for(;;)
   {
     // Cycle through colors for a more intense "disco" effect
-    R = (R + 50) % 255;
+    /*R = (R + 50) % 255;
     G = (G + 25) % 255;
     B = (B + 15) % 255;
     Set_LED(0, R, G, B);
     Set_Brightness(45);
-    WS2812_Send();
+    WS2812_Send();*/
 
-    ISM330DHCX_SelfTest();
-    LSM6DSR_SelfTest();
-    LIS3MDL_SelfTest();
+    if(/*ISM330DHCX_SelfTest() &*/ LSM6DSR_SelfTest() & LIS3MDL_SelfTest()){
+      R = 0;
+      G = 255;
+      B = 0;
+      Set_LED(0, R, G, B);
+      Set_Brightness(45);
+      WS2812_Send();
+    }
+    else{
+      R = 255;
+      G = 0;
+      B = 0;
+      Set_LED(0, R, G, B);
+      Set_Brightness(45);
+      WS2812_Send();
+    }
 
     osDelay(1000);
     HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);

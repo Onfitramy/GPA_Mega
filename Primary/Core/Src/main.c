@@ -30,10 +30,6 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "ws2812.h"
-#include "LSM6DSR.h"
-#include "ISM330DHCX.h"
-#include "LIS3MDL.h"
 
 /* USER CODE END Includes */
 
