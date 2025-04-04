@@ -16,7 +16,7 @@ extern I2C_HandleTypeDef hi2c3;  // Falls du I²C1 benutzt, sonst anpassen
 #define BMP390_CHIP_ID_REG  0x00  // WHO_AM_I Register (sollte 0x60 zurückgeben)
 
 // Funktionsdeklarationen
-bool BMP390_SelfTest(void);
+uint8_t BMP390_SelfTest(void);
 void BMP_write_reg(uint8_t reg, uint8_t data);
 void BMP_read_reg(uint8_t reg, uint8_t *data);
 

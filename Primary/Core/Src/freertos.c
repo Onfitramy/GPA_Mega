@@ -126,6 +126,8 @@ void StartDefaultTask(void *argument)
   uint8_t G = 0;
   uint8_t B = 0;
 
+  uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO
+
   /* Infinite loop */
   for(;;)
   {
@@ -136,8 +138,14 @@ void StartDefaultTask(void *argument)
     Set_LED(0, R, G, B);
     Set_Brightness(45);
     WS2812_Send();*/
+    SelfTest_Bitfield |= LSM6DSR_SelfTest();
+    SelfTest_Bitfield |= LSM6DSR_SelfTest(); //Only works when called twice again???????
+    SelfTest_Bitfield |= (ISM330DHCX_SelfTest()<<1);
+    SelfTest_Bitfield |= (ISM330DHCX_SelfTest()<<1); //Only works when called twice???????
+    SelfTest_Bitfield |= (LIS3MDL_SelfTest()<<2);
+    SelfTest_Bitfield |= (BMP390_SelfTest()<<3);
 
-    if(/*ISM330DHCX_SelfTest() &*/ LSM6DSR_SelfTest() & LIS3MDL_SelfTest()){
+    if(SelfTest_Bitfield == 0b1111){
       R = 0;
       G = 255;
       B = 0;
@@ -154,7 +162,6 @@ void StartDefaultTask(void *argument)
       WS2812_Send();
     }
 
-    BMP390_SelfTest();
     osDelay(1000);
     HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
   }

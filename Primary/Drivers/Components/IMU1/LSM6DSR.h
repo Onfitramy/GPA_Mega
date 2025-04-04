@@ -12,6 +12,6 @@ extern SPI_HandleTypeDef hspi4;
 
 #define WHO_AM_I_REG 0x0F
 
-bool LSM6DSR_SelfTest(void);
+uint8_t LSM6DSR_SelfTest(void);
 
 #endif /* LSM6DSR_H_ */

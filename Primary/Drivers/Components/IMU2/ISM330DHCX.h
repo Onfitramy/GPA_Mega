@@ -14,6 +14,6 @@ extern SPI_HandleTypeDef hspi3;
 
 #define WHO_AM_I_REG 0x0F
 
-bool ISM330DHCX_SelfTest(void);
+uint8_t ISM330DHCX_SelfTest(void);
 
 #endif /* ISM330DHCX_H_ */

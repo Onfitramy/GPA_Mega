@@ -37,13 +37,13 @@ void MAG_read_reg(uint8_t address, uint8_t *data)
     *data = rxData[1];
 }
 
-bool LIS3MDL_SelfTest(void){
+uint8_t LIS3MDL_SelfTest(void){
     uint8_t Who_Am_I_return = 0;
     MAG_read_reg(WHO_AM_I_REG, &Who_Am_I_return);
     if(Who_Am_I_return == 0x3d){
-        return true;
+        return 1;
     }
     else{
-        return false;
+        return 0;
     }
 }

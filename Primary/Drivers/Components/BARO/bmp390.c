@@ -14,10 +14,14 @@ void BMP_read_reg(uint8_t reg, uint8_t *data)
     BMP_I2C_status = HAL_I2C_Master_Receive(&hi2c3, BMP390_I2C_ADDR, data, 1, 100);
 }
 
-bool BMP390_SelfTest(void)
+uint8_t BMP390_SelfTest(void)
 {
     uint8_t Who_Am_I_return = 0;
     BMP_read_reg(BMP390_CHIP_ID_REG, &Who_Am_I_return);
 
-    return (Who_Am_I_return == 0x60);  // 0x60 = BMP390 ID
+    if(Who_Am_I_return == 0x60){ // 0x60 = BMP390 ID
+        return 1;
+    }else{
+        return 0;
+    }
 }

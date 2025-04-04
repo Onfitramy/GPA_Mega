@@ -43,13 +43,13 @@ void IMU2_read_reg(uint8_t address, uint8_t *data)
     }
 }
 
-bool ISM330DHCX_SelfTest(void){
+uint8_t ISM330DHCX_SelfTest(void){
     uint8_t Who_Am_I_return = 0;
     IMU2_read_reg(WHO_AM_I_REG, &Who_Am_I_return);
     if(Who_Am_I_return == 0x6B){
-        return true;
+        return 1;
     }
     else{
-        return false;
+        return 0;
     }
 }

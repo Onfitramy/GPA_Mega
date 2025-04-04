@@ -14,6 +14,6 @@ extern SPI_HandleTypeDef hspi4;
 
 #define WHO_AM_I_REG 0x0F
 
-bool LIS3MDL_SelfTest(void);
+uint8_t LIS3MDL_SelfTest(void);
 
 #endif /* LIS3MDL_H_ */
