@@ -36,7 +36,6 @@ void IMU2_read_reg(uint8_t address, uint8_t *data)
     deactivate_imu();
     if(IMU2_SPI_status == HAL_OK & rxData[1] == 0x6B){
         *data = rxData[1];
-        HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
     }
     else{
         *data = 0;

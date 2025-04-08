@@ -31,6 +31,7 @@ target_include_directories(stm32cubemx INTERFACE
     ../../Drivers/Components/IMU2
     ../../Drivers/Components/MAG
     ../../Drivers/Components/BARO
+    ../../Drivers/Components/GPS
 )
 
 target_sources(stm32cubemx INTERFACE
@@ -99,6 +100,8 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/Components/IMU2/ISM330DHCX.c
     ../../Drivers/Components/MAG/LIS3MDL.c
     ../../Drivers/Components/BARO/bmp390.c
+    ../../Drivers/Components/GPS/SAM-M8Q.c
+    ../../Drivers/Components/GPS/u_ubx_protocol.c
 )
 
 target_link_directories(stm32cubemx INTERFACE

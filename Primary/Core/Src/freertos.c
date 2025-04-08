@@ -30,6 +30,7 @@
 #include "ISM330DHCX.h"
 #include "LIS3MDL.h"
 #include "bmp390.h"
+#include "SAM-M8Q.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -120,7 +121,7 @@ void StartDefaultTask(void *argument)
 {
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
-  HAL_Delay(10); // Wait for USB and other Peripherals to initialize
+  HAL_Delay(200); // Wait for USB and other Peripherals to initialize
   /* USER CODE BEGIN StartDefaultTask */
   uint8_t R = 255;
   uint8_t G = 0;
@@ -144,8 +145,9 @@ void StartDefaultTask(void *argument)
     SelfTest_Bitfield |= (ISM330DHCX_SelfTest()<<1); //Only works when called twice???????
     SelfTest_Bitfield |= (LIS3MDL_SelfTest()<<2);
     SelfTest_Bitfield |= (BMP390_SelfTest()<<3);
+    SelfTest_Bitfield |= (GPS_VER_CHECK()<<4); //Check if GPS is connected and working
 
-    if(SelfTest_Bitfield == 0b1111){
+    if(SelfTest_Bitfield == 0b11111){
       R = 0;
       G = 255;
       B = 0;
@@ -163,7 +165,6 @@ void StartDefaultTask(void *argument)
     }
 
     osDelay(1000);
-    HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
   }
   /* USER CODE END StartDefaultTask */
 }

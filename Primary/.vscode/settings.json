@@ -5,6 +5,10 @@
         "cmsis_os.h": "c",
         "lsm6dsr.h": "c",
         "ws2812.h": "c",
-        "ism330dhcx.h": "c"
+        "ism330dhcx.h": "c",
+        "stdbool.h": "c",
+        "stdint.h": "c",
+        "stddef.h": "c",
+        "u_ubx_protocol.h": "c"
     }
 }

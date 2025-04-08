@@ -53,7 +53,7 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOD_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, GPIO14_Pin|GNSS_RST_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOE, GPIO14_Pin|GNSS_RST_Pin|GNSS_INT_Pin, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(GPIOE, IMU1_CS_Pin, GPIO_PIN_SET);
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(MAG_CS_GPIO_Port, MAG_CS_Pin, GPIO_PIN_SET);
@@ -104,15 +104,21 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : GPIO14_Pin GNSS_RST_Pin */
-  GPIO_InitStruct.Pin = GPIO14_Pin|GNSS_RST_Pin;
+  /*Configure GPIO pins : GPIO14_Pin GNSS_RST_Pin GNSS_INT_Pin */
+  GPIO_InitStruct.Pin = GPIO14_Pin|GNSS_INT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : GNSS_INT_Pin GNSS_TP_Pin GNSS_TX_RDY_Pin MAG_INT_Pin */
-  GPIO_InitStruct.Pin = GNSS_INT_Pin|GNSS_TP_Pin|GNSS_TX_RDY_Pin|MAG_INT_Pin;
+    /*Configure GPIO pins : GPIO14_Pin GNSS_RST_Pin GNSS_INT_Pin */
+    GPIO_InitStruct.Pin = GNSS_RST_Pin;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : GNSS_TP_Pin GNSS_TX_RDY_Pin MAG_INT_Pin */
+  GPIO_InitStruct.Pin = GNSS_TP_Pin|GNSS_TX_RDY_Pin|MAG_INT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
