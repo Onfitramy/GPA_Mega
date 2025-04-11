@@ -32,6 +32,8 @@ target_include_directories(stm32cubemx INTERFACE
     ../../Drivers/Components/MAG
     ../../Drivers/Components/BARO
     ../../Drivers/Components/GPS
+    ../../Drivers/Components/Servo
+    ../../Drivers/Components/PYRO
 )
 
 target_sources(stm32cubemx INTERFACE
@@ -102,6 +104,9 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/Components/BARO/bmp390.c
     ../../Drivers/Components/GPS/SAM-M8Q.c
     ../../Drivers/Components/GPS/u_ubx_protocol.c
+    ../../Drivers/Components/Servo/SERVO.c
+    ../../Drivers/Components/Servo/SERVO_cfg.c
+    ../../Drivers/Components/PYRO/Pyro.c
 )
 
 target_link_directories(stm32cubemx INTERFACE

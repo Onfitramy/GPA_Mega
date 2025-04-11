@@ -23,6 +23,8 @@ target_include_directories(stm32cubemx INTERFACE
     ../../Drivers/CMSIS/Include
     ../../Drivers/Components
     ../../Drivers/Components/Buzzer
+    ../../Drivers/Components/LED
+    ../../Drivers/Components/VoltageReader
 )
 
 target_sources(stm32cubemx INTERFACE
@@ -56,7 +58,6 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pcd.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pcd_ex.c
     ../../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_usb.c
-    ../../Drivers/Components/Buzzer/Buzzer.c
     ../../Core/Src/system_stm32f4xx.c
     ../../Middlewares/Third_Party/FreeRTOS/Source/croutine.c
     ../../Middlewares/Third_Party/FreeRTOS/Source/event_groups.c
@@ -71,6 +72,10 @@ target_sources(stm32cubemx INTERFACE
     ../../Core/Src/sysmem.c
     ../../Core/Src/syscalls.c
     ../../startup_stm32f405xx.s
+
+    ../../Drivers/Components/LED/ws2812.c
+    ../../Drivers/Components/Buzzer/Buzzer.c
+    ../../Drivers/Components/VoltageReader/VR.c
 )
 
 target_link_directories(stm32cubemx INTERFACE

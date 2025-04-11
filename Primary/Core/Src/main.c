@@ -27,7 +27,8 @@
 #include "tim.h"
 #include "usb_device.h"
 #include "gpio.h"
-
+#include "SERVO.h"
+#include "Pyro.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -121,7 +122,11 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
-
+  SERVO_Init(1);
+  for(int i = 1; i <= 8; i++) {
+    SERVO_Init(i);
+    SERVO_MoveToAngle(i, 10 * i);
+  }
   /* USER CODE END 2 */
 
   /* Init scheduler */

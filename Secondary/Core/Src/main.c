@@ -23,6 +23,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "Buzzer.h"
+#include "ws2812.h"
+#include "VR.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -170,8 +172,18 @@ int main(void)
   //osKernelStart();
 
   /* We should never get here as control is now taken by the scheduler */
-  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
-  __HAL_TIM_SET_PRESCALER(&htim3, presForFrequency(1000));
+
+  Set_LED(0, 255, 0, 0);
+  Set_Brightness(45);
+  WS2812_Send();
+
+  double voltage5V0bus = voltageRead(1) * (10 + 10) / 10;
+  double voltageBATbus = voltageRead(2) * (10 + 2.2) / 2.2;
+
+  buzzerInit();
+
+  playMelody();
+
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
@@ -500,9 +512,9 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 0;
+  htim2.Init.Prescaler = 1;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 4294967295;
+  htim2.Init.Period = 75;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
@@ -550,9 +562,9 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 0;
+  htim3.Init.Prescaler = 83; // 84 MHz / (83 + 1) = 1 MHz
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 1000;
+  htim3.Init.Period = 499;   // 1 MHz / (499 + 1) = 2000 Hz
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
