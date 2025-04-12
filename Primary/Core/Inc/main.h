@@ -28,6 +28,8 @@ extern "C" {
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32h7xx_hal.h"
+#include "FreeRTOS.h"
+#include "queue.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -36,7 +38,7 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
+extern QueueHandle_t InterruptQueue;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -63,8 +65,10 @@ void Error_Handler(void);
 #define MAG_CS_GPIO_Port GPIOC
 #define IMU1_INT1_Pin GPIO_PIN_14
 #define IMU1_INT1_GPIO_Port GPIOC
+#define IMU1_INT1_EXTI_IRQn EXTI15_10_IRQn
 #define IMU1_INT2_Pin GPIO_PIN_15
 #define IMU1_INT2_GPIO_Port GPIOC
+#define IMU1_INT2_EXTI_IRQn EXTI15_10_IRQn
 #define P1_READ_Pin GPIO_PIN_0
 #define P1_READ_GPIO_Port GPIOC
 #define P2_READ_Pin GPIO_PIN_1
@@ -96,10 +100,12 @@ void Error_Handler(void);
 #define GNSS_INT_GPIO_Port GPIOE
 #define GNSS_TP_Pin GPIO_PIN_11
 #define GNSS_TP_GPIO_Port GPIOE
+#define GNSS_TP_EXTI_IRQn EXTI15_10_IRQn
 #define GNSS_RST_Pin GPIO_PIN_12
 #define GNSS_RST_GPIO_Port GPIOE
 #define GNSS_TX_RDY_Pin GPIO_PIN_13
 #define GNSS_TX_RDY_GPIO_Port GPIOE
+#define GNSS_TX_RDY_EXTI_IRQn EXTI15_10_IRQn
 #define GNSS_SCL_Pin GPIO_PIN_10
 #define GNSS_SCL_GPIO_Port GPIOB
 #define GNSS_SDA_Pin GPIO_PIN_11

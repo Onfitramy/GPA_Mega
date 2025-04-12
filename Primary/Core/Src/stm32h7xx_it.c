@@ -248,6 +248,40 @@ void EXTI9_5_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles EXTI line[15:10] interrupts.
+  */
+void EXTI15_10_IRQHandler(void)
+{
+  /* USER CODE BEGIN EXTI15_10_IRQn 0 */
+  if (__HAL_GPIO_EXTI_GET_IT(GNSS_TX_RDY_Pin) != RESET)
+    {
+        HAL_GPIO_EXTI_IRQHandler(GNSS_TX_RDY_Pin);
+    }
+  
+  else if (__HAL_GPIO_EXTI_GET_IT(GNSS_TP_Pin) != RESET)
+    {
+        HAL_GPIO_EXTI_IRQHandler(GNSS_TP_Pin);
+    }
+  
+  else if (__HAL_GPIO_EXTI_GET_IT(IMU1_INT1_Pin) != RESET)
+    {
+        HAL_GPIO_EXTI_IRQHandler(IMU1_INT1_Pin);
+    }
+
+  else if (__HAL_GPIO_EXTI_GET_IT(IMU1_INT2_Pin) != RESET)
+    {
+        HAL_GPIO_EXTI_IRQHandler(IMU1_INT2_Pin);
+    }
+  /* USER CODE END EXTI15_10_IRQn 0 */
+  //HAL_GPIO_EXTI_IRQHandler(GNSS_TP_Pin);
+  //HAL_GPIO_EXTI_IRQHandler(IMU1_INT1_Pin);
+  //HAL_GPIO_EXTI_IRQHandler(IMU1_INT2_Pin);
+  /* USER CODE BEGIN EXTI15_10_IRQn 1 */
+
+  /* USER CODE END EXTI15_10_IRQn 1 */
+}
+
+/**
   * @brief This function handles TIM6 global interrupt, DAC1_CH1 and DAC1_CH2 underrun error interrupts.
   */
 void TIM6_DAC_IRQHandler(void)

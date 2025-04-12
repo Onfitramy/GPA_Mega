@@ -22,6 +22,8 @@
 #include "task.h"
 #include "main.h"
 #include "cmsis_os.h"
+#include "semphr.h"
+#include "queue.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -50,12 +52,19 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
-
+QueueHandle_t InterruptQueue;
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
+  .stack_size = 128 * 24,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+
+osThreadId_t InterruptHandlerTaskHandle;
+const osThreadAttr_t InterruptHandlerTask_attributes = {
+  .name = "InterruptHandlerTask",
   .stack_size = 128 * 24,
   .priority = (osPriority_t) osPriorityNormal,
 };
@@ -67,6 +76,8 @@ const osThreadAttr_t defaultTask_attributes = {
 
 void StartDefaultTask(void *argument);
 
+void StartInterruptHandlerTask(void *argument);
+
 extern void MX_USB_DEVICE_Init(void);
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -77,7 +88,6 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
   */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
-
   /* USER CODE END Init */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -93,12 +103,14 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
+  InterruptQueue = xQueueCreate(10, sizeof(uint8_t)); // Queue for 10 bytes
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+
+  InterruptHandlerTaskHandle = osThreadNew(StartInterruptHandlerTask, NULL, &InterruptHandlerTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -165,6 +177,32 @@ void StartDefaultTask(void *argument)
     }
 
     osDelay(1000);
+  }
+  /* USER CODE END StartDefaultTask */
+}
+
+/* USER CODE BEGIN InterruptHandlerTask */
+/**
+  * @brief  Function implementing the defaultTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END InterruptHandlerTask */
+void StartInterruptHandlerTask(void *argument)
+{
+  /* init code for USB_DEVICE */
+  /* USER CODE BEGIN StartDefaultTask */
+  uint8_t receivedData;
+  char GPS_Buffer[100]; // Buffer for GPS data
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+  /* Infinite loop */
+  for(;;)
+  {
+    if (xQueueReceive(InterruptQueue, &receivedData, portMAX_DELAY) == pdTRUE) {
+      if(receivedData == 0x10) {
+        ublox_ReadOutput(GPS_Buffer); //Read the GPS output and decode it
+      }
+    }
   }
   /* USER CODE END StartDefaultTask */
 }

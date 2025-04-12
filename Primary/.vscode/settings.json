@@ -9,6 +9,9 @@
         "stdbool.h": "c",
         "stdint.h": "c",
         "stddef.h": "c",
-        "u_ubx_protocol.h": "c"
+        "u_ubx_protocol.h": "c",
+        "semphr.h": "c",
+        "freertos.h": "c",
+        "task.h": "c"
     }
 }
