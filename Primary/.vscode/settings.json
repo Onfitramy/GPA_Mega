@@ -9,6 +9,7 @@
         "stdbool.h": "c",
         "stdint.h": "c",
         "stddef.h": "c",
-        "u_ubx_protocol.h": "c"
+        "u_ubx_protocol.h": "c",
+        "tim.h": "c"
     }
 }

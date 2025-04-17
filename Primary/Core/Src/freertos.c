@@ -139,13 +139,7 @@ void StartDefaultTask(void *argument)
     Set_LED(0, R, G, B);
     Set_Brightness(45);
     WS2812_Send();*/
-    SelfTest_Bitfield |= LSM6DSR_SelfTest();
-    SelfTest_Bitfield |= LSM6DSR_SelfTest(); //Only works when called twice again???????
-    SelfTest_Bitfield |= (ISM330DHCX_SelfTest()<<1);
-    SelfTest_Bitfield |= (ISM330DHCX_SelfTest()<<1); //Only works when called twice???????
-    SelfTest_Bitfield |= (LIS3MDL_SelfTest()<<2);
-    SelfTest_Bitfield |= (BMP390_SelfTest()<<3);
-    SelfTest_Bitfield |= (GPS_VER_CHECK()<<4); //Check if GPS is connected and working
+
 
     if(SelfTest_Bitfield == 0b11111){
       R = 0;
@@ -156,6 +150,14 @@ void StartDefaultTask(void *argument)
       WS2812_Send();
     }
     else{
+      SelfTest_Bitfield |= LSM6DSR_SelfTest();
+      SelfTest_Bitfield |= LSM6DSR_SelfTest(); //Only works when called twice again???????
+      SelfTest_Bitfield |= (ISM330DHCX_SelfTest()<<1);
+      SelfTest_Bitfield |= (ISM330DHCX_SelfTest()<<1); //Only works when called twice???????
+      SelfTest_Bitfield |= (LIS3MDL_SelfTest()<<2);
+      SelfTest_Bitfield |= (BMP390_SelfTest()<<3);
+      SelfTest_Bitfield |= (GPS_VER_CHECK()<<4); //Check if GPS is connected and working
+      
       R = 255;
       G = 0;
       B = 0;
