@@ -155,7 +155,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
   if (GPIO_Pin == GNSS_TX_RDY_Pin) {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     uint8_t sendData = 0x10;
-    xQueueSendFromISR(InterruptQueue, &sendData, &xHigherPriorityTaskWoken); //Send the GPIO_Pin to the Interrupt queue to be handled by the task
+    if(xQueueIsQueueEmptyFromISR(InterruptQueue)) {
+      xQueueSendFromISR(InterruptQueue, &sendData, &xHigherPriorityTaskWoken);
+    } //Send the GPIO_Pin to the Interrupt queue to be handled by the task
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken); // Perform a context switch if needed
   }
 }

@@ -65,7 +65,7 @@ const osThreadAttr_t defaultTask_attributes = {
 osThreadId_t InterruptHandlerTaskHandle;
 const osThreadAttr_t InterruptHandlerTask_attributes = {
   .name = "InterruptHandlerTask",
-  .stack_size = 128 * 24,
+  .stack_size = 128 * 48,
   .priority = (osPriority_t) osPriorityNormal,
 };
 
@@ -81,6 +81,22 @@ void StartInterruptHandlerTask(void *argument);
 extern void MX_USB_DEVICE_Init(void);
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
+/* Hook prototypes */
+void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName);
+
+/* USER CODE BEGIN 4 */
+void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
+{
+  uint8_t stackOverflow = 1;
+  for(;;)
+  {
+    
+  }
+   /* Run time stack overflow checking is performed if
+   configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
+   called if a stack overflow is detected. */
+}
+/* USER CODE END 4 */
 /**
   * @brief  FreeRTOS initialization
   * @param  None
@@ -194,15 +210,16 @@ void StartInterruptHandlerTask(void *argument)
   /* USER CODE BEGIN StartDefaultTask */
   uint8_t receivedData;
   char GPS_Buffer[100]; // Buffer for GPS data
-  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
+  //HAL_NVIC_EnableIRQ(EXTI15_10_IRQn); Disabled due to always triggering when GPS is not connected
   /* Infinite loop */
   for(;;)
-  {
+  { 
     if (xQueueReceive(InterruptQueue, &receivedData, portMAX_DELAY) == pdTRUE) {
       if(receivedData == 0x10) {
         ublox_ReadOutput(GPS_Buffer); //Read the GPS output and decode it
       }
     }
+    osDelay(5);
   }
   /* USER CODE END StartDefaultTask */
 }

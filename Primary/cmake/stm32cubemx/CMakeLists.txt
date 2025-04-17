@@ -108,6 +108,7 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/Components/Servo/SERVO.c
     ../../Drivers/Components/Servo/SERVO_cfg.c
     ../../Drivers/Components/PYRO/Pyro.c
+
 )
 
 target_link_directories(stm32cubemx INTERFACE
