@@ -40,6 +40,8 @@ target_sources(stm32cubemx INTERFACE
     ../../Core/Src/main.c
     ../../Core/Src/gpio.c
     ../../Core/Src/freertos.c
+    ../../Core/Src/FreeRTOS_CLI.c
+    ../../Core/Src/cli_app.c
     ../../Core/Src/adc.c
     ../../Core/Src/dma.c
     ../../Core/Src/i2c.c

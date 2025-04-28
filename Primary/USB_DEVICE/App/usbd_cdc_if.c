@@ -20,8 +20,15 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "usbd_cdc_if.h"
-
 /* USER CODE BEGIN INCLUDE */
+#include "FreeRTOS.h"
+#include "cmsis_os2.h"
+#include "stream_buffer.h"
+#include "task.h"
+
+extern osThreadId_t cmdLineTaskHandle;
+
+extern StreamBufferHandle_t xStreamBuffer;
 
 /* USER CODE END INCLUDE */
 
@@ -266,6 +273,11 @@ static int8_t CDC_Receive_HS(uint8_t* Buf, uint32_t *Len)
   /* USER CODE BEGIN 11 */
   USBD_CDC_SetRxBuffer(&hUsbDeviceHS, &Buf[0]);
   USBD_CDC_ReceivePacket(&hUsbDeviceHS);
+
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+  
+  // Send the data to the stream buffer
+  xStreamBufferSendFromISR(xStreamBuffer, Buf, *Len, &xHigherPriorityTaskWoken);
   return (USBD_OK);
   /* USER CODE END 11 */
 }

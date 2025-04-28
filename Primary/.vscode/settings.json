@@ -10,6 +10,9 @@
         "stdint.h": "c",
         "stddef.h": "c",
         "u_ubx_protocol.h": "c",
-        "tim.h": "c"
+        "tim.h": "c",
+        "freertos.h": "c",
+        "cmsis_os2.h": "c",
+        "stream_buffer.h": "c"
     }
 }

@@ -22,6 +22,8 @@
 #include "task.h"
 #include "main.h"
 #include "cmsis_os.h"
+#include "cli_app.h"
+#include "stream_buffer.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -50,7 +52,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
-
+StreamBufferHandle_t xStreamBuffer;
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -58,6 +60,14 @@ const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
   .stack_size = 128 * 24,
   .priority = (osPriority_t) osPriorityNormal,
+};
+
+/*Commandline Handler*/
+osThreadId_t cmdLineTaskHandle; // new command line task
+const osThreadAttr_t cmdLineTask_attributes = {
+  .name = "cmdLineTask", // defined in cli_app.c
+  .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 128 * 32
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -85,7 +95,10 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
-  /* add semaphores, ... */
+  xStreamBuffer = xStreamBufferCreate(50, 1); // 1-byte trigger level
+  if (xStreamBuffer == NULL) {
+    // Handle stream buffer creation failure
+  }
   /* USER CODE END RTOS_SEMAPHORES */
 
   /* USER CODE BEGIN RTOS_TIMERS */
@@ -100,6 +113,7 @@ void MX_FREERTOS_Init(void) {
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
+  cmdLineTaskHandle = osThreadNew(vCommandConsoleTask, NULL, &cmdLineTask_attributes);
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
