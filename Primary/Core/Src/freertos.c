@@ -31,6 +31,7 @@
 #include "LIS3MDL.h"
 #include "bmp390.h"
 #include "SAM-M8Q.h"
+#include "SERVO.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -40,7 +41,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+LSM6DSR_Data_t imu1_data;
+ISM330DHCX_Data_t imu2_data;
+LIS3MDL_Data_t mag_data;
+float alpha;
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -130,31 +134,19 @@ void StartDefaultTask(void *argument)
   uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO
 
   /* Infinite loop */
-  for(;;)
-  {
-    // Cycle through colors for a more intense "disco" effect
-    /*R = (R + 50) % 255;
-    G = (G + 25) % 255;
-    B = (B + 15) % 255;
-    Set_LED(0, R, G, B);
-    Set_Brightness(45);
-    WS2812_Send();*/
-
-
+  for(;;) {
     if(SelfTest_Bitfield == 0b11111){
       R = 0;
       G = 255;
       B = 0;
       Set_LED(0, R, G, B);
-      Set_Brightness(45);
+      Set_Brightness(5);
       WS2812_Send();
     }
     else{
-      SelfTest_Bitfield |= LSM6DSR_SelfTest();
-      SelfTest_Bitfield |= LSM6DSR_SelfTest(); //Only works when called twice again???????
-      SelfTest_Bitfield |= (ISM330DHCX_SelfTest()<<1);
-      SelfTest_Bitfield |= (ISM330DHCX_SelfTest()<<1); //Only works when called twice???????
-      SelfTest_Bitfield |= (LIS3MDL_SelfTest()<<2);
+      SelfTest_Bitfield |= IMU1_SelfTest();
+      SelfTest_Bitfield |= (IMU2_SelfTest()<<1);
+      SelfTest_Bitfield |= (MAG_SelfTest()<<2);
       SelfTest_Bitfield |= (BMP390_SelfTest()<<3);
       SelfTest_Bitfield |= (GPS_VER_CHECK()<<4); //Check if GPS is connected and working
       
@@ -162,12 +154,18 @@ void StartDefaultTask(void *argument)
       G = 0;
       B = 0;
       Set_LED(0, R, G, B);
-      Set_Brightness(45);
+      Set_Brightness(5);
       WS2812_Send();
     }
 
-    osDelay(1000);
+    IMU1_ReadSensorData(&imu1_data);
+    IMU2_ReadSensorData(&imu2_data);
+    MAG_ReadSensorData(&mag_data);
+    alpha = atan2(imu2_data.accel[1], imu2_data.accel[2])*180/M_PI;
+    SERVO_MoveToAngle(1, 2*alpha);
   }
+
+  
   /* USER CODE END StartDefaultTask */
 }
 

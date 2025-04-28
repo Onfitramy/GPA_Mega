@@ -29,6 +29,10 @@
 #include "gpio.h"
 #include "SERVO.h"
 #include "Pyro.h"
+#include "LSM6DSR.h"
+#include "ISM330DHCX.h"
+#include "LIS3MDL.h"
+#include "ws2812.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -122,11 +126,24 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
+  int counter1, counter2, counter3;
+
   SERVO_Init(1);
-  for(int i = 1; i <= 8; i++) {
-    SERVO_Init(i);
-    SERVO_MoveToAngle(i, 10 * i);
-  }
+
+  for(counter1 = 0; IMU1_SelfTest() != 1; counter1++);
+  for(counter2 = 0; IMU2_SelfTest() != 1; counter2++);
+  for(counter3 = 0; MAG_SelfTest() != 1; counter3++);
+
+  if(IMU1_Init() == HAL_OK && IMU2_Init() == HAL_OK && MAG_Init() == HAL_OK) Set_LED(0, 0, 255, 0);
+  else Set_LED(0, 255, 0, 0);
+
+  Set_Brightness(10);
+  WS2812_Send();
+
+  IMU1_VerifyDataReady();
+  IMU2_VerifyDataReady();
+  MAG_VerifyDataReady();
+
   /* USER CODE END 2 */
 
   /* Init scheduler */
