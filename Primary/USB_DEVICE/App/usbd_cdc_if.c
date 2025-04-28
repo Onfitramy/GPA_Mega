@@ -277,6 +277,7 @@ static int8_t CDC_Receive_HS(uint8_t* Buf, uint32_t *Len)
   BaseType_t xHigherPriorityTaskWoken = pdFALSE;
   
   // Send the data to the stream buffer
+  HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
   xStreamBufferSendFromISR(xStreamBuffer, Buf, *Len, &xHigherPriorityTaskWoken);
   return (USBD_OK);
   /* USER CODE END 11 */

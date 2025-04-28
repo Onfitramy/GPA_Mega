@@ -67,8 +67,8 @@ HAL_StatusTypeDef MAG_ReadSensorData(LIS3MDL_Data_t *data) {
         uint8_t rx[6] = { 0 };
         status = MAG_read_reg(LIS3MDL_OUT_X_L, 6, rx);  // read accelerometer data
         if (status != HAL_OK) return status;
-        data->field[0] = (int16_t)(rx[1] << 8 | rx[0]); // accel_X
-        data->field[1] = (int16_t)(rx[3] << 8 | rx[2]); // accel_Y
+        data->field[1] = (int16_t)(rx[1] << 8 | rx[0]); // accel_Y
+        data->field[0] = -(int16_t)(rx[3] << 8 | rx[2]); // accel_X
         data->field[2] = (int16_t)(rx[5] << 8 | rx[4]); // accel_Z
     }
     uint8_t rx[2] = { 0 };
