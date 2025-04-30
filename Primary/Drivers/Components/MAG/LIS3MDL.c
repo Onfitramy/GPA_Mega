@@ -11,12 +11,14 @@ static void LIS3MDL_Deselect(void) {
     HAL_GPIO_WritePin(MAG_CS_PORT, MAG_CS_PIN, GPIO_PIN_SET);
 }
 
-HAL_StatusTypeDef MAG_write_reg(uint8_t address, uint8_t data) {   
+HAL_StatusTypeDef MAG_write_reg(uint8_t address, uint8_t len, uint8_t *data) {   
     LIS3MDL_Select();
-    uint8_t tx[2];
-    tx[0] = address;
-    tx[1] = data;
-    MAG_SPI_status = HAL_SPI_Transmit(&MAG_SPI, tx, 2, HAL_MAX_DELAY);
+    uint8_t tx[len+1];
+    tx[0] = address | LIS3MDL_SPI_AUTOINC;
+    for(int i = 0; i < len; i++) {
+        tx[i + 1] = *(data + i); 
+    }
+    MAG_SPI_status = HAL_SPI_Transmit(&MAG_SPI, tx, len+1, HAL_MAX_DELAY);
     LIS3MDL_Deselect();
     return MAG_SPI_status;
 }
@@ -47,10 +49,9 @@ uint8_t MAG_VerifyDataReady(void) {
 }
 
 HAL_StatusTypeDef MAG_Init(void) {
+    uint8_t tx[3] = { 0x90, 0x00, 0x00 };
     uint8_t rx[3] = { 0 };
-    MAG_write_reg(LIS3MDL_CTRL_REG1, 0x90); // enable temperature sensor
-    MAG_write_reg(LIS3MDL_CTRL_REG3, 0x00); // enable continuous-conversion mode
-
+    MAG_write_reg(LIS3MDL_CTRL_REG1, 3, tx); // enable temperature sensor and continuous-conversion mode
     MAG_read_reg(LIS3MDL_CTRL_REG1, 3, rx);
 
     if(rx[0] != 0x90 || rx[2] != 0x00) return HAL_ERROR;
@@ -65,11 +66,11 @@ HAL_StatusTypeDef MAG_ReadSensorData(LIS3MDL_Data_t *data) {
 
     if(available & 0x08) {
         uint8_t rx[6] = { 0 };
-        status = MAG_read_reg(LIS3MDL_OUT_X_L, 6, rx);  // read accelerometer data
+        status = MAG_read_reg(LIS3MDL_OUT_X_L, 6, rx);  // read magnetometer data
         if (status != HAL_OK) return status;
-        data->field[1] = (int16_t)(rx[1] << 8 | rx[0]); // accel_Y
-        data->field[0] = -(int16_t)(rx[3] << 8 | rx[2]); // accel_X
-        data->field[2] = (int16_t)(rx[5] << 8 | rx[4]); // accel_Z
+        data->field[0] = -(int16_t)(rx[3] << 8 | rx[2]);// field_X
+        data->field[1] = (int16_t)(rx[1] << 8 | rx[0]); // field_Y
+        data->field[2] = (int16_t)(rx[5] << 8 | rx[4]); // field_Z
     }
     uint8_t rx[2] = { 0 };
     status = MAG_read_reg(LIS3MDL_TEMP_OUT_L, 2, rx);   // read temperature data
@@ -78,4 +79,21 @@ HAL_StatusTypeDef MAG_ReadSensorData(LIS3MDL_Data_t *data) {
     data->temp = temp_raw / 8. + 25;                    // write temperature data to struct
 
     return HAL_OK;
+}
+
+uint8_t MAG_Offset(int16_t set_x, int16_t set_y, int16_t set_z) {
+    uint8_t tx[6] = { 0 };
+    uint8_t rx[6] = { 0 };
+    tx[0] = (uint8_t)(-set_y & 0x00FF);
+    tx[1] = (uint8_t)(-set_y >> 8);
+    tx[2] = (uint8_t)(set_x & 0x00FF);
+    tx[3] = (uint8_t)(set_x >> 8);
+    tx[4] = (uint8_t)(set_z & 0x00FF);
+    tx[5] = (uint8_t)(set_z >> 8);
+    MAG_write_reg(LIS3MDL_OFFSET_X_REG_L_M, 6, tx);
+    MAG_read_reg(LIS3MDL_OFFSET_X_REG_L_M, 6, rx);
+    int16_t offset_x = -(int16_t)(rx[3] << 8 | rx[2]); // = -set_x ???
+    int16_t offset_y = (int16_t)(rx[1] << 8 | rx[0]);  // = -set_y ???
+    int16_t offset_z = (int16_t)(rx[5] << 8 | rx[4]);
+    return 1;
 }

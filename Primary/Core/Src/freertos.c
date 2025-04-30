@@ -47,6 +47,7 @@ LSM6DSR_Data_t imu1_data;
 ISM330DHCX_Data_t imu2_data;
 LIS3MDL_Data_t mag_data;
 float alpha;
+uint32_t pressure_raw;
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -161,7 +162,7 @@ void StartDefaultTask(void *argument)
       SelfTest_Bitfield |= IMU1_SelfTest();
       SelfTest_Bitfield |= (IMU2_SelfTest()<<1);
       SelfTest_Bitfield |= (MAG_SelfTest()<<2);
-      SelfTest_Bitfield |= (BMP390_SelfTest()<<3);
+      SelfTest_Bitfield |= (BMP_SelfTest()<<3);
       SelfTest_Bitfield |= (GPS_VER_CHECK()<<4); //Check if GPS is connected and working
       
       R = 255;
@@ -171,7 +172,8 @@ void StartDefaultTask(void *argument)
       Set_Brightness(5);
       WS2812_Send();
     }
-
+    MAG_Offset(3000, 400, -5000);
+    BMP_GetPressureRaw(&pressure_raw);
     IMU1_ReadSensorData(&imu1_data);
     IMU2_ReadSensorData(&imu2_data);
     MAG_ReadSensorData(&mag_data);

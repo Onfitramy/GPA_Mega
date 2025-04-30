@@ -15,6 +15,7 @@ uint8_t MAG_SelfTest(void);
 uint8_t MAG_VerifyDataReady(void);
 HAL_StatusTypeDef MAG_Init(void);
 HAL_StatusTypeDef MAG_ReadSensorData(LIS3MDL_Data_t *data);
+uint8_t MAG_Offset(int16_t set_x, int16_t set_y, int16_t set_z);
 
 #define MAG_SPI        hspi4
 #define MAG_CS_PORT    GPIOC

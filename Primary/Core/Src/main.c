@@ -33,6 +33,7 @@
 #include "ISM330DHCX.h"
 #include "LIS3MDL.h"
 #include "ws2812.h"
+#include "bmp390.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -129,6 +130,8 @@ int main(void)
   int counter1, counter2, counter3;
 
   SERVO_Init(1);
+  BMP_SelfTest();
+  BMP_enable();
 
   for(counter1 = 0; IMU1_SelfTest() != 1; counter1++);
   for(counter2 = 0; IMU2_SelfTest() != 1; counter2++);

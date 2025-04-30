@@ -19,5 +19,8 @@ extern I2C_HandleTypeDef hi2c3;  // Falls du I²C1 benutzt, sonst anpassen
 uint8_t BMP390_SelfTest(void);
 void BMP_write_reg(uint8_t reg, uint8_t data);
 void BMP_read_reg(uint8_t reg, uint8_t *data);
+uint8_t BMP_enable(void);
+uint8_t BMP_GetPressureRaw(uint32_t *pressure);
+
 
 #endif /* BMP390_H_ */
