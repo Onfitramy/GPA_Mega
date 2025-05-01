@@ -13,6 +13,7 @@
         "tim.h": "c",
         "freertos.h": "c",
         "cmsis_os2.h": "c",
-        "stream_buffer.h": "c"
+        "stream_buffer.h": "c",
+        "bmp390.h": "c"
     }
 }

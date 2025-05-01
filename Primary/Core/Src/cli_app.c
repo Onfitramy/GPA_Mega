@@ -12,10 +12,13 @@
 #include "stdlib.h"
 #include "usbd_cdc_if.h"
 #include "ws2812.h"
+#include "LSM6DSR.h"
+#include "freeRTOS.h"
 
 #define MAX_INPUT_LENGTH 50
 #define USING_VS_CODE_TERMINAL 0
 #define USING_OTHER_TERMINAL 1 // e.g. Putty, TerraTerm
+
 char cOutputBuffer[configCOMMAND_INT_MAX_OUTPUT_SIZE], pcInputString[MAX_INPUT_LENGTH];
 extern const CLI_Command_Definition_t xCommandList[];
 extern StreamBufferHandle_t xStreamBuffer;
@@ -24,6 +27,8 @@ const char * cli_prompt = "\r\ncli> ";
 /* CLI escape sequences*/
 uint8_t backspace[] = "\b \b";
 uint8_t backspace_tt[] = " \b";
+
+extern LSM6DSR_Data_t imu1_data;
 
 int _write(int file, char *data, int len)
 {
@@ -93,14 +98,13 @@ BaseType_t cmd_set_led(char *pcWriteBuffer, size_t xWriteBufferLen, const char *
 }
 
 //*****************************************************************************
-BaseType_t cmd_read_IMU(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+BaseType_t cmd_read_IMU1(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {
     (void)pcCommandString;
     (void)xWriteBufferLen;
-    //IMU_Data receivedData = get_IMU_Data();
 
     /* Write the response to the buffer */
-    //snprintf(pcWriteBuffer, 100, "Accelerometer: %.2f, %.2f, %.2f Gyroscope: %.2f, %2f, %.2f Magnetometer: %.2f, %.2f, %.2f \r\n", receivedData.x_accel, receivedData.y_accel, receivedData.z_accel, receivedData.x_gyro, receivedData.y_gyro, receivedData.z_gyro, receivedData.x_magnet, receivedData.y_magnet, receivedData.z_magnet);
+    snprintf(pcWriteBuffer, 100, "Accelerometer: %d, %d, %d Gyroscope: %d, %d, %d\r\n", imu1_data.accel[0], imu1_data.accel[1], imu1_data.accel[2], imu1_data.gyro[0], imu1_data.accel[1], imu1_data.gyro[3]);
 
     return pdFALSE;
 }
@@ -176,9 +180,9 @@ const CLI_Command_Definition_t xCommandList[] = {
         .cExpectedNumberOfParameters = 3 /* No parameters are expected. */
     },
     {
-        .pcCommand = "read_IMU", /* The command string to type. */
-        .pcHelpString = "read_IMU: Read IMU\r\n\r\n",
-        .pxCommandInterpreter = cmd_read_IMU, /* The function to run. */
+        .pcCommand = "read_IMU1", /* The command string to type. */
+        .pcHelpString = "read_IMU1: Read IMU1\r\n\r\n",
+        .pxCommandInterpreter = cmd_read_IMU1, /* The function to run. */
         .cExpectedNumberOfParameters = 0 /* No parameters are expected. */
     },
     {

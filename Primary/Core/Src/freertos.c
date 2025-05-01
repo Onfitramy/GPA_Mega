@@ -47,7 +47,8 @@ LSM6DSR_Data_t imu1_data;
 ISM330DHCX_Data_t imu2_data;
 LIS3MDL_Data_t mag_data;
 float alpha;
-uint32_t pressure_raw;
+
+uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO 7:All checks passed
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -71,13 +72,13 @@ const osThreadAttr_t defaultTask_attributes = {
 osThreadId_t cmdLineTaskHandle; // new command line task
 const osThreadAttr_t cmdLineTask_attributes = {
   .name = "cmdLineTask", // defined in cli_app.c
-  .priority = (osPriority_t) osPriorityLow,
+  .priority = (osPriority_t) osPriorityHigh,
   .stack_size = 128 * 32
 };
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
-
+uint8_t SelfTest(void);
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
@@ -146,34 +147,10 @@ void StartDefaultTask(void *argument)
   uint8_t G = 0;
   uint8_t B = 0;
 
-  uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO
-
   /* Infinite loop */
   for(;;) {
-    if(SelfTest_Bitfield == 0b11111){
-      R = 0;
-      G = 255;
-      B = 0;
-      Set_LED(0, R, G, B);
-      Set_Brightness(5);
-      WS2812_Send();
-    }
-    else{
-      SelfTest_Bitfield |= IMU1_SelfTest();
-      SelfTest_Bitfield |= (IMU2_SelfTest()<<1);
-      SelfTest_Bitfield |= (MAG_SelfTest()<<2);
-      SelfTest_Bitfield |= (BMP_SelfTest()<<3);
-      SelfTest_Bitfield |= (GPS_VER_CHECK()<<4); //Check if GPS is connected and working
-      
-      R = 255;
-      G = 0;
-      B = 0;
-      Set_LED(0, R, G, B);
-      Set_Brightness(5);
-      WS2812_Send();
-    }
-    MAG_Offset(3000, 400, -5000);
-    BMP_GetPressureRaw(&pressure_raw);
+    SelfTest(); // Run self-test on startup
+
     IMU1_ReadSensorData(&imu1_data);
     IMU2_ReadSensorData(&imu2_data);
     MAG_ReadSensorData(&mag_data);
@@ -187,6 +164,38 @@ void StartDefaultTask(void *argument)
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
+
+uint8_t SelfTest(void) {
+  uint8_t R = 255;
+  uint8_t G = 0;
+  uint8_t B = 0;
+
+  if(SelfTest_Bitfield == 0b11111 && SelfTest_Bitfield != 0b10011111){
+    R = 0;
+    G = 255;
+    B = 0;
+    Set_LED(0, R, G, B);
+    Set_Brightness(5);
+    WS2812_Send();
+    SelfTest_Bitfield |= (1<<7);  //All checks passed
+  }
+  else if(SelfTest_Bitfield != 0b10011111){
+    SelfTest_Bitfield |= IMU1_SelfTest();
+    SelfTest_Bitfield |= (IMU2_SelfTest()<<1);
+    SelfTest_Bitfield |= (MAG_SelfTest()<<2);
+    SelfTest_Bitfield |= (BMP390_SelfTest()<<3);
+    SelfTest_Bitfield |= (GPS_VER_CHECK()<<4); //Check if GPS is connected and working
+    
+    R = 255;
+    G = 0;
+    B = 0;
+    Set_LED(0, R, G, B);
+    Set_Brightness(5);
+    WS2812_Send();
+  }
+
+  return SelfTest_Bitfield;
+}
 
 /* USER CODE END Application */
 
