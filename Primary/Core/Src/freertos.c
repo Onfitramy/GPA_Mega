@@ -183,7 +183,7 @@ uint8_t SelfTest(void) {
     SelfTest_Bitfield |= IMU1_SelfTest();
     SelfTest_Bitfield |= (IMU2_SelfTest()<<1);
     SelfTest_Bitfield |= (MAG_SelfTest()<<2);
-    SelfTest_Bitfield |= (BMP390_SelfTest()<<3);
+    SelfTest_Bitfield |= (BMP_SelfTest()<<3);
     SelfTest_Bitfield |= (GPS_VER_CHECK()<<4); //Check if GPS is connected and working
     
     R = 255;

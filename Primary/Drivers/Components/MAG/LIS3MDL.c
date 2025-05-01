@@ -84,10 +84,10 @@ HAL_StatusTypeDef MAG_ReadSensorData(LIS3MDL_Data_t *data) {
 uint8_t MAG_Offset(int16_t set_x, int16_t set_y, int16_t set_z) {
     uint8_t tx[6] = { 0 };
     uint8_t rx[6] = { 0 };
-    tx[0] = (uint8_t)(-set_y & 0x00FF);
-    tx[1] = (uint8_t)(-set_y >> 8);
-    tx[2] = (uint8_t)(set_x & 0x00FF);
-    tx[3] = (uint8_t)(set_x >> 8);
+    tx[0] = (uint8_t)(set_y & 0x00FF);
+    tx[1] = (uint8_t)(set_y >> 8);
+    tx[2] = (uint8_t)(-set_x & 0x00FF);
+    tx[3] = (uint8_t)(-set_x >> 8);
     tx[4] = (uint8_t)(set_z & 0x00FF);
     tx[5] = (uint8_t)(set_z >> 8);
     MAG_write_reg(LIS3MDL_OFFSET_X_REG_L_M, 6, tx);
