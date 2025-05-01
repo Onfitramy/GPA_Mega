@@ -42,6 +42,7 @@ uint8_t MAG_SelfTest(void) {
     else return 0;
 }
 
+/* returns 0b0000aZYX where 1 = data available for X, Y, Z axis, a = XYZ */
 uint8_t MAG_VerifyDataReady(void) {
     uint8_t status_reg_return = 0;
     MAG_read_reg(LIS3MDL_STATUS_REG, 1, &status_reg_return);
@@ -92,8 +93,8 @@ uint8_t MAG_Offset(int16_t set_x, int16_t set_y, int16_t set_z) {
     tx[5] = (uint8_t)(set_z >> 8);
     MAG_write_reg(LIS3MDL_OFFSET_X_REG_L_M, 6, tx);
     MAG_read_reg(LIS3MDL_OFFSET_X_REG_L_M, 6, rx);
-    int16_t offset_x = -(int16_t)(rx[3] << 8 | rx[2]); // = -set_x ???
-    int16_t offset_y = (int16_t)(rx[1] << 8 | rx[0]);  // = -set_y ???
+    int16_t offset_x = -(int16_t)(rx[3] << 8 | rx[2]);
+    int16_t offset_y = (int16_t)(rx[1] << 8 | rx[0]);
     int16_t offset_z = (int16_t)(rx[5] << 8 | rx[4]);
-    return 1;
+    return offset_x == set_x && offset_y == set_y && offset_z == set_z;
 }

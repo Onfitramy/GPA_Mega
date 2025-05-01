@@ -48,7 +48,7 @@ ISM330DHCX_Data_t imu2_data;
 LIS3MDL_Data_t mag_data;
 float alpha;
 
-uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO 7:All checks passed
+uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO, 4: GPS, 7:All checks passed
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -143,9 +143,6 @@ void StartDefaultTask(void *argument)
   MX_USB_DEVICE_Init();
   HAL_Delay(200); // Wait for USB and other Peripherals to initialize
   /* USER CODE BEGIN StartDefaultTask */
-  uint8_t R = 255;
-  uint8_t G = 0;
-  uint8_t B = 0;
 
   /* Infinite loop */
   for(;;) {

@@ -15,6 +15,9 @@ typedef struct {
 uint8_t IMU2_SelfTest(void);
 uint8_t IMU2_VerifyDataReady(void);
 HAL_StatusTypeDef IMU2_Init(void);
+HAL_StatusTypeDef IMU2_ConfigXL(uint8_t ODR, uint8_t FS, bool LPF2);
+HAL_StatusTypeDef IMU2_ConfigG(uint8_t ODR, uint8_t FS);
+
 HAL_StatusTypeDef IMU2_ReadSensorData(ISM330DHCX_Data_t *data);
 
 #define IMU2_SPI        hspi3
@@ -102,6 +105,28 @@ HAL_StatusTypeDef IMU2_ReadSensorData(ISM330DHCX_Data_t *data);
 #define ISM330DHCX_FIFO_DATA_OUT_Z_L        0x7D // Type: R,  Default: output
 #define ISM330DHCX_FIFO_DATA_OUT_Z_H        0x7E // Type: R,  Default: output
 
-uint8_t IMU2_SelfTest(void);
+#define ISM330DHCX_FS_XL_2     0b00    // +- 2 g
+#define ISM330DHCX_FS_XL_4     0b10    // +- 4 g
+#define ISM330DHCX_FS_XL_8     0b11    // +- 8 g
+#define ISM330DHCX_FS_XL_16    0b01    // +- 16 g
+
+#define ISM330DHCX_FS_G_125    0b0010  // +-125 dps
+#define ISM330DHCX_FS_G_250    0b0000  // +-250 dps
+#define ISM330DHCX_FS_G_500    0b0100  // +-500 dps
+#define ISM330DHCX_FS_G_1000   0b1000  // +-1000 dps
+#define ISM330DHCX_FS_G_2000   0b1100  // +-2000 dps
+#define ISM330DHCX_FS_G_4000   0b0001  // +-4000 dps
+
+#define ISM330DHCX_ODR_1_6_Hz  0b1011  // low power only, XL only, XL_HM_MODE = 1 in CTRL6_C!
+#define ISM330DHCX_ODR_12_5_Hz 0b0001  // low power
+#define ISM330DHCX_ODR_26_Hz   0b0010  // low power
+#define ISM330DHCX_ODR_52_Hz   0b0011  // low power
+#define ISM330DHCX_ODR_104_Hz  0b0100  // normal mode
+#define ISM330DHCX_ODR_208_Hz  0b0101  // normal mode
+#define ISM330DHCX_ODR_416_Hz  0b0110  // high performance
+#define ISM330DHCX_ODR_833_Hz  0b0111  // high performance
+#define ISM330DHCX_ODR_1660_Hz 0b1000  // high performance
+#define ISM330DHCX_ODR_3330_Hz 0b1001  // high performance
+#define ISM330DHCX_ODR_6660_Hz 0b1010  // high performance
 
 #endif /* ISM330DHCX_H_ */

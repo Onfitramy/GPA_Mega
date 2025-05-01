@@ -3,7 +3,8 @@
         "main.h": "c",
         "task.h": "c",
         "stm32f4xx_hal.h": "c",
-        "vr.h": "c"
+        "vr.h": "c",
+        "math.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

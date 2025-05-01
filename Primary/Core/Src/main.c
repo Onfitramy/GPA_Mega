@@ -139,13 +139,18 @@ int main(void)
 
   if(IMU1_Init() == HAL_OK && IMU2_Init() == HAL_OK && MAG_Init() == HAL_OK) Set_LED(0, 0, 255, 0);
   else Set_LED(0, 255, 0, 0);
-
   Set_Brightness(10);
   WS2812_Send();
 
   IMU1_VerifyDataReady();
   IMU2_VerifyDataReady();
   MAG_VerifyDataReady();
+
+  IMU1_ConfigXL(LSM6DSR_ODR_6660_Hz, LSM6DSR_FS_XL_2, 0);
+  IMU1_ConfigG(LSM6DSR_ODR_6660_Hz, LSM6DSR_FS_G_125);
+
+  IMU2_ConfigXL(LSM6DSR_ODR_6660_Hz, LSM6DSR_FS_XL_16, 0);
+  IMU2_ConfigG(LSM6DSR_ODR_6660_Hz, LSM6DSR_FS_G_4000);
 
   /* USER CODE END 2 */
 

@@ -11,12 +11,14 @@ static void LSM6DSR_Deselect(void) {
     HAL_GPIO_WritePin(IMU1_CS_PORT, IMU1_CS_PIN, GPIO_PIN_SET);
 }
 
-HAL_StatusTypeDef IMU1_write_reg(uint8_t address, uint8_t data) {   
+HAL_StatusTypeDef IMU1_write_reg(uint8_t address, uint8_t len, uint8_t *data) {   
     LSM6DSR_Select();
-    uint8_t tx[2];
+    uint8_t tx[len+1];
     tx[0] = address;
-    tx[1] = data;
-    IMU1_SPI_status = HAL_SPI_Transmit(&IMU1_SPI, tx, 2, HAL_MAX_DELAY);
+    for(int i = 0; i < len; i++) {
+        tx[i + 1] = *(data + i); 
+    }
+    IMU1_SPI_status = HAL_SPI_Transmit(&IMU1_SPI, tx, len+1, HAL_MAX_DELAY);
     LSM6DSR_Deselect();
     return IMU1_SPI_status;
 }
@@ -48,17 +50,31 @@ uint8_t IMU1_VerifyDataReady(void) {
 }
 
 HAL_StatusTypeDef IMU1_Init(void) {
+    uint8_t tx[3] = { 0x60, 0x60, 0x04 };
     uint8_t rx[3] = { 0 };
-    IMU1_write_reg(LSM6DSR_CTRL1_XL, 0x60);
-    IMU1_write_reg(LSM6DSR_CTRL2_G, 0x60);
-    IMU1_write_reg(LSM6DSR_CTRL3_C, 0x04);
-
+    IMU1_write_reg(LSM6DSR_CTRL1_XL, 3, tx);
     IMU1_read_reg(LSM6DSR_CTRL1_XL, 3, rx);
 
     if(rx[0] != 0x60 || rx[1] != 0x60 || rx[2] != 0x04) return HAL_ERROR;
     else return HAL_OK;
 
     // CTRL7_G, CTRL6_C, CTRL1_OIS, 
+}
+
+HAL_StatusTypeDef IMU1_ConfigXL(uint8_t ODR, uint8_t FS, bool LPF2) {
+    uint8_t tx[1] = { ODR << 4 | FS << 2 | LPF2 << 1 };
+    uint8_t rx[1] = { 0 };
+    IMU1_write_reg(LSM6DSR_CTRL1_XL, 1, tx);
+    IMU1_read_reg(LSM6DSR_CTRL1_XL, 1, rx);
+    return HAL_OK;
+}
+
+HAL_StatusTypeDef IMU1_ConfigG(uint8_t ODR, uint8_t FS) {
+    uint8_t tx[1] = { ODR << 4 | FS };
+    uint8_t rx[1] = { 0 };
+    IMU1_write_reg(LSM6DSR_CTRL2_G, 1, tx);
+    IMU1_read_reg(LSM6DSR_CTRL2_G, 1, rx);
+    return HAL_OK;
 }
 
 HAL_StatusTypeDef IMU1_ReadSensorData(LSM6DSR_Data_t *data) {

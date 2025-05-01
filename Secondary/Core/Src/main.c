@@ -91,7 +91,9 @@ void StartDefaultTask(void *argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+double TemperatureAMS;
+double voltage5V0bus;
+double voltageBATbus;
 /* USER CODE END 0 */
 
 /**
@@ -173,25 +175,25 @@ int main(void)
 
   /* We should never get here as control is now taken by the scheduler */
 
-  Set_LED(0, 255, 0, 0);
-  Set_Brightness(45);
-  WS2812_Send();
+  //Set_LED(0, 255, 0, 0);
+  //Set_Brightness(45);
+  //WS2812_Send();
 
-  double voltage5V0bus = voltageRead(1) * (10 + 10) / 10;
-  double voltageBATbus = voltageRead(2) * (10 + 2.2) / 2.2;
 
-  buzzerInit();
 
-  playMelody();
+  //buzzerInit();
+  //playMelody();
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
     /* USER CODE END WHILE */
-
+    TemperatureAMS = readTemperature(1);
+    voltage5V0bus = readVoltage(1) * (10 + 10) / 10;
+    voltageBATbus = readVoltage(2) * (10 + 2.2) / 2.2;
     /* USER CODE BEGIN 3 */
-    HAL_Delay(500); //!BUG!In Reality 500.08 rarely 500.1 ms. Check timing config and HSE
+    HAL_Delay(50); //!BUG!In Reality 500.08 rarely 500.1 ms. Check timing config and HSE
     HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin);
   }
   /* USER CODE END 3 */
