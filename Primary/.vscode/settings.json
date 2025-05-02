@@ -16,6 +16,8 @@
         "stream_buffer.h": "c",
         "bmp390.h": "c",
         "cmath": "c",
-        "limits": "c"
+        "limits": "c",
+        "cli_app.h": "c",
+        "arm_math.h": "c"
     }
 }

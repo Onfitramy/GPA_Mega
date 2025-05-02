@@ -60,9 +60,13 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined symbols
 )
 
+set(DSP_LIB ${CMAKE_SOURCE_DIR}/Drivers/CMSIS/DSP_DRIVERS/libarm_cortexM7lfsp_math.a)
+
+include_directories(${DSP_LIB}/Include)
+
 # Add linked libraries
 target_link_libraries(${CMAKE_PROJECT_NAME}
     stm32cubemx
-
+    ${DSP_LIB}
     # Add user defined libraries
 )

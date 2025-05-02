@@ -24,6 +24,7 @@
 #include "cmsis_os.h"
 #include "cli_app.h"
 #include "stream_buffer.h"
+#include "arm_math.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -144,7 +145,23 @@ void StartDefaultTask(void *argument)
   MX_USB_DEVICE_Init();
   HAL_Delay(200); // Wait for USB and other Peripherals to initialize
   /* USER CODE BEGIN StartDefaultTask */
-  
+  // Example matrix multiplication using arm_math
+  arm_matrix_instance_f32 matA, matB, matC;
+  float32_t dataA[4] = {1.0, 2.0, 3.0, 4.0}; // 2x2 matrix
+  float32_t dataB[4] = {5.0, 6.0, 7.0, 8.0}; // 2x2 matrix
+  float32_t dataC[4]; // Resultant 2x2 matrix
+
+  // Initialize matrices
+  arm_mat_init_f32(&matA, 2, 2, dataA);
+  arm_mat_init_f32(&matB, 2, 2, dataB);
+  arm_mat_init_f32(&matC, 2, 2, dataC);
+
+  // Perform matrix multiplication
+  if (arm_mat_mult_f32(&matA, &matB, &matC) == ARM_MATH_SUCCESS) {
+    uint8_t test = 1;// Matrix multiplication successful, dataC contains the result
+  } else {
+    // Handle error
+  }
   /* Infinite loop */
   for(;;) {
     SelfTest(); // Run self-test on startup

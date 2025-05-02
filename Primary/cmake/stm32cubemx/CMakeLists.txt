@@ -35,6 +35,8 @@ target_include_directories(stm32cubemx INTERFACE
     ../../Drivers/Components/Servo
     ../../Drivers/Components/PYRO
     ../../Drivers/Components/Stepper
+    ../../Drivers/CMSIS/DSP_DRIVERS/Include
+    ../../Drivers/CMSIS/DSP_DRIVERS/Bin
 )
 
 target_sources(stm32cubemx INTERFACE
