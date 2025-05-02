@@ -50,13 +50,25 @@ uint8_t MAG_VerifyDataReady(void) {
 }
 
 HAL_StatusTypeDef MAG_Init(void) {
-    uint8_t tx[3] = { 0x90, 0x00, 0x00 };
-    uint8_t rx[3] = { 0 };
-    MAG_write_reg(LIS3MDL_CTRL_REG1, 3, tx); // enable temperature sensor and continuous-conversion mode
-    MAG_read_reg(LIS3MDL_CTRL_REG1, 3, rx);
+    uint8_t tx[1] = { 0x00 };
+    uint8_t rx[1] = { 0 };
+    MAG_write_reg(LIS3MDL_CTRL_REG3, 1, tx); // enable temperature sensor and continuous-conversion mode
+    MAG_read_reg(LIS3MDL_CTRL_REG3, 1, rx);
 
     if(rx[0] != 0x90 || rx[2] != 0x00) return HAL_ERROR;
     else return HAL_OK;
+}
+
+HAL_StatusTypeDef MAG_ConfigSensor(uint8_t OperatingMode, uint8_t DataRate, uint8_t FullScale, bool fast_ODR, bool temp_en) {
+    uint8_t tx[4] = { 0 };
+    tx[0] = temp_en << 7 | OperatingMode << 5 | DataRate << 2 | fast_ODR << 1;  // CTRL_REG1
+    tx[1] = FullScale << 5;                                                     // CTRL_REG2
+    tx[3] = OperatingMode << 2;                                                 // CTRL_REG4
+    uint8_t rx[4] = { 0 };
+    MAG_write_reg(LIS3MDL_CTRL_REG1, 4, tx);
+    MAG_read_reg(LIS3MDL_CTRL_REG1, 4, rx);
+    if(tx[1] == rx[1]) return HAL_OK;
+    else return HAL_ERROR;
 }
 
 HAL_StatusTypeDef MAG_ReadSensorData(LIS3MDL_Data_t *data) {

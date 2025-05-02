@@ -14,6 +14,7 @@ typedef struct {
 uint8_t MAG_SelfTest(void);
 uint8_t MAG_VerifyDataReady(void);
 HAL_StatusTypeDef MAG_Init(void);
+HAL_StatusTypeDef MAG_ConfigSensor(uint8_t OperatingMode, uint8_t DataRate, uint8_t FullScale, bool fast_ODR, bool temp_en);
 HAL_StatusTypeDef MAG_ReadSensorData(LIS3MDL_Data_t *data);
 uint8_t MAG_Offset(int16_t set_x, int16_t set_y, int16_t set_z);
 
@@ -51,5 +52,24 @@ uint8_t MAG_Offset(int16_t set_x, int16_t set_y, int16_t set_z);
 #define LIS3MDL_INT_SRC             0x31 // Type: R,  Default: 0b00000000
 #define LIS3MDL_INT_THS_L           0x32 // Type: RW, Default: 0b00000000
 #define LIS3MDL_INT_THS_H           0x33 // Type: RW, Default: 0b00000000
+
+#define LIS3MDL_OM_LOW       0b00
+#define LIS3MDL_OM_MEDIUM    0b01
+#define LIS3MDL_OM_HIGH      0b10
+#define LIS3MDL_OM_ULTRA     0b11
+
+#define LIS3MDL_ODR_0_625_Hz    0b000
+#define LIS3MDL_ODR_1_25_Hz     0b001
+#define LIS3MDL_ODR_2_5_Hz      0b010
+#define LIS3MDL_ODR_5_Hz        0b011
+#define LIS3MDL_ODR_10_Hz       0b100
+#define LIS3MDL_ODR_20_Hz       0b101
+#define LIS3MDL_ODR_40_Hz       0b110
+#define LIS3MDL_ODR_80_Hz       0b111
+
+#define LIS3MDL_FS_4    0b00
+#define LIS3MDL_FS_8    0b01
+#define LIS3MDL_FS_12   0b10
+#define LIS3MDL_FS_16   0b11
 
 #endif /* LIS3MDL_H_ */

@@ -34,6 +34,7 @@ target_include_directories(stm32cubemx INTERFACE
     ../../Drivers/Components/GPS
     ../../Drivers/Components/Servo
     ../../Drivers/Components/PYRO
+    ../../Drivers/Components/Stepper
 )
 
 target_sources(stm32cubemx INTERFACE
@@ -109,6 +110,7 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/Components/Servo/SERVO.c
     ../../Drivers/Components/Servo/SERVO_cfg.c
     ../../Drivers/Components/PYRO/Pyro.c
+    ../../Drivers/Components/Stepper/Stepper.c
 )
 
 target_link_directories(stm32cubemx INTERFACE

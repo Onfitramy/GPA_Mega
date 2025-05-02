@@ -146,7 +146,10 @@ void Error_Handler(void);
 #define MAG_INT_EXTI_IRQn EXTI0_IRQn
 
 /* USER CODE BEGIN Private defines */
-
+typedef struct {
+  double accel[3];  // X, Y, Z
+  double gyro[3];   // X, Y, Z
+} StateVector;
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

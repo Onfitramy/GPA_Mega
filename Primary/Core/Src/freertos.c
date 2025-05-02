@@ -47,6 +47,7 @@ LSM6DSR_Data_t imu1_data;
 ISM330DHCX_Data_t imu2_data;
 LIS3MDL_Data_t mag_data;
 float alpha;
+StateVector GPA_SV;
 
 uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO, 4: GPS, 7:All checks passed
 /* USER CODE END PD */
@@ -143,14 +144,18 @@ void StartDefaultTask(void *argument)
   MX_USB_DEVICE_Init();
   HAL_Delay(200); // Wait for USB and other Peripherals to initialize
   /* USER CODE BEGIN StartDefaultTask */
-
+  
   /* Infinite loop */
   for(;;) {
     SelfTest(); // Run self-test on startup
 
     IMU1_ReadSensorData(&imu1_data);
     IMU2_ReadSensorData(&imu2_data);
-    MAG_ReadSensorData(&mag_data);
+
+    if(MAG_VerifyDataReady() & 0b00000001) {
+      MAG_ReadSensorData(&mag_data);
+    }
+
     alpha = atan2(imu2_data.accel[1], imu2_data.accel[2])*180/M_PI;
     SERVO_MoveToAngle(1, 2*alpha);
   }

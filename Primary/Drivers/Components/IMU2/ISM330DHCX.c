@@ -66,7 +66,8 @@ HAL_StatusTypeDef IMU2_ConfigXL(uint8_t ODR, uint8_t FS, bool LPF2) {
     uint8_t rx[1] = { 0 };
     IMU2_write_reg(ISM330DHCX_CTRL1_XL, 1, tx);
     IMU2_read_reg(ISM330DHCX_CTRL1_XL, 1, rx);
-    return HAL_OK;
+    if(tx[1] == rx[1]) return HAL_OK;
+    else return HAL_ERROR;
 }
 
 HAL_StatusTypeDef IMU2_ConfigG(uint8_t ODR, uint8_t FS) {
@@ -74,7 +75,8 @@ HAL_StatusTypeDef IMU2_ConfigG(uint8_t ODR, uint8_t FS) {
     uint8_t rx[1] = { 0 };
     IMU2_write_reg(ISM330DHCX_CTRL2_G, 1, tx);
     IMU2_read_reg(ISM330DHCX_CTRL2_G, 1, rx);
-    return HAL_OK;
+    if(tx[1] == rx[1]) return HAL_OK;
+    else return HAL_ERROR;
 }
 
 HAL_StatusTypeDef IMU2_ReadSensorData(ISM330DHCX_Data_t *data) {

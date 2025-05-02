@@ -66,7 +66,8 @@ HAL_StatusTypeDef IMU1_ConfigXL(uint8_t ODR, uint8_t FS, bool LPF2) {
     uint8_t rx[1] = { 0 };
     IMU1_write_reg(LSM6DSR_CTRL1_XL, 1, tx);
     IMU1_read_reg(LSM6DSR_CTRL1_XL, 1, rx);
-    return HAL_OK;
+    if(tx[1] == rx[1]) return HAL_OK;
+    else return HAL_ERROR;
 }
 
 HAL_StatusTypeDef IMU1_ConfigG(uint8_t ODR, uint8_t FS) {
@@ -74,7 +75,8 @@ HAL_StatusTypeDef IMU1_ConfigG(uint8_t ODR, uint8_t FS) {
     uint8_t rx[1] = { 0 };
     IMU1_write_reg(LSM6DSR_CTRL2_G, 1, tx);
     IMU1_read_reg(LSM6DSR_CTRL2_G, 1, rx);
-    return HAL_OK;
+    if(tx[1] == rx[1]) return HAL_OK;
+    else return HAL_ERROR;
 }
 
 HAL_StatusTypeDef IMU1_ReadSensorData(LSM6DSR_Data_t *data) {

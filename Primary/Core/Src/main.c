@@ -34,6 +34,7 @@
 #include "LIS3MDL.h"
 #include "ws2812.h"
 #include "bmp390.h"
+#include "Stepper.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -127,6 +128,7 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
+
   int counter1, counter2, counter3;
 
   SERVO_Init(1);
@@ -146,11 +148,15 @@ int main(void)
   IMU2_VerifyDataReady();
   MAG_VerifyDataReady();
 
+  MAG_ConfigSensor(LIS3MDL_OM_ULTRA, LIS3MDL_ODR_80_Hz, LIS3MDL_FS_4, 1, 1);
+
   IMU1_ConfigXL(LSM6DSR_ODR_6660_Hz, LSM6DSR_FS_XL_2, 0);
   IMU1_ConfigG(LSM6DSR_ODR_6660_Hz, LSM6DSR_FS_G_125);
 
   IMU2_ConfigXL(LSM6DSR_ODR_6660_Hz, LSM6DSR_FS_XL_16, 0);
   IMU2_ConfigG(LSM6DSR_ODR_6660_Hz, LSM6DSR_FS_G_4000);
+
+  Stepper_moveSteps(-100);
 
   /* USER CODE END 2 */
 
