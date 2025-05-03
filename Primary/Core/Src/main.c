@@ -58,7 +58,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-
+uint8_t rx_data[NRF24L01P_PAYLOAD_LENGTH] = {0}; 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -193,6 +193,9 @@ int main(void)
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+  char uart_buffer[236]; //Buffer for NRF24
+
+  /*Handle GPS_INT by sending Queue to FreeRTOS funktion*/
   if (GPIO_Pin == GNSS_TX_RDY_Pin) {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     uint8_t sendData = 0x10;
@@ -200,6 +203,17 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
       xQueueSendFromISR(InterruptQueue, &sendData, &xHigherPriorityTaskWoken);
     } //Send the GPIO_Pin to the Interrupt queue to be handled by the task
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken); // Perform a context switch if needed
+  }
+  
+  if (GPIO_Pin == NRF_INT_Pin) {
+    HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
+    #ifdef RECEIVER
+          nrf24l01p_rx_receive(rx_data);
+    #endif
+
+    #ifdef TRANSMITTER
+        nrf24l01p_tx_irq();
+    #endif
   }
 }
 /**

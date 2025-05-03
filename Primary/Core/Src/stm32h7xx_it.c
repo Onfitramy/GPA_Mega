@@ -237,11 +237,24 @@ void DMA1_Stream0_IRQHandler(void)
 void EXTI9_5_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI9_5_IRQn 0 */
+  if (__HAL_GPIO_EXTI_GET_IT(NRF_INT_Pin) != RESET)
+    {
+        HAL_GPIO_EXTI_IRQHandler(NRF_INT_Pin);
+    }
 
+  else if (__HAL_GPIO_EXTI_GET_IT(BMP_INT_Pin) != RESET)
+    {
+        HAL_GPIO_EXTI_IRQHandler(BMP_INT_Pin);
+    }
+
+  else if (__HAL_GPIO_EXTI_GET_IT(MAG_DRDY_Pin) != RESET)
+    {
+        HAL_GPIO_EXTI_IRQHandler(MAG_DRDY_Pin);
+    }
   /* USER CODE END EXTI9_5_IRQn 0 */
-  HAL_GPIO_EXTI_IRQHandler(NRF_INT_Pin);
+  /*HAL_GPIO_EXTI_IRQHandler(NRF_INT_Pin);
   HAL_GPIO_EXTI_IRQHandler(BMP_INT_Pin);
-  HAL_GPIO_EXTI_IRQHandler(MAG_DRDY_Pin);
+  HAL_GPIO_EXTI_IRQHandler(MAG_DRDY_Pin);*/
   /* USER CODE BEGIN EXTI9_5_IRQn 1 */
 
   /* USER CODE END EXTI9_5_IRQn 1 */
