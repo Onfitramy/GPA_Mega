@@ -52,6 +52,7 @@ ISM330DHCX_Data_t imu2_data;
 LIS3MDL_Data_t mag_data;
 float alpha;
 StateVector GPA_SV;
+uint32_t pressure_raw;
 
 uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO, 4: GPS, 7:All checks passed
 
@@ -201,6 +202,7 @@ void StartDefaultTask(void *argument)
   for(;;) {
     SelfTest(); // Run self-test on startup
 
+    BMP_GetPressureRaw(&pressure_raw);
     IMU1_ReadSensorData(&imu1_data);
     IMU2_ReadSensorData(&imu2_data);
 
