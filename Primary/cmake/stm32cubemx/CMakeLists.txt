@@ -35,6 +35,7 @@ target_include_directories(stm32cubemx INTERFACE
     ../../Drivers/Components/Servo
     ../../Drivers/Components/PYRO
     ../../Drivers/Components/Stepper
+    ../../Drivers/Components/NRF
     ../../Drivers/CMSIS/DSP_DRIVERS/Include
     ../../Drivers/CMSIS/DSP_DRIVERS/Bin
 )
@@ -113,6 +114,7 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/Components/Servo/SERVO_cfg.c
     ../../Drivers/Components/PYRO/Pyro.c
     ../../Drivers/Components/Stepper/Stepper.c
+    ../../Drivers/Components/NRF/NRF24L01P.c
 )
 
 target_link_directories(stm32cubemx INTERFACE

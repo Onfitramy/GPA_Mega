@@ -35,6 +35,7 @@
 #include "bmp390.h"
 #include "SAM-M8Q.h"
 #include "SERVO.h"
+#include "NRF24L01P.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -172,6 +173,16 @@ void StartDefaultTask(void *argument)
     if(MAG_VerifyDataReady() & 0b00000001) {
       MAG_ReadSensorData(&mag_data);
     }
+
+    #ifdef RECEIVER
+
+      // Nothing to do
+    #endif
+
+    #ifdef TRANSMITTER
+      nrf24l01p_tx_transmit(tx_data);
+      uint8_t test = nrf24l01p_get_status();
+    #endif
 
     alpha = atan2(imu2_data.accel[1], imu2_data.accel[2])*180/M_PI;
     SERVO_MoveToAngle(1, 2*alpha);

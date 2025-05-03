@@ -18,6 +18,7 @@
         "cmath": "c",
         "limits": "c",
         "cli_app.h": "c",
-        "arm_math.h": "c"
+        "arm_math.h": "c",
+        "nrf24l01p.h": "c"
     }
 }

@@ -35,6 +35,7 @@
 #include "ws2812.h"
 #include "bmp390.h"
 #include "Stepper.h"
+#include "NRF24L01P.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -66,7 +67,8 @@ void SystemClock_Config(void);
 void PeriphCommonClock_Config(void);
 void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
-
+//#define TRANSMITTER
+#define RECEIVER
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -134,6 +136,14 @@ int main(void)
   SERVO_Init(1);
   BMP_SelfTest();
   BMP_enable();
+
+  #ifdef RECEIVER
+  nrf24l01p_rx_init(2450, _1Mbps);
+  #endif
+
+  #ifdef TRANSMITTER
+  nrf24l01p_tx_init(2450, _1Mbps);
+  #endif
 
   for(counter1 = 0; IMU1_SelfTest() != 1; counter1++);
   for(counter2 = 0; IMU2_SelfTest() != 1; counter2++);
