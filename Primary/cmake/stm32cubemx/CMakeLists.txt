@@ -26,6 +26,7 @@ target_include_directories(stm32cubemx INTERFACE
     ../../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc
     ../../Drivers/CMSIS/Device/ST/STM32H7xx/Include
     ../../Drivers/CMSIS/Include
+
     ../../Drivers/Components/LED
     ../../Drivers/Components/IMU1
     ../../Drivers/Components/IMU2

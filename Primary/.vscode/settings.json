@@ -19,6 +19,9 @@
         "limits": "c",
         "cli_app.h": "c",
         "arm_math.h": "c",
-        "nrf24l01p.h": "c"
-    }
+        "nrf24l01p.h": "c",
+        "semphr.h": "c",
+        "task.h": "c"
+    },
+    "cortex-debug.variableUseNaturalFormat": true
 }

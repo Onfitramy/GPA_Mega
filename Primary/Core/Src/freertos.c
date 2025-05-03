@@ -25,6 +25,8 @@
 #include "cli_app.h"
 #include "stream_buffer.h"
 #include "arm_math.h"
+#include "semphr.h"
+#include "queue.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -62,6 +64,7 @@ uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2,
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
 StreamBufferHandle_t xStreamBuffer;
+QueueHandle_t InterruptQueue;
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -76,7 +79,14 @@ osThreadId_t cmdLineTaskHandle; // new command line task
 const osThreadAttr_t cmdLineTask_attributes = {
   .name = "cmdLineTask", // defined in cli_app.c
   .priority = (osPriority_t) osPriorityHigh,
-  .stack_size = 128 * 32
+  .stack_size = 128 * 32,
+};
+
+osThreadId_t InterruptHandlerTaskHandle;
+const osThreadAttr_t InterruptHandlerTask_attributes = {
+  .name = "InterruptHandlerTask",
+  .stack_size = 128 * 48,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -86,9 +96,27 @@ uint8_t SelfTest(void);
 
 void StartDefaultTask(void *argument);
 
+void StartInterruptHandlerTask(void *argument);
+
 extern void MX_USB_DEVICE_Init(void);
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
+/* Hook prototypes */
+void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName);
+
+/* USER CODE BEGIN 4 */
+void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
+{
+  uint8_t stackOverflow = 1;
+  for(;;)
+  {
+    
+  }
+   /* Run time stack overflow checking is performed if
+   configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
+   called if a stack overflow is detected. */
+}
+/* USER CODE END 4 */
 /**
   * @brief  FreeRTOS initialization
   * @param  None
@@ -96,7 +124,6 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
   */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
-
   /* USER CODE END Init */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -115,7 +142,7 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
+  InterruptQueue = xQueueCreate(10, sizeof(uint8_t)); // Queue for 10 bytes
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -123,6 +150,8 @@ void MX_FREERTOS_Init(void) {
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
   cmdLineTaskHandle = osThreadNew(vCommandConsoleTask, NULL, &cmdLineTask_attributes);
+  InterruptHandlerTaskHandle = osThreadNew(StartInterruptHandlerTask, NULL, &InterruptHandlerTask_attributes);
+
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
@@ -145,6 +174,7 @@ void StartDefaultTask(void *argument)
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
   HAL_Delay(200); // Wait for USB and other Peripherals to initialize
+  GPS_Init(); //Initialize the GPS module
   /* USER CODE BEGIN StartDefaultTask */
   // Example matrix multiplication using arm_math
   arm_matrix_instance_f32 matA, matB, matC;
@@ -190,6 +220,32 @@ void StartDefaultTask(void *argument)
 
   
   /* USER CODE END StartDefaultTask */
+}
+
+/* USER CODE BEGIN InterruptHandlerTask */
+/**
+  * @brief  Function implementing the defaultTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END InterruptHandlerTask */
+void StartInterruptHandlerTask(void *argument)
+{
+  /* init code for USB_DEVICE */
+  /* USER CODE BEGIN StartDefaultTask */
+  uint8_t receivedData;
+  char GPS_Buffer[100]; // Buffer for GPS data
+  //HAL_NVIC_EnableIRQ(EXTI15_10_IRQn); //Disabled due to always triggering when GPS is not connected
+  /* Infinite loop */
+  for(;;)
+  { 
+    if (xQueueReceive(InterruptQueue, &receivedData, portMAX_DELAY) == pdTRUE) {
+      if(receivedData == 0x10) {
+        ublox_ReadOutput(GPS_Buffer); //Read the GPS output and decode it
+      }
+    }
+    osDelay(5);
+  }
 }
 
 /* Private application code --------------------------------------------------*/

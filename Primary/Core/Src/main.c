@@ -57,7 +57,6 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -90,7 +89,7 @@ int main(void)
   /* Enable the CPU Cache */
 
   /* Enable I-Cache---------------------------------------------------------*/
-  //SCB_EnableICache();
+  SCB_EnableICache();
 
   /* Enable D-Cache---------------------------------------------------------*/
   //SCB_EnableDCache();
@@ -193,6 +192,16 @@ int main(void)
   /* USER CODE END 3 */
 }
 
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+  if (GPIO_Pin == GNSS_TX_RDY_Pin) {
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    uint8_t sendData = 0x10;
+    if(xQueueIsQueueEmptyFromISR(InterruptQueue)) {
+      xQueueSendFromISR(InterruptQueue, &sendData, &xHigherPriorityTaskWoken);
+    } //Send the GPIO_Pin to the Interrupt queue to be handled by the task
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken); // Perform a context switch if needed
+  }
+}
 /**
   * @brief System Clock Configuration
   * @retval None

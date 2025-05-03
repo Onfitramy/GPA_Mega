@@ -111,14 +111,14 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-    /*Configure GPIO pins : GPIO14_Pin GNSS_RST_Pin GNSS_INT_Pin */
-    GPIO_InitStruct.Pin = GNSS_RST_Pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+  /*Configure GPIO pins : GPIO14_Pin GNSS_RST_Pin GNSS_INT_Pin */
+  GPIO_InitStruct.Pin = GNSS_RST_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pins : GNSS_TP_Pin GNSS_TX_RDY_Pin MAG_INT_Pin */
-  GPIO_InitStruct.Pin = GNSS_TP_Pin|GNSS_TX_RDY_Pin|MAG_INT_Pin;
+  GPIO_InitStruct.Pin = /*GNSS_TP_Pin|*/GNSS_TX_RDY_Pin|MAG_INT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
@@ -158,6 +158,7 @@ void MX_GPIO_Init(void)
   HAL_NVIC_SetPriority(EXTI9_5_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 5, 0);
 }
 
 /* USER CODE BEGIN 2 */
