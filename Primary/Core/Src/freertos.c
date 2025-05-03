@@ -150,6 +150,7 @@ void StartDefaultTask(void *argument)
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
   HAL_Delay(200); // Wait for USB and other Peripherals to initialize
+  GPS_Init(); //Initialize the GPS module
   /* USER CODE BEGIN StartDefaultTask */
   uint8_t R = 255;
   uint8_t G = 0;
@@ -167,13 +168,6 @@ void StartDefaultTask(void *argument)
     Set_LED(0, R, G, B);
     Set_Brightness(45);
     WS2812_Send();*/
-    SelfTest_Bitfield |= LSM6DSR_SelfTest();
-    SelfTest_Bitfield |= LSM6DSR_SelfTest(); //Only works when called twice again???????
-    SelfTest_Bitfield |= (ISM330DHCX_SelfTest()<<1);
-    SelfTest_Bitfield |= (ISM330DHCX_SelfTest()<<1); //Only works when called twice???????
-    SelfTest_Bitfield |= (LIS3MDL_SelfTest()<<2);
-    SelfTest_Bitfield |= (BMP390_SelfTest()<<3);
-    SelfTest_Bitfield |= (GPS_VER_CHECK()<<4); //Check if GPS is connected and working
 
     if(SelfTest_Bitfield == 0b11111){
       R = 0;
@@ -184,6 +178,15 @@ void StartDefaultTask(void *argument)
       WS2812_Send();
     }
     else{
+      SelfTest_Bitfield |= LSM6DSR_SelfTest();
+      SelfTest_Bitfield |= LSM6DSR_SelfTest(); //Only works when called twice again???????
+      SelfTest_Bitfield |= (ISM330DHCX_SelfTest()<<1);
+      SelfTest_Bitfield |= (ISM330DHCX_SelfTest()<<1); //Only works when called twice???????
+      SelfTest_Bitfield |= (LIS3MDL_SelfTest()<<2);
+      SelfTest_Bitfield |= (BMP390_SelfTest()<<3);
+      GPS_Init();
+      SelfTest_Bitfield |= (GPS_VER_CHECK()<<4); //Check if GPS is connected and working
+      
       R = 255;
       G = 0;
       B = 0;
@@ -192,7 +195,7 @@ void StartDefaultTask(void *argument)
       WS2812_Send();
     }
 
-    osDelay(1000);
+    osDelay(100);
   }
   /* USER CODE END StartDefaultTask */
 }
@@ -210,7 +213,7 @@ void StartInterruptHandlerTask(void *argument)
   /* USER CODE BEGIN StartDefaultTask */
   uint8_t receivedData;
   char GPS_Buffer[100]; // Buffer for GPS data
-  //HAL_NVIC_EnableIRQ(EXTI15_10_IRQn); Disabled due to always triggering when GPS is not connected
+  //HAL_NVIC_EnableIRQ(EXTI15_10_IRQn); //Disabled due to always triggering when GPS is not connected
   /* Infinite loop */
   for(;;)
   { 

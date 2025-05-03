@@ -6,6 +6,8 @@ HAL_StatusTypeDef GPS_I2C_status;
 
 static uint8_t buffer[1000]; //Main Buffer used for many different things. Never use it for longer than inside a single function!! Try to clear/reset it after use
 
+bool GPSnotConfig = true;
+
 /**
  * @brief Reads the length of data available from the u-blox GPS module.
  * 
@@ -73,6 +75,7 @@ UBX_MessageType ublox_ReadOutput(char* UBX_MessageReturn) {
   UBX_MessageType UBX_Message = {0, 0, UBX_MessageReturn, 0}; //Initialize the message structure to zero
     
   uint16_t length = ublox_ReadLength();
+  length = 1000;
   //printf("uBlox Length %5d %04X\n", length, length);
   if (length)
   {
@@ -93,14 +96,38 @@ UBX_MessageType ublox_ReadOutput(char* UBX_MessageReturn) {
 
 void GPS_Init(void){
   uint8_t UBX_MessageSend[32];
-  char UBX_MessageReturn[200];
+  char UBX_MessageReturn[32];
+  char MessageBody[1] = {0x00};
   
-  /*First Set Port Messages to UBX, to do this first querry Port settings and change bit 14/15(outProtoMask)*/
-  uUbxProtocolEncode(GPS_MESSAGE_CLASS_CFG, GPS_MESSAGE_ID_0, 0x00, 1, UBX_MessageSend);
-  ublox_Write(8, UBX_MessageSend);
+  /*First Set Port Messages to UBX and deactive NMEA Messages, to do that set bit 14 to 1*/
+  if(GPSnotConfig == true){
+    int len = uUbxProtocolEncode(0x06, 0x00, MessageBody, 1, UBX_MessageSend);
+    ublox_Write(len, UBX_MessageSend);
 
-  UBX_MessageType UBX_CFG_PRT = ublox_ReadOutput(UBX_MessageReturn);
-  UBX_MessageSend[1] = 0;
+    UBX_MessageType UBX_CFG_PRT = ublox_ReadOutput(UBX_MessageReturn);
+    if (UBX_CFG_PRT.messageClass == 6){
+      UBX_CFG_PRT.messageBody[14] = 0x01; //Set bit 14 to 1 to disable NMEA messages
+      int len = uUbxProtocolEncode(0x06, 0x00, UBX_CFG_PRT.messageBody, 19, UBX_MessageSend);
+
+      ublox_Write(len, UBX_MessageSend);
+
+      GPSnotConfig = false; //Set to false to not configure again
+    }
+  }else{
+    GPS_ReadSensorData();
+  }
+}
+
+ubx_nav_posllh_t GPS_ReadSensorData(void){
+  uint8_t UBX_MessageSend[16];
+  char UBX_MessageReturn[32];
+  int len = uUbxProtocolEncode(0x01, 0x02, NULL, 0, UBX_MessageSend);
+  ublox_Write(len, UBX_MessageSend);
+  UBX_MessageType UBX_NAV_POSLLH  = ublox_ReadOutput(UBX_MessageReturn);
+  
+  ubx_nav_posllh_t posllh;
+  memcpy(&posllh, UBX_NAV_POSLLH.messageBody, sizeof(ubx_nav_posllh_t));
+  return posllh; //Return the position data
 }
 
 uint8_t GPS_VER_CHECK(void) {
