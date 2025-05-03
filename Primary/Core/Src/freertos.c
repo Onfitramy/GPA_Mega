@@ -54,6 +54,8 @@ float alpha;
 StateVector GPA_SV;
 
 uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO, 4: GPS, 7:All checks passed
+
+uint8_t tx_data[NRF24L01P_PAYLOAD_LENGTH] = {0, 1, 2, 3, 4, 5, 6, 7}; //Bit(Payload Lenght) array to store sending data 
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/

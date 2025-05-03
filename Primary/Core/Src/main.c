@@ -58,7 +58,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-uint8_t rx_data[NRF24L01P_PAYLOAD_LENGTH] = {0}; 
+uint8_t rx_data[NRF24L01P_PAYLOAD_LENGTH] = {0};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -67,7 +67,7 @@ void PeriphCommonClock_Config(void);
 void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
 //#define TRANSMITTER
-#define RECEIVER
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -205,6 +205,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken); // Perform a context switch if needed
   }
   
+  /*Handle NRF_INT by sending Queue to FreeRTOS funktion*/
   if (GPIO_Pin == NRF_INT_Pin) {
     HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
     #ifdef RECEIVER

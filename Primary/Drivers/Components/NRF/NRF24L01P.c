@@ -226,7 +226,7 @@ uint8_t nrf24l01p_get_status() {
     uint8_t status;
 
     cs_low();
-    HAL_SPI_TransmitReceive(&NRF_SPI, &command, &status, 1, 2000);
+    HAL_StatusTypeDef SPI_status = HAL_SPI_TransmitReceive(&NRF_SPI, &command, &status, 1, 2000);
     cs_high();
 
     return status;
