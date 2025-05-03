@@ -66,8 +66,8 @@ void MX_GPIO_Init(void)
                           |M1_LED_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, IMU2_CS_Pin|EXT1_CS_Pin|NRF_CE_Pin|NRF_CS_Pin, GPIO_PIN_RESET);
-  HAL_GPIO_WritePin(GPIOD, IMU2_CS_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOD, EXT1_CS_Pin|NRF_CE_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOD, IMU2_CS_Pin|NRF_CS_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin : IMU1_CS_Pin */
   GPIO_InitStruct.Pin = IMU1_CS_Pin;

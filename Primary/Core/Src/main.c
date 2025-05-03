@@ -193,7 +193,6 @@ int main(void)
 }
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
-  char uart_buffer[236]; //Buffer for NRF24
 
   /*Handle GPS_INT by sending Queue to FreeRTOS funktion*/
   if (GPIO_Pin == GNSS_TX_RDY_Pin) {
@@ -209,7 +208,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
   if (GPIO_Pin == NRF_INT_Pin) {
     HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
     #ifdef RECEIVER
-          nrf24l01p_rx_receive(rx_data);
+        nrf24l01p_rx_receive(rx_data);
     #endif
 
     #ifdef TRANSMITTER

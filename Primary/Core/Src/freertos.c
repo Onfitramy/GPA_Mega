@@ -195,6 +195,8 @@ void StartDefaultTask(void *argument)
   } else {
     // Handle error
   }
+  TickType_t xLastWakeTime = xTaskGetTickCount();
+  const TickType_t xFrequency = 1; //1000 Hz
   /* Infinite loop */
   for(;;) {
     SelfTest(); // Run self-test on startup
@@ -207,7 +209,6 @@ void StartDefaultTask(void *argument)
     }
 
     #ifdef RECEIVER
-
       // Nothing to do
     #endif
 
@@ -218,6 +219,8 @@ void StartDefaultTask(void *argument)
 
     alpha = atan2(imu2_data.accel[1], imu2_data.accel[2])*180/M_PI;
     SERVO_MoveToAngle(1, 2*alpha);
+
+    vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz)
   }
 
   

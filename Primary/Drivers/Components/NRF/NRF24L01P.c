@@ -4,19 +4,19 @@
 HAL_StatusTypeDef NRF_SPI_status;
 
 static void cs_high(void) {
-    HAL_GPIO_WritePin(NRF_CS_PORT, NRF_CS_PIN, GPIO_PIN_RESET);
-}
-
-static void cs_low(void) {
     HAL_GPIO_WritePin(NRF_CS_PORT, NRF_CS_PIN, GPIO_PIN_SET);
 }
 
+static void cs_low(void) {
+    HAL_GPIO_WritePin(NRF_CS_PORT, NRF_CS_PIN, GPIO_PIN_RESET);
+}
+
 static void ce_high(void) {
-    HAL_GPIO_WritePin(NRF_CE_PORT, NRF_CE_PIN, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(NRF_CE_PORT, NRF_CE_PIN, GPIO_PIN_SET);
 }
 
 static void ce_low(void) {
-    HAL_GPIO_WritePin(NRF_CE_PORT, NRF_CE_PIN, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(NRF_CE_PORT, NRF_CE_PIN, GPIO_PIN_RESET);
 }
 
 static uint8_t read_register(uint8_t reg) {
