@@ -256,7 +256,7 @@ uint8_t SelfTest(void) {
   uint8_t G = 0;
   uint8_t B = 0;
 
-  if(SelfTest_Bitfield == 0b11111 && SelfTest_Bitfield != 0b10011111){
+  if((SelfTest_Bitfield == 0b11111) && (SelfTest_Bitfield != 0b10011111)){
     R = 0;
     G = 255;
     B = 0;

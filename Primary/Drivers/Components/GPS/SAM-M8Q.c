@@ -148,4 +148,5 @@ uint8_t GPS_VER_CHECK(void) {
     if((strncmp(UBX_MON_VER.messageBody, "ROM CORE 3.01 (107888)", 22) == 0)){
         return 1; //Read Success
     }
+    return 0; 
 }
