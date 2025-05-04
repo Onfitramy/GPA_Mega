@@ -96,7 +96,7 @@ void nrf24l01p_tx_init(channel MHz, air_data_rate bps) {
     nrf24l01p_auto_retransmit_count(3);
     nrf24l01p_auto_retransmit_delay(250);
 
-    //Aktivate NOACK
+    //Activate NOACK
     write_register(NRF24L01P_REG_FEATURE, 0x01);
 
     //Set TX_ADDR (Transmit address)

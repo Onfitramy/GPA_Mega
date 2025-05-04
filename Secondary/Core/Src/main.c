@@ -193,7 +193,7 @@ int main(void)
     voltage5V0bus = readVoltage(1) * (10 + 10) / 10;
     voltageBATbus = readVoltage(2) * (10 + 2.2) / 2.2;
     /* USER CODE BEGIN 3 */
-    HAL_Delay(50); //!BUG!In Reality 500.08 rarely 500.1 ms. Check timing config and HSE
+    HAL_Delay(500); //!BUG!In Reality 500.08 rarely 500.1 ms. Check timing config and HSE
     HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin);
   }
   /* USER CODE END 3 */

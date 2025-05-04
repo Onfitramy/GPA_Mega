@@ -56,7 +56,13 @@ uint32_t pressure_raw;
 
 uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO, 4: GPS, 7:All checks passed
 
-uint8_t tx_data[NRF24L01P_PAYLOAD_LENGTH] = {0, 1, 2, 3, 4, 5, 6, 7}; //Bit(Payload Lenght) array to store sending data 
+#ifdef TRANSMITTER
+  uint8_t tx_data[NRF24L01P_PAYLOAD_LENGTH] = {0}; //Bit(Payload Lenght) array to store sending data
+#endif
+#ifdef RECEIVER
+  uint8_t rx_data[NRF24L01P_PAYLOAD_LENGTH] = {0};
+#endif
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -211,7 +217,17 @@ void StartDefaultTask(void *argument)
     }
 
     #ifdef RECEIVER
-      // Nothing to do
+      nrf24l01p_rx_receive(rx_data);
+      uint8_t test = nrf24l01p_get_status();
+      if(nrf24l01p_get_receivedPower()) {
+        Set_LED(0, 0, 255, 0);
+        Set_Brightness(45);
+        WS2812_Send();
+      } else {
+        Set_LED(0, 255, 0, 0);
+        Set_Brightness(45);
+        WS2812_Send();
+      }
     #endif
 
     #ifdef TRANSMITTER
