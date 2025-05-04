@@ -113,21 +113,21 @@ void GPS_Init(void){
 
       GPSnotConfig = false; //Set to false to not configure again
     }
-  }else{
-    GPS_ReadSensorData();
   }
 }
 
-ubx_nav_posllh_t GPS_ReadSensorData(void){
+uint8_t GPS_ReadSensorData(ubx_nav_posllh_t *posllh) {
   uint8_t UBX_MessageSend[16];
   char UBX_MessageReturn[32];
   int len = uUbxProtocolEncode(0x01, 0x02, NULL, 0, UBX_MessageSend);
   ublox_Write(len, UBX_MessageSend);
   UBX_MessageType UBX_NAV_POSLLH  = ublox_ReadOutput(UBX_MessageReturn);
-  
-  ubx_nav_posllh_t posllh;
-  memcpy(&posllh, UBX_NAV_POSLLH.messageBody, sizeof(ubx_nav_posllh_t));
-  return posllh; //Return the position data
+  if(UBX_NAV_POSLLH.messageId == 2){
+    memcpy(posllh, UBX_NAV_POSLLH.messageBody, sizeof(ubx_nav_posllh_t));
+    return 1; //Return 1 on success
+  }else{
+    return 0; //Return 0 on failure
+  }
 }
 
 uint8_t GPS_VER_CHECK(void) {

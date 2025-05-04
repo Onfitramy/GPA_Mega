@@ -46,6 +46,6 @@ void GPS_Init(void);
 
 UBX_MessageType ublox_ReadOutput(char* UBX_MessageReturn);
 
-ubx_nav_posllh_t GPS_ReadSensorData(void);
+uint8_t GPS_ReadSensorData(ubx_nav_posllh_t *posllh);
 
 #endif /* SAM_M8Q_H_ */

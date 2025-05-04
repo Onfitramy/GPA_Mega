@@ -50,6 +50,7 @@
 LSM6DSR_Data_t imu1_data;
 ISM330DHCX_Data_t imu2_data;
 LIS3MDL_Data_t mag_data;
+ubx_nav_posllh_t gps_data;
 float alpha;
 StateVector GPA_SV;
 uint32_t pressure_raw;
@@ -185,23 +186,6 @@ void StartDefaultTask(void *argument)
   HAL_Delay(200); // Wait for USB and other Peripherals to initialize
   GPS_Init(); //Initialize the GPS module
   /* USER CODE BEGIN StartDefaultTask */
-  // Example matrix multiplication using arm_math
-  arm_matrix_instance_f32 matA, matB, matC;
-  float32_t dataA[4] = {1.0, 2.0, 3.0, 4.0}; // 2x2 matrix
-  float32_t dataB[4] = {5.0, 6.0, 7.0, 8.0}; // 2x2 matrix
-  float32_t dataC[4]; // Resultant 2x2 matrix
-
-  // Initialize matrices
-  arm_mat_init_f32(&matA, 2, 2, dataA);
-  arm_mat_init_f32(&matB, 2, 2, dataB);
-  arm_mat_init_f32(&matC, 2, 2, dataC);
-
-  // Perform matrix multiplication
-  if (arm_mat_mult_f32(&matA, &matB, &matC) == ARM_MATH_SUCCESS) {
-    uint8_t test = 1;// Matrix multiplication successful, dataC contains the result
-  } else {
-    // Handle error
-  }
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 1; //1000 Hz
   /* Infinite loop */
@@ -211,6 +195,7 @@ void StartDefaultTask(void *argument)
     BMP_GetPressureRaw(&pressure_raw);
     IMU1_ReadSensorData(&imu1_data);
     IMU2_ReadSensorData(&imu2_data);
+    GPS_ReadSensorData(&gps_data);
 
     if(MAG_VerifyDataReady() & 0b00000001) {
       MAG_ReadSensorData(&mag_data);
@@ -232,7 +217,6 @@ void StartDefaultTask(void *argument)
 
     #ifdef TRANSMITTER
       nrf24l01p_tx_transmit(tx_data);
-      uint8_t test = nrf24l01p_get_status();
     #endif
 
     alpha = atan2(imu2_data.accel[1], imu2_data.accel[2])*180/M_PI;
