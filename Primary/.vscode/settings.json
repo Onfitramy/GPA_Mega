@@ -21,7 +21,9 @@
         "arm_math.h": "c",
         "nrf24l01p.h": "c",
         "semphr.h": "c",
-        "task.h": "c"
+        "task.h": "c",
+        "crc.h": "c",
+        "signalplotter.h": "c"
     },
     "cortex-debug.variableUseNaturalFormat": true
 }

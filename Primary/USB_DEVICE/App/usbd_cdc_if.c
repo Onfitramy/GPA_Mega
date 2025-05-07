@@ -254,6 +254,19 @@ static int8_t CDC_Control_HS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
 }
 
 /**
+  * @brief  Send UART string via USB
+  * @param  Buf: String(char*) of data to be sent
+  * @retval Result of the operation: USBD_OK if all operations are OK else USBD_FAIL or USBD_BUSY
+  */
+uint8_t UART_USBTransmitString(char* Buf)
+{
+  uint16_t Len = ((uint16_t)strlen(Buf)) * sizeof(char); //Number of characters + 1 for null terminator * bytesize
+  uint8_t* data =  (uint8_t*)Buf;
+  uint8_t result = CDC_Transmit_HS(data, Len);
+  return result;
+}
+
+/**
   * @brief Data received over USB OUT endpoint are sent over CDC interface
   *         through this function.
   *

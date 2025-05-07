@@ -200,6 +200,9 @@ void StartDefaultTask(void *argument)
     if(MAG_VerifyDataReady() & 0b00000001) {
       MAG_ReadSensorData(&mag_data);
     }
+    char string_buf[100];
+    sprintf(string_buf, ">x_accel: %i\n", imu1_data.accel[0]);
+    UART_USBTransmitString(string_buf);
 
     #ifdef RECEIVER
       nrf24l01p_rx_receive(rx_data);
