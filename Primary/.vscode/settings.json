@@ -23,7 +23,16 @@
         "semphr.h": "c",
         "task.h": "c",
         "crc.h": "c",
-        "signalplotter.h": "c"
+        "signalplotter.h": "c",
+        "queue.h": "c",
+        "usbd_def.h": "c",
+        "adc.h": "c",
+        "usbd_conf.h": "c",
+        "usb_device.h": "c",
+        "type_traits": "c",
+        "xtr1common": "c",
+        "usbd_cdc_if.h": "c",
+        "string.h": "c"
     },
     "cortex-debug.variableUseNaturalFormat": true
 }

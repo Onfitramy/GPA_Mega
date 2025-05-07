@@ -1,0 +1,15 @@
+#ifndef signalPlotter_H_
+#define signalPlotter_H_
+
+#include "stm32h7xx_hal.h"
+
+// actually performs send operation to signal plotter
+// (is done automatically)
+void signalPlotter_executeTransmission(uint32_t millisTime);
+
+// sets the name of a signal-id (id 0...31)
+void signalPlotter_setSignalName(uint8_t id,char *name);
+// sends the current value of a signal (id 0...31) to the signal plotter
+void signalPlotter_sendData(uint8_t id, float value);
+
+#endif /* signalPlotter_H_ */

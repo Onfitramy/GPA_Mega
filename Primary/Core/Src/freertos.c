@@ -38,6 +38,8 @@
 #include "SAM-M8Q.h"
 #include "SERVO.h"
 #include "NRF24L01P.h"
+
+#include "signalPlotter.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -84,6 +86,13 @@ const osThreadAttr_t defaultTask_attributes = {
   .priority = (osPriority_t) osPriorityNormal,
 };
 
+osThreadId_t Hz10TaskHandle;
+const osThreadAttr_t Hz10Task_attributes = {
+  .name = "10HzTask",
+  .stack_size = 128 * 24,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+
 /*Commandline Handler*/
 osThreadId_t cmdLineTaskHandle; // new command line task
 const osThreadAttr_t cmdLineTask_attributes = {
@@ -107,6 +116,8 @@ uint8_t SelfTest(void);
 void StartDefaultTask(void *argument);
 
 void StartInterruptHandlerTask(void *argument);
+
+void Start10HzTask(void *argument);
 
 extern void MX_USB_DEVICE_Init(void);
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -158,6 +169,7 @@ void MX_FREERTOS_Init(void) {
   /* Create the thread(s) */
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+  Hz10TaskHandle = osThreadNew(Start10HzTask, NULL, &Hz10Task_attributes);
 
   cmdLineTaskHandle = osThreadNew(vCommandConsoleTask, NULL, &cmdLineTask_attributes);
   InterruptHandlerTaskHandle = osThreadNew(StartInterruptHandlerTask, NULL, &InterruptHandlerTask_attributes);
@@ -188,6 +200,9 @@ void StartDefaultTask(void *argument)
   /* USER CODE BEGIN StartDefaultTask */
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 1; //1000 Hz
+  signalPlotter_setSignalName(0, "IMU1_X");
+  signalPlotter_setSignalName(1, "IMU1_Y");
+  signalPlotter_setSignalName(2, "IMU1_Z");
   /* Infinite loop */
   for(;;) {
     SelfTest(); // Run self-test on startup
@@ -200,9 +215,11 @@ void StartDefaultTask(void *argument)
     if(MAG_VerifyDataReady() & 0b00000001) {
       MAG_ReadSensorData(&mag_data);
     }
-    char string_buf[100];
-    sprintf(string_buf, ">x_accel: %i\n", imu1_data.accel[0]);
-    UART_USBTransmitString(string_buf);
+
+    float imu1_dataf[3] = {imu1_data.accel[0]/16380.0f, imu1_data.accel[1]/16380.0f, imu1_data.accel[2]/16380.0f};
+    signalPlotter_sendData(0, imu1_dataf[0]); // Send IMU1 X acceleration to signal plotter
+    signalPlotter_sendData(1, imu1_dataf[1]);
+    signalPlotter_sendData(2, imu1_dataf[2]);
 
     #ifdef RECEIVER
       nrf24l01p_rx_receive(rx_data);
@@ -230,6 +247,18 @@ void StartDefaultTask(void *argument)
 
   
   /* USER CODE END StartDefaultTask */
+}
+
+void Start10HzTask(void *argument) {
+  /* USER CODE BEGIN Start10HzTask */
+  TickType_t xLastWakeTime = xTaskGetTickCount();
+  const TickType_t xFrequency = 20; //50 Hz
+  /* Infinite loop */
+  for(;;) {
+    signalPlotter_executeTransmission(HAL_GetTick());
+    vTaskDelayUntil( &xLastWakeTime, xFrequency); // 50Hz
+  }
+  /* USER CODE END Start10HzTask */
 }
 
 /* USER CODE BEGIN InterruptHandlerTask */
