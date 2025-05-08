@@ -40,6 +40,7 @@
 #include "NRF24L01P.h"
 
 #include "signalPlotter.h"
+#include "calibration_data.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -56,6 +57,7 @@ ubx_nav_posllh_t gps_data;
 float alpha;
 StateVector GPA_SV;
 uint32_t pressure_raw;
+float yaw = 0;
 
 uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO, 4: GPS, 7:All checks passed
 
@@ -200,26 +202,34 @@ void StartDefaultTask(void *argument)
   /* USER CODE BEGIN StartDefaultTask */
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 1; //1000 Hz
-  signalPlotter_setSignalName(0, "IMU1_X");
-  signalPlotter_setSignalName(1, "IMU1_Y");
-  signalPlotter_setSignalName(2, "IMU1_Z");
+  signalPlotter_setSignalName(0, "MAG_X");
+  signalPlotter_setSignalName(1, "MAG_Y");
+  signalPlotter_setSignalName(2, "MAG_Z");
+  signalPlotter_setSignalName(3, "ACC_X");
+  signalPlotter_setSignalName(4, "ACC_Y");
+  signalPlotter_setSignalName(5, "ACC_Z");
+  signalPlotter_setSignalName(6, "GYR_X");
+  signalPlotter_setSignalName(7, "GYR_Y");
+  signalPlotter_setSignalName(8, "GYR_Z");
+  signalPlotter_setSignalName(9, "yaw");
   /* Infinite loop */
   for(;;) {
     SelfTest(); // Run self-test on startup
 
     BMP_GetPressureRaw(&pressure_raw);
     IMU1_ReadSensorData(&imu1_data);
+    arm_sub_f32(imu1_data.accel, IMU1_offset, imu1_data.accel, 3);
+    arm_mult_f32(imu1_data.accel, IMU1_scale, imu1_data.accel, 3);
     IMU2_ReadSensorData(&imu2_data);
     GPS_ReadSensorData(&gps_data);
 
     if(MAG_VerifyDataReady() & 0b00000001) {
       MAG_ReadSensorData(&mag_data);
+      arm_sub_f32(mag_data.field, MAG_offset, mag_data.field, 3);
+      arm_mult_f32(mag_data.field, MAG_scale, mag_data.field, 3);
     }
 
-    float imu1_dataf[3] = {imu1_data.accel[0]/16380.0f, imu1_data.accel[1]/16380.0f, imu1_data.accel[2]/16380.0f};
-    signalPlotter_sendData(0, imu1_dataf[0]); // Send IMU1 X acceleration to signal plotter
-    signalPlotter_sendData(1, imu1_dataf[1]);
-    signalPlotter_sendData(2, imu1_dataf[2]);
+    yaw += imu1_data.gyro[2] * 0.001;
 
     #ifdef RECEIVER
       nrf24l01p_rx_receive(rx_data);
@@ -255,6 +265,17 @@ void Start10HzTask(void *argument) {
   const TickType_t xFrequency = 20; //50 Hz
   /* Infinite loop */
   for(;;) {
+    signalPlotter_sendData(0, mag_data.field[0]);
+    signalPlotter_sendData(1, mag_data.field[1]);
+    signalPlotter_sendData(2, mag_data.field[2]);
+    signalPlotter_sendData(3, imu1_data.accel[0]);
+    signalPlotter_sendData(4, imu1_data.accel[1]);
+    signalPlotter_sendData(5, imu1_data.accel[2]);
+    signalPlotter_sendData(6, imu1_data.gyro[0]);
+    signalPlotter_sendData(7, imu1_data.gyro[1]);
+    signalPlotter_sendData(8, imu1_data.gyro[2]);
+    signalPlotter_sendData(9, yaw);
+    
     signalPlotter_executeTransmission(HAL_GetTick());
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 50Hz
   }

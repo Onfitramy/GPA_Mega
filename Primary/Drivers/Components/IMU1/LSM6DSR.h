@@ -6,9 +6,12 @@
 
 extern SPI_HandleTypeDef hspi4;
 
+extern int16_t IMU1XL_FS_LSB;
+extern int16_t IMU1G_FS_LSB;
+
 typedef struct {
-    int16_t accel[3];  // X, Y, Z
-    int16_t gyro[3];   // X, Y, Z
+    float accel[3];  // X, Y, Z
+    float gyro[3];   // X, Y, Z
     float temp;        // temperature
 } LSM6DSR_Data_t;
 

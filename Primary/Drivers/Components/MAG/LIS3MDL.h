@@ -6,8 +6,10 @@
 
 extern SPI_HandleTypeDef hspi4;
 
+extern int16_t MAG_FS_LSB;
+
 typedef struct {
-    int16_t field[3];  // X, Y, Z
+    float field[3];  // X, Y, Z
     float temp;        // temperature
 } LIS3MDL_Data_t;
 

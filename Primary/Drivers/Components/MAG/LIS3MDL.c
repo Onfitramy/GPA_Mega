@@ -1,7 +1,10 @@
 #include "LIS3MDL.h"
+#include "calibration_data.h"
 #include "main.h" // ONLY FOR TESTING WITHE LED
 
 HAL_StatusTypeDef MAG_SPI_status;
+
+int16_t MAG_FS_LSB = 6842;
 
 static void LIS3MDL_Select(void) {
     HAL_GPIO_WritePin(MAG_CS_PORT, MAG_CS_PIN, GPIO_PIN_RESET);
@@ -60,6 +63,7 @@ HAL_StatusTypeDef MAG_Init(void) {
 }
 
 HAL_StatusTypeDef MAG_ConfigSensor(uint8_t OperatingMode, uint8_t DataRate, uint8_t FullScale, bool fast_ODR, bool temp_en) {
+    MAG_FS_LSB = (int16_t)(6842. / (FullScale + 1) + 0.9);
     uint8_t tx[4] = { 0 };
     tx[0] = temp_en << 7 | OperatingMode << 5 | DataRate << 2 | fast_ODR << 1;  // CTRL_REG1
     tx[1] = FullScale << 5;                                                     // CTRL_REG2
@@ -81,9 +85,9 @@ HAL_StatusTypeDef MAG_ReadSensorData(LIS3MDL_Data_t *data) {
         uint8_t rx[6] = { 0 };
         status = MAG_read_reg(LIS3MDL_OUT_X_L, 6, rx);  // read magnetometer data
         if (status != HAL_OK) return status;
-        data->field[0] = -(int16_t)(rx[3] << 8 | rx[2]);// field_X
-        data->field[1] = (int16_t)(rx[1] << 8 | rx[0]); // field_Y
-        data->field[2] = (int16_t)(rx[5] << 8 | rx[4]); // field_Z
+        data->field[0] = (float)(-(int16_t)(rx[3] << 8 | rx[2])) / MAG_FS_LSB; // field_X
+        data->field[1] = (float)((int16_t)(rx[1] << 8 | rx[0])) / MAG_FS_LSB;  // field_Y
+        data->field[2] = (float)((int16_t)(rx[5] << 8 | rx[4])) / MAG_FS_LSB;  // field_Z
     }
     uint8_t rx[2] = { 0 };
     status = MAG_read_reg(LIS3MDL_TEMP_OUT_L, 2, rx);   // read temperature data

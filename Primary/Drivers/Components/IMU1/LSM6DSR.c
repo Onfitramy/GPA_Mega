@@ -1,7 +1,11 @@
 #include "LSM6DSR.h"
+//#include "calibration_data.h"
 #include "main.h" // ONLY FOR TESTING WITHE LED
 
 HAL_StatusTypeDef IMU1_SPI_status;
+
+int16_t IMU1XL_FS_LSB = 16384;
+int16_t IMU1G_FS_LSB = 35;
 
 static void LSM6DSR_Select(void) {
     HAL_GPIO_WritePin(IMU1_CS_PORT, IMU1_CS_PIN, GPIO_PIN_RESET);
@@ -62,6 +66,12 @@ HAL_StatusTypeDef IMU1_Init(void) {
 }
 
 HAL_StatusTypeDef IMU1_ConfigXL(uint8_t ODR, uint8_t FS, bool LPF2) {
+    switch(FS) {
+        case LSM6DSR_FS_XL_2:  IMU1XL_FS_LSB = 16384; break;
+        case LSM6DSR_FS_XL_4:  IMU1XL_FS_LSB = 8192;  break;
+        case LSM6DSR_FS_XL_8:  IMU1XL_FS_LSB = 4096;  break;
+        case LSM6DSR_FS_XL_16: IMU1XL_FS_LSB = 2048;  break;
+    }
     uint8_t tx[1] = { ODR << 4 | FS << 2 | LPF2 << 1 };
     uint8_t rx[1] = { 0 };
     IMU1_write_reg(LSM6DSR_CTRL1_XL, 1, tx);
@@ -71,6 +81,14 @@ HAL_StatusTypeDef IMU1_ConfigXL(uint8_t ODR, uint8_t FS, bool LPF2) {
 }
 
 HAL_StatusTypeDef IMU1_ConfigG(uint8_t ODR, uint8_t FS) {
+    switch(FS) {
+        case LSM6DSR_FS_G_125:  IMU1G_FS_LSB = 35;   break;
+        case LSM6DSR_FS_G_250:  IMU1G_FS_LSB = 70;   break;
+        case LSM6DSR_FS_G_500:  IMU1G_FS_LSB = 140;  break;
+        case LSM6DSR_FS_G_1000: IMU1G_FS_LSB = 280;  break;
+        case LSM6DSR_FS_G_2000: IMU1G_FS_LSB = 560;  break;
+        case LSM6DSR_FS_G_4000: IMU1G_FS_LSB = 1120; break;
+    }
     uint8_t tx[1] = { ODR << 4 | FS };
     uint8_t rx[1] = { 0 };
     IMU1_write_reg(LSM6DSR_CTRL2_G, 1, tx);
@@ -89,17 +107,17 @@ HAL_StatusTypeDef IMU1_ReadSensorData(LSM6DSR_Data_t *data) {
         uint8_t rx[6] = { 0 };
         status = IMU1_read_reg(LSM6DSR_OUTX_L_A, 6, rx);    // read accelerometer data
         if (status != HAL_OK) return status;
-        data->accel[0] = (int16_t)(rx[1] << 8 | rx[0]);     // accel_X
-        data->accel[1] = (int16_t)(rx[3] << 8 | rx[2]);     // accel_Y
-        data->accel[2] = (int16_t)(rx[5] << 8 | rx[4]);     // accel_Z
+        data->accel[0] = (float)((int16_t)(rx[1] << 8 | rx[0])) * 9.81 / IMU1XL_FS_LSB; // accel_X [m/s²]
+        data->accel[1] = (float)((int16_t)(rx[3] << 8 | rx[2])) * 9.81 / IMU1XL_FS_LSB; // accel_Y [m/s²]
+        data->accel[2] = (float)((int16_t)(rx[5] << 8 | rx[4])) * 9.81 / IMU1XL_FS_LSB; // accel_Z [m/s²]
     }
     if(available & 0x02) {
         uint8_t rx[6] = { 0 };
         status = IMU1_read_reg(LSM6DSR_OUTX_L_G, 6, rx);    // read gyro data
         if (status != HAL_OK) return status;
-        data->gyro[0] = (int16_t)(rx[1] << 8 | rx[0]);      // gyro_X
-        data->gyro[1] = (int16_t)(rx[3] << 8 | rx[2]);      // gyro_Y
-        data->gyro[2] = (int16_t)(rx[5] << 8 | rx[4]);      // gyro_Z
+        data->gyro[0] = (float)((int16_t)(rx[1] << 8 | rx[0])) * IMU1G_FS_LSB / 8000; // gyro_X [dps]
+        data->gyro[1] = (float)((int16_t)(rx[3] << 8 | rx[2])) * IMU1G_FS_LSB / 8000; // gyro_Y [dps]
+        data->gyro[2] = (float)((int16_t)(rx[5] << 8 | rx[4])) * IMU1G_FS_LSB / 8000; // gyro_Z [dps]
     }
     if(available & 0x04) {
         uint8_t rx[2] = { 0 };
