@@ -165,7 +165,10 @@ int main(void)
   IMU2_ConfigXL(LSM6DSR_ODR_6660_Hz, LSM6DSR_FS_XL_16, 0);
   IMU2_ConfigG(LSM6DSR_ODR_6660_Hz, LSM6DSR_FS_G_4000);
 
-  Stepper_moveSteps(-100);
+  Stepper_movetoPos(25, 1);
+  HAL_Delay(1000);
+  Stepper_movetoPos(0, 1);
+  
 
   /* USER CODE END 2 */
 
