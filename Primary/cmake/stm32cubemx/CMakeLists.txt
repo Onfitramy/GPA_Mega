@@ -117,6 +117,7 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/Components/PYRO/Pyro.c
     ../../Drivers/Components/Stepper/Stepper.c
     ../../Drivers/Components/NRF/NRF24L01P.c
+    ../../Drivers/CMSIS/DSP_DRIVERS/Lib/armMathAddon.c
 
     ../../Drivers/Libraries/signalPlotter.c
     ../../Drivers/Libraries/calibration_data.c

@@ -24,7 +24,7 @@
 #include "cmsis_os.h"
 #include "cli_app.h"
 #include "stream_buffer.h"
-#include "arm_math.h"
+#include "armMathAddon.h"
 #include "semphr.h"
 #include "queue.h"
 
@@ -222,7 +222,7 @@ void StartDefaultTask(void *argument)
   signalPlotter_setSignalName(7, "GYR_Y");
   signalPlotter_setSignalName(8, "GYR_Z");
   signalPlotter_setSignalName(9, "yaw");
-  signalPlotter_setSignalName(10, "delta Time");
+  signalPlotter_setSignalName(31, "delta Time");
 
   /* Infinite loop */
   for(;;) {
