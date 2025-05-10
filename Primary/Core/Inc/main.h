@@ -53,6 +53,7 @@ extern QueueHandle_t InterruptQueue;
 
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
+uint32_t HAL_GetTickUS(void);
 
 /* USER CODE BEGIN EFP */
 

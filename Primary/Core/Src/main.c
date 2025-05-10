@@ -128,6 +128,7 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM3_Init();
   MX_TIM4_Init();
+  MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
 
   int counter1, counter2, counter3;
@@ -218,6 +219,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
         nrf24l01p_tx_irq();
     #endif
   }
+}
+
+uint32_t HAL_GetTickUS(){
+  return TIM5->CNT; // Get the current value of TIM5 counter
 }
 /**
   * @brief System Clock Configuration

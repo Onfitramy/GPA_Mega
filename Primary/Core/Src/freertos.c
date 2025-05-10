@@ -92,7 +92,14 @@ osThreadId_t Hz10TaskHandle;
 const osThreadAttr_t Hz10Task_attributes = {
   .name = "10HzTask",
   .stack_size = 128 * 24,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityBelowNormal,
+};
+
+osThreadId_t Hz100TaskHandle;
+const osThreadAttr_t Hz100Task_attributes = {
+  .name = "100HzTask",
+  .stack_size = 128 * 24,
+  .priority = (osPriority_t) osPriorityBelowNormal,
 };
 
 /*Commandline Handler*/
@@ -107,7 +114,7 @@ osThreadId_t InterruptHandlerTaskHandle;
 const osThreadAttr_t InterruptHandlerTask_attributes = {
   .name = "InterruptHandlerTask",
   .stack_size = 128 * 48,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityHigh,
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -120,6 +127,8 @@ void StartDefaultTask(void *argument);
 void StartInterruptHandlerTask(void *argument);
 
 void Start10HzTask(void *argument);
+
+void Start100HzTask(void *argument);
 
 extern void MX_USB_DEVICE_Init(void);
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -172,6 +181,7 @@ void MX_FREERTOS_Init(void) {
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
   Hz10TaskHandle = osThreadNew(Start10HzTask, NULL, &Hz10Task_attributes);
+  Hz100TaskHandle = osThreadNew(Start100HzTask, NULL, &Hz100Task_attributes);
 
   cmdLineTaskHandle = osThreadNew(vCommandConsoleTask, NULL, &cmdLineTask_attributes);
   InterruptHandlerTaskHandle = osThreadNew(StartInterruptHandlerTask, NULL, &InterruptHandlerTask_attributes);
@@ -212,16 +222,17 @@ void StartDefaultTask(void *argument)
   signalPlotter_setSignalName(7, "GYR_Y");
   signalPlotter_setSignalName(8, "GYR_Z");
   signalPlotter_setSignalName(9, "yaw");
+  signalPlotter_setSignalName(10, "delta Time");
+
   /* Infinite loop */
   for(;;) {
+    TimeMeasureStart(); // Start measuring time
     SelfTest(); // Run self-test on startup
-
     BMP_GetPressureRaw(&pressure_raw);
     IMU1_ReadSensorData(&imu1_data);
     arm_sub_f32(imu1_data.accel, IMU1_offset, imu1_data.accel, 3);
     arm_mult_f32(imu1_data.accel, IMU1_scale, imu1_data.accel, 3);
     IMU2_ReadSensorData(&imu2_data);
-    GPS_ReadSensorData(&gps_data);
 
     if(MAG_VerifyDataReady() & 0b00000001) {
       MAG_ReadSensorData(&mag_data);
@@ -245,13 +256,9 @@ void StartDefaultTask(void *argument)
       }
     #endif
 
-    #ifdef TRANSMITTER
-      nrf24l01p_tx_transmit(tx_data);
-    #endif
-
     alpha = atan2(imu2_data.accel[1], imu2_data.accel[2])*180/M_PI;
     SERVO_MoveToAngle(1, 2*alpha);
-
+    TimeMeasureStop(); // Stop measuring time
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz)
   }
 
@@ -259,10 +266,10 @@ void StartDefaultTask(void *argument)
   /* USER CODE END StartDefaultTask */
 }
 
-void Start10HzTask(void *argument) {
-  /* USER CODE BEGIN Start10HzTask */
+void Start100HzTask(void *argument) {
+  /* USER CODE BEGIN Start100HzTask */
   TickType_t xLastWakeTime = xTaskGetTickCount();
-  const TickType_t xFrequency = 20; //50 Hz
+  const TickType_t xFrequency = 10; //100 Hz
   /* Infinite loop */
   for(;;) {
     signalPlotter_sendData(0, mag_data.field[0]);
@@ -275,9 +282,26 @@ void Start10HzTask(void *argument) {
     signalPlotter_sendData(7, imu1_data.gyro[1]);
     signalPlotter_sendData(8, imu1_data.gyro[2]);
     signalPlotter_sendData(9, yaw);
-    
+
     signalPlotter_executeTransmission(HAL_GetTick());
-    vTaskDelayUntil( &xLastWakeTime, xFrequency); // 50Hz
+    vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
+  }
+  /* USER CODE END Start10HzTask */
+}
+
+void Start10HzTask(void *argument) {
+  /* USER CODE BEGIN Start10HzTask */
+  TickType_t xLastWakeTime = xTaskGetTickCount();
+  const TickType_t xFrequency = 100; //10 Hz
+  /* Infinite loop */
+  for(;;) {
+    GPS_ReadSensorData(&gps_data);
+
+    #ifdef TRANSMITTER
+      nrf24l01p_tx_transmit(tx_data);
+    #endif
+
+    vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
   }
   /* USER CODE END Start10HzTask */
 }

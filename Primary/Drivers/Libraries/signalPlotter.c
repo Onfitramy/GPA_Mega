@@ -12,6 +12,12 @@ typedef struct {
 
 data_t data[32];
 
+uint32_t TimeMeasureTime;
+
+uint32_t TimeMeasureTick = 0;
+
+uint32_t TimerOverflow = 0;
+
 void signalPlotter_setSignalName(uint8_t id, char *name) {
   strncpy(data[id].name, name, 16);
 }
@@ -69,4 +75,16 @@ void signalPlotter_executeTransmission(uint32_t millisTime) {
       CDC_Transmit_HS(buffer, 12+maxid*4+3);
     }
   }
+}
+
+void TimeMeasureStart(void) {
+  TimeMeasureTick = HAL_GetTickUS();
+}
+
+void TimeMeasureStop(void) {
+  TimeMeasureTime = HAL_GetTickUS() - TimeMeasureTick;
+  if (TimeMeasureTime > 1000) {
+    TimerOverflow += 1;
+  }
+  signalPlotter_sendData(10, (float)TimeMeasureTime / 1000.0f);
 }
