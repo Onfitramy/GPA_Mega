@@ -53,7 +53,7 @@
 LSM6DSR_Data_t imu1_data;
 ISM330DHCX_Data_t imu2_data;
 LIS3MDL_Data_t mag_data;
-ubx_nav_posllh_t gps_data;
+UBX_NAV_PVT gps_data;
 float alpha;
 StateVector GPA_SV;
 uint32_t pressure_raw;
@@ -113,8 +113,8 @@ const osThreadAttr_t cmdLineTask_attributes = {
 osThreadId_t InterruptHandlerTaskHandle;
 const osThreadAttr_t InterruptHandlerTask_attributes = {
   .name = "InterruptHandlerTask",
-  .stack_size = 128 * 48,
-  .priority = (osPriority_t) osPriorityHigh,
+  .stack_size = 128 * 24,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -185,6 +185,9 @@ void MX_FREERTOS_Init(void) {
 
   cmdLineTaskHandle = osThreadNew(vCommandConsoleTask, NULL, &cmdLineTask_attributes);
   InterruptHandlerTaskHandle = osThreadNew(StartInterruptHandlerTask, NULL, &InterruptHandlerTask_attributes);
+  if (InterruptHandlerTaskHandle == NULL) {
+    InterruptHandlerTaskHandle = NULL;
+  }
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -241,20 +244,6 @@ void StartDefaultTask(void *argument)
     }
 
     yaw += imu1_data.gyro[2] * 0.001;
-
-    #ifdef RECEIVER
-      nrf24l01p_rx_receive(rx_data);
-      uint8_t test = nrf24l01p_get_status();
-      if(nrf24l01p_get_receivedPower()) {
-        Set_LED(0, 0, 255, 0);
-        Set_Brightness(45);
-        WS2812_Send();
-      } else {
-        Set_LED(0, 255, 0, 0);
-        Set_Brightness(45);
-        WS2812_Send();
-      }
-    #endif
 
     alpha = atan2(imu2_data.accel[1], imu2_data.accel[2])*180/M_PI;
     SERVO_MoveToAngle(1, 2*alpha);
@@ -326,6 +315,24 @@ void StartInterruptHandlerTask(void *argument)
     if (xQueueReceive(InterruptQueue, &receivedData, portMAX_DELAY) == pdTRUE) {
       if(receivedData == 0x10) {
         ublox_ReadOutput(GPS_Buffer); //Read the GPS output and decode it
+      }else if (receivedData == 0x11) {
+        HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
+        #ifdef RECEIVER
+          nrf24l01p_rx_receive(rx_data);
+          if(nrf24l01p_get_receivedPower()) {
+            Set_LED(0, 0, 255, 0);
+            Set_Brightness(45);
+            WS2812_Send();
+          } else {
+            Set_LED(0, 255, 0, 0);
+            Set_Brightness(45);
+            WS2812_Send();
+          }
+        #endif
+    
+        #ifdef TRANSMITTER
+          nrf24l01p_tx_irq();
+        #endif
       }
     }
     osDelay(5);

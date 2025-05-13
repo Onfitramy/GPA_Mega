@@ -40,12 +40,50 @@ typedef struct {
 } ubx_nav_posllh_t;
 #pragma pack(pop)
 
+#pragma pack(push, 1)
+typedef struct {
+    uint32_t iTOW;     // GPS time of week in milliseconds
+    uint16_t year;     // Year (UTC)
+    uint8_t month;     // Month (UTC) 1-12
+    uint8_t day;       // Day of month (UTC) 1-31
+    uint8_t hour;      // Hour of day (UTC) 0-23
+    uint8_t min;       // Minute of hour (UTC) 0-59
+    uint8_t sec;       // Second of minute (UTC) 0-59
+    uint8_t valid;     // Validity flags (see below)
+    uint32_t tAcc;     // Time accuracy estimate in nanoseconds
+    int32_t nano;      // Fraction of second, range -1e9 .. 1e9 (UTC)
+    uint8_t gpsFix;    // GPS fix status (0: no fix, 1: Dead Reckoning only, 2: 2D fix, 3: 3D fix, 4:GPS + dead reckoning, 5: Time only fix)
+    uint8_t flags;
+    uint8_t flags2;
+    uint8_t numSV;     // Number of satellites used in Nav Solution
+    int32_t lon;       // Longitude in degrees * 1e-7
+    int32_t lat;       // Latitude in degrees * 1e-7
+    int32_t height;    // Height above ellipsoid in millimeters
+    int32_t hMSL;      // Height above mean sea level in millimeters
+    uint32_t hAcc;     // Horizontal accuracy estimate in millimeters
+    uint32_t vAcc;     // Vertical accuracy estimate in millimeters
+    int32_t velN;      // Velocity north in millimeters/second
+    int32_t velE;      // Velocity east in millimeters/second
+    int32_t velD;      // Velocity down in millimeters/second
+    int32_t gSpeed;    // 2D Ground speed in millimeters/second
+    int32_t headMot;   // Heading of motion 2D in degrees
+    int32_t sAcc;      // Speed accuracy estimate in millimeters/second
+    int32_t headAcc;   // Heading accuracy estimate in degrees
+    uint16_t pDOP;     // Position DOP (0.01)
+    uint16_t flags3;   // Flags
+    uint32_t reserved1;// Reserved for future use
+    uint32_t headVeh;   // Heading of vehicle in degrees
+    uint16_t magDec;   // Magnetic declination in degrees (not used)
+    uint16_t magAcc;   // Magnetic declination accuracy in degrees (not used)
+} UBX_NAV_PVT;
+#pragma pack(pop)
+
 uint8_t GPS_VER_CHECK(void);
 
 void GPS_Init(void);
 
 UBX_MessageType ublox_ReadOutput(char* UBX_MessageReturn);
 
-uint8_t GPS_ReadSensorData(ubx_nav_posllh_t *posllh);
+uint8_t GPS_ReadSensorData(UBX_NAV_PVT *posllh);
 
 #endif /* SAM_M8Q_H_ */

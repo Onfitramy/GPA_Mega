@@ -205,14 +205,10 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
   
   /*Handle NRF_INT by sending Queue to FreeRTOS funktion*/
   if (GPIO_Pin == NRF_INT_Pin) {
-    HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
-    #ifdef RECEIVER
-        //nrf24l01p_rx_receive(rx_data);
-    #endif
-
-    #ifdef TRANSMITTER
-        nrf24l01p_tx_irq();
-    #endif
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    uint8_t sendData = 0x11;
+    xQueueSendFromISR(InterruptQueue, &sendData, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
   }
 }
 
