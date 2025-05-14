@@ -7,6 +7,19 @@
 
 // The Number OF Servo Motors To Be Used In The Project
 #define SERVO_NUM  8
+
+#define PX_SERVO 1
+#define NX_SERVO 8
+#define PZ_SERVO 2
+#define NZ_SERVO 7
+
+#define NY_MOTOR 3
+#define PY_MOTOR 6
+
+#define PX_ZERO 87
+#define NX_ZERO 85
+#define PZ_ZERO 81
+#define NZ_ZERO 85
  
 typedef struct
 {
@@ -28,5 +41,20 @@ void SERVO_RawMove(uint16_t au16_SERVO_Instance, uint16_t au16_Pulse);
 
 void SERVO_MoveToAngle(uint16_t au16_SERVO_Instance, float af_Angle);
  
-/*void SERVO_Sweep(uint16_t au16_SERVO_Instance);*/
+void SERVO_Sweep(int8_t angle, uint8_t dt);
+
+void SERVO_Test(uint8_t Servo, uint8_t Zero_val, int8_t angle, uint8_t dt);
+
+void SERVO_TestX(int8_t angle, uint8_t dt);
+
+void SERVO_TestZ(int8_t angle, uint8_t dt);
+
+void SERVO_ZeroAll();
+
+void SERVO_TestSequence();
+
+void SERVO_TVC(float angle_x, float angle_z, float twist_y);
+
+float fconstrain(float variable, float min, float max);
+
 #endif /* SERVO_H_ */

@@ -72,6 +72,12 @@ void MX_FREERTOS_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+#ifdef TRANSMITTER
+  uint8_t tx_data[NRF24L01P_PAYLOAD_LENGTH] = {0}; //Bit(Payload Lenght) array to store sending data
+#endif
+#ifdef RECEIVER
+  uint8_t rx_data[NRF24L01P_PAYLOAD_LENGTH] = {0};
+#endif
 
 /* USER CODE END 0 */
 
@@ -133,12 +139,20 @@ int main(void)
 
   int counter1, counter2, counter3;
 
-  SERVO_Init(1);
+  SERVO_Init(PX_SERVO);
+  SERVO_Init(NX_SERVO);
+  SERVO_Init(PZ_SERVO);
+  SERVO_Init(NZ_SERVO);
+  SERVO_Init(PY_MOTOR);
+  SERVO_Init(NY_MOTOR);
+
+  //SERVO_TestSequence();
+
   BMP_SelfTest();
   BMP_enable();
 
   #ifdef RECEIVER
-  nrf24l01p_rx_init(2450, _1Mbps);
+  nrf24l01p_rx_init(2476, _1Mbps);
   #endif
 
   #ifdef TRANSMITTER
@@ -160,11 +174,11 @@ int main(void)
 
   MAG_ConfigSensor(LIS3MDL_OM_ULTRA, LIS3MDL_ODR_80_Hz, LIS3MDL_FS_4, 1, 1);
 
-  IMU1_ConfigXL(LSM6DSR_ODR_6660_Hz, LSM6DSR_FS_XL_2, 0);
-  IMU1_ConfigG(LSM6DSR_ODR_6660_Hz, LSM6DSR_FS_G_500);
+  IMU1_ConfigXL(LSM6DSR_ODR_1660_Hz, LSM6DSR_FS_XL_2, 0);
+  IMU1_ConfigG(LSM6DSR_ODR_1660_Hz, LSM6DSR_FS_G_2000);
 
-  IMU2_ConfigXL(LSM6DSR_ODR_6660_Hz, LSM6DSR_FS_XL_16, 0);
-  IMU2_ConfigG(LSM6DSR_ODR_6660_Hz, LSM6DSR_FS_G_4000);
+  IMU2_ConfigXL(ISM330DHCX_ODR_6660_Hz, ISM330DHCX_FS_XL_16, 0);
+  IMU2_ConfigG(ISM330DHCX_ODR_6660_Hz, ISM330DHCX_FS_G_4000);
 
   /* USER CODE END 2 */
 
@@ -207,7 +221,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
   if (GPIO_Pin == NRF_INT_Pin) {
     HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
     #ifdef RECEIVER
-        //nrf24l01p_rx_receive(rx_data);
+        nrf24l01p_rx_receive(rx_data);
     #endif
 
     #ifdef TRANSMITTER

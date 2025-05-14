@@ -45,6 +45,15 @@ static uint8_t write_register(uint8_t reg, uint8_t value) {
     return write_val;
 }
 
+void write_register_bytes(uint8_t reg, const uint8_t* data, uint8_t len) {
+    uint8_t command = NRF24L01P_CMD_W_REGISTER | (reg & 0x1F);
+
+    cs_low();
+    HAL_SPI_Transmit(&NRF_SPI, &command, 1, HAL_MAX_DELAY);
+    HAL_SPI_Transmit(&NRF_SPI, (uint8_t*)data, len, HAL_MAX_DELAY);
+    cs_high();
+}
+
 
 /* nRF24L01+ Main Functions */
 void nrf24l01p_rx_init(channel MHz, air_data_rate bps) {
@@ -69,7 +78,8 @@ void nrf24l01p_rx_init(channel MHz, air_data_rate bps) {
     nrf24l01p_auto_retransmit_delay(250);
 
     //Set RX_ADDR_P0 (Receive Adress)
-    write_register(NRF24L01P_REG_RX_ADDR_P0, 0xEBEBEEBEEB);
+    uint8_t rx_addr[5] = {"10000"};
+    write_register_bytes(NRF24L01P_REG_RX_ADDR_P0, rx_addr, 5);
     
     ce_high();
     //Goes into standby 1
@@ -100,10 +110,12 @@ void nrf24l01p_tx_init(channel MHz, air_data_rate bps) {
     write_register(NRF24L01P_REG_FEATURE, 0x01);
 
     //Set TX_ADDR (Transmit address)
-    write_register(NRF24L01P_REG_TX_ADDR, 0xEBEBEEBEEB);
+    uint8_t tx_addr[5] = {"10000"};
+    write_register_bytes(NRF24L01P_REG_TX_ADDR, tx_addr, 5);
 
     //Set RX_ADDR_P0 (Receive Adress) for Auto acknowledgement
-    write_register(NRF24L01P_REG_RX_ADDR_P0, 0xEBEBEEBEEB);
+    uint8_t rx_addr[5] = {"10000"};
+    write_register_bytes(NRF24L01P_REG_RX_ADDR_P0, rx_addr, 5);
 
     ce_high();
     //Goes into standby 1

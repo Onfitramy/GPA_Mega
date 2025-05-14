@@ -93,22 +93,105 @@ void SERVO_MoveToAngle(uint16_t au16_SERVO_Instance, float af_Angle)
     *(SERVO_CfgParam[au16_SERVO_Instance].TIM_CCRx) = au16_Pulse;
 }
 
-/*void SERVO_Sweep(uint16_t au16_SERVO_Instance)
-{
-    uint8_t au8_Angle = 0;
+void SERVO_Sweep(int8_t angle, uint8_t dt) {
+    SERVO_ZeroAll();
+    for(int i = 0; i < angle; i++) {
+        SERVO_MoveToAngle(PX_SERVO, PX_ZERO + i);
+        SERVO_MoveToAngle(NX_SERVO, NX_ZERO + i);
+        SERVO_MoveToAngle(PZ_SERVO, PZ_ZERO + i);
+        SERVO_MoveToAngle(NZ_SERVO, NZ_ZERO + i);
+        HAL_Delay(dt);
+    }
 
-	SERVO_MoveTo(au16_SERVO_Instance, 0);
+    for(int i = 0; i < angle; i++) {
+        SERVO_MoveToAngle(PX_SERVO, PX_ZERO - i);
+        SERVO_MoveToAngle(NX_SERVO, NX_ZERO - i);
+        SERVO_MoveToAngle(PZ_SERVO, PZ_ZERO - i);
+        SERVO_MoveToAngle(NZ_SERVO, NZ_ZERO - i);
+        HAL_Delay(dt);
+    }
+    SERVO_ZeroAll();
+}
 
-	DWT_Delay_ms(250);
-	while(au8_Angle < 180)
-	{
-		SERVO_MoveTo(au16_SERVO_Instance, au8_Angle++);
-		DWT_Delay_ms(5);
-	}
-	DWT_Delay_ms(250);
-	while(au8_Angle > 0)
-	{
-		SERVO_MoveTo(au16_SERVO_Instance, au8_Angle--);
-		DWT_Delay_ms(5);
-	}
-}*/
+void SERVO_Test(uint8_t Servo, uint8_t Zero_val, int8_t angle, uint8_t dt) {
+    SERVO_ZeroAll();
+    for(int i = 0; i < angle; i++) {
+        SERVO_MoveToAngle(Servo, Zero_val + i);
+        HAL_Delay(dt);
+    }
+    for(int i = 0; i < angle; i++) {
+        SERVO_MoveToAngle(Servo, Zero_val - i);
+        HAL_Delay(dt);
+    }
+    SERVO_ZeroAll();
+}
+
+void SERVO_TestX(int8_t angle, uint8_t dt) {
+    SERVO_ZeroAll();
+    for(int i = 0; i < angle; i++) {
+        SERVO_MoveToAngle(PX_SERVO, PX_ZERO + i);
+        SERVO_MoveToAngle(NX_SERVO, NX_ZERO - i);
+        HAL_Delay(dt);
+    }
+    for(int i = 0; i < angle; i++) {
+        SERVO_MoveToAngle(PX_SERVO, PX_ZERO - i);
+        SERVO_MoveToAngle(NX_SERVO, NX_ZERO + i);
+        HAL_Delay(dt);
+    }
+    SERVO_ZeroAll();
+}
+
+void SERVO_TestZ(int8_t angle, uint8_t dt) {
+    SERVO_ZeroAll();
+    for(int i = 0; i < angle; i++) {
+        SERVO_MoveToAngle(PZ_SERVO, PZ_ZERO + i);
+        SERVO_MoveToAngle(NZ_SERVO, NZ_ZERO - i);
+        HAL_Delay(dt);
+    }
+    for(int i = 0; i < angle; i++) {
+        SERVO_MoveToAngle(PZ_SERVO, PZ_ZERO - i);
+        SERVO_MoveToAngle(NZ_SERVO, NZ_ZERO + i);
+        HAL_Delay(dt);
+    }
+    SERVO_ZeroAll();
+}
+
+void SERVO_ZeroAll() {
+    SERVO_MoveToAngle(PX_SERVO, PX_ZERO);
+    SERVO_MoveToAngle(NX_SERVO, NX_ZERO);
+    SERVO_MoveToAngle(PZ_SERVO, PZ_ZERO);
+    SERVO_MoveToAngle(NZ_SERVO, NZ_ZERO);
+}
+
+void SERVO_TestSequence() {
+    SERVO_MoveToAngle(PY_MOTOR, 180);
+    SERVO_MoveToAngle(NY_MOTOR, 180);
+    SERVO_Test(PX_SERVO, PX_ZERO, 60, 10);
+    SERVO_Test(PZ_SERVO, PZ_ZERO, 60, 10);
+    SERVO_Test(NX_SERVO, NX_ZERO, 60, 10);
+    SERVO_Test(NZ_SERVO, NZ_ZERO, 60, 10);
+    SERVO_MoveToAngle(PY_MOTOR, 0);
+    SERVO_MoveToAngle(NY_MOTOR, 0);
+    HAL_Delay(100);
+    SERVO_TestX(60, 10);
+    SERVO_TestZ(60, 10);
+    HAL_Delay(100);
+    SERVO_Sweep(60, 10);
+}
+
+void SERVO_TVC(float angle_x, float angle_z, float twist_y) {
+    SERVO_MoveToAngle(PX_SERVO, (float)PX_ZERO + fconstrain(twist_y + angle_x, -60, 60));
+    SERVO_MoveToAngle(NX_SERVO, (float)NX_ZERO + fconstrain(twist_y - angle_x, -60, 60));
+    SERVO_MoveToAngle(PZ_SERVO, (float)PZ_ZERO + fconstrain(twist_y - angle_z, -60, 60));
+    SERVO_MoveToAngle(NZ_SERVO, (float)NZ_ZERO + fconstrain(twist_y + angle_z, -60, 60));
+}
+
+float fconstrain(float variable, float min, float max) {
+    if(variable > max) {
+        return max;
+    } else if(variable < min) {
+        return min;
+    } else {
+        return variable;
+    }
+}
