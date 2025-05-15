@@ -36,6 +36,7 @@
 #include "bmp390.h"
 #include "Stepper.h"
 #include "NRF24L01P.h"
+#include "signalPlotter.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -72,9 +73,6 @@ void MX_FREERTOS_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-#ifdef RECEIVER
-  uint8_t rx_data[NRF24L01P_PAYLOAD_LENGTH] = {0};
-#endif
 
 /* USER CODE END 0 */
 

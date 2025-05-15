@@ -86,5 +86,5 @@ void TimeMeasureStop(void) {
   if (TimeMeasureTime > 1000) {
     TimerOverflow += 1;
   }
-  signalPlotter_sendData(31, (float)TimeMeasureTime / 1000.0f);
+  signalPlotter_sendData(23, (float)TimeMeasureTime / 1000.0f);
 }

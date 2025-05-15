@@ -3,6 +3,10 @@
 
 HAL_StatusTypeDef NRF_SPI_status;
 
+uint8_t rx_data[NRF24L01P_PAYLOAD_LENGTH] = {0};
+
+float nrf_timeout = 0;
+
 static void cs_high(void) {
     HAL_GPIO_WritePin(NRF_CS_PORT, NRF_CS_PIN, GPIO_PIN_SET);
 }
@@ -83,15 +87,22 @@ void nrf24l01p_rx_init(channel MHz, air_data_rate bps) {
     nrf24l01p_set_rf_air_data_rate(bps);
     nrf24l01p_set_rf_tx_output_power(_0dBm);
 
-    nrf24l01p_set_crc_length(1);
+    //nrf24l01p_set_crc_length(1);
+    nrf24l01p_disable_crc();
     nrf24l01p_set_address_widths(5);
 
     nrf24l01p_auto_retransmit_count(3);
     nrf24l01p_auto_retransmit_delay(250);
 
+    // activate NOACK for all pipes
+    write_register(NRF24L01P_REG_EN_AA, 0x00);
+
     //Set RX_ADDR_P0 (Receive Adress)
-    uint8_t rx_addr[5] = {"10000"};
+    uint8_t rx_addr[5] = {"ATHMO"};
     write_register_bytes(NRF24L01P_REG_RX_ADDR_P0, rx_addr, 5);
+
+    uint8_t rx = 0;
+    rx = read_register(0x00);
 
     ce_high();
     //Goes into standby 1
@@ -122,11 +133,11 @@ void nrf24l01p_tx_init(channel MHz, air_data_rate bps) {
     write_register(NRF24L01P_REG_FEATURE, 0x01);
 
     //Set TX_ADDR (Transmit address)
-    uint8_t tx_addr[5] = {"10000"};
+    uint8_t tx_addr[5] = {"ATHMO"};
     write_register_bytes(NRF24L01P_REG_TX_ADDR, tx_addr, 5);
 
     //Set RX_ADDR_P0 (Receive Adress) for Auto acknowledgement
-    uint8_t rx_addr[5] = {"10000"};
+    uint8_t rx_addr[5] = {"ATHMO"};
     write_register_bytes(NRF24L01P_REG_RX_ADDR_P0, rx_addr, 5);
 
     ce_high();
@@ -134,6 +145,7 @@ void nrf24l01p_tx_init(channel MHz, air_data_rate bps) {
 }
 
 void nrf24l01p_rx_receive(uint8_t* rx_payload) {
+    nrf_timeout = 0;
     nrf24l01p_read_rx_fifo(rx_payload);
     nrf24l01p_clear_rx_dr();
 }
@@ -320,6 +332,14 @@ void nrf24l01p_set_crc_length(length bytes) {
             break;
     }
 
+    write_register(NRF24L01P_REG_CONFIG, new_config);
+}
+
+void nrf24l01p_disable_crc() {
+    uint8_t new_config = read_register(NRF24L01P_REG_CONFIG);
+    
+    // set byte 3 to 0
+    new_config &= 0xF7;
     write_register(NRF24L01P_REG_CONFIG, new_config);
 }
 

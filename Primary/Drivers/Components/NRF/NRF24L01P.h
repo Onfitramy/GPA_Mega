@@ -60,6 +60,9 @@ typedef enum
     _18dBm = 0
 } output_power;
 
+extern float nrf_timeout;
+
+extern uint8_t rx_data[NRF24L01P_PAYLOAD_LENGTH];
 
 /* Main Functions */
 void nrf24l01p_rx_init(channel MHz, air_data_rate bps);

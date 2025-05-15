@@ -102,9 +102,9 @@ int isInitialized = 0;
 // euler angles from control
 float euler_set[3] = {90, 0, 0};
 
-float K[3] = {1, 1, 0.2};
+float K[3] = {2, 2, 0.2};
 float Tv[3] = {1, 1, 1};
-float Tn[3] = {1, 1, 100};
+float Tn[3] = {10, 10, 100};
 
 float Ki[3], Kd[3];
 
@@ -120,6 +120,8 @@ float v_WorldFrame[3] = {0, 0, 0};  // Velocity
 float r_WorldFrame[3] = {0, 0, 0};  // Position
 
 float V3B[3];
+
+float throttle_cmd = 0;
 
 #ifdef TRANSMITTER
   uint8_t tx_data[NRF24L01P_PAYLOAD_LENGTH] = {0}; //Bit(Payload Lenght) array to store sending data
@@ -291,11 +293,12 @@ void StartDefaultTask(void *argument)
   signalPlotter_setSignalName(15, "ACC_X World");
   signalPlotter_setSignalName(16, "ACC_Y World");
   signalPlotter_setSignalName(17, "ACC_Z World");
-  signalPlotter_setSignalName(18, "VEL_X World");
-  signalPlotter_setSignalName(19, "VEL_Y World");
-  signalPlotter_setSignalName(20, "VEL_Z World");
-
-  signalPlotter_setSignalName(31, "delta Time");
+  signalPlotter_setSignalName(18, "phi set");
+  signalPlotter_setSignalName(19, "theta set");
+  signalPlotter_setSignalName(20, "psi set");
+  signalPlotter_setSignalName(21, "throttle cmd");
+  signalPlotter_setSignalName(22, "NRF timeout");
+  signalPlotter_setSignalName(23, "delta Time");
   
   arm_vec3_element_product_f32(K, Tv, Kd);
   Tn[0] = 1 / Tn[0];
@@ -307,6 +310,7 @@ void StartDefaultTask(void *argument)
   for(;;) {
     TimeMeasureStart(); // Start measuring time
     SelfTest(); // Run self-test on startup
+    nrf_timeout++;
     //BMP_GetPressureRaw(&pressure_raw);
     if(IMU1_VerifyDataReady() & 0x03 == 0x03) {
       IMU1_ReadSensorData(&imu1_data);
@@ -395,17 +399,35 @@ void StartDefaultTask(void *argument)
       isInitialized = 1;
     }
 
+    /*
     arm_mat_trans_f32(&M_rot, &M_rot_inv);
     arm_mat_vec_mult_f32(&M_rot_inv, imu1_data.accel, a_WorldFrame);
 
     a_WorldFrame[2] -= 9.80665;
     arm_vec3_scalar_mult_f32(a_WorldFrame, dt, V3B);
-    arm_vec3_add_f32(v_WorldFrame, V3B, v_WorldFrame);
+    arm_vec3_add_f32(v_WorldFrame, V3B, v_WorldFrame);*/
+
+    euler_set[0] = (rx_data[3] - 128) / 10. + 90;
+    euler_set[1] = (rx_data[2] - 126) / 10.;
+    euler_set[2] += -dt * (rx_data[0] - 127) / 2;
+    throttle_cmd = rx_data[1] / 2.55;
+
+    if(nrf_timeout < 100) {
+      SERVO_MoveToAngle(PY_MOTOR, throttle_cmd * 1.8);
+      SERVO_MoveToAngle(NY_MOTOR, throttle_cmd * 1.8);
+    } else {
+      SERVO_MoveToAngle(PY_MOTOR, 0);
+      SERVO_MoveToAngle(NY_MOTOR, 0);
+    }
 
     // PID __ phi = x | theta = z | psi = y
     arm_vec3_copy_f32(d_euler, d_euler_prior);
     arm_vec3_sub_f32(euler_set, euler_deg, d_euler);
-    arm_vec3_add_f32(I_sum, d_euler, I_sum);
+    if(throttle_cmd > 10) {
+      arm_vec3_add_f32(I_sum, d_euler, I_sum);
+    } else {
+      arm_vec3_sub_f32(I_sum, I_sum, I_sum);
+    }
 
     arm_vec3_element_product_f32(K, d_euler, P_term);
     arm_vec3_sub_f32(d_euler, d_euler_prior, D_term);
@@ -413,7 +435,6 @@ void StartDefaultTask(void *argument)
     arm_vec3_element_product_f32(Kd, D_term, D_term);
     arm_vec3_scalar_mult_f32(I_sum, dt, I_term);
     arm_vec3_element_product_f32(Ki, I_term, I_term);
-
     arm_vec3_add_f32(P_term, I_term, PID_out);
     arm_vec3_add_f32(PID_out, D_term, PID_out);
 
@@ -433,27 +454,29 @@ void Start100HzTask(void *argument) {
   const TickType_t xFrequency = 10; //100 Hz
   /* Infinite loop */
   for(;;) {
-    signalPlotter_sendData(0, mag_data.field[0]);
-    signalPlotter_sendData(1, mag_data.field[1]);
-    signalPlotter_sendData(2, mag_data.field[2]);
+    //signalPlotter_sendData(0, mag_data.field[0]);
+    //signalPlotter_sendData(1, mag_data.field[1]);
+    //signalPlotter_sendData(2, mag_data.field[2]);
     signalPlotter_sendData(3, imu1_data.accel[0]);
     signalPlotter_sendData(4, imu1_data.accel[1]);
     signalPlotter_sendData(5, imu1_data.accel[2]);
     signalPlotter_sendData(6, imu1_data.gyro[0]);
     signalPlotter_sendData(7, imu1_data.gyro[1]);
     signalPlotter_sendData(8, imu1_data.gyro[2]);
-    signalPlotter_sendData(9, phi);
-    signalPlotter_sendData(10, theta);
-    signalPlotter_sendData(11, psi);
-    signalPlotter_sendData(12, phi_fix);
-    signalPlotter_sendData(13, theta_fix);
-    signalPlotter_sendData(14, psi_fix);
-    signalPlotter_sendData(15, a_WorldFrame[0]);
-    signalPlotter_sendData(16, a_WorldFrame[1]);
-    signalPlotter_sendData(17, a_WorldFrame[2]);
-    signalPlotter_sendData(18, v_WorldFrame[0]);
-    signalPlotter_sendData(19, v_WorldFrame[1]);
-    signalPlotter_sendData(20, v_WorldFrame[2]);
+    signalPlotter_sendData(9, euler_deg[0]);
+    signalPlotter_sendData(10, euler_deg[1]);
+    signalPlotter_sendData(11, euler_deg[2]);
+    //signalPlotter_sendData(12, phi_fix);
+    //signalPlotter_sendData(13, theta_fix);
+    //signalPlotter_sendData(14, psi_fix);
+    //signalPlotter_sendData(15, a_WorldFrame[0]);
+    //signalPlotter_sendData(16, a_WorldFrame[1]);
+    //signalPlotter_sendData(17, a_WorldFrame[2]);
+    signalPlotter_sendData(18, euler_set[0]);
+    signalPlotter_sendData(19, euler_set[1]);
+    signalPlotter_sendData(20, euler_set[2]);
+    signalPlotter_sendData(21, throttle_cmd);
+    signalPlotter_sendData(22, (float)nrf_timeout);
 
     signalPlotter_executeTransmission(HAL_GetTick());
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
