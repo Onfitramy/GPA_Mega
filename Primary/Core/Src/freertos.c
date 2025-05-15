@@ -121,6 +121,10 @@ float r_WorldFrame[3] = {0, 0, 0};  // Position
 
 float V3B[3];
 
+#ifdef TRANSMITTER
+  uint8_t tx_data[NRF24L01P_PAYLOAD_LENGTH] = {0}; //Bit(Payload Lenght) array to store sending data
+#endif
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -414,11 +418,6 @@ void StartDefaultTask(void *argument)
     arm_vec3_add_f32(PID_out, D_term, PID_out);
 
     SERVO_TVC(PID_out[0], PID_out[1], PID_out[2]);
-
-    #ifdef RECEIVER
-      //nrf24l01p_rx_receive(rx_data);
-      uint8_t test = nrf24l01p_get_status();
-    #endif
 
     TimeMeasureStop(); // Stop measuring time
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz)

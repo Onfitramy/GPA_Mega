@@ -72,9 +72,6 @@ void MX_FREERTOS_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-#ifdef TRANSMITTER
-  uint8_t tx_data[NRF24L01P_PAYLOAD_LENGTH] = {0}; //Bit(Payload Lenght) array to store sending data
-#endif
 #ifdef RECEIVER
   uint8_t rx_data[NRF24L01P_PAYLOAD_LENGTH] = {0};
 #endif
@@ -152,11 +149,11 @@ int main(void)
   BMP_enable();
 
   #ifdef RECEIVER
-  nrf24l01p_rx_init(2476, _1Mbps);
+  nrf24l01p_rx_init(2476, _250kbps);
   #endif
 
   #ifdef TRANSMITTER
-  nrf24l01p_tx_init(2450, _1Mbps);
+  nrf24l01p_tx_init(2476, _250kbps);
   #endif
 
   for(counter1 = 0; IMU1_SelfTest() != 1; counter1++);

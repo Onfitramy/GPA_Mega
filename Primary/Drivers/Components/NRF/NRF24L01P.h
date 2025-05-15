@@ -36,7 +36,7 @@ extern SPI_HandleTypeDef hspi6;
 #define NRF_IRQ_PORT   GPIOD
 #define NRF_IRQ_PIN    GPIO_PIN_5
 
-#define NRF24L01P_PAYLOAD_LENGTH 5     // 1 - 32bytes
+#define NRF24L01P_PAYLOAD_LENGTH 7     // 1 - 32bytes
 
 /* nRF24L01+ typedefs */
 typedef uint8_t count;
