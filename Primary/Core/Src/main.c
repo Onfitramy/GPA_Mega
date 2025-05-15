@@ -75,6 +75,9 @@ void MX_FREERTOS_Init(void);
 #ifdef RECEIVER
   uint8_t rx_data[NRF24L01P_PAYLOAD_LENGTH] = {0};
 #endif
+#ifdef TRANSMITTER
+  uint8_t tx_data[NRF24L01P_PAYLOAD_LENGTH] = {0}; //Bit(Payload Lenght) array to store sending data
+#endif
 
 /* USER CODE END 0 */
 
@@ -134,20 +137,6 @@ int main(void)
   MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
 
-  int counter1, counter2, counter3;
-
-  SERVO_Init(PX_SERVO);
-  SERVO_Init(NX_SERVO);
-  SERVO_Init(PZ_SERVO);
-  SERVO_Init(NZ_SERVO);
-  SERVO_Init(PY_MOTOR);
-  SERVO_Init(NY_MOTOR);
-
-  //SERVO_TestSequence();
-
-  BMP_SelfTest();
-  BMP_enable();
-
   #ifdef RECEIVER
   nrf24l01p_rx_init(2476, _250kbps);
   #endif
@@ -156,47 +145,28 @@ int main(void)
   nrf24l01p_tx_init(2476, _250kbps);
   #endif
 
-  for(counter1 = 0; IMU1_SelfTest() != 1; counter1++);
-  for(counter2 = 0; IMU2_SelfTest() != 1; counter2++);
-  for(counter3 = 0; MAG_SelfTest() != 1; counter3++);
-
-  if(IMU1_Init() == HAL_OK && IMU2_Init() == HAL_OK && MAG_Init() == HAL_OK) Set_LED(0, 0, 255, 0);
-  else Set_LED(0, 255, 0, 0);
-  Set_Brightness(10);
-  WS2812_Send();
-
-  IMU1_VerifyDataReady();
-  IMU2_VerifyDataReady();
-  MAG_VerifyDataReady();
-
-  MAG_ConfigSensor(LIS3MDL_OM_ULTRA, LIS3MDL_ODR_80_Hz, LIS3MDL_FS_4, 1, 1);
-
-  IMU1_ConfigXL(LSM6DSR_ODR_1660_Hz, LSM6DSR_FS_XL_2, 0);
-  IMU1_ConfigG(LSM6DSR_ODR_1660_Hz, LSM6DSR_FS_G_2000);
-
-  IMU2_ConfigXL(ISM330DHCX_ODR_6660_Hz, ISM330DHCX_FS_XL_16, 0);
-  IMU2_ConfigG(ISM330DHCX_ODR_6660_Hz, ISM330DHCX_FS_G_4000);
-
   /* USER CODE END 2 */
 
   /* Init scheduler */
-  osKernelInitialize();
+  //osKernelInitialize();
 
   /* Call init function for freertos objects (in cmsis_os2.c) */
-  MX_FREERTOS_Init();
+  //MX_FREERTOS_Init();
 
   /* Start scheduler */
-  osKernelStart();
+  //osKernelStart();
 
   /* We should never get here as control is now taken by the scheduler */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+  while (1) {
     /* USER CODE END WHILE */
-    //HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
-    //HAL_Delay(1000);
+    #ifdef TRANSMITTER
+      nrf24l01p_tx_transmit(tx_data);
+    #endif
+    
+    HAL_Delay(100);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
