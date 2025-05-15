@@ -90,7 +90,7 @@ void nrf24l01p_rx_init(channel MHz, air_data_rate bps) {
     nrf24l01p_auto_retransmit_delay(250);
 
     //Set RX_ADDR_P0 (Receive Adress)
-    uint8_t rx_addr[5] = {"00000"};
+    uint8_t rx_addr[5] = {"10000"};
     write_register_bytes(NRF24L01P_REG_RX_ADDR_P0, rx_addr, 5);
 
     ce_high();
@@ -122,11 +122,11 @@ void nrf24l01p_tx_init(channel MHz, air_data_rate bps) {
     write_register(NRF24L01P_REG_FEATURE, 0x01);
 
     //Set TX_ADDR (Transmit address)
-    uint8_t tx_addr[5] = {"00000"};
+    uint8_t tx_addr[5] = {"10000"};
     write_register_bytes(NRF24L01P_REG_TX_ADDR, tx_addr, 5);
 
     //Set RX_ADDR_P0 (Receive Adress) for Auto acknowledgement
-    uint8_t rx_addr[5] = {"00000"};
+    uint8_t rx_addr[5] = {"10000"};
     write_register_bytes(NRF24L01P_REG_RX_ADDR_P0, rx_addr, 5);
 
     ce_high();
