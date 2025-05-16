@@ -102,8 +102,8 @@ int isInitialized = 0;
 // euler angles from control
 float euler_set[3] = {90, 0, 0};
 
-float K[3] = {2, 2, 0.2};
-float Tv[3] = {1, 1, 1};
+float K[3] = {2, 2, 0.5};
+float Tv[3] = {0.5, 0.5, 0.5};
 float Tn[3] = {10, 10, 100};
 
 float Ki[3], Kd[3];
@@ -122,6 +122,12 @@ float r_WorldFrame[3] = {0, 0, 0};  // Position
 float V3B[3];
 
 float throttle_cmd = 0;
+
+uint8_t offset_phi = 127;
+uint8_t offset_theta = 127;
+
+float psi_prior;
+int rotation_count = 0;
 
 #ifdef TRANSMITTER
   uint8_t tx_data[NRF24L01P_PAYLOAD_LENGTH] = {0}; //Bit(Payload Lenght) array to store sending data
@@ -366,13 +372,21 @@ void StartDefaultTask(void *argument)
     arm_mat_set_column_f32(&M_rot, 1, c2);
     arm_mat_set_column_f32(&M_rot, 2, c3);
 
+    psi_prior = psi;
+
     phi = atan2(arm_mat_get_entry_f32(&M_rot, 1, 2), arm_mat_get_entry_f32(&M_rot, 2, 2));
     theta = asin(-arm_mat_get_entry_f32(&M_rot, 0, 2));
     psi = atan2(arm_mat_get_entry_f32(&M_rot, 0, 1), arm_mat_get_entry_f32(&M_rot, 0, 0));
 
+    if(psi - psi_prior > M_PI) { // from -180 to 180
+      rotation_count--;
+    } else if(psi_prior - psi > M_PI) { // from 180 to -180
+      rotation_count++;
+    }
+
     euler_deg[0] = phi * 180. / M_PI;
     euler_deg[1] = theta * 180. / M_PI;
-    euler_deg[2] = psi * 180. / M_PI;
+    euler_deg[2] = psi * 180. / M_PI + 360. * rotation_count;
 
     // attitude estimation using magnetometer and accelerometer
     // normalize a and m vectors
@@ -407,9 +421,20 @@ void StartDefaultTask(void *argument)
     arm_vec3_scalar_mult_f32(a_WorldFrame, dt, V3B);
     arm_vec3_add_f32(v_WorldFrame, V3B, v_WorldFrame);*/
 
-    euler_set[0] = (rx_data[3] - 128) / 10. + 90;
-    euler_set[1] = (rx_data[2] - 126) / 10.;
-    euler_set[2] += -dt * (rx_data[0] - 127) / 2;
+    if(rx_data[4] == 0) {
+      offset_phi = rx_data[6];
+      offset_theta = rx_data[5];
+    } else if(rx_data[4] == 1) {
+      K[0] = K[1] = (float)rx_data[5] / 50.;
+      Kd[0] = Kd[1] = (float)rx_data[6] / 50.;
+    } else if(rx_data[4] == 2) {
+      K[2] = (float)rx_data[5] / 50.;
+      Kd[2] = (float)rx_data[6] / 50.;
+    }
+
+    euler_set[0] = (rx_data[3] - offset_phi) / 5. + 90;
+    euler_set[1] = (rx_data[2] - offset_theta) / 5.;
+    euler_set[2] += -2. * dt * (rx_data[0] - 127);
     throttle_cmd = rx_data[1] / 2.55;
 
     if(nrf_timeout < 100) {
