@@ -70,6 +70,10 @@ arm_matrix_instance_f32 M_rot_fix = {3, 3, M_rot_fix_data};
 float M_rot_inv_data[9];
 arm_matrix_instance_f32 M_rot_inv = {3, 3, M_rot_inv_data};
 
+// testing
+float M_rot_test_data[9];
+arm_matrix_instance_f32 M_rot_test = {3, 3, M_rot_test_data};
+
 // euler angles
 float phi, theta, psi;
 float euler_deg[3];
@@ -82,6 +86,8 @@ float dt = 0.001;
 
 float c1[3], c2[3], c3[3];
 
+float sin_vec[3], cos_vec[3];
+
 // unit basis vectors of inertial system expressed in body coordinates
 float base_xi[3];
 float base_yi[3];
@@ -91,10 +97,11 @@ float base_zi[3];
 float a_norm[3];
 float m_norm[3];
 
-// Variables for rate gyro calibration
+// Variables for calibration
 float gyr_sumup[3] = {0, 0, 0};
 float gyr_offset[3] = {0, 0, 0};
-int calib_counter = 0;
+float acc_sumup[3] = {0, 0, 0};
+float mag_sumup[3] = {0, 0, 0};
 
 int isInitialized = 0;
 
@@ -126,8 +133,8 @@ float throttle_cmd = 0;
 uint8_t offset_phi = 127;
 uint8_t offset_theta = 127;
 
-float psi_prior;
-int rotation_count = 0;
+float phi_prior, theta_prior, psi_prior;
+int phi_rot_count = 0, theta_rot_count = 0, psi_rot_count = 0;
 
 #ifdef TRANSMITTER
   uint8_t tx_data[NRF24L01P_PAYLOAD_LENGTH] = {0}; //Bit(Payload Lenght) array to store sending data
@@ -277,9 +284,6 @@ void StartDefaultTask(void *argument)
   /* USER CODE BEGIN StartDefaultTask */
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 1; //1000 Hz
-  arm_mat_set_entry_f32(&M_rot, 0, 0, 1);
-  arm_mat_set_entry_f32(&M_rot, 1, 1, 1);
-  arm_mat_set_entry_f32(&M_rot, 2, 2, 1);
 
   signalPlotter_setSignalName(0, "MAG_X");
   signalPlotter_setSignalName(1, "MAG_Y");
@@ -296,13 +300,13 @@ void StartDefaultTask(void *argument)
   signalPlotter_setSignalName(12, "phi fix");
   signalPlotter_setSignalName(13, "theta fix");
   signalPlotter_setSignalName(14, "psi fix");
-  signalPlotter_setSignalName(15, "ACC_X World");
-  signalPlotter_setSignalName(16, "ACC_Y World");
-  signalPlotter_setSignalName(17, "ACC_Z World");
-  signalPlotter_setSignalName(18, "phi set");
-  signalPlotter_setSignalName(19, "theta set");
-  signalPlotter_setSignalName(20, "psi set");
-  signalPlotter_setSignalName(21, "throttle cmd");
+  signalPlotter_setSignalName(15, "0");
+  signalPlotter_setSignalName(16, "0");
+  signalPlotter_setSignalName(17, "0");
+  signalPlotter_setSignalName(18, "0");
+  signalPlotter_setSignalName(19, "0");
+  signalPlotter_setSignalName(20, "0");
+  signalPlotter_setSignalName(21, "0");
   signalPlotter_setSignalName(22, "NRF timeout");
   signalPlotter_setSignalName(23, "delta Time");
   
@@ -312,6 +316,52 @@ void StartDefaultTask(void *argument)
   Tn[2] = 1 / Tn[2];
   arm_vec3_element_product_f32(K, Tn, Ki);
 
+  // calib
+
+  for(int calib_counter = 0; calib_counter < 1000; calib_counter++) { // imu
+    while(IMU1_VerifyDataReady() & 0x03 != 0x03); // wait for IMU1 data
+    IMU1_ReadSensorData(&imu1_data);
+    arm_vec3_sub_f32(imu1_data.accel, IMU1_offset, imu1_data.accel);
+    arm_vec3_element_product_f32(imu1_data.accel, IMU1_scale, imu1_data.accel);
+    arm_vec3_add_f32(gyr_sumup, imu1_data.gyro, gyr_sumup);
+    arm_vec3_add_f32(acc_sumup, imu1_data.accel, acc_sumup);
+  }
+  arm_vec3_scalar_mult_f32(gyr_sumup, 1. / 1000., gyr_offset);
+  arm_vec3_scalar_mult_f32(acc_sumup, 1. / 1000., acc_sumup);
+  arm_vec3_sub_f32(imu1_data.gyro, gyr_offset, imu1_data.gyro);
+
+  for(int calib_counter = 0; calib_counter < 10; calib_counter++) { // mag
+    while(!(MAG_VerifyDataReady() & 0b00000001)); // wait for MAG data
+    MAG_ReadSensorData(&mag_data);
+    arm_vec3_sub_f32(mag_data.field, MAG_offset, mag_data.field);
+    arm_vec3_element_product_f32(mag_data.field, MAG_scale, mag_data.field);
+    arm_vec3_add_f32(mag_sumup, mag_data.field, mag_sumup);
+  }
+  arm_vec3_scalar_mult_f32(mag_sumup, 1. / 100., mag_sumup);
+
+  // attitude estimation using magnetometer and accelerometer
+  // normalize a and m vectors
+  arm_vec3_copy_f32(acc_sumup, base_zi);
+  arm_vec3_copy_f32(mag_sumup, m_norm);
+  arm_vec3_normalize_f32(base_zi);
+  arm_vec3_normalize_f32(m_norm);
+
+  // calculate unit basis vectors
+  arm_vec3_cross_product_f32(base_zi, m_norm, base_yi);
+  arm_vec3_normalize_f32(base_yi);
+  arm_vec3_cross_product_f32(base_yi, base_zi, base_xi);
+
+  arm_mat_set_column_f32(&M_rot_fix, 0, base_xi);
+  arm_mat_set_column_f32(&M_rot_fix, 1, base_yi);
+  arm_mat_set_column_f32(&M_rot_fix, 2, base_zi);
+
+  euler_fix[0] = phi_fix = atan2(base_zi[1], base_zi[2]);
+  euler_fix[1] = theta_fix = asin(-base_zi[0]);
+  euler_fix[2] = psi_fix = atan2(base_yi[0], base_xi[0]);
+
+  arm_mat_copy_f32(&M_rot_fix, &M_rot);
+
+
   /* Infinite loop */
   for(;;) {
     TimeMeasureStart(); // Start measuring time
@@ -320,19 +370,8 @@ void StartDefaultTask(void *argument)
     //BMP_GetPressureRaw(&pressure_raw);
     if(IMU1_VerifyDataReady() & 0x03 == 0x03) {
       IMU1_ReadSensorData(&imu1_data);
-      arm_sub_f32(imu1_data.accel, IMU1_offset, imu1_data.accel, 3);
-      arm_mult_f32(imu1_data.accel, IMU1_scale, imu1_data.accel, 3);
-      
-      if (calib_counter < 1000) {
-        calib_counter++;
-        arm_vec3_add_f32(gyr_sumup, imu1_data.gyro, gyr_sumup);
-      }
-
-      else if (calib_counter == 1000) {
-        calib_counter++;
-        // calculate offset based on 1000 samples
-        arm_vec3_scalar_mult_f32(gyr_sumup, 1. / 1000., gyr_offset);
-      }
+      arm_vec3_sub_f32(imu1_data.accel, IMU1_offset, imu1_data.accel);
+      arm_vec3_element_product_f32(imu1_data.accel, IMU1_scale, imu1_data.accel);
       arm_vec3_sub_f32(imu1_data.gyro, gyr_offset, imu1_data.gyro);
     }
     
@@ -340,9 +379,24 @@ void StartDefaultTask(void *argument)
 
     if(MAG_VerifyDataReady() & 0b00000001) {
       MAG_ReadSensorData(&mag_data);
-      arm_sub_f32(mag_data.field, MAG_offset, mag_data.field, 3);
-      arm_mult_f32(mag_data.field, MAG_scale, mag_data.field, 3);
+      arm_vec3_sub_f32(mag_data.field, MAG_offset, mag_data.field);
+      arm_vec3_element_product_f32(mag_data.field, MAG_scale, mag_data.field);
     }
+
+    // write origin rotation matrix
+    c2[0] = sin_vec[2] * cos_vec[1];
+    c2[1] = sin_vec[2] * sin_vec[1] * sin_vec[0] + cos_vec[2] * cos_vec[0];
+    c2[2] = sin_vec[2] * sin_vec[1] * cos_vec[0] - cos_vec[2] * sin_vec[0];
+
+    c3[0] = -sin_vec[1];
+    c3[1] = cos_vec[1] * sin_vec[0];
+    c3[2] = cos_vec[1] * cos_vec[0];
+
+    arm_vec3_cross_product_f32(c2, c3, c1);
+
+    arm_mat_set_column_f32(&M_rot_test, 0, c1);
+    arm_mat_set_column_f32(&M_rot_test, 1, c2);
+    arm_mat_set_column_f32(&M_rot_test, 2, c3);
 
     // attitude estimation using gyroscopes and rotation matrix
     arm_mat_set_entry_f32(&M_rotUpdate, 0, 0, 1);
@@ -372,21 +426,42 @@ void StartDefaultTask(void *argument)
     arm_mat_set_column_f32(&M_rot, 1, c2);
     arm_mat_set_column_f32(&M_rot, 2, c3);
 
+    phi_prior = phi;
+    theta_prior = theta;
     psi_prior = psi;
 
     phi = atan2(arm_mat_get_entry_f32(&M_rot, 1, 2), arm_mat_get_entry_f32(&M_rot, 2, 2));
     theta = asin(-arm_mat_get_entry_f32(&M_rot, 0, 2));
     psi = atan2(arm_mat_get_entry_f32(&M_rot, 0, 1), arm_mat_get_entry_f32(&M_rot, 0, 0));
 
-    if(psi - psi_prior > M_PI) { // from -180 to 180
-      rotation_count--;
-    } else if(psi_prior - psi > M_PI) { // from 180 to -180
-      rotation_count++;
+    sin_vec[0] = sin(phi);
+    sin_vec[1] = sin(theta);
+    sin_vec[2] = sin(psi);
+    cos_vec[0] = cos(phi);
+    cos_vec[1] = cos(theta);
+    cos_vec[2] = cos(psi);
+
+    if(phi - phi_prior > M_PI) { // from -180 to 180
+      phi_rot_count--;
+    } else if(phi_prior - phi > M_PI) { // from 180 to -180
+      phi_rot_count++;
     }
 
-    euler_deg[0] = phi * 180. / M_PI;
-    euler_deg[1] = theta * 180. / M_PI;
-    euler_deg[2] = psi * 180. / M_PI + 360. * rotation_count;
+    if(theta - theta_prior > M_PI) { // from -180 to 180
+      theta_rot_count--;
+    } else if(theta_prior - theta > M_PI) { // from 180 to -180
+      theta_rot_count++;
+    }
+
+    if(psi - psi_prior > M_PI) { // from -180 to 180
+      psi_rot_count--;
+    } else if(psi_prior - psi > M_PI) { // from 180 to -180
+      psi_rot_count++;
+    }
+
+    euler_deg[0] = phi * 180. / M_PI + 360. * phi_rot_count;
+    euler_deg[1] = theta * 180. / M_PI + 360. * theta_rot_count;
+    euler_deg[2] = psi * 180. / M_PI + 360. * psi_rot_count;
 
     // attitude estimation using magnetometer and accelerometer
     // normalize a and m vectors
@@ -432,15 +507,21 @@ void StartDefaultTask(void *argument)
       Kd[2] = (float)rx_data[6] / 50.;
     }
 
-    euler_set[0] = (rx_data[3] - offset_phi) / 5. + 90;
-    euler_set[1] = (rx_data[2] - offset_theta) / 5.;
-    euler_set[2] += -2. * dt * (rx_data[0] - 127);
-    throttle_cmd = rx_data[1] / 2.55;
+
 
     if(nrf_timeout < 100) {
+      euler_set[0] = (rx_data[3] - offset_phi) / 5. + 90;
+      euler_set[1] = (rx_data[2] - offset_theta) / 5.;
+      euler_set[2] += -2. * dt * (rx_data[0] - 127);
+      throttle_cmd = rx_data[1] / 2.55;
+
       SERVO_MoveToAngle(PY_MOTOR, throttle_cmd * 1.8);
       SERVO_MoveToAngle(NY_MOTOR, throttle_cmd * 1.8);
     } else {
+      euler_set[0] = 90;
+      euler_set[1] = 0;
+      euler_set[2] = 0;
+
       SERVO_MoveToAngle(PY_MOTOR, 0);
       SERVO_MoveToAngle(NY_MOTOR, 0);
     }
@@ -479,28 +560,28 @@ void Start100HzTask(void *argument) {
   const TickType_t xFrequency = 10; //100 Hz
   /* Infinite loop */
   for(;;) {
-    //signalPlotter_sendData(0, mag_data.field[0]);
-    //signalPlotter_sendData(1, mag_data.field[1]);
-    //signalPlotter_sendData(2, mag_data.field[2]);
+    signalPlotter_sendData(0, mag_data.field[0]);
+    signalPlotter_sendData(1, mag_data.field[1]);
+    signalPlotter_sendData(2, mag_data.field[2]);
     signalPlotter_sendData(3, imu1_data.accel[0]);
     signalPlotter_sendData(4, imu1_data.accel[1]);
     signalPlotter_sendData(5, imu1_data.accel[2]);
     signalPlotter_sendData(6, imu1_data.gyro[0]);
     signalPlotter_sendData(7, imu1_data.gyro[1]);
     signalPlotter_sendData(8, imu1_data.gyro[2]);
-    signalPlotter_sendData(9, euler_deg[0]);
-    signalPlotter_sendData(10, euler_deg[1]);
-    signalPlotter_sendData(11, euler_deg[2]);
-    //signalPlotter_sendData(12, phi_fix);
-    //signalPlotter_sendData(13, theta_fix);
-    //signalPlotter_sendData(14, psi_fix);
-    //signalPlotter_sendData(15, a_WorldFrame[0]);
-    //signalPlotter_sendData(16, a_WorldFrame[1]);
-    //signalPlotter_sendData(17, a_WorldFrame[2]);
-    signalPlotter_sendData(18, euler_set[0]);
-    signalPlotter_sendData(19, euler_set[1]);
-    signalPlotter_sendData(20, euler_set[2]);
-    signalPlotter_sendData(21, throttle_cmd);
+    signalPlotter_sendData(9, phi);
+    signalPlotter_sendData(10, theta);
+    signalPlotter_sendData(11, psi);
+    signalPlotter_sendData(12, phi_fix);
+    signalPlotter_sendData(13, theta_fix);
+    signalPlotter_sendData(14, psi_fix);
+    signalPlotter_sendData(15, 0);
+    signalPlotter_sendData(16, 0);
+    signalPlotter_sendData(17, 0);
+    signalPlotter_sendData(18, 0);
+    signalPlotter_sendData(19, 0);
+    signalPlotter_sendData(20, 0);
+    signalPlotter_sendData(21, 0);
     signalPlotter_sendData(22, (float)nrf_timeout);
 
     signalPlotter_executeTransmission(HAL_GetTick());
