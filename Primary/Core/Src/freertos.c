@@ -53,6 +53,12 @@ LIS3MDL_Data_t mag_data;
 float alpha;
 StateVector GPA_SV;
 uint32_t pressure_raw;
+uint32_t temperature_raw;
+bmp390_handle_t bmp_handle;
+float temperature, pressure;
+
+
+
 
 uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO, 4: GPS, 7:All checks passed
 
@@ -202,9 +208,11 @@ void StartDefaultTask(void *argument)
   for(;;) {
     SelfTest(); // Run self-test on startup
 
-    BMP_GetPressureRaw(&pressure_raw);
+    BMP_GetPressureRaw(&pressure_raw);  
+    BMP_GetTemperatureRaw(&temperature_raw);
     IMU1_ReadSensorData(&imu1_data);
     IMU2_ReadSensorData(&imu2_data);
+  
 
     if(MAG_VerifyDataReady() & 0b00000001) {
       MAG_ReadSensorData(&mag_data);
@@ -223,9 +231,21 @@ void StartDefaultTask(void *argument)
     SERVO_MoveToAngle(1, 2*alpha);
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz)
+
+
+  //   if (BMP_GetTemperatureRaw(&temperature_raw) && BMP_GetPressureRaw(&pressure_raw)) {
+        
+  //     // Kompensierte Temperatur berechnen (°C * 100)
+ temperature = bmp390_compensate_temperature(temperature_raw, &bmp_handle);  // float, z.B. °C
+    pressure = bmp390_compensate_pressure(pressure_raw, &bmp_handle);  // in Pa
+  // } else {
+  //     printf("Sensorwerte konnten nicht gelesen werden!\n");
+  // }
+}
+{
   }
 
-  
+
   /* USER CODE END StartDefaultTask */
 }
 
