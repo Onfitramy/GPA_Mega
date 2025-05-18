@@ -58,6 +58,8 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
+uint8_t rx_data[NRF24L01P_PAYLOAD_LENGTH] = {0};
+
 
 /* USER CODE END PV */
 
@@ -136,6 +138,8 @@ int main(void)
   SERVO_Init(1);
   BMP_SelfTest();
   BMP_enable();
+  BMP_Read_Calibration_Params(&bmp_handle);
+
 
   #ifdef RECEIVER
   nrf24l01p_rx_init(2450, _1Mbps);
