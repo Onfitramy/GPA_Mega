@@ -28,12 +28,7 @@ uint8_t BMP_SelfTest(void)
 
 // Ab hier Test von Daniel
 uint8_t BMP_enable(void) {
-    // uint8_t status = 0;
-    // BMP_write_reg(0x1B, 0x33);
-    // BMP_read_reg(0x1B, &status);
-    // if(status == 0x33) return 1;
-    // else return 0;
-
+ 
     // 1. Power Control Register: Pressure + Temperature aktiviert, Mode = Normal (bit 1:0 = 11)
     BMP_write_reg(BMP_390_PWR_CTRL_REG, 0x33);  // press_en=1, temp_en=1, mode=11
 
@@ -96,7 +91,7 @@ float bmp390_compensate_pressure(uint32_t uncomp_press, bmp390_handle_t *handle)
     float partial_data1, partial_data2, partial_data3, partial_data4;
     float partial_out1, partial_out2;
 
-    float t_lin = handle->t_lin; // Linearisierte Temperatur aus vorheriger Berechnung
+    float t_lin = handle->t_lin; 
 
     partial_data1 = handle->par_p6 * t_lin;
     partial_data2 = handle->par_p7 * t_lin * t_lin;
@@ -186,7 +181,7 @@ void BMP_Read_Calibration_Params(bmp390_handle_t *handle) {
     handle->p11 = (int8_t)buf[0];
 
     // Temperatur-Koeffizienten
-handle->par_t1 = handle->t1 / powf(2.0f, 8);               // = /256.0f
+handle->par_t1 = handle->t1 / powf(2.0f, -8);              
 handle->par_t2 = handle->t2 / powf(2.0f, 30);
 handle->par_t3 = handle->t3 / powf(2.0f, 48);
 
@@ -195,7 +190,7 @@ handle->par_p1  = (handle->p1 - powf(2.0f, 14)) / powf(2.0f, 20);
 handle->par_p2  = (handle->p2 - powf(2.0f, 14)) / powf(2.0f, 29);
 handle->par_p3  = handle->p3 / powf(2.0f, 32);
 handle->par_p4  = handle->p4 / powf(2.0f, 37);
-handle->par_p5  = handle->p5 / powf(2.0f, -3);              // = *8.0f
+handle->par_p5  = handle->p5 / powf(2.0f, -3);              
 handle->par_p6  = handle->p6 / powf(2.0f, 6);
 handle->par_p7  = handle->p7 / powf(2.0f, 8);
 handle->par_p8  = handle->p8 / powf(2.0f, 15);
