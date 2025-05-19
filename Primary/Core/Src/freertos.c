@@ -54,16 +54,11 @@ LSM6DSR_Data_t imu1_data;
 ISM330DHCX_Data_t imu2_data;
 LIS3MDL_Data_t mag_data;
 UBX_NAV_PVT gps_data;
-float alpha;
 StateVector GPA_SV;
 uint32_t pressure_raw;
-float yaw = 0;
 uint32_t temperature_raw;
 bmp390_handle_t bmp_handle;
 float temperature, pressure;
-
-
-
 
 uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO, 4: GPS, 7:All checks passed
 
@@ -230,8 +225,8 @@ void StartDefaultTask(void *argument)
   signalPlotter_setSignalName(6, "GYR_X");
   signalPlotter_setSignalName(7, "GYR_Y");
   signalPlotter_setSignalName(8, "GYR_Z");
-  signalPlotter_setSignalName(9, "yaw");
-  signalPlotter_setSignalName(31, "delta Time");
+  signalPlotter_setSignalName(9, "pressure");
+  signalPlotter_setSignalName(10, "temperature");
 
   /* Infinite loop */
   for(;;) {
@@ -241,10 +236,7 @@ void StartDefaultTask(void *argument)
     BMP_GetPressureRaw(&pressure_raw);  
     BMP_GetTemperatureRaw(&temperature_raw);
     IMU1_ReadSensorData(&imu1_data);
-    arm_sub_f32(imu1_data.accel, IMU1_offset, imu1_data.accel, 3);
-    arm_mult_f32(imu1_data.accel, IMU1_scale, imu1_data.accel, 3);
     IMU2_ReadSensorData(&imu2_data);
-  
 
     if(MAG_VerifyDataReady() & 0b00000001) {
       MAG_ReadSensorData(&mag_data);
@@ -252,10 +244,6 @@ void StartDefaultTask(void *argument)
       arm_mult_f32(mag_data.field, MAG_scale, mag_data.field, 3);
     }
 
-    yaw += imu1_data.gyro[2] * 0.001;
-
-    alpha = atan2(imu2_data.accel[1], imu2_data.accel[2])*180/M_PI;
-    SERVO_MoveToAngle(1, 2*alpha);
     TimeMeasureStop(); // Stop measuring time
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz)
 
@@ -291,7 +279,8 @@ void Start100HzTask(void *argument) {
     signalPlotter_sendData(6, imu1_data.gyro[0]);
     signalPlotter_sendData(7, imu1_data.gyro[1]);
     signalPlotter_sendData(8, imu1_data.gyro[2]);
-    signalPlotter_sendData(9, yaw);
+    signalPlotter_sendData(9, pressure);
+    signalPlotter_sendData(10, temperature);
 
     signalPlotter_executeTransmission(HAL_GetTick());
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
