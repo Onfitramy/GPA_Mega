@@ -41,6 +41,8 @@
 
 #include "signalPlotter.h"
 #include "calibration_data.h"
+
+#include "navigation.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -325,17 +327,19 @@ void StartDefaultTask(void *argument)
     arm_vec3_element_product_f32(imu1_data.accel, IMU1_scale, imu1_data.accel);
     arm_vec3_add_f32(gyr_sumup, imu1_data.gyro, gyr_sumup);
     arm_vec3_add_f32(acc_sumup, imu1_data.accel, acc_sumup);
+    HAL_Delay(1);
   }
   arm_vec3_scalar_mult_f32(gyr_sumup, 1. / 1000., gyr_offset);
   arm_vec3_scalar_mult_f32(acc_sumup, 1. / 1000., acc_sumup);
   arm_vec3_sub_f32(imu1_data.gyro, gyr_offset, imu1_data.gyro);
 
-  for(int calib_counter = 0; calib_counter < 10; calib_counter++) { // mag
+  for(int calib_counter = 0; calib_counter < 100; calib_counter++) { // mag
     while(!(MAG_VerifyDataReady() & 0b00000001)); // wait for MAG data
     MAG_ReadSensorData(&mag_data);
     arm_vec3_sub_f32(mag_data.field, MAG_offset, mag_data.field);
     arm_vec3_element_product_f32(mag_data.field, MAG_scale, mag_data.field);
     arm_vec3_add_f32(mag_sumup, mag_data.field, mag_sumup);
+    HAL_Delay(1);
   }
   arm_vec3_scalar_mult_f32(mag_sumup, 1. / 100., mag_sumup);
 
@@ -360,6 +364,17 @@ void StartDefaultTask(void *argument)
   euler_fix[2] = psi_fix = atan2(base_yi[0], base_xi[0]);
 
   arm_mat_copy_f32(&M_rot_fix, &M_rot);
+
+  phi = atan2(arm_mat_get_entry_f32(&M_rot, 1, 2), arm_mat_get_entry_f32(&M_rot, 2, 2));
+  theta = asin(-arm_mat_get_entry_f32(&M_rot, 0, 2));
+  psi = atan2(arm_mat_get_entry_f32(&M_rot, 0, 1), arm_mat_get_entry_f32(&M_rot, 0, 0));
+
+  sin_vec[0] = sin(phi);
+  sin_vec[1] = sin(theta);
+  sin_vec[2] = sin(psi);
+  cos_vec[0] = cos(phi);
+  cos_vec[1] = cos(theta);
+  cos_vec[2] = cos(psi);
 
 
   /* Infinite loop */
@@ -394,9 +409,9 @@ void StartDefaultTask(void *argument)
 
     arm_vec3_cross_product_f32(c2, c3, c1);
 
-    arm_mat_set_column_f32(&M_rot_test, 0, c1);
-    arm_mat_set_column_f32(&M_rot_test, 1, c2);
-    arm_mat_set_column_f32(&M_rot_test, 2, c3);
+    arm_mat_set_column_f32(&M_rot, 0, c1);
+    arm_mat_set_column_f32(&M_rot, 1, c2);
+    arm_mat_set_column_f32(&M_rot, 2, c3);
 
     // attitude estimation using gyroscopes and rotation matrix
     arm_mat_set_entry_f32(&M_rotUpdate, 0, 0, 1);
