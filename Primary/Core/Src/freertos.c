@@ -236,12 +236,18 @@ void StartDefaultTask(void *argument)
     BMP_GetPressureRaw(&pressure_raw);  
     BMP_GetTemperatureRaw(&temperature_raw);
     IMU1_ReadSensorData(&imu1_data);
+    #ifndef calibration_mode
+    arm_sub_f32(imu1_data.accel, IMU1_offset, imu1_data.accel, 3);
+    arm_mult_f32(imu1_data.accel, IMU1_scale, imu1_data.accel, 3);
+    #endif
     IMU2_ReadSensorData(&imu2_data);
 
     if(MAG_VerifyDataReady() & 0b00000001) {
       MAG_ReadSensorData(&mag_data);
+      #ifndef calibration_mode
       arm_sub_f32(mag_data.field, MAG_offset, mag_data.field, 3);
       arm_mult_f32(mag_data.field, MAG_scale, mag_data.field, 3);
+      #endif
     }
 
     TimeMeasureStop(); // Stop measuring time
