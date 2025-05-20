@@ -256,22 +256,14 @@ void StartDefaultTask(void *argument)
 
     alpha = atan2(imu2_data.accel[1], imu2_data.accel[2])*180/M_PI;
     SERVO_MoveToAngle(1, 2*alpha);
-    TimeMeasureStop(); // Stop measuring time
-    vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz)
 
-
-  //   if (BMP_GetTemperatureRaw(&temperature_raw) && BMP_GetPressureRaw(&pressure_raw)) {
-        
-  //     // Kompensierte Temperatur berechnen (°C * 100)
- temperature = bmp390_compensate_temperature(temperature_raw, &bmp_handle);  // float, z.B. °C
+    // Kompensierte Temperatur berechnen (°C * 100)
+    temperature = bmp390_compensate_temperature(temperature_raw, &bmp_handle);  // float, z.B. °C
     pressure = bmp390_compensate_pressure(pressure_raw, &bmp_handle);  // in Pa
-  // } else {
-  //     printf("Sensorwerte konnten nicht gelesen werden!\n");
-  // }
-}
-{
-  }
 
+    TimeMeasureStop(); // Stop measuring time
+    vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz) Always at the end of the loop
+  }
 
   /* USER CODE END StartDefaultTask */
 }
