@@ -82,7 +82,6 @@ float euler_deg[3];
 
 // euler angles from accelerations and magnetic field
 float phi_fix, theta_fix, psi_fix;
-float euler_fix[3];
 
 float dt = 0.001;
 
@@ -137,6 +136,10 @@ uint8_t offset_theta = 127;
 
 float phi_prior, theta_prior, psi_prior;
 int phi_rot_count = 0, theta_rot_count = 0, psi_rot_count = 0;
+
+// Kalman Filter
+float z[3]; // fix
+float x[6];
 
 #ifdef TRANSMITTER
   uint8_t tx_data[NRF24L01P_PAYLOAD_LENGTH] = {0}; //Bit(Payload Lenght) array to store sending data
@@ -359,15 +362,15 @@ void StartDefaultTask(void *argument)
   arm_mat_set_column_f32(&M_rot_fix, 1, base_yi);
   arm_mat_set_column_f32(&M_rot_fix, 2, base_zi);
 
-  euler_fix[0] = phi_fix = atan2(base_zi[1], base_zi[2]);
-  euler_fix[1] = theta_fix = asin(-base_zi[0]);
-  euler_fix[2] = psi_fix = atan2(base_yi[0], base_xi[0]);
+  z[0] = phi_fix = atan2(base_zi[1], base_zi[2]);
+  z[1] = theta_fix = asin(-base_zi[0]);
+  z[2] = psi_fix = atan2(base_yi[0], base_xi[0]);
 
   arm_mat_copy_f32(&M_rot_fix, &M_rot);
 
-  phi = atan2(arm_mat_get_entry_f32(&M_rot, 1, 2), arm_mat_get_entry_f32(&M_rot, 2, 2));
-  theta = asin(-arm_mat_get_entry_f32(&M_rot, 0, 2));
-  psi = atan2(arm_mat_get_entry_f32(&M_rot, 0, 1), arm_mat_get_entry_f32(&M_rot, 0, 0));
+  x[0] = phi = atan2(arm_mat_get_entry_f32(&M_rot, 1, 2), arm_mat_get_entry_f32(&M_rot, 2, 2));
+  x[1] = theta = asin(-arm_mat_get_entry_f32(&M_rot, 0, 2));
+  x[2] = psi = atan2(arm_mat_get_entry_f32(&M_rot, 0, 1), arm_mat_get_entry_f32(&M_rot, 0, 0));
 
   sin_vec[0] = sin(phi);
   sin_vec[1] = sin(theta);
@@ -380,13 +383,14 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;) {
     TimeMeasureStart(); // Start measuring time
-    SelfTest(); // Run self-test on startup
-    nrf_timeout++;
+    SelfTest();         // Run self-test on startup
+    nrf_timeout++;      // to detect loss of signal (LOS)
     //BMP_GetPressureRaw(&pressure_raw);
     if(IMU1_VerifyDataReady() & 0x03 == 0x03) {
       IMU1_ReadSensorData(&imu1_data);
       arm_vec3_sub_f32(imu1_data.accel, IMU1_offset, imu1_data.accel);
       arm_vec3_element_product_f32(imu1_data.accel, IMU1_scale, imu1_data.accel);
+      for(int i = 0; i < 3; i++) gyr_offset[i] = x[i + 3];                        // use offsets from KF update step
       arm_vec3_sub_f32(imu1_data.gyro, gyr_offset, imu1_data.gyro);
     }
     
@@ -398,7 +402,8 @@ void StartDefaultTask(void *argument)
       arm_vec3_element_product_f32(mag_data.field, MAG_scale, mag_data.field);
     }
 
-    // write origin rotation matrix
+    // write starting point rotation matrix from updated angles
+    
     c2[0] = sin_vec[2] * cos_vec[1];
     c2[1] = sin_vec[2] * sin_vec[1] * sin_vec[0] + cos_vec[2] * cos_vec[0];
     c2[2] = sin_vec[2] * sin_vec[1] * cos_vec[0] - cos_vec[2] * sin_vec[0];
@@ -445,9 +450,17 @@ void StartDefaultTask(void *argument)
     theta_prior = theta;
     psi_prior = psi;
 
-    phi = atan2(arm_mat_get_entry_f32(&M_rot, 1, 2), arm_mat_get_entry_f32(&M_rot, 2, 2));
-    theta = asin(-arm_mat_get_entry_f32(&M_rot, 0, 2));
-    psi = atan2(arm_mat_get_entry_f32(&M_rot, 0, 1), arm_mat_get_entry_f32(&M_rot, 0, 0));
+    x[0] = phi = atan2(arm_mat_get_entry_f32(&M_rot, 1, 2), arm_mat_get_entry_f32(&M_rot, 2, 2));
+    x[1] = theta = asin(-arm_mat_get_entry_f32(&M_rot, 0, 2));
+    x[2] = psi = atan2(arm_mat_get_entry_f32(&M_rot, 0, 1), arm_mat_get_entry_f32(&M_rot, 0, 0));
+
+    // KALMAN FILTER
+
+
+    // update angles for updated rotation matrix after KF update step
+    phi = x[0];
+    theta = x[1];
+    psi = x[2];
 
     sin_vec[0] = sin(phi);
     sin_vec[1] = sin(theta);
@@ -494,9 +507,9 @@ void StartDefaultTask(void *argument)
     arm_mat_set_column_f32(&M_rot_fix, 1, base_yi);
     arm_mat_set_column_f32(&M_rot_fix, 2, base_zi);
 
-    euler_fix[0] = phi_fix = atan2(base_zi[1], base_zi[2]);
-    euler_fix[1] = theta_fix = asin(-base_zi[0]);
-    euler_fix[2] = psi_fix = atan2(base_yi[0], base_xi[0]);
+    z[0] = phi_fix = atan2(base_zi[1], base_zi[2]);
+    z[1] = theta_fix = asin(-base_zi[0]);
+    z[2] = psi_fix = atan2(base_yi[0], base_xi[0]);
 
     if(isInitialized == 0) {
       arm_mat_copy_f32(&M_rot_fix, &M_rot);
