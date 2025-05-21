@@ -55,9 +55,15 @@
 LSM6DSR_Data_t imu1_data;
 ISM330DHCX_Data_t imu2_data;
 LIS3MDL_Data_t mag_data;
-ubx_nav_posllh_t gps_data;
+UBX_NAV_PVT gps_data;
 StateVector GPA_SV;
 uint32_t pressure_raw;
+uint32_t temperature_raw;
+bmp390_handle_t bmp_handle;
+float temperature, pressure;
+
+
+
 
 uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO, 4: GPS, 7:All checks passed
 
@@ -211,8 +217,8 @@ const osThreadAttr_t cmdLineTask_attributes = {
 osThreadId_t InterruptHandlerTaskHandle;
 const osThreadAttr_t InterruptHandlerTask_attributes = {
   .name = "InterruptHandlerTask",
-  .stack_size = 128 * 48,
-  .priority = (osPriority_t) osPriorityHigh,
+  .stack_size = 128 * 24,
+  .priority = (osPriority_t) osPriorityNormal,
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -283,6 +289,9 @@ void MX_FREERTOS_Init(void) {
 
   cmdLineTaskHandle = osThreadNew(vCommandConsoleTask, NULL, &cmdLineTask_attributes);
   InterruptHandlerTaskHandle = osThreadNew(StartInterruptHandlerTask, NULL, &InterruptHandlerTask_attributes);
+  if (InterruptHandlerTaskHandle == NULL) {
+    InterruptHandlerTaskHandle = NULL;
+  }
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -407,7 +416,13 @@ void StartDefaultTask(void *argument)
     TimeMeasureStart(); // Start measuring time
     SelfTest();         // Run self-test on startup
     nrf_timeout++;      // to detect loss of signal (LOS)
-    //BMP_GetPressureRaw(&pressure_raw);
+    BMP_GetPressureRaw(&pressure_raw);  
+    BMP_GetTemperatureRaw(&temperature_raw);
+
+    // Kompensierte Temperatur berechnen (°C * 100)
+    temperature = bmp390_compensate_temperature(temperature_raw, &bmp_handle);  // float, z.B. °C
+    pressure = bmp390_compensate_pressure(pressure_raw, &bmp_handle);  // in Pa
+
     if(IMU1_VerifyDataReady() & 0x03 == 0x03) {
       IMU1_ReadSensorData(&imu1_data);
       arm_vec3_sub_f32(imu1_data.accel, IMU1_offset, imu1_data.accel);
@@ -530,13 +545,10 @@ void StartDefaultTask(void *argument)
     arm_vec3_add_f32(P_term, I_term, PID_out);
     arm_vec3_add_f32(PID_out, D_term, PID_out);
 
-    SERVO_TVC(PID_out[0], PID_out[1], PID_out[2]);
-
     TimeMeasureStop(); // Stop measuring time
-    vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz)
+    vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz) Always at the end of the loop
   }
 
-  
   /* USER CODE END StartDefaultTask */
 }
 
@@ -654,6 +666,24 @@ void StartInterruptHandlerTask(void *argument)
     if (xQueueReceive(InterruptQueue, &receivedData, portMAX_DELAY) == pdTRUE) {
       if(receivedData == 0x10) {
         ublox_ReadOutput(GPS_Buffer); //Read the GPS output and decode it
+      }else if (receivedData == 0x11) {
+        HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
+        #ifdef RECEIVER
+          nrf24l01p_rx_receive(rx_data);
+          if(nrf24l01p_get_receivedPower()) {
+            Set_LED(0, 0, 255, 0);
+            Set_Brightness(45);
+            WS2812_Send();
+          } else {
+            Set_LED(0, 255, 0, 0);
+            Set_Brightness(45);
+            WS2812_Send();
+          }
+        #endif
+    
+        #ifdef TRANSMITTER
+          nrf24l01p_tx_irq();
+        #endif
       }
     }
     osDelay(5);

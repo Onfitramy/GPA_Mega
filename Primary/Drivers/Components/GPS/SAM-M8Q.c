@@ -116,14 +116,14 @@ void GPS_Init(void){
   }
 }
 
-uint8_t GPS_ReadSensorData(ubx_nav_posllh_t *posllh) {
+uint8_t GPS_ReadSensorData(UBX_NAV_PVT *posllh) {
   uint8_t UBX_MessageSend[16];
-  char UBX_MessageReturn[32];
-  int len = uUbxProtocolEncode(0x01, 0x02, NULL, 0, UBX_MessageSend);
+  char UBX_MessageReturn[96];
+  int len = uUbxProtocolEncode(0x01, 0x07, NULL, 0, UBX_MessageSend);
   ublox_Write(len, UBX_MessageSend);
   UBX_MessageType UBX_NAV_POSLLH  = ublox_ReadOutput(UBX_MessageReturn);
-  if(UBX_NAV_POSLLH.messageId == 2){
-    memcpy(posllh, UBX_NAV_POSLLH.messageBody, sizeof(ubx_nav_posllh_t));
+  if(UBX_NAV_POSLLH.messageId == 0x07){
+    memcpy(posllh, UBX_NAV_POSLLH.messageBody, sizeof(UBX_NAV_PVT));
     return 1; //Return 1 on success
   }else{
     return 0; //Return 0 on failure
