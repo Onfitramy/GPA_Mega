@@ -162,7 +162,7 @@ int main(void)
 
   if(IMU1_Init() == HAL_OK && IMU2_Init() == HAL_OK && MAG_Init() == HAL_OK) Set_LED(0, 0, 255, 0);
   else Set_LED(0, 255, 0, 0);
-  Set_Brightness(10);
+  Set_Brightness(5);
   WS2812_Send();
 
   IMU1_VerifyDataReady();

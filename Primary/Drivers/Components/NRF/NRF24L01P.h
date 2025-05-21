@@ -36,7 +36,7 @@ extern SPI_HandleTypeDef hspi6;
 #define NRF_IRQ_PORT   GPIOD
 #define NRF_IRQ_PIN    GPIO_PIN_5
 
-#define NRF24L01P_PAYLOAD_LENGTH 7     // 1 - 32bytes
+#define NRF24L01P_PAYLOAD_LENGTH 16     // 1 - 32bytes
 
 /* nRF24L01+ typedefs */
 typedef uint8_t count;
@@ -62,7 +62,14 @@ typedef enum
 
 extern float nrf_timeout;
 
-extern uint8_t rx_data[NRF24L01P_PAYLOAD_LENGTH];
+#pragma pack(push, 1)
+typedef struct {
+  float float1;
+  float float2;
+  float float3;
+  float float4;
+} Data_Package_Receive;
+#pragma pack(pop)
 
 /* Main Functions */
 void nrf24l01p_rx_init(channel MHz, air_data_rate bps);

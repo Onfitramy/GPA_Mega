@@ -62,9 +62,6 @@ uint32_t temperature_raw;
 bmp390_handle_t bmp_handle;
 float temperature, pressure;
 
-
-
-
 uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO, 4: GPS, 7:All checks passed
 
 float M_rot_fix_data[9];
@@ -169,8 +166,19 @@ float C_P_data[18];     // 3x6
 arm_matrix_instance_f32 C_P = {3, 6, C_P_data};
 
 #ifdef TRANSMITTER
-  uint8_t tx_data[NRF24L01P_PAYLOAD_LENGTH] = {0}; //Bit(Payload Lenght) array to store sending data
+  #pragma pack(push, 1)
+  typedef struct {
+    float float1;
+    float float2;
+    float float3;
+    float float4;
+  } Data_Package_Send;
+  #pragma pack(pop)
+
+  Data_Package_Send tx_data;
 #endif
+
+Data_Package_Receive rx_data;
 
 /* USER CODE END PD */
 
@@ -499,6 +507,13 @@ void StartDefaultTask(void *argument)
     euler_deg[1] = theta * 180. / M_PI + 360. * theta_rot_count;
     euler_deg[2] = psi * 180. / M_PI + 360. * psi_rot_count;
 
+    #ifdef TRANSMITTER
+    tx_data.float1 = 73.052;
+    tx_data.float2 = 0.4773;
+    tx_data.float3 = -95.96;
+    #endif
+
+    /*
     if(rx_data[4] == 0) {
       offset_phi = rx_data[6];
       offset_theta = rx_data[5];
@@ -525,7 +540,7 @@ void StartDefaultTask(void *argument)
 
       SERVO_MoveToAngle(PY_MOTOR, 0);
       SERVO_MoveToAngle(NY_MOTOR, 0);
-    }
+    }*/
 
     // PID __ phi = x | theta = z | psi = y
     arm_vec3_copy_f32(d_euler, d_euler_prior);
@@ -638,7 +653,9 @@ void Start10HzTask(void *argument) {
     GPS_ReadSensorData(&gps_data);
 
     #ifdef TRANSMITTER
-      nrf24l01p_tx_transmit(tx_data);
+      uint8_t tx_buf[NRF24L01P_PAYLOAD_LENGTH] = {255, 0, 255, 0, 127, 1, 127, 1};  
+      //memcpy(tx_buf, &tx_data, sizeof(Data_Package_Receive));
+      nrf24l01p_tx_transmit(tx_buf);
     #endif
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
@@ -669,16 +686,9 @@ void StartInterruptHandlerTask(void *argument)
       }else if (receivedData == 0x11) {
         HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
         #ifdef RECEIVER
-          nrf24l01p_rx_receive(rx_data);
-          if(nrf24l01p_get_receivedPower()) {
-            Set_LED(0, 0, 255, 0);
-            Set_Brightness(45);
-            WS2812_Send();
-          } else {
-            Set_LED(0, 255, 0, 0);
-            Set_Brightness(45);
-            WS2812_Send();
-          }
+        uint8_t rx_buf[NRF24L01P_PAYLOAD_LENGTH] = {0};  
+        nrf24l01p_rx_receive(rx_buf);
+        memcpy(&rx_data, rx_buf, sizeof(Data_Package_Receive));
         #endif
     
         #ifdef TRANSMITTER

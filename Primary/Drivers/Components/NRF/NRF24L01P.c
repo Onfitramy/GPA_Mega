@@ -3,7 +3,7 @@
 
 HAL_StatusTypeDef NRF_SPI_status;
 
-uint8_t rx_data[NRF24L01P_PAYLOAD_LENGTH] = {0};
+
 
 float nrf_timeout = 0;
 
@@ -123,7 +123,8 @@ void nrf24l01p_tx_init(channel MHz, air_data_rate bps) {
     nrf24l01p_set_rf_air_data_rate(bps);
     nrf24l01p_set_rf_tx_output_power(_0dBm);
 
-    nrf24l01p_set_crc_length(1);
+    //nrf24l01p_set_crc_length(1);
+    nrf24l01p_disable_crc();
     nrf24l01p_set_address_widths(5);
 
     nrf24l01p_auto_retransmit_count(3);
