@@ -308,6 +308,10 @@ void StartInterruptHandlerTask(void *argument)
   /* USER CODE BEGIN StartDefaultTask */
   uint8_t receivedData;
   char GPS_Buffer[100]; // Buffer for GPS data
+  #ifdef TRANSMITTER
+  tx_data[0] = 255;
+  tx_data[1] = 63;
+  #endif
   //HAL_NVIC_EnableIRQ(EXTI15_10_IRQn); //Disabled due to always triggering when GPS is not connected
   /* Infinite loop */
   for(;;)
@@ -319,15 +323,6 @@ void StartInterruptHandlerTask(void *argument)
         HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
         #ifdef RECEIVER
           nrf24l01p_rx_receive(rx_data);
-          if(nrf24l01p_get_receivedPower()) {
-            Set_LED(0, 0, 255, 0);
-            Set_Brightness(45);
-            WS2812_Send();
-          } else {
-            Set_LED(0, 255, 0, 0);
-            Set_Brightness(45);
-            WS2812_Send();
-          }
         #endif
     
         #ifdef TRANSMITTER
