@@ -58,8 +58,6 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-uint8_t rx_data[NRF24L01P_PAYLOAD_LENGTH] = {0};
-
 
 /* USER CODE END PV */
 
