@@ -132,22 +132,6 @@ int main(void)
   MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
 
-  int counter1, counter2, counter3;
-
-  SERVO_Init(PX_SERVO);
-  SERVO_Init(NX_SERVO);
-  SERVO_Init(PZ_SERVO);
-  SERVO_Init(NZ_SERVO);
-  SERVO_Init(PY_MOTOR);
-  SERVO_Init(NY_MOTOR);
-
-  //SERVO_TestSequence();
-
-  BMP_SelfTest();
-  BMP_enable();
-  BMP_Read_Calibration_Params(&bmp_handle);
-
-
   #ifdef RECEIVER
   nrf24l01p_rx_init(2476, _250kbps);
   #endif
@@ -155,10 +139,6 @@ int main(void)
   #ifdef TRANSMITTER
   nrf24l01p_tx_init(2476, _250kbps);
   #endif
-
-  for(counter1 = 0; IMU1_SelfTest() != 1; counter1++);
-  for(counter2 = 0; IMU2_SelfTest() != 1; counter2++);
-  for(counter3 = 0; MAG_SelfTest() != 1; counter3++);
 
   if(IMU1_Init() == HAL_OK && IMU2_Init() == HAL_OK && MAG_Init() == HAL_OK) Set_LED(0, 0, 255, 0);
   else Set_LED(0, 255, 0, 0);

@@ -56,127 +56,9 @@ LSM6DSR_Data_t imu1_data;
 ISM330DHCX_Data_t imu2_data;
 LIS3MDL_Data_t mag_data;
 UBX_NAV_PVT gps_data;
-StateVector GPA_SV;
-uint32_t pressure_raw;
-uint32_t temperature_raw;
-bmp390_handle_t bmp_handle;
-float temperature, pressure;
 
 uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO, 4: GPS, 7:All checks passed
 
-float M_rot_fix_data[9];
-arm_matrix_instance_f32 M_rot_fix = {3, 3, M_rot_fix_data};
-
-// euler angles
-float phi, theta, psi;
-float euler_deg[3];
-
-// euler angles from accelerations and magnetic field
-float phi_fix, theta_fix, psi_fix;
-
-float c1[3], c2[3], c3[3];
-
-// unit basis vectors of inertial system expressed in body coordinates
-float base_xi[3];
-float base_yi[3];
-float base_zi[3];
-
-// normalized acceleration and magnetic field vectors
-float a_norm[3];
-float m_norm[3];
-
-// Variables for calibration
-float gyr_sumup[3] = {0, 0, 0};
-float gyr_offset[3] = {0, 0, 0};
-float acc_sumup[3] = {0, 0, 0};
-float mag_sumup[3] = {0, 0, 0};
-
-int isInitialized = 0;
-
-// PID STUFF
-// euler angles from control
-float euler_set[3] = {90, 0, 0};
-
-float K[3] = {2, 2, 0.5};
-float Tv[3] = {0.5, 0.5, 0.5};
-float Tn[3] = {10, 10, 100};
-
-float Ki[3], Kd[3];
-
-float d_euler[3];
-float d_euler_prior[3];
-float I_sum[3] = {0, 0, 0};
-float P_term[3], I_term[3], D_term[3];
-
-float PID_out[3];
-
-float a_WorldFrame[3];              // Acceleration
-float v_WorldFrame[3] = {0, 0, 0};  // Velocity
-float r_WorldFrame[3] = {0, 0, 0};  // Position
-
-float V3B[3];
-
-float throttle_cmd = 0;
-
-uint8_t offset_phi = 127;
-uint8_t offset_theta = 127;
-
-float phi_prior, theta_prior, psi_prior;
-int phi_rot_count = 0, theta_rot_count = 0, psi_rot_count = 0;
-
-// Kalman Filter
-// time step
-float dt = 0.001;
-
-// state and output vectors
-float x[6];
-float dx[6];
-float z[3];
-float dz[3];
-
-float A_data[36] = {0}; // 6x6
-arm_matrix_instance_f32 A = {6, 6, A_data};
-float Atrans_data[36];  // 6x6
-arm_matrix_instance_f32 Atrans = {6, 6, Atrans_data};
-float B_data[18] = {0}; // 6x3
-arm_matrix_instance_f32 B = {6, 3, B_data};
-float Q_data[36] = {0}; // 6x6
-arm_matrix_instance_f32 Q = {6, 6, Q_data};
-float P_data[36] = {0}; // 6x6
-arm_matrix_instance_f32 P = {6, 6, P_data};
-float Mtmp_data[36];
-arm_matrix_instance_f32 Mtmp = {6, 6, Mtmp_data};
-float Mdeuler_data[9] = {0};
-arm_matrix_instance_f32 Mdeuler = {3, 3, Mdeuler_data};
-float C_data[18] = {0}; // 3x6
-arm_matrix_instance_f32 C = {3, 6, C_data};
-float R_data[9] = {0};  // 3x3
-arm_matrix_instance_f32 R = {3, 3, R_data};
-float Ctrans_data[18];  // 6x3
-arm_matrix_instance_f32 Ctrans = {6, 3, Ctrans_data};
-float S_data[9];        // 3x3
-arm_matrix_instance_f32 S = {3, 3, S_data};
-float Sinv_data[9];     // 3x3
-arm_matrix_instance_f32 Sinv = {3, 3, Sinv_data};
-float Kgain_data[18];   // 6x3
-arm_matrix_instance_f32 Kgain = {6, 3, Kgain_data};
-float P_Ctrans_data[18];// 6x3
-arm_matrix_instance_f32 P_Ctrans = {6, 3, P_Ctrans_data};
-float C_P_data[18];     // 3x6
-arm_matrix_instance_f32 C_P = {3, 6, C_P_data};
-
-#ifdef TRANSMITTER
-  #pragma pack(push, 1)
-  typedef struct {
-    float float1;
-    float float2;
-    float float3;
-    float float4;
-  } Data_Package_Send;
-  #pragma pack(pop)
-
-  Data_Package_Send tx_data;
-#endif
 
 Data_Package_Receive rx_data;
 
@@ -328,237 +210,22 @@ void StartDefaultTask(void *argument)
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 1; //1000 Hz
 
-  signalPlotter_setSignalName(0, "MAG_X");
-  signalPlotter_setSignalName(1, "MAG_Y");
-  signalPlotter_setSignalName(2, "MAG_Z");
-  signalPlotter_setSignalName(3, "ACC_X");
-  signalPlotter_setSignalName(4, "ACC_Y");
-  signalPlotter_setSignalName(5, "ACC_Z");
-  signalPlotter_setSignalName(6, "GYR_X");
-  signalPlotter_setSignalName(7, "GYR_Y");
-  signalPlotter_setSignalName(8, "GYR_Z");
-  signalPlotter_setSignalName(9, "phi");
-  signalPlotter_setSignalName(10, "theta");
-  signalPlotter_setSignalName(11, "psi");
-  signalPlotter_setSignalName(12, "phi fix");
-  signalPlotter_setSignalName(13, "theta fix");
-  signalPlotter_setSignalName(14, "psi fix");
-  signalPlotter_setSignalName(15, "p offset");
-  signalPlotter_setSignalName(16, "q offset");
-  signalPlotter_setSignalName(17, "r offset");
-  signalPlotter_setSignalName(18, "uncertainty");
-  signalPlotter_setSignalName(19, "0");
-  signalPlotter_setSignalName(20, "0");
-  signalPlotter_setSignalName(21, "0");
-  signalPlotter_setSignalName(22, "NRF timeout");
-  signalPlotter_setSignalName(23, "delta Time");
-  
-  arm_vec3_element_product_f32(K, Tv, Kd);
-  Tn[0] = 1 / Tn[0];
-  Tn[1] = 1 / Tn[1];
-  Tn[2] = 1 / Tn[2];
-  arm_vec3_element_product_f32(K, Tn, Ki);
-
-  for(int i = 0; i < 3; i++) {
-    arm_mat_set_entry_f32(&P, i, i, 1);
-    arm_mat_set_entry_f32(&P, i+3, i+3, 0.001);
-    arm_mat_set_entry_f32(&Q, i, i, 1e-8);
-    arm_mat_set_entry_f32(&Q, i+3, i+3, 1e-12);
-    arm_mat_set_entry_f32(&C, i, i, 1);
-    arm_mat_set_entry_f32(&R, i, i, 1);
-  }
-
-  arm_mat_set_entry_f32(&Mdeuler, 0, 0, 1);
-
-  // calib 
-  
-  for(int calib_counter = 0; calib_counter < 1000; calib_counter++) { // imu
-    while(IMU1_VerifyDataReady() & 0x03 != 0x03); // wait for IMU1 data
-    IMU1_ReadSensorData(&imu1_data);
-    arm_vec3_sub_f32(imu1_data.accel, IMU1_offset, imu1_data.accel);
-    arm_vec3_element_product_f32(imu1_data.accel, IMU1_scale, imu1_data.accel);
-    arm_vec3_add_f32(gyr_sumup, imu1_data.gyro, gyr_sumup);
-    arm_vec3_add_f32(acc_sumup, imu1_data.accel, acc_sumup);
-    HAL_Delay(1);
-  }
-  arm_vec3_scalar_mult_f32(gyr_sumup, 1. / 1000., gyr_offset);
-  arm_vec3_scalar_mult_f32(acc_sumup, 1. / 1000., acc_sumup);
-  arm_vec3_sub_f32(imu1_data.gyro, gyr_offset, imu1_data.gyro);
-
-  for(int calib_counter = 0; calib_counter < 100; calib_counter++) { // mag
-    while(!(MAG_VerifyDataReady() & 0b00000001)); // wait for MAG data
-    MAG_ReadSensorData(&mag_data);
-    arm_vec3_sub_f32(mag_data.field, MAG_offset, mag_data.field);
-    arm_vec3_element_product_f32(mag_data.field, MAG_scale, mag_data.field);
-    arm_vec3_add_f32(mag_sumup, mag_data.field, mag_sumup);
-    HAL_Delay(1);
-  }
-  arm_vec3_scalar_mult_f32(mag_sumup, 1. / 100., mag_sumup);
-
-  // attitude estimation using magnetometer and accelerometer
-  // normalize a and m vectors
-  arm_vec3_copy_f32(acc_sumup, base_zi);
-  arm_vec3_copy_f32(mag_sumup, m_norm);
-  arm_vec3_normalize_f32(base_zi);
-  arm_vec3_normalize_f32(m_norm);
-
-  // calculate unit basis vectors
-  arm_vec3_cross_product_f32(base_zi, m_norm, base_yi);
-  arm_vec3_normalize_f32(base_yi);
-  arm_vec3_cross_product_f32(base_yi, base_zi, base_xi);
-
-  arm_mat_set_column_f32(&M_rot_fix, 0, base_xi);
-  arm_mat_set_column_f32(&M_rot_fix, 1, base_yi);
-  arm_mat_set_column_f32(&M_rot_fix, 2, base_zi);
-
-  z[0] = phi_fix = atan2(base_zi[1], base_zi[2]);
-  z[1] = theta_fix = asin(-base_zi[0]);
-  z[2] = psi_fix = atan2(base_yi[0], base_xi[0]);
-
-  x[3] = gyr_offset[0];
-  x[4] = gyr_offset[1];
-  x[5] = gyr_offset[2];
+  signalPlotter_setSignalName(0, "delta time");
+  signalPlotter_setSignalName(1, "nrf timeout");
+  signalPlotter_setSignalName(2, "float1");
+  signalPlotter_setSignalName(3, "float2");
+  signalPlotter_setSignalName(4, "float3");
+  signalPlotter_setSignalName(5, "float4");
+  signalPlotter_setSignalName(6, "float5");
+  signalPlotter_setSignalName(7, "float6");
+  signalPlotter_setSignalName(8, "float7");
+  signalPlotter_setSignalName(9, "float8");
 
   /* Infinite loop */
   for(;;) {
     TimeMeasureStart(); // Start measuring time
     SelfTest();         // Run self-test on startup
     nrf_timeout++;      // to detect loss of signal (LOS)
-    BMP_GetPressureRaw(&pressure_raw);  
-    BMP_GetTemperatureRaw(&temperature_raw);
-
-    // Kompensierte Temperatur berechnen (°C * 100)
-    temperature = bmp390_compensate_temperature(temperature_raw, &bmp_handle);  // float, z.B. °C
-    pressure = bmp390_compensate_pressure(pressure_raw, &bmp_handle);  // in Pa
-
-    if(IMU1_VerifyDataReady() & 0x03 == 0x03) {
-      IMU1_ReadSensorData(&imu1_data);
-      arm_vec3_sub_f32(imu1_data.accel, IMU1_offset, imu1_data.accel);
-      arm_vec3_element_product_f32(imu1_data.accel, IMU1_scale, imu1_data.accel);
-    }
-    
-    //IMU2_ReadSensorData(&imu2_data);
-
-    if(MAG_VerifyDataReady() & 0b00000001) {
-      MAG_ReadSensorData(&mag_data);
-      arm_vec3_sub_f32(mag_data.field, MAG_offset, mag_data.field);
-      arm_vec3_element_product_f32(mag_data.field, MAG_scale, mag_data.field);
-    }
-
-    // KALMAN FILTER
-    phi_prior = phi = x[0];
-    theta_prior = theta = x[1];
-    psi_prior = psi = x[2];
-
-    // initialize A and B matrix
-    arm_mat_set_entry_f32(&Mdeuler, 0, 1, sin(phi)*tan(theta));
-    arm_mat_set_entry_f32(&Mdeuler, 0, 2, cos(phi)*tan(theta));
-    arm_mat_set_entry_f32(&Mdeuler, 1, 1, cos(phi));
-    arm_mat_set_entry_f32(&Mdeuler, 1, 2, -sin(phi));
-    arm_mat_set_entry_f32(&Mdeuler, 2, 1, sin(phi)/cos(theta));
-    arm_mat_set_entry_f32(&Mdeuler, 2, 2, cos(phi)/cos(theta));
-
-    for(int i = 0; i < 6; i++) {
-      arm_mat_set_entry_f32(&A, i, i, 1);
-    }
-    for(int i = 0; i < 3; i++) {
-      for(int j = 0; j < 3; j++) {
-        arm_mat_set_entry_f32(&A, i, j+3, -dt*arm_mat_get_entry_f32(&Mdeuler, i, j));
-        arm_mat_set_entry_f32(&B, i, j, dt*arm_mat_get_entry_f32(&Mdeuler, i, j));
-      }
-    }
-
-    // predicting state vector x
-    arm_mat_vec_mult_f32(&A, x, x);
-    arm_mat_vec_mult_f32(&B, imu1_data.gyro, dx);
-    arm_vecN_add_f32(6, x, dx, x);
-
-    phi = x[0];
-    theta = x[1];
-    psi = x[2];
-
-    // predicting state vector's covariance matrix P
-    arm_mat_trans_f32(&A, &Atrans);
-    arm_mat_mult_f32(&P, &Atrans, &Mtmp);
-    arm_mat_mult_f32(&A, &Mtmp, &P);
-    arm_mat_add_f32(&P, &Q, &P);
-
-    signalPlotter_sendData(18, arm_mat_get_entry_f32(&P, 0, 0));
-
-    if(phi - phi_prior > M_PI) { // from -180 to 180
-      phi_rot_count--;
-    } else if(phi_prior - phi > M_PI) { // from 180 to -180
-      phi_rot_count++;
-    }
-
-    if(theta - theta_prior > M_PI) { // from -180 to 180
-      theta_rot_count--;
-    } else if(theta_prior - theta > M_PI) { // from 180 to -180
-      theta_rot_count++;
-    }
-
-    if(psi - psi_prior > M_PI) { // from -180 to 180
-      psi_rot_count--;
-    } else if(psi_prior - psi > M_PI) { // from 180 to -180
-      psi_rot_count++;
-    }
-
-    euler_deg[0] = phi * 180. / M_PI + 360. * phi_rot_count;
-    euler_deg[1] = theta * 180. / M_PI + 360. * theta_rot_count;
-    euler_deg[2] = psi * 180. / M_PI + 360. * psi_rot_count;
-
-    #ifdef TRANSMITTER
-    tx_data.float1 = euler_deg[0];
-    tx_data.float2 = euler_deg[1];
-    tx_data.float3 = euler_deg[2];
-    #endif
-
-    /*
-    if(rx_data[4] == 0) {
-      offset_phi = rx_data[6];
-      offset_theta = rx_data[5];
-    } else if(rx_data[4] == 1) {
-      K[0] = K[1] = (float)rx_data[5] / 50.;
-      Kd[0] = Kd[1] = (float)rx_data[6] / 50.;
-    } else if(rx_data[4] == 2) {
-      K[2] = (float)rx_data[5] / 50.;
-      Kd[2] = (float)rx_data[6] / 50.;
-    }
-
-    if(nrf_timeout < 100) {
-      euler_set[0] = (rx_data[3] - offset_phi) / 5. + 90;
-      euler_set[1] = (rx_data[2] - offset_theta) / 5.;
-      euler_set[2] += -2. * dt * (rx_data[0] - 127);
-      throttle_cmd = rx_data[1] / 2.55;
-
-      SERVO_MoveToAngle(PY_MOTOR, throttle_cmd * 1.8);
-      SERVO_MoveToAngle(NY_MOTOR, throttle_cmd * 1.8);
-    } else {
-      euler_set[0] = 90;
-      euler_set[1] = 0;
-      euler_set[2] = 0;
-
-      SERVO_MoveToAngle(PY_MOTOR, 0);
-      SERVO_MoveToAngle(NY_MOTOR, 0);
-    }*/
-
-    // PID __ phi = x | theta = z | psi = y
-    arm_vec3_copy_f32(d_euler, d_euler_prior);
-    arm_vec3_sub_f32(euler_set, euler_deg, d_euler);
-    if(throttle_cmd > 10) {
-      arm_vec3_add_f32(I_sum, d_euler, I_sum);
-    } else {
-      arm_vec3_sub_f32(I_sum, I_sum, I_sum);
-    }
-
-    arm_vec3_element_product_f32(K, d_euler, P_term);
-    arm_vec3_sub_f32(d_euler, d_euler_prior, D_term);
-    arm_vec3_scalar_mult_f32(D_term, 1 / dt, D_term);
-    arm_vec3_element_product_f32(Kd, D_term, D_term);
-    arm_vec3_scalar_mult_f32(I_sum, dt, I_term);
-    arm_vec3_element_product_f32(Ki, I_term, I_term);
-    arm_vec3_add_f32(P_term, I_term, PID_out);
-    arm_vec3_add_f32(PID_out, D_term, PID_out);
 
     TimeMeasureStop(); // Stop measuring time
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz) Always at the end of the loop
@@ -573,71 +240,9 @@ void Start100HzTask(void *argument) {
   const TickType_t xFrequency = 10; //100 Hz
   /* Infinite loop */
   for(;;) {
-    signalPlotter_sendData(0, mag_data.field[0]);
-    signalPlotter_sendData(1, mag_data.field[1]);
-    signalPlotter_sendData(2, mag_data.field[2]);
-    signalPlotter_sendData(3, imu1_data.accel[0]);
-    signalPlotter_sendData(4, imu1_data.accel[1]);
-    signalPlotter_sendData(5, imu1_data.accel[2]);
-    signalPlotter_sendData(6, imu1_data.gyro[0]);
-    signalPlotter_sendData(7, imu1_data.gyro[1]);
-    signalPlotter_sendData(8, imu1_data.gyro[2]);
-    signalPlotter_sendData(9, phi);
-    signalPlotter_sendData(10, theta);
-    signalPlotter_sendData(11, psi);
-    signalPlotter_sendData(12, phi_fix);
-    signalPlotter_sendData(13, theta_fix);
-    signalPlotter_sendData(14, psi_fix);
-    signalPlotter_sendData(15, x[3]);
-    signalPlotter_sendData(16, x[4]);
-    signalPlotter_sendData(17, x[5]);
-    signalPlotter_sendData(19, 0);
-    signalPlotter_sendData(20, 0);
-    signalPlotter_sendData(21, 0);
-    signalPlotter_sendData(22, (float)nrf_timeout);
+    signalPlotter_sendData(1, (float)nrf_timeout);
 
     signalPlotter_executeTransmission(HAL_GetTick());
-
-    // attitude estimation using magnetometer and accelerometer
-    // normalize a and m vectors
-    arm_vec3_copy_f32(imu1_data.accel, base_zi);
-    arm_vec3_copy_f32(mag_data.field, m_norm);
-    arm_vec3_normalize_f32(base_zi);
-    arm_vec3_normalize_f32(m_norm);
-
-    // calculate unit basis vectors
-    arm_vec3_cross_product_f32(base_zi, m_norm, base_yi);
-    arm_vec3_normalize_f32(base_yi);
-    arm_vec3_cross_product_f32(base_yi, base_zi, base_xi);
-
-    arm_mat_set_column_f32(&M_rot_fix, 0, base_xi);
-    arm_mat_set_column_f32(&M_rot_fix, 1, base_yi);
-    arm_mat_set_column_f32(&M_rot_fix, 2, base_zi);
-
-    z[0] = phi_fix = atan2(base_zi[1], base_zi[2]);
-    z[1] = theta_fix = asin(-base_zi[0]);
-    z[2] = psi_fix = atan2(base_yi[0], base_xi[0]);
-
-    // Kalman Filter correction step
-    // Kalman Gain update
-    arm_mat_trans_f32(&C, &Ctrans);               // 3x6 = 6x3
-    arm_mat_mult_f32(&P, &Ctrans, &P_Ctrans);     // 6x6 * 6x3 = 6x3
-    arm_mat_mult_f32(&C, &P_Ctrans, &Sinv);       // 3x6 * 6x3 = 3x3
-    arm_mat_add_f32(&Sinv, &R, &S);               // 3x3 + 3x3 = 3x3
-    arm_mat_inverse_f32(&S, &Sinv);               // 3x3 = 3x3
-    arm_mat_mult_f32(&Ctrans, &Sinv, &P_Ctrans);  // 6x3 * 3x3 = 6x3
-    arm_mat_mult_f32(&P, &P_Ctrans, &Kgain);      // 6x6 * 6x3 = 6x3
-
-    // State Vector update
-    arm_mat_vec_mult_f32(&C, x, dz);      // 3x6 * 6x1 = 3x1
-    arm_vec3_sub_f32(z, dz, dz);          // 3x1 - 3x1 = 3x1
-    arm_mat_vec_mult_f32(&Kgain, dz, dx); // 6x3 * 3x1 = 6x1
-    arm_vecN_add_f32(6, x, dx, x);        // 6x1 + 6x1 = 6x1
-
-    // Covariance matrix update
-    arm_mat_mult_f32(&C, &P, &C_P);         // 3x6 * 6x6 = 3x6
-    arm_mat_mult_f32(&Kgain, &C_P, &Mtmp);  // 6x3 * 3x6 = 6x6
-    arm_mat_sub_f32(&P, &Mtmp, &P);         // 6x6 - 6x6 = 6x6
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }
@@ -689,6 +294,14 @@ void StartInterruptHandlerTask(void *argument)
         uint8_t rx_buf[NRF24L01P_PAYLOAD_LENGTH] = {0};  
         nrf24l01p_rx_receive(rx_buf);
         memcpy(&rx_data, rx_buf, sizeof(Data_Package_Receive));
+        signalPlotter_sendData(2, rx_data.float1);
+        signalPlotter_sendData(3, rx_data.float2);
+        signalPlotter_sendData(4, rx_data.float3);
+        signalPlotter_sendData(5, rx_data.float4);
+        signalPlotter_sendData(6, rx_data.float5);
+        signalPlotter_sendData(7, rx_data.float6);
+        signalPlotter_sendData(8, rx_data.float7);
+        signalPlotter_sendData(9, rx_data.float8);
         #endif
     
         #ifdef TRANSMITTER
