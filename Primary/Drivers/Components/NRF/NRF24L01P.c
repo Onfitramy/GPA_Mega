@@ -95,7 +95,7 @@ void nrf24l01p_rx_init(channel MHz, air_data_rate bps) {
     nrf24l01p_auto_retransmit_delay(250);
 
     // activate NOACK for all pipes
-    //write_register(NRF24L01P_REG_EN_AA, 0x00);
+    // write_register(NRF24L01P_REG_EN_AA, 0x00);
 
     //Set RX_ADDR_P0 (Receive Adress)
     uint8_t rx_addr[5] = {"ATHMO"};

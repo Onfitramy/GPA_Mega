@@ -172,6 +172,10 @@ arm_matrix_instance_f32 C_P = {3, 6, C_P_data};
     float float2;
     float float3;
     float float4;
+    float float5;
+    float float6;
+    float float7;
+    float float8;
   } Data_Package_Send;
   #pragma pack(pop)
 
@@ -508,28 +512,27 @@ void StartDefaultTask(void *argument)
     euler_deg[2] = psi * 180. / M_PI + 360. * psi_rot_count;
 
     #ifdef TRANSMITTER
-    tx_data.float1 = euler_deg[0];
-    tx_data.float2 = euler_deg[1];
-    tx_data.float3 = euler_deg[2];
+    tx_data.float1 = phi;
+    tx_data.float2 = theta;
+    tx_data.float3 = psi;
     #endif
-
-    /*
-    if(rx_data[4] == 0) {
-      offset_phi = rx_data[6];
-      offset_theta = rx_data[5];
-    } else if(rx_data[4] == 1) {
-      K[0] = K[1] = (float)rx_data[5] / 50.;
-      Kd[0] = Kd[1] = (float)rx_data[6] / 50.;
-    } else if(rx_data[4] == 2) {
-      K[2] = (float)rx_data[5] / 50.;
-      Kd[2] = (float)rx_data[6] / 50.;
+    
+    if(rx_data.BN == 0) {
+      offset_phi = rx_data.PR;
+      offset_theta = rx_data.PL;
+    } else if(rx_data.BN == 1) {
+      K[0] = K[1] = (float)rx_data.PL / 50.;
+      Kd[0] = Kd[1] = (float)rx_data.PR / 50.;
+    } else if(rx_data.BN == 2) {
+      K[2] = (float)rx_data.PL / 50.;
+      Kd[2] = (float)rx_data.PR / 50.;
     }
 
     if(nrf_timeout < 100) {
-      euler_set[0] = (rx_data[3] - offset_phi) / 5. + 90;
-      euler_set[1] = (rx_data[2] - offset_theta) / 5.;
-      euler_set[2] += -2. * dt * (rx_data[0] - 127);
-      throttle_cmd = rx_data[1] / 2.55;
+      euler_set[0] = (rx_data.JRY - offset_phi) / 5. + 90;
+      euler_set[1] = (rx_data.JRX - offset_theta) / 5.;
+      euler_set[2] += -2. * dt * (rx_data.JLX - 127);
+      throttle_cmd = rx_data.JLY / 2.55;
 
       SERVO_MoveToAngle(PY_MOTOR, throttle_cmd * 1.8);
       SERVO_MoveToAngle(NY_MOTOR, throttle_cmd * 1.8);
@@ -540,7 +543,7 @@ void StartDefaultTask(void *argument)
 
       SERVO_MoveToAngle(PY_MOTOR, 0);
       SERVO_MoveToAngle(NY_MOTOR, 0);
-    }*/
+    }
 
     // PID __ phi = x | theta = z | psi = y
     arm_vec3_copy_f32(d_euler, d_euler_prior);
@@ -639,6 +642,13 @@ void Start100HzTask(void *argument) {
     arm_mat_mult_f32(&Kgain, &C_P, &Mtmp);  // 6x3 * 3x6 = 6x6
     arm_mat_sub_f32(&P, &Mtmp, &P);         // 6x6 - 6x6 = 6x6
 
+    // transmit data
+    #ifdef TRANSMITTER
+    uint8_t tx_buf[NRF24L01P_PAYLOAD_LENGTH] = {0};  
+    memcpy(tx_buf, &tx_data, sizeof(Data_Package_Receive));
+    nrf24l01p_tx_transmit(tx_buf);
+    #endif
+
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }
   /* USER CODE END Start10HzTask */
@@ -651,12 +661,6 @@ void Start10HzTask(void *argument) {
   /* Infinite loop */
   for(;;) {
     GPS_ReadSensorData(&gps_data);
-
-    #ifdef TRANSMITTER
-      uint8_t tx_buf[NRF24L01P_PAYLOAD_LENGTH] = {0};  
-      memcpy(tx_buf, &tx_data, sizeof(Data_Package_Receive));
-      nrf24l01p_tx_transmit(tx_buf);
-    #endif
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
   }

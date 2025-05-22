@@ -36,7 +36,7 @@ extern SPI_HandleTypeDef hspi6;
 #define NRF_IRQ_PORT   GPIOD
 #define NRF_IRQ_PIN    GPIO_PIN_5
 
-#define NRF24L01P_PAYLOAD_LENGTH 16     // 1 - 32bytes
+#define NRF24L01P_PAYLOAD_LENGTH 7     // 1 - 32bytes
 
 /* nRF24L01+ typedefs */
 typedef uint8_t count;
@@ -64,10 +64,13 @@ extern float nrf_timeout;
 
 #pragma pack(push, 1)
 typedef struct {
-  float float1;
-  float float2;
-  float float3;
-  float float4;
+  uint8_t JLX;
+  uint8_t JLY;
+  uint8_t JRX;
+  uint8_t JRY;
+  uint8_t BN;
+  uint8_t PL;
+  uint8_t PR;
 } Data_Package_Receive;
 #pragma pack(pop)
 
