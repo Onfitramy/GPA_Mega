@@ -32,6 +32,18 @@ static uint8_t read_register(uint8_t reg) {
     return read_val;
 }
 
+static uint8_t read_register_bytes(uint8_t reg, uint8_t* read_val, uint8_t len) {
+    uint8_t command = NRF24L01P_CMD_R_REGISTER | reg;
+    uint8_t status;
+
+    cs_low();
+    HAL_SPI_TransmitReceive(&NRF_SPI, &command, &status, 1, 2000);
+    HAL_SPI_Receive(&NRF_SPI, read_val, len, 2000);
+    cs_high();
+
+    return status;
+}
+
 static uint8_t write_register(uint8_t reg, uint8_t value) {
     uint8_t command = NRF24L01P_CMD_W_REGISTER | reg;
     uint8_t status;
@@ -43,6 +55,15 @@ static uint8_t write_register(uint8_t reg, uint8_t value) {
     cs_high();
 
     return write_val;
+}
+
+void write_register_bytes(uint8_t reg, const uint8_t* data, uint8_t len) {
+    uint8_t command = NRF24L01P_CMD_W_REGISTER | (reg & 0x1F);
+
+    cs_low();
+    HAL_SPI_Transmit(&NRF_SPI, &command, 1, HAL_MAX_DELAY);
+    HAL_SPI_Transmit(&NRF_SPI, (uint8_t*)data, len, HAL_MAX_DELAY);
+    cs_high();
 }
 
 
@@ -69,7 +90,8 @@ void nrf24l01p_rx_init(channel MHz, air_data_rate bps) {
     nrf24l01p_auto_retransmit_delay(250);
 
     //Set RX_ADDR_P0 (Receive Adress)
-    write_register(NRF24L01P_REG_RX_ADDR_P0, 0xEBEBEEBEEB);
+    uint8_t rx_addr[5] = {"ATHMO"};
+    write_register_bytes(NRF24L01P_REG_RX_ADDR_P0, rx_addr, 5);
     
     ce_high();
     //Goes into standby 1

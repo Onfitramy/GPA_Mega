@@ -138,11 +138,11 @@ int main(void)
   BMP_enable();
 
   #ifdef RECEIVER
-  nrf24l01p_rx_init(2450, _1Mbps);
+  nrf24l01p_rx_init(2476, _250kbps);
   #endif
 
   #ifdef TRANSMITTER
-  nrf24l01p_tx_init(2450, _1Mbps);
+  nrf24l01p_tx_init(2476, _250kbps);
   #endif
 
   for(counter1 = 0; IMU1_SelfTest() != 1; counter1++);
