@@ -508,9 +508,9 @@ void StartDefaultTask(void *argument)
     euler_deg[2] = psi * 180. / M_PI + 360. * psi_rot_count;
 
     #ifdef TRANSMITTER
-    tx_data.float1 = 73.052;
-    tx_data.float2 = 0.4773;
-    tx_data.float3 = -95.96;
+    tx_data.float1 = euler_deg[0];
+    tx_data.float2 = euler_deg[1];
+    tx_data.float3 = euler_deg[2];
     #endif
 
     /*
@@ -653,8 +653,8 @@ void Start10HzTask(void *argument) {
     GPS_ReadSensorData(&gps_data);
 
     #ifdef TRANSMITTER
-      uint8_t tx_buf[NRF24L01P_PAYLOAD_LENGTH] = {255, 63};  
-      //memcpy(tx_buf, &tx_data, sizeof(Data_Package_Receive));
+      uint8_t tx_buf[NRF24L01P_PAYLOAD_LENGTH] = {0};  
+      memcpy(tx_buf, &tx_data, sizeof(Data_Package_Receive));
       nrf24l01p_tx_transmit(tx_buf);
     #endif
 

@@ -33,7 +33,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#define TRANSMITTER
+#define RECEIVER
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
