@@ -101,8 +101,8 @@ void nrf24l01p_rx_init(channel MHz, air_data_rate bps) {
     uint8_t rx_addr[5] = {"ATHMO"};
     write_register_bytes(NRF24L01P_REG_RX_ADDR_P0, rx_addr, 5);
 
-    uint8_t rx = 0;
-    rx = read_register(0x00);
+    //uint8_t rx = 0;
+    //rx = read_register(0x00);
 
     ce_high();
     //Goes into standby 1

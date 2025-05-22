@@ -653,7 +653,7 @@ void Start10HzTask(void *argument) {
     GPS_ReadSensorData(&gps_data);
 
     #ifdef TRANSMITTER
-      uint8_t tx_buf[NRF24L01P_PAYLOAD_LENGTH] = {255, 0, 255, 0, 127, 1, 127, 1};  
+      uint8_t tx_buf[NRF24L01P_PAYLOAD_LENGTH] = {255, 63};  
       //memcpy(tx_buf, &tx_data, sizeof(Data_Package_Receive));
       nrf24l01p_tx_transmit(tx_buf);
     #endif
