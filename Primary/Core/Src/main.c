@@ -147,14 +147,10 @@ int main(void)
   BMP_enable();
   BMP_Read_Calibration_Params(&bmp_handle);
 
-
-  #ifdef RECEIVER
-  nrf24l01p_rx_init(2476, _250kbps);
-  #endif
-
-  #ifdef TRANSMITTER
   nrf24l01p_tx_init(2476, _250kbps);
-  #endif
+  //nrf24l01p_rx_init(2476, _250kbps);
+  //nrf24l01p_stopListening();
+  nrf24l01p_startListening();
 
   for(counter1 = 0; IMU1_SelfTest() != 1; counter1++);
   for(counter2 = 0; IMU2_SelfTest() != 1; counter2++);

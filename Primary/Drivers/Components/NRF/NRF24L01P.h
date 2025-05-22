@@ -36,7 +36,8 @@ extern SPI_HandleTypeDef hspi6;
 #define NRF_IRQ_PORT   GPIOD
 #define NRF_IRQ_PIN    GPIO_PIN_5
 
-#define NRF24L01P_PAYLOAD_LENGTH 7     // 1 - 32bytes
+#define NRF24L01P_RX_PAYLOAD_LENGTH 7     // 1 - 32bytes
+#define NRF24L01P_TX_PAYLOAD_LENGTH 32    // 1 - 32bytes
 
 /* nRF24L01+ typedefs */
 typedef uint8_t count;
@@ -61,6 +62,9 @@ typedef enum
 } output_power;
 
 extern float nrf_timeout;
+
+// 0 = receive, 1 = transmit
+extern bool nrf_mode;
 
 #pragma pack(push, 1)
 typedef struct {
@@ -120,6 +124,11 @@ void nrf24l01p_set_crc_length(length bytes);
 void nrf24l01p_set_address_widths(widths bytes);
 void nrf24l01p_auto_retransmit_count(count cnt);
 void nrf24l01p_auto_retransmit_delay(delay us);
+
+void nrf24l01p_startListening();
+void nrf24l01p_stopListening();
+
+void delay_us(uint32_t us);
 
 
 /* nRF24L01+ Commands */

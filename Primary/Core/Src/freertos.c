@@ -62,6 +62,8 @@ uint32_t temperature_raw;
 bmp390_handle_t bmp_handle;
 float temperature, pressure;
 
+int counter = 0;
+
 uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO, 4: GPS, 7:All checks passed
 
 float M_rot_fix_data[9];
@@ -165,22 +167,20 @@ arm_matrix_instance_f32 P_Ctrans = {6, 3, P_Ctrans_data};
 float C_P_data[18];     // 3x6
 arm_matrix_instance_f32 C_P = {3, 6, C_P_data};
 
-#ifdef TRANSMITTER
-  #pragma pack(push, 1)
-  typedef struct {
-    float float1;
-    float float2;
-    float float3;
-    float float4;
-    float float5;
-    float float6;
-    float float7;
-    float float8;
-  } Data_Package_Send;
-  #pragma pack(pop)
+#pragma pack(push, 1)
+typedef struct {
+  float float1;
+  float float2;
+  float float3;
+  float float4;
+  float float5;
+  float float6;
+  float float7;
+  float float8;
+} Data_Package_Send;
+#pragma pack(pop)
 
-  Data_Package_Send tx_data;
-#endif
+Data_Package_Send tx_data;
 
 Data_Package_Receive rx_data;
 
@@ -529,13 +529,15 @@ void StartDefaultTask(void *argument)
     }
 
     if(nrf_timeout < 100) {
-      euler_set[0] = (rx_data.JRY - offset_phi) / 5. + 90;
-      euler_set[1] = (rx_data.JRX - offset_theta) / 5.;
-      euler_set[2] += -2. * dt * (rx_data.JLX - 127);
-      throttle_cmd = rx_data.JLY / 2.55;
+      if(rx_data.BN < 3) { // garbage filter
+        euler_set[0] = (rx_data.JRY - offset_phi) / 5. + 90;
+        euler_set[1] = (rx_data.JRX - offset_theta) / 5.;
+        euler_set[2] += -2. * dt * (rx_data.JLX - 127);
+        throttle_cmd = rx_data.JLY / 2.55;
 
-      SERVO_MoveToAngle(PY_MOTOR, throttle_cmd * 1.8);
-      SERVO_MoveToAngle(NY_MOTOR, throttle_cmd * 1.8);
+        SERVO_MoveToAngle(PY_MOTOR, throttle_cmd * 1.8);
+        SERVO_MoveToAngle(NY_MOTOR, throttle_cmd * 1.8);
+      }
     } else {
       euler_set[0] = 90;
       euler_set[1] = 0;
@@ -543,6 +545,10 @@ void StartDefaultTask(void *argument)
 
       SERVO_MoveToAngle(PY_MOTOR, 0);
       SERVO_MoveToAngle(NY_MOTOR, 0);
+
+      Set_LED(0, 255, 0, 0);
+      Set_Brightness(45);
+      WS2812_Send();
     }
 
     // PID __ phi = x | theta = z | psi = y
@@ -562,6 +568,10 @@ void StartDefaultTask(void *argument)
     arm_vec3_element_product_f32(Ki, I_term, I_term);
     arm_vec3_add_f32(P_term, I_term, PID_out);
     arm_vec3_add_f32(PID_out, D_term, PID_out);
+
+    if(rx_data.BN < 3) {
+      SERVO_TVC(PID_out[0], PID_out[1], PID_out[2]);
+    }
 
     TimeMeasureStop(); // Stop measuring time
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz) Always at the end of the loop
@@ -643,11 +653,13 @@ void Start100HzTask(void *argument) {
     arm_mat_sub_f32(&P, &Mtmp, &P);         // 6x6 - 6x6 = 6x6
 
     // transmit data
-    #ifdef TRANSMITTER
-    uint8_t tx_buf[NRF24L01P_PAYLOAD_LENGTH] = {0};  
-    memcpy(tx_buf, &tx_data, sizeof(Data_Package_Receive));
+    /*nrf24l01p_stopListening();
+    HAL_Delay(1);
+    uint8_t tx_buf[NRF24L01P_TX_PAYLOAD_LENGTH] = {0};  
+    memcpy(tx_buf, &tx_data, sizeof(tx_buf));
     nrf24l01p_tx_transmit(tx_buf);
-    #endif
+    HAL_Delay(2);
+    nrf24l01p_startListening();*/
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }
@@ -689,15 +701,21 @@ void StartInterruptHandlerTask(void *argument)
         ublox_ReadOutput(GPS_Buffer); //Read the GPS output and decode it
       }else if (receivedData == 0x11) {
         HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
-        #ifdef RECEIVER
-        uint8_t rx_buf[NRF24L01P_PAYLOAD_LENGTH] = {0};  
-        nrf24l01p_rx_receive(rx_buf);
-        memcpy(&rx_data, rx_buf, sizeof(Data_Package_Receive));
-        #endif
-    
-        #ifdef TRANSMITTER
+        
+        if(nrf_mode) {
           nrf24l01p_tx_irq();
-        #endif
+          Set_LED(0, 0, 0, 255);
+          Set_Brightness(45);
+          WS2812_Send();
+        } else {
+          uint8_t rx_buf[NRF24L01P_RX_PAYLOAD_LENGTH] = {0};  
+          nrf24l01p_rx_receive(rx_buf);
+          memcpy(&rx_data, rx_buf, sizeof(Data_Package_Receive));
+          counter++;
+          Set_LED(0, 255, 0, 255);
+          Set_Brightness(45);
+          WS2812_Send();
+        }
       }
     }
     osDelay(5);
@@ -708,16 +726,9 @@ void StartInterruptHandlerTask(void *argument)
 /* USER CODE BEGIN Application */
 
 uint8_t SelfTest(void) {
-  uint8_t R = 255;
-  uint8_t G = 0;
-  uint8_t B = 0;
-
   if((SelfTest_Bitfield == 0b11111) && (SelfTest_Bitfield != 0b10011111)){
-    R = 0;
-    G = 255;
-    B = 0;
-    Set_LED(0, R, G, B);
-    Set_Brightness(5);
+    Set_LED(0, 0, 255, 0);
+    Set_Brightness(45);
     WS2812_Send();
     SelfTest_Bitfield |= (1<<7);  //All checks passed
   }
@@ -727,12 +738,9 @@ uint8_t SelfTest(void) {
     SelfTest_Bitfield |= (MAG_SelfTest()<<2);
     SelfTest_Bitfield |= (BMP_SelfTest()<<3);
     SelfTest_Bitfield |= (GPS_VER_CHECK()<<4); //Check if GPS is connected and working
-    
-    R = 255;
-    G = 0;
-    B = 0;
-    Set_LED(0, R, G, B);
-    Set_Brightness(5);
+
+    Set_LED(0, 255, 0, 0);
+    Set_Brightness(45);
     WS2812_Send();
   }
 

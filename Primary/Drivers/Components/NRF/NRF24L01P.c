@@ -3,9 +3,9 @@
 
 HAL_StatusTypeDef NRF_SPI_status;
 
-
-
 float nrf_timeout = 0;
+
+bool nrf_mode = 0;
 
 static void cs_high(void) {
     HAL_GPIO_WritePin(NRF_CS_PORT, NRF_CS_PIN, GPIO_PIN_SET);
@@ -81,24 +81,24 @@ void nrf24l01p_rx_init(channel MHz, air_data_rate bps) {
 
     HAL_Delay(5);
 
-    nrf24l01p_rx_set_payload_widths(NRF24L01P_PAYLOAD_LENGTH);
+    nrf24l01p_rx_set_payload_widths(NRF24L01P_RX_PAYLOAD_LENGTH);
 
     nrf24l01p_set_rf_channel(MHz);
     nrf24l01p_set_rf_air_data_rate(bps);
     nrf24l01p_set_rf_tx_output_power(_0dBm);
 
-    nrf24l01p_set_crc_length(1);
-    //nrf24l01p_disable_crc();
+    //nrf24l01p_set_crc_length(1);
+    nrf24l01p_disable_crc();
     nrf24l01p_set_address_widths(5);
 
     nrf24l01p_auto_retransmit_count(3);
     nrf24l01p_auto_retransmit_delay(250);
 
     // activate NOACK for all pipes
-    // write_register(NRF24L01P_REG_EN_AA, 0x00);
+    write_register(NRF24L01P_REG_EN_AA, 0x00);
 
     //Set RX_ADDR_P0 (Receive Adress)
-    uint8_t rx_addr[5] = {"ATHMO"};
+    uint8_t rx_addr[5] = {"OMHTA"};
     write_register_bytes(NRF24L01P_REG_RX_ADDR_P0, rx_addr, 5);
 
     //uint8_t rx = 0;
@@ -106,6 +106,8 @@ void nrf24l01p_rx_init(channel MHz, air_data_rate bps) {
 
     ce_high();
     //Goes into standby 1
+
+    nrf_mode = 0;
 }
 
 void nrf24l01p_tx_init(channel MHz, air_data_rate bps) {
@@ -143,6 +145,8 @@ void nrf24l01p_tx_init(channel MHz, air_data_rate bps) {
 
     ce_high();
     //Goes into standby 1
+
+    nrf_mode = 1;
 }
 
 void nrf24l01p_rx_receive(uint8_t* rx_payload) {
@@ -153,6 +157,10 @@ void nrf24l01p_rx_receive(uint8_t* rx_payload) {
 
 void nrf24l01p_tx_transmit(uint8_t* tx_payload) {
     nrf24l01p_write_tx_fifo(tx_payload);
+
+    ce_high();
+    delay_us(15);
+    ce_low();
 }
 
 void nrf24l01p_tx_irq() {
@@ -179,7 +187,7 @@ void nrf24l01p_reset() {
     // Reset registers
     write_register(NRF24L01P_REG_CONFIG, 0x08);
     write_register(NRF24L01P_REG_EN_AA, 0x3F);
-    write_register(NRF24L01P_REG_EN_RXADDR, 0x03);
+    write_register(NRF24L01P_REG_EN_RXADDR, 0x01);
     write_register(NRF24L01P_REG_SETUP_AW, 0x03);
     write_register(NRF24L01P_REG_SETUP_RETR, 0x03);
     write_register(NRF24L01P_REG_RF_CH, 0x02);
@@ -203,14 +211,14 @@ void nrf24l01p_reset() {
 
 void nrf24l01p_prx_mode() {
     uint8_t new_config = read_register(NRF24L01P_REG_CONFIG);
-    new_config |= 1 << 0;
+    new_config |= 1 << 0; // PRIM_RX
 
     write_register(NRF24L01P_REG_CONFIG, new_config);
 }
 
 void nrf24l01p_ptx_mode() {
     uint8_t new_config = read_register(NRF24L01P_REG_CONFIG);
-    new_config &= 0xFE;
+    new_config &= 0xFE;   // PRIM_TX
 
     write_register(NRF24L01P_REG_CONFIG, new_config);
 }
@@ -221,7 +229,7 @@ uint8_t nrf24l01p_read_rx_fifo(uint8_t* rx_payload) {
 
     cs_low();
     HAL_SPI_TransmitReceive(&NRF_SPI, &command, &status, 1, 2000);
-    HAL_SPI_Receive(&NRF_SPI, rx_payload, NRF24L01P_PAYLOAD_LENGTH, 2000);
+    HAL_SPI_Receive(&NRF_SPI, rx_payload, NRF24L01P_RX_PAYLOAD_LENGTH, 2000);
     cs_high();
 
     return status;
@@ -234,8 +242,8 @@ uint8_t nrf24l01p_write_tx_fifo(uint8_t* tx_payload) {
 
     cs_low();
     HAL_SPI_TransmitReceive(&NRF_SPI, &command, &status, 1, 2000);
-    HAL_SPI_Transmit(&NRF_SPI, tx_payload, NRF24L01P_PAYLOAD_LENGTH, 2000);
-    cs_high(); 
+    HAL_SPI_Transmit(&NRF_SPI, tx_payload, NRF24L01P_TX_PAYLOAD_LENGTH, 2000);
+    cs_high();
 
     return status;
 }
@@ -333,6 +341,8 @@ void nrf24l01p_set_crc_length(length bytes) {
             break;
     }
 
+    new_config |= 1 << 3; // make sure crc is enabled
+
     write_register(NRF24L01P_REG_CONFIG, new_config);
 }
 
@@ -393,4 +403,61 @@ void nrf24l01p_set_rf_air_data_rate(air_data_rate bps) {
             break;
     }
     write_register(NRF24L01P_REG_RF_SETUP, new_rf_setup);
+}
+
+void nrf24l01p_startListening() {
+    nrf_mode = 0;
+
+    ce_low();
+
+    write_register(NRF24L01P_REG_EN_AA, 0x00);
+
+    nrf24l01p_flush_rx_fifo();
+
+    write_register(NRF24L01P_REG_FEATURE, 0x00);
+
+    uint8_t rx_addr[5] = {"OMHTA"};
+    write_register_bytes(NRF24L01P_REG_RX_ADDR_P0, rx_addr, 5);
+
+    uint8_t config = read_register(NRF24L01P_REG_CONFIG);
+    config |= (1 << 1);   // PWR_UP (can skip if always set)
+    config |= (1 << 0);   // PRIM_RX
+    config &= ~(1 << 3);  // EN_CRC = 0
+    write_register(NRF24L01P_REG_CONFIG, config);
+
+    delay_us(150);
+
+    nrf24l01p_rx_set_payload_widths(NRF24L01P_RX_PAYLOAD_LENGTH);
+
+    ce_high();
+}
+
+void nrf24l01p_stopListening() {
+    nrf_mode = 1;
+    
+    ce_low();
+
+    write_register(NRF24L01P_REG_EN_AA, 0x3F);
+    
+    nrf24l01p_ptx_mode();
+
+    delay_us(150);
+
+    nrf24l01p_set_crc_length(1);
+
+    write_register(NRF24L01P_REG_FEATURE, 0x01);
+
+    //Set TX_ADDR (Transmit address)
+    uint8_t addr[5] = {"ATHMO"};
+    write_register_bytes(NRF24L01P_REG_TX_ADDR, addr, 5);
+
+    //Set RX_ADDR_P0 (Receive Adress) for Auto acknowledgement
+    write_register_bytes(NRF24L01P_REG_RX_ADDR_P0, addr, 5);
+
+    ce_high();
+}
+
+void delay_us(uint32_t us) {
+    uint32_t start_time = HAL_GetTickUS();
+    while(HAL_GetTickUS() < (start_time + us));
 }
