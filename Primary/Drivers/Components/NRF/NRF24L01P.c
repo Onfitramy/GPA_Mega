@@ -54,7 +54,7 @@ static uint8_t write_register(uint8_t reg, uint8_t value) {
     uint8_t write_val = value;
 
     cs_low();
-    HAL_StatusTypeDef test = HAL_SPI_TransmitReceive(&NRF_SPI, &command, &status, 1, 2000);
+    HAL_SPI_TransmitReceive(&NRF_SPI, &command, &status, 1, 2000);
     HAL_SPI_Transmit(&NRF_SPI, &write_val, 1, 2000);
     cs_high();
 
@@ -81,7 +81,7 @@ void nrf24l01p_rx_init(channel MHz, air_data_rate bps) {
 
     HAL_Delay(5);
 
-    nrf24l01p_rx_set_payload_widths(NRF24L01P_RX_PAYLOAD_LENGTH);
+    nrf24l01p_rx_set_payload_widths_P1(NRF24L01P_RX_PAYLOAD_LENGTH);
 
     nrf24l01p_set_rf_channel(MHz);
     nrf24l01p_set_rf_air_data_rate(bps);
@@ -98,8 +98,8 @@ void nrf24l01p_rx_init(channel MHz, air_data_rate bps) {
     write_register(NRF24L01P_REG_EN_AA, 0x00);
 
     //Set RX_ADDR_P0 (Receive Adress)
-    uint8_t rx_addr[5] = {"OMHTA"};
-    write_register_bytes(NRF24L01P_REG_RX_ADDR_P0, rx_addr, 5);
+    uint8_t addr[5] = {"OMHTA"};
+    write_register_bytes(NRF24L01P_REG_RX_ADDR_P1, addr, 5);
 
     //uint8_t rx = 0;
     //rx = read_register(0x00);
@@ -136,12 +136,11 @@ void nrf24l01p_tx_init(channel MHz, air_data_rate bps) {
     write_register(NRF24L01P_REG_FEATURE, 0x01);
 
     //Set TX_ADDR (Transmit address)
-    uint8_t tx_addr[5] = {"ATHMO"};
-    write_register_bytes(NRF24L01P_REG_TX_ADDR, tx_addr, 5);
+    uint8_t addr[5] = {"ATHMO"};
+    write_register_bytes(NRF24L01P_REG_TX_ADDR, addr, 5);
 
     //Set RX_ADDR_P0 (Receive Adress) for Auto acknowledgement
-    uint8_t rx_addr[5] = {"ATHMO"};
-    write_register_bytes(NRF24L01P_REG_RX_ADDR_P0, rx_addr, 5);
+    write_register_bytes(NRF24L01P_REG_RX_ADDR_P0, addr, 5);
 
     ce_high();
     //Goes into standby 1
@@ -157,10 +156,6 @@ void nrf24l01p_rx_receive(uint8_t* rx_payload) {
 
 void nrf24l01p_tx_transmit(uint8_t* tx_payload) {
     nrf24l01p_write_tx_fifo(tx_payload);
-
-    ce_high();
-    delay_us(15);
-    ce_low();
 }
 
 void nrf24l01p_tx_irq() {
@@ -187,7 +182,7 @@ void nrf24l01p_reset() {
     // Reset registers
     write_register(NRF24L01P_REG_CONFIG, 0x08);
     write_register(NRF24L01P_REG_EN_AA, 0x3F);
-    write_register(NRF24L01P_REG_EN_RXADDR, 0x01);
+    write_register(NRF24L01P_REG_EN_RXADDR, 0x03);
     write_register(NRF24L01P_REG_SETUP_AW, 0x03);
     write_register(NRF24L01P_REG_SETUP_RETR, 0x03);
     write_register(NRF24L01P_REG_RF_CH, 0x02);
@@ -288,8 +283,12 @@ uint8_t nrf24l01p_get_fifo_status() {
     return read_register(NRF24L01P_REG_FIFO_STATUS);
 }
 
-void nrf24l01p_rx_set_payload_widths(widths bytes) {
+void nrf24l01p_rx_set_payload_widths_P0(widths bytes) {
     write_register(NRF24L01P_REG_RX_PW_P0, bytes);
+}
+
+void nrf24l01p_rx_set_payload_widths_P1(widths bytes) {
+    write_register(NRF24L01P_REG_RX_PW_P1, bytes);
 }
 
 void nrf24l01p_clear_rx_dr() {
@@ -412,12 +411,7 @@ void nrf24l01p_startListening() {
 
     write_register(NRF24L01P_REG_EN_AA, 0x00);
 
-    nrf24l01p_flush_rx_fifo();
-
     write_register(NRF24L01P_REG_FEATURE, 0x00);
-
-    uint8_t rx_addr[5] = {"OMHTA"};
-    write_register_bytes(NRF24L01P_REG_RX_ADDR_P0, rx_addr, 5);
 
     uint8_t config = read_register(NRF24L01P_REG_CONFIG);
     config |= (1 << 1);   // PWR_UP (can skip if always set)
@@ -425,36 +419,36 @@ void nrf24l01p_startListening() {
     config &= ~(1 << 3);  // EN_CRC = 0
     write_register(NRF24L01P_REG_CONFIG, config);
 
+    ce_high();
+
     delay_us(150);
 
-    nrf24l01p_rx_set_payload_widths(NRF24L01P_RX_PAYLOAD_LENGTH);
-
-    ce_high();
+    nrf24l01p_flush_rx_fifo();
 }
 
-void nrf24l01p_stopListening() {
+void nrf24l01p_sendOnce(uint8_t* tx_payload) {
     nrf_mode = 1;
     
     ce_low();
 
     write_register(NRF24L01P_REG_EN_AA, 0x3F);
-    
-    nrf24l01p_ptx_mode();
-
-    delay_us(150);
-
-    nrf24l01p_set_crc_length(1);
 
     write_register(NRF24L01P_REG_FEATURE, 0x01);
 
-    //Set TX_ADDR (Transmit address)
-    uint8_t addr[5] = {"ATHMO"};
-    write_register_bytes(NRF24L01P_REG_TX_ADDR, addr, 5);
+    uint8_t config = read_register(NRF24L01P_REG_CONFIG);
+    config |= (1 << 1);   // PWR_UP (can skip if always set)
+    config &= ~(1 << 0);  // PRIM_TX
+    config |= (1 << 3);   // EN_CRC = 1
+    config &= 0xFB;       // CRCO = 1 byte
+    write_register(NRF24L01P_REG_CONFIG, config);
 
-    //Set RX_ADDR_P0 (Receive Adress) for Auto acknowledgement
-    write_register_bytes(NRF24L01P_REG_RX_ADDR_P0, addr, 5);
+    nrf24l01p_write_tx_fifo(tx_payload);
 
     ce_high();
+    delay_us(15);
+    ce_low();
+
+    delay_us(150);
 }
 
 void delay_us(uint32_t us) {

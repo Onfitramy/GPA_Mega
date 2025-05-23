@@ -103,7 +103,8 @@ uint8_t nrf24l01p_get_fifo_status();
 uint8_t nrf24l01p_get_receivedPower();
 
 // Static payload lengths
-void nrf24l01p_rx_set_payload_widths(widths bytes);
+void nrf24l01p_rx_set_payload_widths_P0(widths bytes);
+void nrf24l01p_rx_set_payload_widths_P1(widths bytes);
 
 uint8_t nrf24l01p_read_rx_fifo(uint8_t* rx_payload);
 uint8_t nrf24l01p_write_tx_fifo(uint8_t* tx_payload);
@@ -120,13 +121,14 @@ void nrf24l01p_set_rf_channel(channel MHz);
 void nrf24l01p_set_rf_tx_output_power(output_power dBm);
 void nrf24l01p_set_rf_air_data_rate(air_data_rate bps);
 
+void nrf24l01p_disable_crc();
 void nrf24l01p_set_crc_length(length bytes);
 void nrf24l01p_set_address_widths(widths bytes);
 void nrf24l01p_auto_retransmit_count(count cnt);
 void nrf24l01p_auto_retransmit_delay(delay us);
 
 void nrf24l01p_startListening();
-void nrf24l01p_stopListening();
+void nrf24l01p_sendOnce(uint8_t* tx_payload);
 
 void delay_us(uint32_t us);
 

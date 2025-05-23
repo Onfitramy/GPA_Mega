@@ -454,6 +454,36 @@ void StartDefaultTask(void *argument)
     theta_prior = theta = x[1];
     psi_prior = psi = x[2];
 
+    // attitude estimation using magnetometer and accelerometer
+    // normalize a and m vectors
+    arm_vec3_copy_f32(imu1_data.accel, base_zi);
+    arm_vec3_copy_f32(mag_data.field, m_norm);
+    arm_vec3_normalize_f32(base_zi);
+    arm_vec3_normalize_f32(m_norm);
+
+    // calculate unit basis vectors
+    arm_vec3_cross_product_f32(base_zi, m_norm, base_yi);
+    arm_vec3_normalize_f32(base_yi);
+    arm_vec3_cross_product_f32(base_yi, base_zi, base_xi);
+
+    arm_mat_set_column_f32(&M_rot_fix, 0, base_xi);
+    arm_mat_set_column_f32(&M_rot_fix, 1, base_yi);
+    arm_mat_set_column_f32(&M_rot_fix, 2, base_zi);
+
+    z[0] = phi_fix = atan2(base_zi[1], base_zi[2]);
+    z[1] = theta_fix = asin(-base_zi[0]);
+    z[2] = psi_fix = atan2(base_yi[0], base_xi[0]);
+
+    // normalize
+    phi_fix -= phi;
+    if(phi_fix > PI) {
+      phi_fix -= 2*PI;
+    }
+    if(phi_fix < -PI) {
+      phi_fix += 2*PI;
+    }
+    phi_fix += phi;
+
     // initialize A and B matrix
     arm_mat_set_entry_f32(&Mdeuler, 0, 1, sin(phi)*tan(theta));
     arm_mat_set_entry_f32(&Mdeuler, 0, 2, cos(phi)*tan(theta));
@@ -487,7 +517,14 @@ void StartDefaultTask(void *argument)
     arm_mat_mult_f32(&A, &Mtmp, &P);
     arm_mat_add_f32(&P, &Q, &P);
 
-    signalPlotter_sendData(18, arm_mat_get_entry_f32(&P, 0, 0));
+    // normalize
+    if(phi > PI) {
+      phi -= 2*PI;
+    }
+    if(phi < PI) {
+      phi += 2*PI;
+    }
+
 
     if(phi - phi_prior > M_PI) { // from -180 to 180
       phi_rot_count--;
@@ -510,12 +547,6 @@ void StartDefaultTask(void *argument)
     euler_deg[0] = phi * 180. / M_PI + 360. * phi_rot_count;
     euler_deg[1] = theta * 180. / M_PI + 360. * theta_rot_count;
     euler_deg[2] = psi * 180. / M_PI + 360. * psi_rot_count;
-
-    #ifdef TRANSMITTER
-    tx_data.float1 = phi;
-    tx_data.float2 = theta;
-    tx_data.float3 = psi;
-    #endif
     
     if(rx_data.BN == 0) {
       offset_phi = rx_data.PR;
@@ -546,9 +577,9 @@ void StartDefaultTask(void *argument)
       SERVO_MoveToAngle(PY_MOTOR, 0);
       SERVO_MoveToAngle(NY_MOTOR, 0);
 
-      Set_LED(0, 255, 0, 0);
-      Set_Brightness(45);
-      WS2812_Send();
+      //Set_LED(0, 255, 0, 0);
+      //Set_Brightness(45);
+      //WS2812_Send();
     }
 
     // PID __ phi = x | theta = z | psi = y
@@ -569,9 +600,7 @@ void StartDefaultTask(void *argument)
     arm_vec3_add_f32(P_term, I_term, PID_out);
     arm_vec3_add_f32(PID_out, D_term, PID_out);
 
-    if(rx_data.BN < 3) {
-      SERVO_TVC(PID_out[0], PID_out[1], PID_out[2]);
-    }
+    SERVO_TVC(PID_out[0], PID_out[1], PID_out[2]);
 
     TimeMeasureStop(); // Stop measuring time
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz) Always at the end of the loop
@@ -611,26 +640,6 @@ void Start100HzTask(void *argument) {
 
     signalPlotter_executeTransmission(HAL_GetTick());
 
-    // attitude estimation using magnetometer and accelerometer
-    // normalize a and m vectors
-    arm_vec3_copy_f32(imu1_data.accel, base_zi);
-    arm_vec3_copy_f32(mag_data.field, m_norm);
-    arm_vec3_normalize_f32(base_zi);
-    arm_vec3_normalize_f32(m_norm);
-
-    // calculate unit basis vectors
-    arm_vec3_cross_product_f32(base_zi, m_norm, base_yi);
-    arm_vec3_normalize_f32(base_yi);
-    arm_vec3_cross_product_f32(base_yi, base_zi, base_xi);
-
-    arm_mat_set_column_f32(&M_rot_fix, 0, base_xi);
-    arm_mat_set_column_f32(&M_rot_fix, 1, base_yi);
-    arm_mat_set_column_f32(&M_rot_fix, 2, base_zi);
-
-    z[0] = phi_fix = atan2(base_zi[1], base_zi[2]);
-    z[1] = theta_fix = asin(-base_zi[0]);
-    z[2] = psi_fix = atan2(base_yi[0], base_xi[0]);
-
     // Kalman Filter correction step
     // Kalman Gain update
     arm_mat_trans_f32(&C, &Ctrans);               // 3x6 = 6x3
@@ -652,14 +661,19 @@ void Start100HzTask(void *argument) {
     arm_mat_mult_f32(&Kgain, &C_P, &Mtmp);  // 6x3 * 3x6 = 6x6
     arm_mat_sub_f32(&P, &Mtmp, &P);         // 6x6 - 6x6 = 6x6
 
+    tx_data.float1 = phi;
+    tx_data.float2 = theta;
+    tx_data.float3 = psi;
+    tx_data.float4 = phi_fix;
+    tx_data.float5 = theta_fix;
+    tx_data.float6 = psi_fix;
+
     // transmit data
-    /*nrf24l01p_stopListening();
-    HAL_Delay(1);
     uint8_t tx_buf[NRF24L01P_TX_PAYLOAD_LENGTH] = {0};  
     memcpy(tx_buf, &tx_data, sizeof(tx_buf));
-    nrf24l01p_tx_transmit(tx_buf);
+    nrf24l01p_sendOnce(tx_buf);
     HAL_Delay(2);
-    nrf24l01p_startListening();*/
+    nrf24l01p_startListening();
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }
@@ -708,9 +722,11 @@ void StartInterruptHandlerTask(void *argument)
           Set_Brightness(45);
           WS2812_Send();
         } else {
-          uint8_t rx_buf[NRF24L01P_RX_PAYLOAD_LENGTH] = {0};  
+          uint8_t rx_buf[NRF24L01P_RX_PAYLOAD_LENGTH] = {0};
           nrf24l01p_rx_receive(rx_buf);
-          memcpy(&rx_data, rx_buf, sizeof(Data_Package_Receive));
+          if(rx_buf[4] != rx_buf[5]) { // discard trash data
+            memcpy(&rx_data, rx_buf, sizeof(Data_Package_Receive));
+          }        
           counter++;
           Set_LED(0, 255, 0, 255);
           Set_Brightness(45);
