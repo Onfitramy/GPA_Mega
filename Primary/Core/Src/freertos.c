@@ -415,9 +415,9 @@ void StartDefaultTask(void *argument)
   arm_mat_set_column_f32(&M_rot_fix, 1, base_yi);
   arm_mat_set_column_f32(&M_rot_fix, 2, base_zi);
 
-  x[0] = phi_fix = atan2(base_zi[1], base_zi[2]);
-  x[1] = theta_fix = asin(-base_zi[0]);
-  x[2] = psi_fix = atan2(base_yi[0], base_xi[0]);
+  x[0] = z[0] = phi_fix = atan2(base_zi[1], base_zi[2]);
+  x[1] = z[1] = theta_fix = asin(-base_zi[0]);
+  x[2] = z[2] = psi_fix = atan2(base_yi[0], base_xi[0]);
 
   x[3] = gyr_offset[0];
   x[4] = gyr_offset[1];
@@ -451,56 +451,6 @@ void StartDefaultTask(void *argument)
 
     // KALMAN FILTER
 
-    // attitude estimation using magnetometer and accelerometer
-    // normalize a and m vectors
-    arm_vec3_copy_f32(imu1_data.accel, base_zi);
-    arm_vec3_copy_f32(mag_data.field, m_norm);
-    arm_vec3_normalize_f32(base_zi);
-    arm_vec3_normalize_f32(m_norm);
-
-    // calculate unit basis vectors
-    arm_vec3_cross_product_f32(base_zi, m_norm, base_yi);
-    arm_vec3_normalize_f32(base_yi);
-    arm_vec3_cross_product_f32(base_yi, base_zi, base_xi);
-
-    arm_mat_set_column_f32(&M_rot_fix, 0, base_xi);
-    arm_mat_set_column_f32(&M_rot_fix, 1, base_yi);
-    arm_mat_set_column_f32(&M_rot_fix, 2, base_zi);
-
-    z[0] = phi_fix = atan2(base_zi[1], base_zi[2]);
-    z[1] = theta_fix = asin(-base_zi[0]);
-    z[2] = psi_fix = atan2(base_yi[0], base_xi[0]);
-
-    if(phi_fix - phi_prior > PI) { // from -180 to 180
-      phi_rot_count--;
-    } else if(phi_prior - phi_fix > PI) { // from 180 to -180
-      phi_rot_count++;
-    }
-
-    if(theta_fix - theta_prior > PI) { // from -180 to 180
-      theta_rot_count--;
-    } else if(theta_prior - theta_fix > PI) { // from 180 to -180
-      theta_rot_count++;
-    }
-
-    if(psi_fix - psi_prior > PI) { // from -180 to 180
-      psi_rot_count--;
-    } else if(psi_prior - psi_fix > PI) { // from 180 to -180
-      psi_rot_count++;
-    }
-
-    phi_fix += phi_rot_count * 2 * PI;
-    theta_fix += theta_rot_count * 2 * PI;
-    psi_fix += psi_rot_count * 2 * PI;
-
-    phi_prior = z[0];
-    theta_prior = z[1];
-    psi_prior = z[2];
-
-    z[0] = phi_fix;
-    z[1] = theta_fix;
-    z[2] = psi_fix;
-
     // initialize A and B matrix
     arm_mat_set_entry_f32(&Mdeuler, 0, 1, sin(phi)*tan(theta));
     arm_mat_set_entry_f32(&Mdeuler, 0, 2, cos(phi)*tan(theta));
@@ -528,19 +478,63 @@ void StartDefaultTask(void *argument)
     theta = x[1];
     psi = x[2];
 
+    // normalize prediction
+    if(phi > PI) {
+      phi -= 2*PI;
+    } else if(phi < -PI) {
+      phi += 2*PI;
+    }
+
+    if(theta > PI) {
+      theta -= 2*PI;
+    } else if(theta < -PI) {
+      theta += 2*PI;
+    }
+
+    if(psi > PI) {
+      psi -= 2*PI;
+    } else if(psi < -PI) {
+      psi += 2*PI;
+    }
+
+    x[0] = phi;
+    x[1] = theta;
+    x[2] = psi;
+
+    euler_deg[0] = phi * 180. / PI;
+    euler_deg[1] = theta * 180. / PI;
+    euler_deg[2] = psi * 180. / PI;
+
     // predicting state vector's covariance matrix P
     arm_mat_trans_f32(&A, &Atrans);
     arm_mat_mult_f32(&P, &Atrans, &Mtmp);
     arm_mat_mult_f32(&A, &Mtmp, &P);
     arm_mat_add_f32(&P, &Q, &P);
 
-    /*
-    // normalize
+    // attitude estimation using magnetometer and accelerometer
+    // normalize a and m vectors
+    arm_vec3_copy_f32(imu1_data.accel, base_zi);
+    arm_vec3_copy_f32(mag_data.field, m_norm);
+    arm_vec3_normalize_f32(base_zi);
+    arm_vec3_normalize_f32(m_norm);
+
+    // calculate unit basis vectors
+    arm_vec3_cross_product_f32(base_zi, m_norm, base_yi);
+    arm_vec3_normalize_f32(base_yi);
+    arm_vec3_cross_product_f32(base_yi, base_zi, base_xi);
+
+    arm_mat_set_column_f32(&M_rot_fix, 0, base_xi);
+    arm_mat_set_column_f32(&M_rot_fix, 1, base_yi);
+    arm_mat_set_column_f32(&M_rot_fix, 2, base_zi);
+
+    phi_fix = atan2(base_zi[1], base_zi[2]);
+    theta_fix = asin(-base_zi[0]);
+    psi_fix = atan2(base_yi[0], base_xi[0]);
+
     phi_fix -= phi;
     if(phi_fix > PI) {
       phi_fix -= 2*PI;
-    }
-    if(phi_fix < -PI) {
+    } else if(phi_fix < -PI) {
       phi_fix += 2*PI;
     }
     phi_fix += phi;
@@ -548,8 +542,7 @@ void StartDefaultTask(void *argument)
     theta_fix -= theta;
     if(theta_fix > PI) {
       theta_fix -= 2*PI;
-    }
-    if(theta_fix < -PI) {
+    } else if(theta_fix < -PI) {
       theta_fix += 2*PI;
     }
     theta_fix += theta;
@@ -557,37 +550,14 @@ void StartDefaultTask(void *argument)
     psi_fix -= psi;
     if(psi_fix > PI) {
       psi_fix -= 2*PI;
-    }
-    if(psi_fix < -PI) {
+    } else if(psi_fix < -PI) {
       psi_fix += 2*PI;
     }
     psi_fix += psi;
 
-    // normalize
-    if(phi > PI) {
-      phi -= 2*PI;
-    }
-    if(phi < PI) {
-      phi += 2*PI;
-    }
-
-    if(theta > PI) {
-      theta -= 2*PI;
-    }
-    if(theta < PI) {
-      theta += 2*PI;
-    }
-
-    if(psi > PI) {
-      psi -= 2*PI;
-    }
-    if(psi < PI) {
-      psi += 2*PI;
-    }*/
-
-    euler_deg[0] = phi * 180. / PI;
-    euler_deg[1] = theta * 180. / PI;
-    euler_deg[2] = psi * 180. / PI;
+    z[0] = phi_fix;
+    z[1] = theta_fix;
+    z[2] = psi_fix;
     
     if(rx_data.BN == 0) {
       offset_phi = rx_data.PR;
@@ -605,6 +575,11 @@ void StartDefaultTask(void *argument)
         euler_set[0] = (rx_data.JRY - offset_phi) / 5. + 90;
         euler_set[1] = (rx_data.JRX - offset_theta) / 5.;
         euler_set[2] += -2. * dt * (rx_data.JLX - 127);
+        if(euler_set[2] > 180) {
+          euler_set[2] -= 360;
+        } else if(euler_set[2] < -180) {
+          euler_set[2] += 360;
+        }
         throttle_cmd = rx_data.JLY / 2.55;
 
         SERVO_MoveToAngle(PY_MOTOR, throttle_cmd * 1.8);
@@ -617,10 +592,6 @@ void StartDefaultTask(void *argument)
 
       SERVO_MoveToAngle(PY_MOTOR, 0);
       SERVO_MoveToAngle(NY_MOTOR, 0);
-
-      //Set_LED(0, 255, 0, 0);
-      //Set_Brightness(45);
-      //WS2812_Send();
     }
 
     // PID __ phi = x | theta = z | psi = y
@@ -683,7 +654,7 @@ void Start100HzTask(void *argument) {
 
     // Kalman Filter correction step
     // Kalman Gain update
-    /*
+  /*
     arm_mat_trans_f32(&C, &Ctrans);               // 3x6 = 6x3
     arm_mat_mult_f32(&P, &Ctrans, &P_Ctrans);     // 6x6 * 6x3 = 6x3
     arm_mat_mult_f32(&C, &P_Ctrans, &Sinv);       // 3x6 * 6x3 = 3x3
@@ -698,11 +669,41 @@ void Start100HzTask(void *argument) {
     arm_mat_vec_mult_f32(&Kgain, dz, dx); // 6x3 * 3x1 = 6x1
     arm_vecN_add_f32(6, x, dx, x);        // 6x1 + 6x1 = 6x1
 
+    phi = x[0];
+    theta = x[1];
+    psi = x[2];
+
+    // normalize update
+    if(phi > PI) {
+      phi -= 2*PI;
+    }
+    if(phi < PI) {
+      phi += 2*PI;
+    }
+
+    if(theta > PI) {
+      theta -= 2*PI;
+    }
+    if(theta < PI) {
+      theta += 2*PI;
+    }
+
+    if(psi > PI) {
+      psi -= 2*PI;
+    }
+    if(psi < PI) {
+      psi += 2*PI;
+    }
+
+    x[0] = phi;
+    x[1] = theta;
+    x[2] = psi;
+
     // Covariance matrix update
     arm_mat_mult_f32(&C, &P, &C_P);         // 3x6 * 6x6 = 3x6
     arm_mat_mult_f32(&Kgain, &C_P, &Mtmp);  // 6x3 * 3x6 = 6x6
-    arm_mat_sub_f32(&P, &Mtmp, &P);         // 6x6 - 6x6 = 6x6
-    */
+    arm_mat_sub_f32(&P, &Mtmp, &P);         // 6x6 - 6x6 = 6x6*/
+  
 
     tx_data.float1 = phi;
     tx_data.float2 = theta;
