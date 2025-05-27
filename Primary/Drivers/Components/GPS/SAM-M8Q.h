@@ -78,6 +78,15 @@ typedef struct {
 } UBX_NAV_PVT;
 #pragma pack(pop)
 
+#pragma pack(push, 1)
+typedef struct {
+    uint16_t measRate;  // Measurement rate in milliseconds (1000 for 1Hz, 100 for 10Hz, etc.)
+    uint16_t navRate;   // he ratio between the number of measurements and the number of navigation solutions, e.g. 5 means five measurements for every navigation solution.
+    uint16_t timeRef;   // Time reference (0 for GPS time, 1 for UTC time)
+} UBX_CFG_RATE;
+#pragma pack(pop)
+
+
 uint8_t GPS_VER_CHECK(void);
 
 void GPS_Init(void);

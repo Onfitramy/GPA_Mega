@@ -113,6 +113,11 @@ void GPS_Init(void){
 
       GPSnotConfig = false; //Set to false to not configure again
     }
+
+    /*Then set naviation rate to 10Hz*/
+    uint8_t MessageBody2[6] = {100, 0, 1, 0, 0};
+    len = uUbxProtocolEncode(0x06, 0x08, MessageBody2, 6, UBX_MessageSend);
+    ublox_Write(len, UBX_MessageSend);
   }
 }
 
