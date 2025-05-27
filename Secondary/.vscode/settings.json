@@ -4,7 +4,8 @@
         "task.h": "c",
         "stm32f4xx_hal.h": "c",
         "vr.h": "c",
-        "math.h": "c"
+        "math.h": "c",
+        "interboardcom.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

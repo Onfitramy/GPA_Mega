@@ -41,6 +41,7 @@
 
 #include "signalPlotter.h"
 #include "calibration_data.h"
+#include "InterBoardCom.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -298,6 +299,8 @@ void Start10HzTask(void *argument) {
   /* Infinite loop */
   for(;;) {
     GPS_ReadSensorData(&gps_data);
+    
+    InterBoardCom_SendTestPacket(); //Send a test packet to the other board
 
     #ifdef TRANSMITTER
       nrf24l01p_tx_transmit(tx_data);

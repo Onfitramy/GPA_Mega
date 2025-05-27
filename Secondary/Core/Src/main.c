@@ -25,6 +25,7 @@
 #include "Buzzer.h"
 #include "ws2812.h"
 #include "VR.h"
+#include "InterBoardCom.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -51,6 +52,7 @@ I2C_HandleTypeDef hi2c2;
 SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
 SPI_HandleTypeDef hspi3;
+DMA_HandleTypeDef hdma_spi1_rx;
 
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
@@ -73,6 +75,7 @@ const osThreadAttr_t defaultTask_attributes = {
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_USB_OTG_HS_PCD_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_SPI2_Init(void);
@@ -94,6 +97,7 @@ void StartDefaultTask(void *argument);
 double TemperatureAMS;
 double voltage5V0bus;
 double voltageBATbus;
+uint8_t RX_Buffer [1] ;
 /* USER CODE END 0 */
 
 /**
@@ -125,6 +129,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USB_OTG_HS_PCD_Init();
   MX_SPI1_Init();
   MX_SPI2_Init();
@@ -136,11 +141,11 @@ int main(void)
   MX_ADC2_Init();
   MX_I2C2_Init();
   /* USER CODE BEGIN 2 */
-
+  InterBoardCom_ActivateReceive(); //Activate the SPI DMA receive
   /* USER CODE END 2 */
 
   /* Init scheduler */
-  osKernelInitialize();
+  //osKernelInitialize();
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
@@ -192,11 +197,21 @@ int main(void)
     TemperatureAMS = readTemperature(1);
     voltage5V0bus = readVoltage(1) * (10 + 10) / 10;
     voltageBATbus = readVoltage(2) * (10 + 2.2) / 2.2;
+    HAL_Delay(100);
     /* USER CODE BEGIN 3 */
-    HAL_Delay(500); //!BUG!In Reality 500.08 rarely 500.1 ms. Check timing config and HSE
-    HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin);
-  }
+    //HAL_Delay(500); //!BUG!In Reality 500.08 rarely 500.1 ms. Check timing config and HSE
+    //HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin);
   /* USER CODE END 3 */
+  }
+}
+
+void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi){
+  if (1) {
+    // DMA transfer complete callback for SPI1
+    // Process the received data in receiveBuffer
+    HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin);
+    InterBoardCom_ReceivePacket();
+  }
 }
 
 /**
@@ -669,6 +684,22 @@ static void MX_USB_OTG_HS_PCD_Init(void)
   /* USER CODE BEGIN USB_OTG_HS_Init 2 */
 
   /* USER CODE END USB_OTG_HS_Init 2 */
+
+}
+
+/**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA2_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA2_Stream0_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
 
 }
 

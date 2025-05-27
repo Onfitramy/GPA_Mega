@@ -25,6 +25,7 @@ target_include_directories(stm32cubemx INTERFACE
     ../../Drivers/Components/Buzzer
     ../../Drivers/Components/LED
     ../../Drivers/Components/VoltageReader
+    ../../Drivers/Libraries
 )
 
 target_sources(stm32cubemx INTERFACE
@@ -76,6 +77,7 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/Components/LED/ws2812.c
     ../../Drivers/Components/Buzzer/Buzzer.c
     ../../Drivers/Components/VoltageReader/VR.c
+    ../../Drivers/Libraries/InterBoardCom.c
 )
 
 target_link_directories(stm32cubemx INTERFACE
