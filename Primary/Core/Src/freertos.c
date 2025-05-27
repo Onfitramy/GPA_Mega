@@ -62,12 +62,17 @@ uint32_t temperature_raw;
 bmp390_handle_t bmp_handle;
 float temperature, pressure;
 
+double WGS84[3];
+double WGS84_ref[3] = {50.768692, 6.087405, 180.};
+
+double ECEF[3];
+double ECEF_ref[3];
+
+double ENU[3];
+
 int counter = 0;
 
 uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO, 4: GPS, 7:All checks passed
-
-float M_rot_fix_data[9];
-arm_matrix_instance_f32 M_rot_fix = {3, 3, M_rot_fix_data};
 
 // euler angles
 float phi, theta, psi;
@@ -76,24 +81,11 @@ float euler_deg[3];
 // euler angles from accelerations and magnetic field
 float phi_fix, theta_fix, psi_fix;
 
-float c1[3], c2[3], c3[3];
-
-// unit basis vectors of inertial system expressed in body coordinates
-float base_xi[3];
-float base_yi[3];
-float base_zi[3];
-
-// normalized acceleration and magnetic field vectors
-float a_norm[3];
-float m_norm[3];
-
 // Variables for calibration
 float gyr_sumup[3] = {0, 0, 0};
 float gyr_offset[3] = {0, 0, 0};
 float acc_sumup[3] = {0, 0, 0};
 float mag_sumup[3] = {0, 0, 0};
-
-int isInitialized = 0;
 
 // PID STUFF
 // euler angles from control
@@ -116,15 +108,10 @@ float a_WorldFrame[3];              // Acceleration
 float v_WorldFrame[3] = {0, 0, 0};  // Velocity
 float r_WorldFrame[3] = {0, 0, 0};  // Position
 
-float V3B[3];
-
 float throttle_cmd = 0;
 
 uint8_t offset_phi = 127;
 uint8_t offset_theta = 127;
-
-float phi_prior, theta_prior, psi_prior;
-int phi_rot_count = 0, theta_rot_count = 0, psi_rot_count = 0;
 
 // Kalman Filter
 // time step
@@ -146,7 +133,7 @@ float Q_data[36] = {0}; // 6x6
 arm_matrix_instance_f32 Q = {6, 6, Q_data};
 float P_data[36] = {0}; // 6x6
 arm_matrix_instance_f32 P = {6, 6, P_data};
-float Mtmp_data[36];
+float Mtmp_data[36];    // 6x6
 arm_matrix_instance_f32 Mtmp = {6, 6, Mtmp_data};
 float Mdeuler_data[9] = {0};
 arm_matrix_instance_f32 Mdeuler = {3, 3, Mdeuler_data};
@@ -400,28 +387,13 @@ void StartDefaultTask(void *argument)
   arm_vec3_scalar_mult_f32(mag_sumup, 1. / 100., mag_sumup);
 
   // attitude estimation using magnetometer and accelerometer
-  // normalize a and m vectors
-  arm_vec3_copy_f32(acc_sumup, base_zi);
-  arm_vec3_copy_f32(mag_sumup, m_norm);
-  arm_vec3_normalize_f32(base_zi);
-  arm_vec3_normalize_f32(m_norm);
-
-  // calculate unit basis vectors
-  arm_vec3_cross_product_f32(base_zi, m_norm, base_yi);
-  arm_vec3_normalize_f32(base_yi);
-  arm_vec3_cross_product_f32(base_yi, base_zi, base_xi);
-
-  arm_mat_set_column_f32(&M_rot_fix, 0, base_xi);
-  arm_mat_set_column_f32(&M_rot_fix, 1, base_yi);
-  arm_mat_set_column_f32(&M_rot_fix, 2, base_zi);
-
-  x[0] = z[0] = phi_fix = atan2(base_zi[1], base_zi[2]);
-  x[1] = z[1] = theta_fix = asin(-base_zi[0]);
-  x[2] = z[2] = psi_fix = atan2(base_yi[0], base_xi[0]);
+  OrientationFix(acc_sumup, mag_sumup, z);
 
   x[3] = gyr_offset[0];
   x[4] = gyr_offset[1];
   x[5] = gyr_offset[2];
+
+  WGS84toECEF(WGS84_ref, ECEF_ref);
 
   /* Infinite loop */
   for(;;) {
@@ -492,24 +464,7 @@ void StartDefaultTask(void *argument)
     arm_mat_add_f32(&P, &Q, &P);
 
     // attitude estimation using magnetometer and accelerometer
-    // normalize a and m vectors
-    arm_vec3_copy_f32(imu1_data.accel, base_zi);
-    arm_vec3_copy_f32(mag_data.field, m_norm);
-    arm_vec3_normalize_f32(base_zi);
-    arm_vec3_normalize_f32(m_norm);
-
-    // calculate unit basis vectors
-    arm_vec3_cross_product_f32(base_zi, m_norm, base_yi);
-    arm_vec3_normalize_f32(base_yi);
-    arm_vec3_cross_product_f32(base_yi, base_zi, base_xi);
-
-    arm_mat_set_column_f32(&M_rot_fix, 0, base_xi);
-    arm_mat_set_column_f32(&M_rot_fix, 1, base_yi);
-    arm_mat_set_column_f32(&M_rot_fix, 2, base_zi);
-
-    z[0] = atan2(base_zi[1], base_zi[2]);
-    z[1] = asin(-base_zi[0]);
-    z[2] = atan2(base_yi[0], base_xi[0]);
+    OrientationFix(imu1_data.accel, mag_data.field, z);
 
     normalizeAnglePairVector(x, z, 0, 2);
 
@@ -644,11 +599,11 @@ void Start100HzTask(void *argument) {
     tx_data.float1 = (float)gps_data.numSV;
     tx_data.float2 = (float)gps_data.hAcc / 1000.f;
     tx_data.float3 = (float)gps_data.vAcc / 1000.f;
-    tx_data.float4 = ((float)gps_data.lat * 1e-7f - 50.768595f) * PI / 360.f * 6378140.f;
-    tx_data.float5 = ((float)gps_data.lon * 1e-7f - 06.087701f) * PI / 360.f * 6378140.f;
-    tx_data.float6 = (float)gps_data.hMSL / 1000.f;
+    tx_data.float4 = (float)phi;
+    tx_data.float5 = (float)theta;
+    tx_data.float6 = (float)psi;
     tx_data.float7 = (float)gps_data.gSpeed / 1000.f;
-    tx_data.float8 = (float)gps_data.velD / 1000.f;
+    tx_data.float8 = (float)gps_data.hMSL / 1000.f;
 
     // transmit data
     uint8_t tx_buf[NRF24L01P_TX_PAYLOAD_LENGTH] = {0};  
@@ -669,6 +624,10 @@ void Start10HzTask(void *argument) {
   /* Infinite loop */
   for(;;) {
     GPS_ReadSensorData(&gps_data);
+
+    UBLOXtoWGS84(gps_data.lat, gps_data.lon, gps_data.height, WGS84);
+    WGS84toECEF(WGS84, ECEF);
+    ECEFtoENU(WGS84_ref, ECEF_ref, ECEF, ENU);
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
   }

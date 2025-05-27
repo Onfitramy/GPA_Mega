@@ -35,7 +35,8 @@
         "string.h": "c",
         "armmathaddon.h": "c",
         "calibration_data.h": "c",
-        "servo.h": "c"
+        "servo.h": "c",
+        "navigation.h": "c"
     },
     "cortex-debug.variableUseNaturalFormat": true
 }
