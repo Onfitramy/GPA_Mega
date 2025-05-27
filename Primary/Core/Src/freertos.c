@@ -474,32 +474,12 @@ void StartDefaultTask(void *argument)
     arm_mat_vec_mult_f32(&B, imu1_data.gyro, dx);
     arm_vecN_add_f32(6, x, dx, x);
 
+    // normalize phi, theta, psi to be within +-180 deg
+    normalizeAngleVector(x, 0, 2, PI, -PI);
+
     phi = x[0];
     theta = x[1];
     psi = x[2];
-
-    // normalize prediction
-    if(phi > PI) {
-      phi -= 2*PI;
-    } else if(phi < -PI) {
-      phi += 2*PI;
-    }
-
-    if(theta > PI) {
-      theta -= 2*PI;
-    } else if(theta < -PI) {
-      theta += 2*PI;
-    }
-
-    if(psi > PI) {
-      psi -= 2*PI;
-    } else if(psi < -PI) {
-      psi += 2*PI;
-    }
-
-    x[0] = phi;
-    x[1] = theta;
-    x[2] = psi;
 
     euler_deg[0] = phi * 180. / PI;
     euler_deg[1] = theta * 180. / PI;
@@ -527,37 +507,15 @@ void StartDefaultTask(void *argument)
     arm_mat_set_column_f32(&M_rot_fix, 1, base_yi);
     arm_mat_set_column_f32(&M_rot_fix, 2, base_zi);
 
-    phi_fix = atan2(base_zi[1], base_zi[2]);
-    theta_fix = asin(-base_zi[0]);
-    psi_fix = atan2(base_yi[0], base_xi[0]);
+    z[0] = atan2(base_zi[1], base_zi[2]);
+    z[1] = asin(-base_zi[0]);
+    z[2] = atan2(base_yi[0], base_xi[0]);
 
-    phi_fix -= phi;
-    if(phi_fix > PI) {
-      phi_fix -= 2*PI;
-    } else if(phi_fix < -PI) {
-      phi_fix += 2*PI;
-    }
-    phi_fix += phi;
+    normalizeAnglePairVector(x, z, 0, 2);
 
-    theta_fix -= theta;
-    if(theta_fix > PI) {
-      theta_fix -= 2*PI;
-    } else if(theta_fix < -PI) {
-      theta_fix += 2*PI;
-    }
-    theta_fix += theta;
-
-    psi_fix -= psi;
-    if(psi_fix > PI) {
-      psi_fix -= 2*PI;
-    } else if(psi_fix < -PI) {
-      psi_fix += 2*PI;
-    }
-    psi_fix += psi;
-
-    z[0] = phi_fix;
-    z[1] = theta_fix;
-    z[2] = psi_fix;
+    phi_fix = z[0];
+    theta_fix = z[1];
+    psi_fix = z[2];
     
     if(rx_data.BN == 0) {
       offset_phi = rx_data.PR;
@@ -654,7 +612,7 @@ void Start100HzTask(void *argument) {
 
     // Kalman Filter correction step
     // Kalman Gain update
-  /*
+  
     arm_mat_trans_f32(&C, &Ctrans);               // 3x6 = 6x3
     arm_mat_mult_f32(&P, &Ctrans, &P_Ctrans);     // 6x6 * 6x3 = 6x3
     arm_mat_mult_f32(&C, &P_Ctrans, &Sinv);       // 3x6 * 6x3 = 3x3
@@ -669,48 +627,28 @@ void Start100HzTask(void *argument) {
     arm_mat_vec_mult_f32(&Kgain, dz, dx); // 6x3 * 3x1 = 6x1
     arm_vecN_add_f32(6, x, dx, x);        // 6x1 + 6x1 = 6x1
 
+    // normalize phi, theta, psi to be within +-180 deg
+    normalizeAngleVector(x, 0, 2, PI, -PI);
+
     phi = x[0];
     theta = x[1];
     psi = x[2];
-
-    // normalize update
-    if(phi > PI) {
-      phi -= 2*PI;
-    }
-    if(phi < PI) {
-      phi += 2*PI;
-    }
-
-    if(theta > PI) {
-      theta -= 2*PI;
-    }
-    if(theta < PI) {
-      theta += 2*PI;
-    }
-
-    if(psi > PI) {
-      psi -= 2*PI;
-    }
-    if(psi < PI) {
-      psi += 2*PI;
-    }
-
-    x[0] = phi;
-    x[1] = theta;
-    x[2] = psi;
+    
 
     // Covariance matrix update
     arm_mat_mult_f32(&C, &P, &C_P);         // 3x6 * 6x6 = 3x6
     arm_mat_mult_f32(&Kgain, &C_P, &Mtmp);  // 6x3 * 3x6 = 6x6
-    arm_mat_sub_f32(&P, &Mtmp, &P);         // 6x6 - 6x6 = 6x6*/
+    arm_mat_sub_f32(&P, &Mtmp, &P);         // 6x6 - 6x6 = 6x6
   
 
-    tx_data.float1 = phi;
-    tx_data.float2 = theta;
-    tx_data.float3 = psi;
-    tx_data.float4 = phi_fix;
-    tx_data.float5 = theta_fix;
-    tx_data.float6 = psi_fix;
+    tx_data.float1 = (float)gps_data.numSV;
+    tx_data.float2 = (float)gps_data.hAcc / 1000.f;
+    tx_data.float3 = (float)gps_data.vAcc / 1000.f;
+    tx_data.float4 = ((float)gps_data.lat * 1e-7f - 50.768595f) * PI / 360.f * 6378140.f;
+    tx_data.float5 = ((float)gps_data.lon * 1e-7f - 06.087701f) * PI / 360.f * 6378140.f;
+    tx_data.float6 = (float)gps_data.hMSL / 1000.f;
+    tx_data.float7 = (float)gps_data.gSpeed / 1000.f;
+    tx_data.float8 = (float)gps_data.velD / 1000.f;
 
     // transmit data
     uint8_t tx_buf[NRF24L01P_TX_PAYLOAD_LENGTH] = {0};  
