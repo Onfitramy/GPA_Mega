@@ -37,7 +37,35 @@ void arm_mat_get_column_f32(const arm_matrix_instance_f32 *mat, int col, float32
 
 void arm_mat_set_column_f32(arm_matrix_instance_f32 *mat, int col, float32_t *vec) {
   for (int row = 0; row < mat->numRows; row++) {
-   arm_mat_set_entry_f32(mat, row, col,  vec[row]);
+    arm_mat_set_entry_f32(mat, row, col,  vec[row]);
+  }
+}
+
+void arm_mat_fill_diag_f32(arm_matrix_instance_f32 *mat, int row_00, int col_00, float value) {
+  for (int i = 0; (i < (mat->numRows-row_00)) && (i < mat->numCols-col_00); i++) {
+    arm_mat_set_entry_f32(mat, i+row_00, i+col_00, value);
+  }
+}
+
+void arm_mat_set_diag_f32(arm_matrix_instance_f32 *mat, int first, int last, float value) {
+  for (int i = first; i <= last; i++) {
+    arm_mat_set_entry_f32(mat, i, i, value);
+  }
+}
+
+void arm_mat_insert_32(const arm_matrix_instance_f32 *src, arm_matrix_instance_f32 *dst, int row_00, int col_00) {
+  for(int i = 0; i < src->numRows; i++) {
+    for(int j = 0; j < src->numCols; j++) {
+      arm_mat_set_entry_f32(dst, i+row_00, j+col_00, arm_mat_get_entry_f32(src, i, j));
+    }
+  }
+}
+
+void arm_mat_insert_mult_32(const arm_matrix_instance_f32 *src, arm_matrix_instance_f32 *dst, int row_00, int col_00, float factor) {
+  for(int i = 0; i < src->numRows; i++) {
+    for(int j = 0; j < src->numCols; j++) {
+      arm_mat_set_entry_f32(dst, i+row_00, j+col_00, factor * arm_mat_get_entry_f32(src, i, j));
+    }
   }
 }
 

@@ -78,6 +78,10 @@ uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2,
 float phi, theta, psi;
 float euler_deg[3];
 
+// rotation matrix
+float M_rot_data[9];
+arm_matrix_instance_f32 M_rot = {3, 3, M_rot_data};
+
 // euler angles from accelerations and magnetic field
 float phi_fix, theta_fix, psi_fix;
 
@@ -105,55 +109,70 @@ float P_term[3], I_term[3], D_term[3];
 float PID_out[3];
 
 float a_WorldFrame[3];              // Acceleration
-float v_WorldFrame[3] = {0, 0, 0};  // Velocity
-float r_WorldFrame[3] = {0, 0, 0};  // Position
 
 float throttle_cmd = 0;
 
 uint8_t offset_phi = 127;
 uint8_t offset_theta = 127;
 
-// Kalman Filter
 // time step
 float dt = 0.001;
 
-// state and output vectors
-float x[6];
-float dx[6];
-float z[3];
-float dz[3];
 
-float A_data[36] = {0}; // 6x6
-arm_matrix_instance_f32 A = {6, 6, A_data};
-float Atrans_data[36];  // 6x6
-arm_matrix_instance_f32 Atrans = {6, 6, Atrans_data};
-float B_data[18] = {0}; // 6x3
-arm_matrix_instance_f32 B = {6, 3, B_data};
-float Q_data[36] = {0}; // 6x6
-arm_matrix_instance_f32 Q = {6, 6, Q_data};
-float P_data[36] = {0}; // 6x6
-arm_matrix_instance_f32 P = {6, 6, P_data};
-float Mtmp_data[36];    // 6x6
-arm_matrix_instance_f32 Mtmp = {6, 6, Mtmp_data};
+// create new Kalman Filter instance for orientation
+Kalman_Instance Kalman1;
+
+// state and output vectors
+float x[x_size1] = {0};
+float z[z_size1] = {0};
+
+x6z3u3KalmanData KalmanData1;
+
+float A1_data[x_size1*x_size1] = {0}; // 6x6
+arm_matrix_instance_f32 A1 = {x_size1, x_size1, A1_data};
+float B1_data[x_size1*u_size1] = {0}; // 6x3
+arm_matrix_instance_f32 B1 = {x_size1, u_size1, B1_data};
+float Q1_data[x_size1*x_size1] = {0}; // 6x6
+arm_matrix_instance_f32 Q1 = {x_size1, x_size1, Q1_data};
+float P1_data[x_size1*x_size1] = {0}; // 6x6
+arm_matrix_instance_f32 P1 = {x_size1, x_size1, P1_data};
+float C1_data[z_size1*x_size1] = {0}; // 3x6
+arm_matrix_instance_f32 C1 = {z_size1, x_size1, C1_data};
+float R1_data[z_size1*z_size1] = {0}; // 3x3
+arm_matrix_instance_f32 R1 = {z_size1, z_size1, R1_data};
+float K1_data[x_size1*z_size1];       // 6x3
+arm_matrix_instance_f32 K1 = {x_size1, z_size1, K1_data};
+
 float Mdeuler_data[9] = {0};
 arm_matrix_instance_f32 Mdeuler = {3, 3, Mdeuler_data};
-float C_data[18] = {0}; // 3x6
-arm_matrix_instance_f32 C = {3, 6, C_data};
-float R_data[9] = {0};  // 3x3
-arm_matrix_instance_f32 R = {3, 3, R_data};
-float Ctrans_data[18];  // 6x3
-arm_matrix_instance_f32 Ctrans = {6, 3, Ctrans_data};
-float S_data[9];        // 3x3
-arm_matrix_instance_f32 S = {3, 3, S_data};
-float Sinv_data[9];     // 3x3
-arm_matrix_instance_f32 Sinv = {3, 3, Sinv_data};
-float Kgain_data[18];   // 6x3
-arm_matrix_instance_f32 Kgain = {6, 3, Kgain_data};
-float P_Ctrans_data[18];// 6x3
-arm_matrix_instance_f32 P_Ctrans = {6, 3, P_Ctrans_data};
-float C_P_data[18];     // 3x6
-arm_matrix_instance_f32 C_P = {3, 6, C_P_data};
 
+
+// create new Kalman Filter instance for velocity and position
+Kalman_Instance Kalman2;
+
+// state and output vectors
+float x2[x_size2] = {0};
+float z2[z_size2] = {0};
+
+x9z6u3KalmanData KalmanData2;
+
+float A2_data[x_size2*x_size2] = {0}; // 6x6
+arm_matrix_instance_f32 A2 = {x_size2, x_size2, A2_data};
+float B2_data[x_size2*u_size2] = {0}; // 6x3
+arm_matrix_instance_f32 B2 = {x_size2, u_size2, B2_data};
+float Q2_data[x_size2*x_size2] = {0}; // 6x6
+arm_matrix_instance_f32 Q2 = {x_size2, x_size2, Q2_data};
+float P2_data[x_size2*x_size2] = {0}; // 6x6
+arm_matrix_instance_f32 P2 = {x_size2, x_size2, P2_data};
+float C2_data[z_size2*x_size2] = {0}; // 3x6
+arm_matrix_instance_f32 C2 = {z_size2, x_size2, C2_data};
+float R2_data[z_size2*z_size2] = {0}; // 3x3
+arm_matrix_instance_f32 R2 = {z_size2, z_size2, R2_data};
+float K2_data[x_size2*z_size2];       // 6x3
+arm_matrix_instance_f32 K2 = {x_size2, z_size2, K2_data};
+
+
+// NRF24L01+ packages
 #pragma pack(push, 1)
 typedef struct {
   float float1;
@@ -319,30 +338,41 @@ void StartDefaultTask(void *argument)
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 1; //1000 Hz
 
-  signalPlotter_setSignalName(0, "MAG_X");
-  signalPlotter_setSignalName(1, "MAG_Y");
-  signalPlotter_setSignalName(2, "MAG_Z");
-  signalPlotter_setSignalName(3, "ACC_X");
-  signalPlotter_setSignalName(4, "ACC_Y");
-  signalPlotter_setSignalName(5, "ACC_Z");
-  signalPlotter_setSignalName(6, "GYR_X");
-  signalPlotter_setSignalName(7, "GYR_Y");
-  signalPlotter_setSignalName(8, "GYR_Z");
-  signalPlotter_setSignalName(9, "phi");
-  signalPlotter_setSignalName(10, "theta");
-  signalPlotter_setSignalName(11, "psi");
-  signalPlotter_setSignalName(12, "phi fix");
-  signalPlotter_setSignalName(13, "theta fix");
-  signalPlotter_setSignalName(14, "psi fix");
-  signalPlotter_setSignalName(15, "p offset");
-  signalPlotter_setSignalName(16, "q offset");
-  signalPlotter_setSignalName(17, "r offset");
-  signalPlotter_setSignalName(18, "uncertainty");
-  signalPlotter_setSignalName(19, "0");
-  signalPlotter_setSignalName(20, "0");
-  signalPlotter_setSignalName(21, "0");
-  signalPlotter_setSignalName(22, "NRF timeout");
-  signalPlotter_setSignalName(23, "delta Time");
+  // define Kalman Filter dimensions for orientation
+  KalmanFilterInit(&Kalman1, &KalmanData1, x_size1, z_size1, u_size1);
+
+  // define Kalman Filter dimensions for velocity and position
+  KalmanFilterInit(&Kalman2, &KalmanData2, x_size2, z_size2, u_size2);
+
+  signalPlotter_setSignalName(0, "delta Time");
+  signalPlotter_setSignalName(1, "NRF timeout");
+  signalPlotter_setSignalName(2, "MAG_X");
+  signalPlotter_setSignalName(3, "MAG_Y");
+  signalPlotter_setSignalName(4, "MAG_Z");
+  signalPlotter_setSignalName(5, "ACC_X");
+  signalPlotter_setSignalName(6, "ACC_Y");
+  signalPlotter_setSignalName(7, "ACC_Z");
+  signalPlotter_setSignalName(8, "GYR_X");
+  signalPlotter_setSignalName(9, "GYR_Y");
+  signalPlotter_setSignalName(10, "GYR_Z");
+  signalPlotter_setSignalName(11, "phi");
+  signalPlotter_setSignalName(12, "theta");
+  signalPlotter_setSignalName(13, "psi");
+  signalPlotter_setSignalName(14, "phi fix");
+  signalPlotter_setSignalName(15, "theta fix");
+  signalPlotter_setSignalName(16, "psi fix");
+  signalPlotter_setSignalName(17, "vel x");
+  signalPlotter_setSignalName(18, "vel y");
+  signalPlotter_setSignalName(19, "vel z");
+  signalPlotter_setSignalName(20, "pos x");
+  signalPlotter_setSignalName(21, "pos y");
+  signalPlotter_setSignalName(22, "pos z");
+  signalPlotter_setSignalName(23, "vel x fix");
+  signalPlotter_setSignalName(24, "vel y fix");
+  signalPlotter_setSignalName(25, "vel z fix");
+  signalPlotter_setSignalName(26, "pos x fix");
+  signalPlotter_setSignalName(27, "pos y fix");
+  signalPlotter_setSignalName(28, "pos z fix");
   
   arm_vec3_element_product_f32(K, Tv, Kd);
   Tn[0] = 1 / Tn[0];
@@ -350,57 +380,57 @@ void StartDefaultTask(void *argument)
   Tn[2] = 1 / Tn[2];
   arm_vec3_element_product_f32(K, Tn, Ki);
 
-  for(int i = 0; i < 3; i++) {
-    arm_mat_set_entry_f32(&P, i, i, 1);
-    arm_mat_set_entry_f32(&P, i+3, i+3, 0.001);
-    arm_mat_set_entry_f32(&Q, i, i, 1e-8);
-    arm_mat_set_entry_f32(&Q, i+3, i+3, 1e-12);
-    arm_mat_set_entry_f32(&C, i, i, 1);
-    arm_mat_set_entry_f32(&R, i, i, 1);
-  }
+  // configure orientation KF matrices
+  arm_mat_fill_diag_f32(&A1, 0, 0, 1);
+  arm_mat_fill_diag_f32(&C1, 0, 0, 1);
+  arm_mat_fill_diag_f32(&R1, 0, 0, 1);    // angle fixing method variance (noise)
 
-  arm_mat_set_entry_f32(&Mdeuler, 0, 0, 1);
+  arm_mat_set_diag_f32(&P1, 0, 2, 0.1);   // initial guess for angle variance
+  arm_mat_set_diag_f32(&P1, 3, 5, 0.001); // initial guess for offset variance
 
-  // calib 
-  
-  for(int calib_counter = 0; calib_counter < 1000; calib_counter++) { // imu
-    while(IMU1_VerifyDataReady() & 0x03 != 0x03); // wait for IMU1 data
-    IMU1_ReadSensorData(&imu1_data);
-    arm_vec3_sub_f32(imu1_data.accel, IMU1_offset, imu1_data.accel);
-    arm_vec3_element_product_f32(imu1_data.accel, IMU1_scale, imu1_data.accel);
-    arm_vec3_add_f32(gyr_sumup, imu1_data.gyro, gyr_sumup);
-    arm_vec3_add_f32(acc_sumup, imu1_data.accel, acc_sumup);
-    HAL_Delay(1);
-  }
-  arm_vec3_scalar_mult_f32(gyr_sumup, 1. / 1000., gyr_offset);
-  arm_vec3_scalar_mult_f32(acc_sumup, 1. / 1000., acc_sumup);
-  arm_vec3_sub_f32(imu1_data.gyro, gyr_offset, imu1_data.gyro);
+  arm_mat_set_diag_f32(&Q1, 0, 2, 1e-8);  // variance of gyroscope data   (noise)
+  arm_mat_set_diag_f32(&Q1, 3, 5, 1e-12); // variance of gyroscope offset (drift)
 
-  for(int calib_counter = 0; calib_counter < 100; calib_counter++) { // mag
-    while(!(MAG_VerifyDataReady() & 0b00000001)); // wait for MAG data
-    MAG_ReadSensorData(&mag_data);
-    arm_vec3_sub_f32(mag_data.field, MAG_offset, mag_data.field);
-    arm_vec3_element_product_f32(mag_data.field, MAG_scale, mag_data.field);
-    arm_vec3_add_f32(mag_sumup, mag_data.field, mag_sumup);
-    HAL_Delay(1);
-  }
-  arm_vec3_scalar_mult_f32(mag_sumup, 1. / 100., mag_sumup);
+  // configure position KF matrices
+  arm_mat_fill_diag_f32(&A2, 0, 0, 1);
+  arm_mat_fill_diag_f32(&A2, 3, 0, dt);
+  arm_mat_fill_diag_f32(&B2, 0, 0, dt);
+  arm_mat_fill_diag_f32(&B2, 3, 0, 0.5*dt*dt);
+  arm_mat_fill_diag_f32(&C2, 0, 0, 1);
 
-  // attitude estimation using magnetometer and accelerometer
-  OrientationFix(acc_sumup, mag_sumup, z);
+  arm_mat_set_diag_f32(&P2, 0, 2, 0.1);   // initial guess for velocity variance
+  arm_mat_set_diag_f32(&P2, 3, 5, 10);    // initial guess for position variance
+  arm_mat_set_diag_f32(&P2, 6, 8, 0.001); // initial guess for accelerometer offset variance
 
-  x[3] = gyr_offset[0];
-  x[4] = gyr_offset[1];
-  x[5] = gyr_offset[2];
+  arm_mat_set_diag_f32(&Q2, 0, 2, 0.001); // variance of accelerometer data   (noise)
+  arm_mat_set_diag_f32(&Q2, 6, 8, 1e-12); // variance of accelerometer offset (drift)
 
+  // covert reference point
   WGS84toECEF(WGS84_ref, ECEF_ref);
+
+  // starting point for KF
+  while(IMU1_VerifyDataReady() & 0x03 != 0x03); // wait for IMU1 data
+  IMU1_ReadSensorData(&imu1_data);
+  arm_vec3_sub_f32(imu1_data.accel, IMU1_offset, imu1_data.accel);
+  arm_vec3_element_product_f32(imu1_data.accel, IMU1_scale, imu1_data.accel);
+
+  while(!(MAG_VerifyDataReady() & 0b00000001)); // wait for MAG data
+  MAG_ReadSensorData(&mag_data);
+  arm_vec3_sub_f32(mag_data.field, MAG_offset, mag_data.field);
+  arm_vec3_element_product_f32(mag_data.field, MAG_scale, mag_data.field);
+
+  OrientationFix(imu1_data.accel, mag_data.field, z);
+
+  x[0] = z[0];
+  x[1] = z[1];
+  x[2] = z[2];
 
   /* Infinite loop */
   for(;;) {
     TimeMeasureStart(); // Start measuring time
     SelfTest();         // Run self-test on startup
     nrf_timeout++;      // to detect loss of signal (LOS)
-    BMP_GetPressureRaw(&pressure_raw);  
+    BMP_GetPressureRaw(&pressure_raw);
     BMP_GetTemperatureRaw(&temperature_raw);
 
     // Kompensierte Temperatur berechnen (°C * 100)
@@ -421,33 +451,17 @@ void StartDefaultTask(void *argument)
       arm_vec3_element_product_f32(mag_data.field, MAG_scale, mag_data.field);
     }
 
-    // KALMAN FILTER
-
+    // KALMAN FILTER, ORIENTATION
     // initialize A and B matrix
-    arm_mat_set_entry_f32(&Mdeuler, 0, 1, sin(phi)*tan(theta));
-    arm_mat_set_entry_f32(&Mdeuler, 0, 2, cos(phi)*tan(theta));
-    arm_mat_set_entry_f32(&Mdeuler, 1, 1, cos(phi));
-    arm_mat_set_entry_f32(&Mdeuler, 1, 2, -sin(phi));
-    arm_mat_set_entry_f32(&Mdeuler, 2, 1, sin(phi)/cos(theta));
-    arm_mat_set_entry_f32(&Mdeuler, 2, 2, cos(phi)/cos(theta));
-
-    for(int i = 0; i < 6; i++) {
-      arm_mat_set_entry_f32(&A, i, i, 1);
-    }
-    for(int i = 0; i < 3; i++) {
-      for(int j = 0; j < 3; j++) {
-        arm_mat_set_entry_f32(&A, i, j+3, -dt*arm_mat_get_entry_f32(&Mdeuler, i, j));
-        arm_mat_set_entry_f32(&B, i, j, dt*arm_mat_get_entry_f32(&Mdeuler, i, j));
-      }
-    }
+    DeulerMatrixFromEuler(phi, theta, &Mdeuler);
+    arm_mat_insert_mult_32(&Mdeuler, &A1, 0, 3, -dt);
+    arm_mat_insert_mult_32(&Mdeuler, &B1, 0, 0, dt);
 
     // predicting state vector x
-    arm_mat_vec_mult_f32(&A, x, x);
-    arm_mat_vec_mult_f32(&B, imu1_data.gyro, dx);
-    arm_vecN_add_f32(6, x, dx, x);
+    KalmanFilterPredictSV(&Kalman1, &A1, x, &B1, imu1_data.gyro);
 
     // normalize phi, theta, psi to be within +-180 deg
-    normalizeAngleVector(x, 0, 2, PI, -PI);
+    normalizeAngleVector(x, 0, 2, PI, -PI, 2*PI);
 
     phi = x[0];
     theta = x[1];
@@ -458,20 +472,19 @@ void StartDefaultTask(void *argument)
     euler_deg[2] = psi * 180. / PI;
 
     // predicting state vector's covariance matrix P
-    arm_mat_trans_f32(&A, &Atrans);
-    arm_mat_mult_f32(&P, &Atrans, &Mtmp);
-    arm_mat_mult_f32(&A, &Mtmp, &P);
-    arm_mat_add_f32(&P, &Q, &P);
+    KalmanFilterPredictCM(&Kalman1, &A1, &P1, &Q1);
 
-    // attitude estimation using magnetometer and accelerometer
-    OrientationFix(imu1_data.accel, mag_data.field, z);
+    // transform measured body acceleration to world-frame acceleration
+    RotationMatrixFromEuler(phi, theta, psi, &M_rot);
+    Vec3_BodyToWorld(imu1_data.accel, &M_rot, a_WorldFrame);
+    a_WorldFrame[2] -= 9.8;
 
-    normalizeAnglePairVector(x, z, 0, 2);
+    // KALMAN FILTER, POSITION
+    if(gps_data.gpsFix > 2) {
+      KalmanFilterPredictSV(&Kalman2, &A2, x2, &B2, a_WorldFrame);
+      KalmanFilterPredictCM(&Kalman2, &A2, &P2, &Q2);
+    }
 
-    phi_fix = z[0];
-    theta_fix = z[1];
-    psi_fix = z[2];
-    
     if(rx_data.BN == 0) {
       offset_phi = rx_data.PR;
       offset_theta = rx_data.PL;
@@ -488,11 +501,7 @@ void StartDefaultTask(void *argument)
         euler_set[0] = (rx_data.JRY - offset_phi) / 5. + 90;
         euler_set[1] = (rx_data.JRX - offset_theta) / 5.;
         euler_set[2] += -2. * dt * (rx_data.JLX - 127);
-        if(euler_set[2] > 180) {
-          euler_set[2] -= 360;
-        } else if(euler_set[2] < -180) {
-          euler_set[2] += 360;
-        }
+        //normalizeAngle(&euler_set[2], 180, -180, 360);
         throttle_cmd = rx_data.JLY / 2.55;
 
         SERVO_MoveToAngle(PY_MOTOR, throttle_cmd * 1.8);
@@ -509,6 +518,7 @@ void StartDefaultTask(void *argument)
 
     // PID __ phi = x | theta = z | psi = y
     arm_vec3_copy_f32(d_euler, d_euler_prior);
+    normalizeAnglePairVector(euler_deg, euler_set, 0, 2, 180, -180, 360);
     arm_vec3_sub_f32(euler_set, euler_deg, d_euler);
     if(throttle_cmd > 10) {
       arm_vec3_add_f32(I_sum, d_euler, I_sum);
@@ -540,70 +550,76 @@ void Start100HzTask(void *argument) {
   const TickType_t xFrequency = 10; //100 Hz
   /* Infinite loop */
   for(;;) {
-    signalPlotter_sendData(0, mag_data.field[0]);
-    signalPlotter_sendData(1, mag_data.field[1]);
-    signalPlotter_sendData(2, mag_data.field[2]);
-    signalPlotter_sendData(3, imu1_data.accel[0]);
-    signalPlotter_sendData(4, imu1_data.accel[1]);
-    signalPlotter_sendData(5, imu1_data.accel[2]);
-    signalPlotter_sendData(6, imu1_data.gyro[0]);
-    signalPlotter_sendData(7, imu1_data.gyro[1]);
-    signalPlotter_sendData(8, imu1_data.gyro[2]);
-    signalPlotter_sendData(9, phi);
-    signalPlotter_sendData(10, theta);
-    signalPlotter_sendData(11, psi);
-    signalPlotter_sendData(12, phi_fix);
-    signalPlotter_sendData(13, theta_fix);
-    signalPlotter_sendData(14, psi_fix);
-    signalPlotter_sendData(15, x[3]);
-    signalPlotter_sendData(16, x[4]);
-    signalPlotter_sendData(17, x[5]);
-    signalPlotter_sendData(19, 0);
-    signalPlotter_sendData(20, 0);
-    signalPlotter_sendData(21, 0);
-    signalPlotter_sendData(22, (float)nrf_timeout);
+    signalPlotter_sendData(1, (float)nrf_timeout);
+
+    signalPlotter_sendData(2, mag_data.field[0]);
+    signalPlotter_sendData(3, mag_data.field[1]);
+    signalPlotter_sendData(4, mag_data.field[2]);
+    signalPlotter_sendData(5, imu1_data.accel[0]);
+    signalPlotter_sendData(6, imu1_data.accel[1]);
+    signalPlotter_sendData(7, imu1_data.accel[2]);
+    signalPlotter_sendData(8, imu1_data.gyro[0]);
+    signalPlotter_sendData(9, imu1_data.gyro[1]);
+    signalPlotter_sendData(10, imu1_data.gyro[2]);
+    signalPlotter_sendData(11, phi);
+    signalPlotter_sendData(12, theta);
+    signalPlotter_sendData(13, psi);
+    signalPlotter_sendData(14, phi_fix);
+    signalPlotter_sendData(15, theta_fix);
+    signalPlotter_sendData(16, psi_fix);
+    signalPlotter_sendData(17, x2[0]);
+    signalPlotter_sendData(18, x2[1]);
+    signalPlotter_sendData(19, x2[2]);
+    signalPlotter_sendData(20, x2[3]);
+    signalPlotter_sendData(21, x2[4]);
+    signalPlotter_sendData(22, x2[5]);
+    signalPlotter_sendData(23, z2[0]);
+    signalPlotter_sendData(24, z2[1]);
+    signalPlotter_sendData(25, z2[2]);
+    signalPlotter_sendData(26, z2[3]);
+    signalPlotter_sendData(27, z2[4]);
+    signalPlotter_sendData(28, z2[5]);
 
     signalPlotter_executeTransmission(HAL_GetTick());
 
-    // Kalman Filter correction step
-    // Kalman Gain update
-  
-    arm_mat_trans_f32(&C, &Ctrans);               // 3x6 = 6x3
-    arm_mat_mult_f32(&P, &Ctrans, &P_Ctrans);     // 6x6 * 6x3 = 6x3
-    arm_mat_mult_f32(&C, &P_Ctrans, &Sinv);       // 3x6 * 6x3 = 3x3
-    arm_mat_add_f32(&Sinv, &R, &S);               // 3x3 + 3x3 = 3x3
-    arm_mat_inverse_f32(&S, &Sinv);               // 3x3 = 3x3
-    arm_mat_mult_f32(&Ctrans, &Sinv, &P_Ctrans);  // 6x3 * 3x3 = 6x3
-    arm_mat_mult_f32(&P, &P_Ctrans, &Kgain);      // 6x6 * 6x3 = 6x3
+    // attitude estimation using magnetometer and accelerometer
+    OrientationFix(imu1_data.accel, mag_data.field, z);
 
-    // State Vector update
-    arm_mat_vec_mult_f32(&C, x, dz);      // 3x6 * 6x1 = 3x1
-    arm_vec3_sub_f32(z, dz, dz);          // 3x1 - 3x1 = 3x1
-    arm_mat_vec_mult_f32(&Kgain, dz, dx); // 6x3 * 3x1 = 6x1
-    arm_vecN_add_f32(6, x, dx, x);        // 6x1 + 6x1 = 6x1
+    normalizeAnglePairVector(x, z, 0, 2, PI, -PI, 2*PI);
+
+    phi_fix = z[0];
+    theta_fix = z[1];
+    psi_fix = z[2];
+
+    // Kalman Filter correction step
+    KalmanFilterUpdateGain(&Kalman1, &P1, &C1, &R1, &K1);
+    KalmanFilterCorrectSV(&Kalman1, &K1, z, &C1, x);
+    KalmanFilterCorrectCM(&Kalman1, &K1, &C1, &P1);
 
     // normalize phi, theta, psi to be within +-180 deg
-    normalizeAngleVector(x, 0, 2, PI, -PI);
+    normalizeAngleVector(x, 0, 2, PI, -PI, 2*PI);
 
     phi = x[0];
     theta = x[1];
     psi = x[2];
-    
 
-    // Covariance matrix update
-    arm_mat_mult_f32(&C, &P, &C_P);         // 3x6 * 6x6 = 3x6
-    arm_mat_mult_f32(&Kgain, &C_P, &Mtmp);  // 6x3 * 3x6 = 6x6
-    arm_mat_sub_f32(&P, &Mtmp, &P);         // 6x6 - 6x6 = 6x6
-  
+    tx_data.float1 = (float)x2[1];
+    tx_data.float2 = (float)x2[2];
+    tx_data.float3 = (float)x2[3];
+    tx_data.float4 = (float)x2[4];
+    tx_data.float5 = (float)x2[5];
+    tx_data.float6 = (float)x2[6];
+    tx_data.float7 = (float)ENU[0];
+    tx_data.float8 = (float)ENU[1];
 
-    tx_data.float1 = (float)gps_data.numSV;
-    tx_data.float2 = (float)gps_data.hAcc / 1000.f;
-    tx_data.float3 = (float)gps_data.vAcc / 1000.f;
-    tx_data.float4 = (float)phi;
-    tx_data.float5 = (float)theta;
-    tx_data.float6 = (float)psi;
-    tx_data.float7 = (float)gps_data.gSpeed / 1000.f;
-    tx_data.float8 = (float)gps_data.hMSL / 1000.f;
+    /*tx_data.float1 = (float)gps_data.gpsFix;
+    tx_data.float2 = (float)gps_data.numSV;
+    tx_data.float3 = (float)gps_data.hAcc / 1000.f;
+    tx_data.float4 = (float)gps_data.vAcc / 1000.f;
+    tx_data.float5 = (float)gps_data.headAcc * 1e-5f;
+    tx_data.float6 = (float)gps_data.headVeh * 1e-5f;
+    tx_data.float7 = (float)ENU[0];
+    tx_data.float8 = (float)ENU[1];*/
 
     // transmit data
     uint8_t tx_buf[NRF24L01P_TX_PAYLOAD_LENGTH] = {0};  
@@ -625,9 +641,36 @@ void Start10HzTask(void *argument) {
   for(;;) {
     GPS_ReadSensorData(&gps_data);
 
-    UBLOXtoWGS84(gps_data.lat, gps_data.lon, gps_data.height, WGS84);
-    WGS84toECEF(WGS84, ECEF);
-    ECEFtoENU(WGS84_ref, ECEF_ref, ECEF, ENU);
+    if(gps_data.gpsFix > 2) {
+      UBLOXtoWGS84(gps_data.lat, gps_data.lon, gps_data.height, WGS84);
+      WGS84toECEF(WGS84, ECEF);
+      ECEFtoENU(WGS84_ref, ECEF_ref, ECEF, ENU);
+
+      z[0] = (float)gps_data.velE / 1000.f;
+      z[1] = (float)gps_data.velN / 1000.f;
+      z[2] = (float)gps_data.velD / (-1000.f);
+      z[3] = (float)ENU[0];
+      z[4] = (float)ENU[1];
+      z[5] = (float)ENU[2];
+
+      arm_mat_set_diag_f32(&R2, 0, 2, (float)gps_data.sAcc * gps_data.sAcc / 1e6f);
+      arm_mat_set_entry_f32(&R2, 3, 4, (float)gps_data.hAcc * gps_data.hAcc / 1e6f);
+      arm_mat_set_entry_f32(&R2, 5, 5, (float)gps_data.vAcc * gps_data.vAcc / 1e6f);
+
+      KalmanFilterUpdateGain(&Kalman2, &P2, &C2, &R2, &K2);
+      KalmanFilterCorrectSV(&Kalman2, &K2, z2, &C2, x2);
+      KalmanFilterCorrectCM(&Kalman2, &K2, &C2, &P2);
+
+      Set_LED(0, 0, 0, 255);
+      Set_Brightness(45);
+      WS2812_Send();
+    } else {
+      Set_LED(0, 255, 255, 0);
+      Set_Brightness(45);
+      WS2812_Send();
+    }
+
+    // KF2 correction steps
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
   }
@@ -659,9 +702,6 @@ void StartInterruptHandlerTask(void *argument)
         
         if(nrf_mode) {
           nrf24l01p_tx_irq();
-          Set_LED(0, 0, 0, 255);
-          Set_Brightness(45);
-          WS2812_Send();
         } else {
           uint8_t rx_buf[NRF24L01P_RX_PAYLOAD_LENGTH] = {0};
           nrf24l01p_rx_receive(rx_buf);
