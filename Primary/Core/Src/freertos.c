@@ -81,6 +81,8 @@ float euler_deg[3];
 // rotation matrix
 float M_rot_data[9];
 arm_matrix_instance_f32 M_rot = {3, 3, M_rot_data};
+float M_rot_inv_data[9];
+arm_matrix_instance_f32 M_rot_inv = {3, 3, M_rot_inv_data};
 
 // euler angles from accelerations and magnetic field
 float phi_fix, theta_fix, psi_fix;
@@ -109,6 +111,9 @@ float P_term[3], I_term[3], D_term[3];
 float PID_out[3];
 
 float a_WorldFrame[3] = {0}; // Acceleration
+float a_BodyFrame[3] = {0};
+float gravity_world_vec[3] = {0, 0, 9.8};
+float gravity_body_vec[3];
 
 float throttle_cmd = 0;
 
@@ -341,15 +346,15 @@ void StartDefaultTask(void *argument)
 
   signalPlotter_setSignalName(0, "delta Time");
   signalPlotter_setSignalName(1, "NRF timeout");
-  signalPlotter_setSignalName(2, "MAG_X");
-  signalPlotter_setSignalName(3, "MAG_Y");
-  signalPlotter_setSignalName(4, "MAG_Z");
-  signalPlotter_setSignalName(5, "ACC_X");
-  signalPlotter_setSignalName(6, "ACC_Y");
-  signalPlotter_setSignalName(7, "ACC_Z");
-  signalPlotter_setSignalName(8, "GYR_X");
-  signalPlotter_setSignalName(9, "GYR_Y");
-  signalPlotter_setSignalName(10, "GYR_Z");
+  signalPlotter_setSignalName(2, "a_x world");
+  signalPlotter_setSignalName(3, "a_y world");
+  signalPlotter_setSignalName(4, "a_z world");
+  signalPlotter_setSignalName(5, "a_x offset");
+  signalPlotter_setSignalName(6, "a_y offset");
+  signalPlotter_setSignalName(7, "a_z offset");
+  signalPlotter_setSignalName(8, "velocity var");
+  signalPlotter_setSignalName(9, "horizontal var");
+  signalPlotter_setSignalName(10, "vertical var");
   signalPlotter_setSignalName(11, "phi");
   signalPlotter_setSignalName(12, "theta");
   signalPlotter_setSignalName(13, "psi");
@@ -389,14 +394,10 @@ void StartDefaultTask(void *argument)
   // configure position KF matrices
   arm_mat_fill_diag_f32(&A2, 0, 0, 1.);
   arm_mat_set_diag_f32(&A2, 3, 0, 3, dt);
-  arm_mat_set_diag_f32(&A2, 0, 6, 3, -dt);
-  arm_mat_set_diag_f32(&A2, 3, 6, 3, -0.5*dt*dt);
-  arm_mat_fill_diag_f32(&B2, 0, 0, dt);
-  arm_mat_fill_diag_f32(&B2, 3, 0, 0.5*dt*dt);
   arm_mat_fill_diag_f32(&C2, 0, 0, 1.);
 
   arm_mat_set_diag_f32(&P2, 0, 0, 3, 1.);  // initial guess for velocity variance
-  arm_mat_set_diag_f32(&P2, 3, 3, 3, 0.);
+  arm_mat_set_diag_f32(&P2, 3, 3, 3, 10.);
   arm_mat_set_diag_f32(&P2, 6, 6, 3, 0.5); // initial guess for accelerometer offset variance
 
   arm_mat_set_diag_f32(&Q2, 0, 0, 3, 1e-3f*dt*dt); // variance of accelerometer data   (noise)
@@ -474,11 +475,22 @@ void StartDefaultTask(void *argument)
 
     // transform measured body acceleration to world-frame acceleration
     RotationMatrixFromEuler(phi, theta, psi, &M_rot);
+    arm_mat_trans_f32(&M_rot, &M_rot_inv);
     Vec3_BodyToWorld(imu1_data.accel, &M_rot, a_WorldFrame);
     a_WorldFrame[2] -= 9.8;
 
+    // calculate acceleration w/o gravity in body frame
+    arm_mat_vec_mult_f32(&M_rot, gravity_world_vec, gravity_body_vec);
+    arm_vec3_sub_f32(imu1_data.accel, gravity_body_vec, a_BodyFrame);
+
     // KALMAN FILTER, POSITION
     if(gps_data.gpsFix == 3) {
+      // update A and B
+      arm_mat_insert_mult_32(&M_rot_inv, &A2, 0, 6, -dt);
+      arm_mat_insert_mult_32(&M_rot_inv, &A2, 3, 6, -0.5*dt*dt);
+      arm_mat_insert_mult_32(&M_rot_inv, &B2, 0, 0, dt);
+      arm_mat_insert_mult_32(&M_rot_inv, &B2, 3, 0, 0.5*dt*dt);
+
       KalmanFilterPredictSV(&Kalman2, &A2, x2, &B2, a_WorldFrame);
       KalmanFilterPredictCM(&Kalman2, &A2, &P2, &Q2);
     }
@@ -550,15 +562,15 @@ void Start100HzTask(void *argument) {
   for(;;) {
     signalPlotter_sendData(1, (float)nrf_timeout);
 
-    signalPlotter_sendData(2, mag_data.field[0]);
-    signalPlotter_sendData(3, mag_data.field[1]);
-    signalPlotter_sendData(4, mag_data.field[2]);
-    signalPlotter_sendData(5, imu1_data.accel[0]);
-    signalPlotter_sendData(6, imu1_data.accel[1]);
-    signalPlotter_sendData(7, imu1_data.accel[2]);
-    signalPlotter_sendData(8, imu1_data.gyro[0]);
-    signalPlotter_sendData(9, imu1_data.gyro[1]);
-    signalPlotter_sendData(10, imu1_data.gyro[2]);
+    signalPlotter_sendData(2, a_WorldFrame[0]);
+    signalPlotter_sendData(3, a_WorldFrame[1]);
+    signalPlotter_sendData(4, a_WorldFrame[2]);
+    signalPlotter_sendData(5, x2[6]);
+    signalPlotter_sendData(6, x2[7]);
+    signalPlotter_sendData(7, x2[8]);
+    signalPlotter_sendData(8, (float)gps_data.sAcc * gps_data.sAcc / 1e6f);
+    signalPlotter_sendData(9, (float)gps_data.hAcc * gps_data.hAcc / 1e6f);
+    signalPlotter_sendData(10, (float)gps_data.vAcc * gps_data.vAcc / 1e6f);
     signalPlotter_sendData(11, phi);
     signalPlotter_sendData(12, theta);
     signalPlotter_sendData(13, psi);
