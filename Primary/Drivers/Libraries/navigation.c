@@ -187,11 +187,12 @@ void KalmanFilterPredictSV(Kalman_Instance *Kalman, arm_matrix_instance_f32 *A_m
 }
 
 // predicting covariance matrix P
-void KalmanFilterPredictCM(Kalman_Instance *Kalman, arm_matrix_instance_f32 *A_mat, arm_matrix_instance_f32 *P_mat, arm_matrix_instance_f32 *Q_mat) {
+void KalmanFilterPredictCM(Kalman_Instance *Kalman, const arm_matrix_instance_f32 *A_mat, arm_matrix_instance_f32 *P_mat, const arm_matrix_instance_f32 *Q_mat) {
+    arm_mat_copy_f32(A_mat, &Kalman->M2);
     arm_mat_trans_f32(A_mat, &Kalman->M1);
     arm_mat_mult_f32(P_mat, &Kalman->M1, &Kalman->M2);
-    arm_mat_mult_f32(A_mat, &Kalman->M2, P_mat);
-    arm_mat_add_f32(P_mat, Q_mat, P_mat);
+    arm_mat_mult_f32(A_mat, &Kalman->M2, &Kalman->M1);
+    arm_mat_add_f32(&Kalman->M1, Q_mat, P_mat);
 }
 
 // updating Kalman Gain
@@ -208,14 +209,14 @@ void KalmanFilterUpdateGain(Kalman_Instance *Kalman, arm_matrix_instance_f32 *P_
 // corecting state vector x
 void KalmanFilterCorrectSV(Kalman_Instance *Kalman, arm_matrix_instance_f32 *K_mat, float *z_vec, arm_matrix_instance_f32 *C_mat, float *x_vec) {
     arm_mat_vec_mult_f32(C_mat, x_vec, Kalman->dz);
-    arm_vec3_sub_f32(z_vec, Kalman->dz, Kalman->dz);
+    arm_vecN_sub_f32(Kalman->z_size, z_vec, Kalman->dz, Kalman->dz);
     arm_mat_vec_mult_f32(K_mat, Kalman->dz, Kalman->dx);
-    arm_vecN_add_f32(6, x_vec, Kalman->dx, x_vec);
+    arm_vecN_add_f32(Kalman->x_size, x_vec, Kalman->dx, x_vec);
 }
 
 // correcting x's covariance matrix P
 void KalmanFilterCorrectCM(Kalman_Instance *Kalman, arm_matrix_instance_f32 *K_mat, arm_matrix_instance_f32 *C_mat, arm_matrix_instance_f32 *P_mat) {
     arm_mat_mult_f32(C_mat, P_mat, &Kalman->M7);
-    arm_mat_mult_f32(K_mat, &Kalman->M7, &Kalman->M2);
+    arm_mat_mult_f32(K_mat, &Kalman->M7, & Kalman->M2);
     arm_mat_sub_f32(P_mat, &Kalman->M2, P_mat);
 }

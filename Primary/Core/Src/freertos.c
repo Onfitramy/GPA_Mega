@@ -108,7 +108,7 @@ float P_term[3], I_term[3], D_term[3];
 
 float PID_out[3];
 
-float a_WorldFrame[3];              // Acceleration
+float a_WorldFrame[3] = {0}; // Acceleration
 
 float throttle_cmd = 0;
 
@@ -331,7 +331,6 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void *argument)
 {
   /* init code for USB_DEVICE */
-  MX_USB_DEVICE_Init();
   HAL_Delay(200); // Wait for USB and other Peripherals to initialize
   GPS_Init(); //Initialize the GPS module
   /* USER CODE BEGIN StartDefaultTask */
@@ -381,29 +380,32 @@ void StartDefaultTask(void *argument)
   arm_vec3_element_product_f32(K, Tn, Ki);
 
   // configure orientation KF matrices
-  arm_mat_fill_diag_f32(&A1, 0, 0, 1);
-  arm_mat_fill_diag_f32(&C1, 0, 0, 1);
-  arm_mat_fill_diag_f32(&R1, 0, 0, 1);    // angle fixing method variance (noise)
+  arm_mat_fill_diag_f32(&A1, 0, 0, 1.);
+  arm_mat_fill_diag_f32(&C1, 0, 0, 1.);
+  arm_mat_fill_diag_f32(&R1, 0, 0, 1.);    // angle fixing method variance (noise)
 
-  arm_mat_set_diag_f32(&P1, 0, 2, 0.1);   // initial guess for angle variance
-  arm_mat_set_diag_f32(&P1, 3, 5, 0.001); // initial guess for offset variance
+  arm_mat_set_diag_f32(&P1, 0, 0, 3, 0.1);   // initial guess for angle variance
+  arm_mat_set_diag_f32(&P1, 3, 3, 3, 0.001); // initial guess for offset variance
 
-  arm_mat_set_diag_f32(&Q1, 0, 2, 1e-8);  // variance of gyroscope data   (noise)
-  arm_mat_set_diag_f32(&Q1, 3, 5, 1e-12); // variance of gyroscope offset (drift)
+  arm_mat_set_diag_f32(&Q1, 0, 0, 3, 1e-8);  // variance of gyroscope data   (noise)
+  arm_mat_set_diag_f32(&Q1, 3, 3, 3, 1e-12); // variance of gyroscope offset (drift)
 
   // configure position KF matrices
-  arm_mat_fill_diag_f32(&A2, 0, 0, 1);
-  arm_mat_fill_diag_f32(&A2, 3, 0, dt);
+  arm_mat_fill_diag_f32(&A2, 0, 0, 1.);
+  arm_mat_set_diag_f32(&A2, 3, 0, 3, dt);
+  arm_mat_set_diag_f32(&A2, 0, 6, 3, -dt);
+  arm_mat_set_diag_f32(&A2, 3, 6, 3, -0.5*dt*dt);
   arm_mat_fill_diag_f32(&B2, 0, 0, dt);
   arm_mat_fill_diag_f32(&B2, 3, 0, 0.5*dt*dt);
-  arm_mat_fill_diag_f32(&C2, 0, 0, 1);
+  arm_mat_fill_diag_f32(&C2, 0, 0, 1.);
 
-  arm_mat_set_diag_f32(&P2, 0, 2, 0.1);   // initial guess for velocity variance
-  arm_mat_set_diag_f32(&P2, 3, 5, 10);    // initial guess for position variance
-  arm_mat_set_diag_f32(&P2, 6, 8, 0.001); // initial guess for accelerometer offset variance
+  arm_mat_set_diag_f32(&P2, 0, 0, 3, 1.);  // initial guess for velocity variance
+  arm_mat_set_diag_f32(&P2, 3, 3, 3, 0.);
+  arm_mat_set_diag_f32(&P2, 6, 6, 3, 0.5); // initial guess for accelerometer offset variance
 
-  arm_mat_set_diag_f32(&Q2, 0, 2, 0.001); // variance of accelerometer data   (noise)
-  arm_mat_set_diag_f32(&Q2, 6, 8, 1e-12); // variance of accelerometer offset (drift)
+  arm_mat_set_diag_f32(&Q2, 0, 0, 3, 1e-3f*dt*dt); // variance of accelerometer data   (noise)
+  arm_mat_set_diag_f32(&Q2, 3, 3, 3, 1e-3f*0.25*dt*dt*dt*dt);
+  arm_mat_set_diag_f32(&Q2, 6, 6, 3, 1e-12f); // variance of accelerometer offset (drift)
 
   // covert reference point
   WGS84toECEF(WGS84_ref, ECEF_ref);
@@ -476,12 +478,12 @@ void StartDefaultTask(void *argument)
 
     // transform measured body acceleration to world-frame acceleration
     RotationMatrixFromEuler(phi, theta, psi, &M_rot);
-    Vec3_BodyToWorld(imu1_data.accel, &M_rot, a_WorldFrame);
-    a_WorldFrame[2] -= 9.8;
+    //Vec3_BodyToWorld(imu1_data.accel, &M_rot, a_WorldFrame);
+    //a_WorldFrame[2] -= 9.8;
 
     // KALMAN FILTER, POSITION
-    if(gps_data.gpsFix > 2) {
-      KalmanFilterPredictSV(&Kalman2, &A2, x2, &B2, a_WorldFrame);
+    if(gps_data.gpsFix != 3) {
+      //KalmanFilterPredictSV(&Kalman2, &A2, x2, &B2, a_WorldFrame);
       KalmanFilterPredictCM(&Kalman2, &A2, &P2, &Q2);
     }
 
@@ -603,12 +605,12 @@ void Start100HzTask(void *argument) {
     theta = x[1];
     psi = x[2];
 
-    tx_data.float1 = (float)x2[1];
-    tx_data.float2 = (float)x2[2];
-    tx_data.float3 = (float)x2[3];
-    tx_data.float4 = (float)x2[4];
-    tx_data.float5 = (float)x2[5];
-    tx_data.float6 = (float)x2[6];
+    tx_data.float1 = (float)x2[0];
+    tx_data.float2 = (float)x2[1];
+    tx_data.float3 = (float)x2[2];
+    tx_data.float4 = (float)x2[3];
+    tx_data.float5 = (float)x2[4];
+    tx_data.float6 = (float)x2[5];
     tx_data.float7 = (float)ENU[0];
     tx_data.float8 = (float)ENU[1];
 
@@ -641,20 +643,20 @@ void Start10HzTask(void *argument) {
   for(;;) {
     GPS_ReadSensorData(&gps_data);
 
-    if(gps_data.gpsFix > 2) {
+    if(gps_data.gpsFix == 3) {
       UBLOXtoWGS84(gps_data.lat, gps_data.lon, gps_data.height, WGS84);
       WGS84toECEF(WGS84, ECEF);
       ECEFtoENU(WGS84_ref, ECEF_ref, ECEF, ENU);
 
-      z[0] = (float)gps_data.velE / 1000.f;
-      z[1] = (float)gps_data.velN / 1000.f;
-      z[2] = (float)gps_data.velD / (-1000.f);
-      z[3] = (float)ENU[0];
-      z[4] = (float)ENU[1];
-      z[5] = (float)ENU[2];
+      z2[0] = (float)gps_data.velE / 1000.f;
+      z2[1] = (float)gps_data.velN / 1000.f;
+      z2[2] = (float)gps_data.velD / (-1000.f);
+      z2[3] = (float)ENU[0];
+      z2[4] = (float)ENU[1];
+      z2[5] = (float)ENU[2];
 
-      arm_mat_set_diag_f32(&R2, 0, 2, (float)gps_data.sAcc * gps_data.sAcc / 1e6f);
-      arm_mat_set_entry_f32(&R2, 3, 4, (float)gps_data.hAcc * gps_data.hAcc / 1e6f);
+      arm_mat_set_diag_f32(&R2, 0, 0, 3, (float)gps_data.sAcc * gps_data.sAcc / 1e6f);
+      arm_mat_set_diag_f32(&R2, 3, 3, 2, (float)gps_data.hAcc * gps_data.hAcc / 1e6f);
       arm_mat_set_entry_f32(&R2, 5, 5, (float)gps_data.vAcc * gps_data.vAcc / 1e6f);
 
       KalmanFilterUpdateGain(&Kalman2, &P2, &C2, &R2, &K2);

@@ -77,7 +77,7 @@ void Vec3_BodyToWorld(float *vec3_body, arm_matrix_instance_f32 *mat_rot, float 
 
 void KalmanFilterInit(Kalman_Instance *Kalman, x6z3u3KalmanData *data, uint8_t x_vec_size, uint8_t z_vec_size, uint8_t u_vec_size);
 void KalmanFilterPredictSV(Kalman_Instance *Kalman, arm_matrix_instance_f32 *A_mat, float *x_vec, arm_matrix_instance_f32 *B_mat, float *u_vec);
-void KalmanFilterPredictCM(Kalman_Instance *Kalman, arm_matrix_instance_f32 *A_mat, arm_matrix_instance_f32 *P_mat, arm_matrix_instance_f32 *Q_mat);
+void KalmanFilterPredictCM(Kalman_Instance *Kalman, const arm_matrix_instance_f32 *A_mat, arm_matrix_instance_f32 *P_mat, const arm_matrix_instance_f32 *Q_mat);
 void KalmanFilterUpdateGain(Kalman_Instance *Kalman, arm_matrix_instance_f32 *P_mat, arm_matrix_instance_f32 *C_mat, arm_matrix_instance_f32 *R_mat, arm_matrix_instance_f32 *K_mat);
 void KalmanFilterCorrectSV(Kalman_Instance *Kalman, arm_matrix_instance_f32 *K_mat, float *z_vec, arm_matrix_instance_f32 *C_mat, float *x_vec);
 void KalmanFilterCorrectCM(Kalman_Instance *Kalman, arm_matrix_instance_f32 *K_mat, arm_matrix_instance_f32 *C_mat, arm_matrix_instance_f32 *P_mat);

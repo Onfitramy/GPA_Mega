@@ -130,6 +130,7 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM4_Init();
   MX_TIM5_Init();
+  MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
 
   int counter1, counter2, counter3;

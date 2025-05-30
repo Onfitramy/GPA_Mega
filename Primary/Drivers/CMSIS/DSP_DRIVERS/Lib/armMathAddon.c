@@ -47,9 +47,9 @@ void arm_mat_fill_diag_f32(arm_matrix_instance_f32 *mat, int row_00, int col_00,
   }
 }
 
-void arm_mat_set_diag_f32(arm_matrix_instance_f32 *mat, int first, int last, float value) {
-  for (int i = first; i <= last; i++) {
-    arm_mat_set_entry_f32(mat, i, i, value);
+void arm_mat_set_diag_f32(arm_matrix_instance_f32 *mat, int row_00, int col_00, int num_entries, float value) {
+  for (int i = 0; i < num_entries; i++) {
+    arm_mat_set_entry_f32(mat, i+row_00, i+col_00, value);
   }
 }
 
