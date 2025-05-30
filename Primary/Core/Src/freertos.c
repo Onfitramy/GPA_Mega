@@ -126,8 +126,6 @@ Kalman_Instance Kalman1;
 float x[x_size1] = {0};
 float z[z_size1] = {0};
 
-x6z3u3KalmanData KalmanData1;
-
 float A1_data[x_size1*x_size1] = {0}; // 6x6
 arm_matrix_instance_f32 A1 = {x_size1, x_size1, A1_data};
 float B1_data[x_size1*u_size1] = {0}; // 6x3
@@ -153,8 +151,6 @@ Kalman_Instance Kalman2;
 // state and output vectors
 float x2[x_size2] = {0};
 float z2[z_size2] = {0};
-
-x9z6u3KalmanData KalmanData2;
 
 float A2_data[x_size2*x_size2] = {0}; // 6x6
 arm_matrix_instance_f32 A2 = {x_size2, x_size2, A2_data};
@@ -338,10 +334,10 @@ void StartDefaultTask(void *argument)
   const TickType_t xFrequency = 1; //1000 Hz
 
   // define Kalman Filter dimensions for orientation
-  KalmanFilterInit(&Kalman1, &KalmanData1, x_size1, z_size1, u_size1);
+  KalmanFilterInit(&Kalman1, x_size1, z_size1, u_size1);
 
   // define Kalman Filter dimensions for velocity and position
-  KalmanFilterInit(&Kalman2, &KalmanData2, x_size2, z_size2, u_size2);
+  KalmanFilterInit(&Kalman2, x_size2, z_size2, u_size2);
 
   signalPlotter_setSignalName(0, "delta Time");
   signalPlotter_setSignalName(1, "NRF timeout");
@@ -478,12 +474,12 @@ void StartDefaultTask(void *argument)
 
     // transform measured body acceleration to world-frame acceleration
     RotationMatrixFromEuler(phi, theta, psi, &M_rot);
-    //Vec3_BodyToWorld(imu1_data.accel, &M_rot, a_WorldFrame);
-    //a_WorldFrame[2] -= 9.8;
+    Vec3_BodyToWorld(imu1_data.accel, &M_rot, a_WorldFrame);
+    a_WorldFrame[2] -= 9.8;
 
     // KALMAN FILTER, POSITION
-    if(gps_data.gpsFix != 3) {
-      //KalmanFilterPredictSV(&Kalman2, &A2, x2, &B2, a_WorldFrame);
+    if(gps_data.gpsFix == 3) {
+      KalmanFilterPredictSV(&Kalman2, &A2, x2, &B2, a_WorldFrame);
       KalmanFilterPredictCM(&Kalman2, &A2, &P2, &Q2);
     }
 

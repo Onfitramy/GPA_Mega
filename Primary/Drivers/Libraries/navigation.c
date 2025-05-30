@@ -162,61 +162,73 @@ void Vec3_BodyToWorld(float *vec3_body, arm_matrix_instance_f32 *mat_rot, float 
 }
 
 // create new Kalman Filter instance
-void KalmanFilterInit(Kalman_Instance *Kalman, x6z3u3KalmanData *data, uint8_t x_vec_size, uint8_t z_vec_size, uint8_t u_vec_size) {
+void KalmanFilterInit(Kalman_Instance *Kalman, uint8_t x_vec_size, uint8_t z_vec_size, uint8_t u_vec_size) {
     Kalman->x_size = x_vec_size;
     Kalman->z_size = z_vec_size;
     Kalman->u_size = u_vec_size;
-
-    arm_mat_init_f32(&Kalman->M1, x_vec_size, x_vec_size, data->M1);
-    arm_mat_init_f32(&Kalman->M2, x_vec_size, x_vec_size, data->M2);
-    arm_mat_init_f32(&Kalman->M3, z_vec_size, z_vec_size, data->M3);
-    arm_mat_init_f32(&Kalman->M4, z_vec_size, z_vec_size, data->M4);
-    arm_mat_init_f32(&Kalman->M5, x_vec_size, z_vec_size, data->M5);
-    arm_mat_init_f32(&Kalman->M6, x_vec_size, z_vec_size, data->M6);
-    arm_mat_init_f32(&Kalman->M7, z_vec_size, x_vec_size, data->M7);
-
-    Kalman->dx = data->dx;
-    Kalman->dz = data->dz;
 }
 
 // predicting state vector x
 void KalmanFilterPredictSV(Kalman_Instance *Kalman, arm_matrix_instance_f32 *A_mat, float *x_vec, arm_matrix_instance_f32 *B_mat, float *u_vec) {
+    float dx[Kalman->x_size];
+
     arm_mat_vec_mult_f32(A_mat, x_vec, x_vec);
-    arm_mat_vec_mult_f32(B_mat, u_vec, Kalman->dx);
-    arm_vecN_add_f32(Kalman->x_size, x_vec, Kalman->dx, x_vec);
+    arm_mat_vec_mult_f32(B_mat, u_vec, dx);
+    arm_vecN_add_f32(Kalman->x_size, x_vec, dx, x_vec);
 }
 
 // predicting covariance matrix P
 void KalmanFilterPredictCM(Kalman_Instance *Kalman, const arm_matrix_instance_f32 *A_mat, arm_matrix_instance_f32 *P_mat, const arm_matrix_instance_f32 *Q_mat) {
-    arm_mat_copy_f32(A_mat, &Kalman->M2);
-    arm_mat_trans_f32(A_mat, &Kalman->M1);
-    arm_mat_mult_f32(P_mat, &Kalman->M1, &Kalman->M2);
-    arm_mat_mult_f32(A_mat, &Kalman->M2, &Kalman->M1);
-    arm_mat_add_f32(&Kalman->M1, Q_mat, P_mat);
+    float M1_data[Kalman->x_size*Kalman->x_size];
+    arm_matrix_instance_f32 M1 = {Kalman->x_size, Kalman->x_size, M1_data};
+    float M2_data[Kalman->x_size*Kalman->x_size];
+    arm_matrix_instance_f32 M2 = {Kalman->x_size, Kalman->x_size, M2_data};
+
+    arm_mat_trans_f32(A_mat, &M1);
+    arm_mat_mult_f32(P_mat, &M1, &M2);
+    arm_mat_mult_f32(A_mat, &M2, &M1);
+    arm_mat_add_f32(&M1, Q_mat, P_mat);
 }
 
 // updating Kalman Gain
 void KalmanFilterUpdateGain(Kalman_Instance *Kalman, arm_matrix_instance_f32 *P_mat, arm_matrix_instance_f32 *C_mat, arm_matrix_instance_f32 *R_mat, arm_matrix_instance_f32 *K_mat) {
-    arm_mat_trans_f32(C_mat, &Kalman->M5);
-    arm_mat_mult_f32(P_mat, &Kalman->M5, &Kalman->M6);
-    arm_mat_mult_f32(C_mat, &Kalman->M6, &Kalman->M3);
-    arm_mat_add_f32(&Kalman->M3, R_mat, &Kalman->M4);
-    arm_mat_inverse_f32(&Kalman->M4, &Kalman->M3);
-    arm_mat_mult_f32(&Kalman->M5, &Kalman->M3, &Kalman->M6);
-    arm_mat_mult_f32(P_mat, &Kalman->M6, K_mat);
+    float M3_data[Kalman->z_size*Kalman->z_size];
+    arm_matrix_instance_f32 M3 = {Kalman->z_size, Kalman->z_size, M3_data};
+    float M4_data[Kalman->z_size*Kalman->z_size];
+    arm_matrix_instance_f32 M4 = {Kalman->z_size, Kalman->z_size, M4_data};
+    float M5_data[Kalman->x_size*Kalman->z_size];
+    arm_matrix_instance_f32 M5 = {Kalman->x_size, Kalman->z_size, M5_data};
+    float M6_data[Kalman->x_size*Kalman->z_size];
+    arm_matrix_instance_f32 M6 = {Kalman->x_size, Kalman->z_size, M6_data};
+    
+    arm_mat_trans_f32(C_mat, &M5);
+    arm_mat_mult_f32(P_mat, &M5, &M6);
+    arm_mat_mult_f32(C_mat, &M6, &M3);
+    arm_mat_add_f32(&M3, R_mat, &M4);
+    arm_mat_inverse_f32(&M4, &M3);
+    arm_mat_mult_f32(&M5, &M3, &M6);
+    arm_mat_mult_f32(P_mat, &M6, K_mat);
 }
 
 // corecting state vector x
 void KalmanFilterCorrectSV(Kalman_Instance *Kalman, arm_matrix_instance_f32 *K_mat, float *z_vec, arm_matrix_instance_f32 *C_mat, float *x_vec) {
-    arm_mat_vec_mult_f32(C_mat, x_vec, Kalman->dz);
-    arm_vecN_sub_f32(Kalman->z_size, z_vec, Kalman->dz, Kalman->dz);
-    arm_mat_vec_mult_f32(K_mat, Kalman->dz, Kalman->dx);
-    arm_vecN_add_f32(Kalman->x_size, x_vec, Kalman->dx, x_vec);
+    float dx[Kalman->x_size];
+    float dz[Kalman->z_size];
+
+    arm_mat_vec_mult_f32(C_mat, x_vec, dz);
+    arm_vecN_sub_f32(Kalman->z_size, z_vec, dz, dz);
+    arm_mat_vec_mult_f32(K_mat, dz, dx);
+    arm_vecN_add_f32(Kalman->x_size, x_vec, dx, x_vec);
 }
 
 // correcting x's covariance matrix P
 void KalmanFilterCorrectCM(Kalman_Instance *Kalman, arm_matrix_instance_f32 *K_mat, arm_matrix_instance_f32 *C_mat, arm_matrix_instance_f32 *P_mat) {
-    arm_mat_mult_f32(C_mat, P_mat, &Kalman->M7);
-    arm_mat_mult_f32(K_mat, &Kalman->M7, & Kalman->M2);
-    arm_mat_sub_f32(P_mat, &Kalman->M2, P_mat);
+    float M2_data[Kalman->x_size*Kalman->x_size];
+    arm_matrix_instance_f32 M2 = {Kalman->x_size, Kalman->x_size, M2_data};
+    float M7_data[Kalman->z_size*Kalman->x_size];
+    arm_matrix_instance_f32 M7 = {Kalman->z_size, Kalman->x_size, M7_data};
+
+    arm_mat_mult_f32(C_mat, P_mat, &M7);
+    arm_mat_mult_f32(K_mat, &M7, &M2);
+    arm_mat_sub_f32(P_mat, &M2, P_mat);
 }

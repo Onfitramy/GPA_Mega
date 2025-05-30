@@ -18,17 +18,6 @@ typedef struct {
     uint8_t x_size;
     uint8_t z_size;
     uint8_t u_size;
-
-    float *dx;
-    float *dz;
-
-    arm_matrix_instance_f32 M1;
-    arm_matrix_instance_f32 M2;
-    arm_matrix_instance_f32 M3;
-    arm_matrix_instance_f32 M4;
-    arm_matrix_instance_f32 M5;
-    arm_matrix_instance_f32 M6;
-    arm_matrix_instance_f32 M7;
 } Kalman_Instance;
 
 // stores actual data for orientation KF
@@ -75,7 +64,7 @@ void RotationMatrixFromEuler(float phi, float theta, float psi, arm_matrix_insta
 void DeulerMatrixFromEuler(float phi, float theta, arm_matrix_instance_f32 *mat);
 void Vec3_BodyToWorld(float *vec3_body, arm_matrix_instance_f32 *mat_rot, float *vec3_world);
 
-void KalmanFilterInit(Kalman_Instance *Kalman, x6z3u3KalmanData *data, uint8_t x_vec_size, uint8_t z_vec_size, uint8_t u_vec_size);
+void KalmanFilterInit(Kalman_Instance *Kalman, uint8_t x_vec_size, uint8_t z_vec_size, uint8_t u_vec_size);
 void KalmanFilterPredictSV(Kalman_Instance *Kalman, arm_matrix_instance_f32 *A_mat, float *x_vec, arm_matrix_instance_f32 *B_mat, float *u_vec);
 void KalmanFilterPredictCM(Kalman_Instance *Kalman, const arm_matrix_instance_f32 *A_mat, arm_matrix_instance_f32 *P_mat, const arm_matrix_instance_f32 *Q_mat);
 void KalmanFilterUpdateGain(Kalman_Instance *Kalman, arm_matrix_instance_f32 *P_mat, arm_matrix_instance_f32 *C_mat, arm_matrix_instance_f32 *R_mat, arm_matrix_instance_f32 *K_mat);
