@@ -1,5 +1,4 @@
 #include "navigation.h"
-#include "armMathAddon.h"
 
 // define constants of WGS84
 const double a = 6378137.;

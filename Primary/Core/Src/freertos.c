@@ -42,7 +42,9 @@
 #include "signalPlotter.h"
 #include "calibration_data.h"
 
+#include "guidance.h"
 #include "navigation.h"
+#include "control.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -485,13 +487,13 @@ void StartDefaultTask(void *argument)
 
     // KALMAN FILTER, POSITION
     if(gps_data.gpsFix == 3) {
-      // update A and B
+      // update A and B with rotation matrix to keep accelerometer bias aligned to body axis
       arm_mat_insert_mult_32(&M_rot_inv, &A2, 0, 6, -dt);
       arm_mat_insert_mult_32(&M_rot_inv, &A2, 3, 6, -0.5*dt*dt);
       arm_mat_insert_mult_32(&M_rot_inv, &B2, 0, 0, dt);
       arm_mat_insert_mult_32(&M_rot_inv, &B2, 3, 0, 0.5*dt*dt);
 
-      KalmanFilterPredictSV(&Kalman2, &A2, x2, &B2, a_WorldFrame);
+      KalmanFilterPredictSV(&Kalman2, &A2, x2, &B2, a_BodyFrame);
       KalmanFilterPredictCM(&Kalman2, &A2, &P2, &Q2);
     }
 
@@ -514,16 +516,14 @@ void StartDefaultTask(void *argument)
         //normalizeAngle(&euler_set[2], 180, -180, 360);
         throttle_cmd = rx_data.JLY / 2.55;
 
-        SERVO_MoveToAngle(PY_MOTOR, throttle_cmd * 1.8);
-        SERVO_MoveToAngle(NY_MOTOR, throttle_cmd * 1.8);
+        Thrust_command(throttle_cmd, 0);
       }
     } else {
       euler_set[0] = 90;
       euler_set[1] = 0;
       euler_set[2] = 0;
 
-      SERVO_MoveToAngle(PY_MOTOR, 0);
-      SERVO_MoveToAngle(NY_MOTOR, 0);
+      Thrust_command(0, 0);
     }
 
     // PID __ phi = x | theta = z | psi = y
@@ -545,7 +545,8 @@ void StartDefaultTask(void *argument)
     arm_vec3_add_f32(P_term, I_term, PID_out);
     arm_vec3_add_f32(PID_out, D_term, PID_out);
 
-    SERVO_TVC(PID_out[0], PID_out[1], PID_out[2]);
+    // send TVC command with deflection physically limited to 60° and twist limited to 30° to ensure xz stability
+    TVC_command(PID_out[0], PID_out[1], PID_out[2], 60, 30);
 
     TimeMeasureStop(); // Stop measuring time
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz) Always at the end of the loop
