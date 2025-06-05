@@ -65,14 +65,12 @@ bmp390_handle_t bmp_handle;
 float temperature, pressure;
 
 double WGS84[3];
-double WGS84_ref[3] = {50.768692, 6.087405, 180.};
+double WGS84_ref[3];
 
 double ECEF[3];
 double ECEF_ref[3];
 
 double ENU[3];
-
-int counter = 0;
 
 uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO, 4: GPS, 7:All checks passed
 
@@ -107,24 +105,48 @@ float Ki[3], Kd[3];
 
 float d_euler[3];
 float d_euler_prior[3];
-float I_sum[3] = {0, 0, 0};
-float P_term[3], I_term[3], D_term[3];
+float I_sum_1[3] = {0, 0, 0};
+float P_term_1[3], I_term_1[3], D_term_1[3];
 
-float PID_out[3];
+float PID1_out[3];
+
+// velocity
+float Kp2[3] = {1, 1, 10};
+float Ki2[3] = {0.01, 0.01, 0.1};
+float Kd2[3] = {1, 1, 1};
+
+float v_set[3] = {0, 0, 0};
+
+float d_v[3] = {0};
+float d_v_prior[3] = {0};
+float I_sum_2[3] = {0, 0, 0};
+float P_term_2[3], I_term_2[3], D_term_2[3];
+
+float PID2_out[3];
+
+
+float d_h = 0;
+float d_h_prior = 0;
+float h_I_sum = 0;
+
 
 float a_WorldFrame[3] = {0}; // Acceleration
 float a_BodyFrame[3] = {0};
 float gravity_world_vec[3] = {0, 0, 9.8};
 float gravity_body_vec[3];
 
+float v_WorldFrame[3] = {0}; // Velocity
+float v_BodyFrame[3] = {0};
+
 float throttle_cmd = 0;
 
 uint8_t offset_phi = 127;
 uint8_t offset_theta = 127;
 
+uint8_t flight_status = 0; // 0 = awaiting gnss fix | 1 = align guidance | 2 = flight | 3 = abort
+
 // time step
 float dt = 0.001;
-
 
 // create new Kalman Filter instance for orientation
 Kalman_Instance Kalman1;
@@ -406,9 +428,6 @@ void StartDefaultTask(void *argument)
   arm_mat_set_diag_f32(&Q2, 3, 3, 3, 1e-3f*0.25*dt*dt*dt*dt);
   arm_mat_set_diag_f32(&Q2, 6, 6, 3, 1e-12f); // variance of accelerometer offset (drift)
 
-  // covert reference point
-  WGS84toECEF(WGS84_ref, ECEF_ref);
-
   // starting point for KF
   while(IMU1_VerifyDataReady() & 0x03 != 0x03); // wait for IMU1 data
   IMU1_ReadSensorData(&imu1_data);
@@ -495,35 +514,97 @@ void StartDefaultTask(void *argument)
 
       KalmanFilterPredictSV(&Kalman2, &A2, x2, &B2, a_BodyFrame);
       KalmanFilterPredictCM(&Kalman2, &A2, &P2, &Q2);
+
+      v_WorldFrame[0] = x2[0];
+      v_WorldFrame[1] = x2[1];
+      v_WorldFrame[2] = x2[2];
+
+      arm_mat_vec_mult_f32(&M_rot, v_WorldFrame, v_BodyFrame);
     }
 
-    if(rx_data.BN == 0) {
-      offset_phi = rx_data.PR;
-      offset_theta = rx_data.PL;
-    } else if(rx_data.BN == 1) {
-      K[0] = K[1] = (float)rx_data.PL / 50.;
-      Kd[0] = Kd[1] = (float)rx_data.PR / 50.;
-    } else if(rx_data.BN == 2) {
-      K[2] = (float)rx_data.PL / 50.;
-      Kd[2] = (float)rx_data.PR / 50.;
-    }
 
-    if(nrf_timeout < 100) {
-      if(rx_data.BN < 3) { // garbage filter
-        euler_set[0] = (rx_data.JRY - offset_phi) / 5. + 90;
-        euler_set[1] = (rx_data.JRX - offset_theta) / 5.;
-        euler_set[2] += -2. * dt * (rx_data.JLX - 127);
-        //normalizeAngle(&euler_set[2], 180, -180, 360);
-        throttle_cmd = rx_data.JLY / 2.55;
-
-        Thrust_command(throttle_cmd, 0);
-      }
-    } else {
+    if(nrf_timeout > 100) {
       euler_set[0] = 90;
       euler_set[1] = 0;
-      euler_set[2] = 0;
+
+      flight_status = 3; // enter abort mode
 
       Thrust_command(0, 0);
+    } 
+    else if(rx_data.BN < 3) { // garbage filter
+      offset_phi = rx_data.PR;
+      offset_theta = rx_data.PL;
+      euler_set[0] = (rx_data.JRY - offset_phi) / 5. + 90;
+      euler_set[1] = (rx_data.JRX - offset_theta) / 5.;
+      euler_set[2] += -2. * dt * (rx_data.JLX - 127);
+
+      throttle_cmd = rx_data.JLY / 2.55;
+    }
+
+    
+    if(flight_status == 0) { // AWAIT GNSS FIX
+      if(gps_data.gpsFix == 3) {
+        flight_status = 1;
+      }
+
+      Set_LED(0, 255, 255, 0);
+      Set_Brightness(45);
+      WS2812_Send();
+    } 
+    else if(flight_status == 1) { // ALIGN GUIDANCE
+      arm_vec3_copy_f32(WGS84, WGS84_ref);
+      arm_vec3_copy_f32(ECEF, ECEF_ref);
+
+      if(throttle_cmd > 50) {
+        flight_status = 2; // flight mode entered manually
+      }
+
+      Set_LED(0, 0, 255, 0);
+      Set_Brightness(45);
+      WS2812_Send();
+    } 
+    else if(flight_status == 2) { // FLIGHT MODE -> POS PID ACTIVE
+      float h_set = 1;
+
+      d_h_prior = d_h;
+      d_h = h_set - x2[5];
+      h_I_sum += d_h;
+
+      v_set[2] = (float)1.f * d_h + 1.f * (d_h - d_h_prior) / dt + 0.01f * h_I_sum * dt;
+
+      arm_vec3_copy_f32(d_v, d_v_prior);
+      arm_vec3_sub_f32(v_set, v_BodyFrame, d_v);
+      arm_vec3_add_f32(I_sum_2, d_v, I_sum_2);
+
+      arm_vec3_element_product_f32(Kp2, d_v, P_term_2);
+      arm_vec3_sub_f32(d_v, d_v_prior, D_term_2);
+      arm_vec3_scalar_mult_f32(D_term_2, 1 / dt, D_term_2);
+      arm_vec3_element_product_f32(Kd2, D_term_2, D_term_2);
+      arm_vec3_scalar_mult_f32(I_sum_2, dt, I_term_2);
+      arm_vec3_element_product_f32(Ki2, I_term_2, I_term_2);
+      arm_vec3_add_f32(P_term_2, I_term_2, PID2_out);
+      arm_vec3_add_f32(PID2_out, D_term_2, PID2_out);
+
+      euler_set[0] = PID2_out[0] - (float)(offset_phi - 127) / 5.f + 90.f;
+      euler_set[1] = PID2_out[1] - (float)(offset_theta - 127) / 5.f;
+      throttle_cmd = PID2_out[2] + 60.f;
+
+      //Thrust_command(throttle_cmd, 0);
+
+      if(throttle_cmd > 95) {
+        flight_status = 3; // abort mode entered manually
+      }
+
+      Set_LED(0, 0, 0, 255);
+      Set_Brightness(45);
+      WS2812_Send();
+    }
+    else if(flight_status > 2) { // ABORT MODE -> POS PID INACTIVE
+      //Thrust_command(throttle_cmd, 0);
+
+      Set_LED(0, 255, 0, 255);
+      Set_Brightness(45);
+      WS2812_Send();
     }
 
     // PID __ phi = x | theta = z | psi = y
@@ -531,22 +612,22 @@ void StartDefaultTask(void *argument)
     normalizeAnglePairVector(euler_deg, euler_set, 0, 2, 180, -180, 360);
     arm_vec3_sub_f32(euler_set, euler_deg, d_euler);
     if(throttle_cmd > 10) {
-      arm_vec3_add_f32(I_sum, d_euler, I_sum);
+      arm_vec3_add_f32(I_sum_1, d_euler, I_sum_1);
     } else {
-      arm_vec3_sub_f32(I_sum, I_sum, I_sum);
+      arm_vec3_sub_f32(I_sum_1, I_sum_1, I_sum_1);
     }
 
-    arm_vec3_element_product_f32(K, d_euler, P_term);
-    arm_vec3_sub_f32(d_euler, d_euler_prior, D_term);
-    arm_vec3_scalar_mult_f32(D_term, 1 / dt, D_term);
-    arm_vec3_element_product_f32(Kd, D_term, D_term);
-    arm_vec3_scalar_mult_f32(I_sum, dt, I_term);
-    arm_vec3_element_product_f32(Ki, I_term, I_term);
-    arm_vec3_add_f32(P_term, I_term, PID_out);
-    arm_vec3_add_f32(PID_out, D_term, PID_out);
+    arm_vec3_element_product_f32(K, d_euler, P_term_1);
+    arm_vec3_sub_f32(d_euler, d_euler_prior, D_term_1);
+    arm_vec3_scalar_mult_f32(D_term_1, 1 / dt, D_term_1);
+    arm_vec3_element_product_f32(Kd, D_term_1, D_term_1);
+    arm_vec3_scalar_mult_f32(I_sum_1, dt, I_term_1);
+    arm_vec3_element_product_f32(Ki, I_term_1, I_term_1);
+    arm_vec3_add_f32(P_term_1, I_term_1, PID1_out);
+    arm_vec3_add_f32(PID1_out, D_term_1, PID1_out);
 
     // send TVC command with deflection physically limited to 60° and twist limited to 30° to ensure xz stability
-    TVC_command(PID_out[0], PID_out[1], PID_out[2], 60, 30);
+    TVC_command(PID1_out[0], PID1_out[1], PID1_out[2], 60, 30);
 
     TimeMeasureStop(); // Stop measuring time
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz) Always at the end of the loop
@@ -614,14 +695,14 @@ void Start100HzTask(void *argument) {
     theta = x[1];
     psi = x[2];
 
-    tx_data.float1 = (float)x2[0];
-    tx_data.float2 = (float)x2[1];
-    tx_data.float3 = (float)x2[2];
-    tx_data.float4 = (float)x2[3];
-    tx_data.float5 = (float)x2[4];
-    tx_data.float6 = (float)x2[5];
-    tx_data.float7 = (float)ENU[0];
-    tx_data.float8 = (float)ENU[1];
+    tx_data.float1 = (float)v_BodyFrame[0];
+    tx_data.float2 = (float)v_BodyFrame[1];
+    tx_data.float3 = (float)v_BodyFrame[2];
+    tx_data.float4 = (float)euler_set[0];
+    tx_data.float5 = (float)euler_set[1];
+    tx_data.float6 = (float)v_set[2];
+    tx_data.float7 = (float)x2[5];
+    tx_data.float8 = (float)throttle_cmd;
 
     /*tx_data.float1 = (float)gps_data.gpsFix;
     tx_data.float2 = (float)gps_data.numSV;
@@ -671,14 +752,6 @@ void Start10HzTask(void *argument) {
       KalmanFilterUpdateGain(&Kalman2, &P2, &C2, &R2, &K2);
       KalmanFilterCorrectSV(&Kalman2, &K2, z2, &C2, x2);
       KalmanFilterCorrectCM(&Kalman2, &K2, &C2, &P2);
-
-      Set_LED(0, 0, 0, 255);
-      Set_Brightness(45);
-      WS2812_Send();
-    } else {
-      Set_LED(0, 255, 255, 0);
-      Set_Brightness(45);
-      WS2812_Send();
     }
 
     // KF2 correction steps
@@ -719,10 +792,6 @@ void StartInterruptHandlerTask(void *argument)
           if(rx_buf[4] != rx_buf[5]) { // discard trash data
             memcpy(&rx_data, rx_buf, sizeof(Data_Package_Receive));
           }        
-          counter++;
-          Set_LED(0, 255, 0, 255);
-          Set_Brightness(45);
-          WS2812_Send();
         }
       }
     }
