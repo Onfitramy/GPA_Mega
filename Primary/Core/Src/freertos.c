@@ -527,7 +527,9 @@ void StartDefaultTask(void *argument)
       euler_set[0] = 90;
       euler_set[1] = 0;
 
-      flight_status = 3; // enter abort mode
+      if(flight_status == 2) {
+        flight_status = 3; // enter abort mode
+      }
 
       Thrust_command(0, 0);
     } 
@@ -564,6 +566,10 @@ void StartDefaultTask(void *argument)
       WS2812_Send();
     } 
     else if(flight_status == 2) { // FLIGHT MODE -> POS PID ACTIVE
+      if(throttle_cmd > 95) {
+        flight_status = 3; // abort mode entered manually
+      }
+
       float h_set = 1;
 
       d_h_prior = d_h;
@@ -589,18 +595,14 @@ void StartDefaultTask(void *argument)
       euler_set[1] = PID2_out[1] - (float)(offset_theta - 127) / 5.f;
       throttle_cmd = PID2_out[2] + 60.f;
 
-      //Thrust_command(throttle_cmd, 0);
-
-      if(throttle_cmd > 95) {
-        flight_status = 3; // abort mode entered manually
-      }
+      Thrust_command(0 /*throttle_cmd*/, 0);
 
       Set_LED(0, 0, 0, 255);
       Set_Brightness(45);
       WS2812_Send();
     }
     else if(flight_status > 2) { // ABORT MODE -> POS PID INACTIVE
-      //Thrust_command(throttle_cmd, 0);
+      Thrust_command(0 /*throttle_cmd*/, 0);
 
       Set_LED(0, 255, 0, 255);
       Set_Brightness(45);
@@ -745,9 +747,9 @@ void Start10HzTask(void *argument) {
       z2[4] = (float)ENU[1];
       z2[5] = (float)ENU[2];
 
-      arm_mat_set_diag_f32(&R2, 0, 0, 3, (float)gps_data.sAcc * gps_data.sAcc / 1e6f);
-      arm_mat_set_diag_f32(&R2, 3, 3, 2, (float)gps_data.hAcc * gps_data.hAcc / 1e6f);
-      arm_mat_set_entry_f32(&R2, 5, 5, (float)gps_data.vAcc * gps_data.vAcc / 1e6f);
+      arm_mat_set_diag_f32(&R2, 0, 0, 3, (float)gps_data.sAcc * gps_data.sAcc / 1e6f * 0.01f);
+      arm_mat_set_diag_f32(&R2, 3, 3, 2, (float)gps_data.hAcc * gps_data.hAcc / 1e6f * 100.f);
+      arm_mat_set_entry_f32(&R2, 5, 5, (float)gps_data.vAcc * gps_data.vAcc / 1e6f * 100.f);
 
       KalmanFilterUpdateGain(&Kalman2, &P2, &C2, &R2, &K2);
       KalmanFilterCorrectSV(&Kalman2, &K2, z2, &C2, x2);
