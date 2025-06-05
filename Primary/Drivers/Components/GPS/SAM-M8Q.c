@@ -105,7 +105,7 @@ void GPS_Init(void){
     ublox_Write(len, UBX_MessageSend);
 
     UBX_MessageType UBX_CFG_PRT = ublox_ReadOutput(UBX_MessageReturn);
-    if (UBX_CFG_PRT.messageClass == 6){
+    if (UBX_CFG_PRT.messageClass == 6) {
       UBX_CFG_PRT.messageBody[14] = 0x01; //Set bit 14 to 1 to disable NMEA messages
       int len = uUbxProtocolEncode(0x06, 0x00, UBX_CFG_PRT.messageBody, 19, UBX_MessageSend);
 

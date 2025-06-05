@@ -42,6 +42,8 @@
 #include "signalPlotter.h"
 #include "calibration_data.h"
 #include "InterBoardCom.h"
+
+#include "navigation.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -55,16 +57,10 @@ LSM6DSR_Data_t imu1_data;
 ISM330DHCX_Data_t imu2_data;
 LIS3MDL_Data_t mag_data;
 UBX_NAV_PVT gps_data;
-float alpha;
-StateVector GPA_SV;
 uint32_t pressure_raw;
-float yaw = 0;
 uint32_t temperature_raw;
 bmp390_handle_t bmp_handle;
 float temperature, pressure;
-
-
-
 
 uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO, 4: GPS, 7:All checks passed
 
@@ -216,7 +212,6 @@ void MX_FREERTOS_Init(void) {
 void StartDefaultTask(void *argument)
 {
   /* init code for USB_DEVICE */
-  MX_USB_DEVICE_Init();
   HAL_Delay(200); // Wait for USB and other Peripherals to initialize
   GPS_Init(); //Initialize the GPS module
   /* USER CODE BEGIN StartDefaultTask */
@@ -237,26 +232,24 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;) {
     TimeMeasureStart(); // Start measuring time
-    SelfTest(); // Run self-test on startup
+    SelfTest();         // Run self-test on startup
 
-    BMP_GetPressureRaw(&pressure_raw);  
+    BMP_GetPressureRaw(&pressure_raw);
     BMP_GetTemperatureRaw(&temperature_raw);
-    IMU1_ReadSensorData(&imu1_data);
-    arm_sub_f32(imu1_data.accel, IMU1_offset, imu1_data.accel, 3);
-    arm_mult_f32(imu1_data.accel, IMU1_scale, imu1_data.accel, 3);
-    IMU2_ReadSensorData(&imu2_data);
-  
+
+    if(IMU1_VerifyDataReady() & 0x03 == 0x03) {
+      IMU1_ReadSensorData(&imu1_data);
+      arm_vec3_sub_f32(imu1_data.accel, IMU1_offset, imu1_data.accel);
+      arm_vec3_element_product_f32(imu1_data.accel, IMU1_scale, imu1_data.accel);
+    }
+    
+    //IMU2_ReadSensorData(&imu2_data);
 
     if(MAG_VerifyDataReady() & 0b00000001) {
       MAG_ReadSensorData(&mag_data);
-      arm_sub_f32(mag_data.field, MAG_offset, mag_data.field, 3);
-      arm_mult_f32(mag_data.field, MAG_scale, mag_data.field, 3);
+      arm_vec3_sub_f32(mag_data.field, MAG_offset, mag_data.field);
+      arm_vec3_element_product_f32(mag_data.field, MAG_scale, mag_data.field);
     }
-
-    yaw += imu1_data.gyro[2] * 0.001;
-
-    alpha = atan2(imu2_data.accel[1], imu2_data.accel[2])*180/M_PI;
-    SERVO_MoveToAngle(1, 2*alpha);
 
     // Kompensierte Temperatur berechnen (°C * 100)
     temperature = bmp390_compensate_temperature(temperature_raw, &bmp_handle);  // float, z.B. °C
@@ -275,6 +268,8 @@ void Start100HzTask(void *argument) {
   const TickType_t xFrequency = 10; //100 Hz
   /* Infinite loop */
   for(;;) {
+    signalPlotter_sendData(1, (float)nrf_timeout);
+
     signalPlotter_sendData(0, mag_data.field[0]);
     signalPlotter_sendData(1, mag_data.field[1]);
     signalPlotter_sendData(2, mag_data.field[2]);
@@ -284,9 +279,9 @@ void Start100HzTask(void *argument) {
     signalPlotter_sendData(6, imu1_data.gyro[0]);
     signalPlotter_sendData(7, imu1_data.gyro[1]);
     signalPlotter_sendData(8, imu1_data.gyro[2]);
-    signalPlotter_sendData(9, yaw);
 
     signalPlotter_executeTransmission(HAL_GetTick());
+
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }
   /* USER CODE END Start10HzTask */
@@ -299,7 +294,7 @@ void Start10HzTask(void *argument) {
   /* Infinite loop */
   for(;;) {
     GPS_ReadSensorData(&gps_data);
-    
+
     InterBoardCom_SendTestPacket(); //Send a test packet to the other board
 
     #ifdef TRANSMITTER
@@ -332,7 +327,7 @@ void StartInterruptHandlerTask(void *argument)
       if(receivedData == 0x10) {
         ublox_ReadOutput(GPS_Buffer); //Read the GPS output and decode it
       }else if (receivedData == 0x11) {
-        HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
+        HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);  
         #ifdef RECEIVER
           nrf24l01p_rx_receive(rx_data);
           if(nrf24l01p_get_receivedPower()) {
@@ -345,10 +340,6 @@ void StartInterruptHandlerTask(void *argument)
             WS2812_Send();
           }
         #endif
-    
-        #ifdef TRANSMITTER
-          nrf24l01p_tx_irq();
-        #endif
       }
     }
     osDelay(5);
@@ -359,16 +350,9 @@ void StartInterruptHandlerTask(void *argument)
 /* USER CODE BEGIN Application */
 
 uint8_t SelfTest(void) {
-  uint8_t R = 255;
-  uint8_t G = 0;
-  uint8_t B = 0;
-
   if((SelfTest_Bitfield == 0b11111) && (SelfTest_Bitfield != 0b10011111)){
-    R = 0;
-    G = 255;
-    B = 0;
-    Set_LED(0, R, G, B);
-    Set_Brightness(5);
+    Set_LED(0, 0, 255, 0);
+    Set_Brightness(45);
     WS2812_Send();
     SelfTest_Bitfield |= (1<<7);  //All checks passed
   }
@@ -378,12 +362,9 @@ uint8_t SelfTest(void) {
     SelfTest_Bitfield |= (MAG_SelfTest()<<2);
     SelfTest_Bitfield |= (BMP_SelfTest()<<3);
     SelfTest_Bitfield |= (GPS_VER_CHECK()<<4); //Check if GPS is connected and working
-    
-    R = 255;
-    G = 0;
-    B = 0;
-    Set_LED(0, R, G, B);
-    Set_Brightness(5);
+
+    Set_LED(0, 255, 0, 0);
+    Set_Brightness(45);
     WS2812_Send();
   }
 

@@ -36,7 +36,9 @@ extern SPI_HandleTypeDef hspi6;
 #define NRF_IRQ_PORT   GPIOD
 #define NRF_IRQ_PIN    GPIO_PIN_5
 
+#define NRF24L01P_RX_PAYLOAD_LENGTH 7     // 1 - 32bytes
 #define NRF24L01P_PAYLOAD_LENGTH 8     // 1 - 32bytes
+#define NRF24L01P_TX_PAYLOAD_LENGTH 32    // 1 - 32bytes
 
 /* nRF24L01+ typedefs */
 typedef uint8_t count;
@@ -60,6 +62,22 @@ typedef enum
     _18dBm = 0
 } output_power;
 
+extern float nrf_timeout;
+
+// 0 = receive, 1 = transmit
+extern bool nrf_mode;
+
+#pragma pack(push, 1)
+typedef struct {
+  uint8_t JLX;
+  uint8_t JLY;
+  uint8_t JRX;
+  uint8_t JRY;
+  uint8_t BN;
+  uint8_t PL;
+  uint8_t PR;
+} Data_Package_Receive;
+#pragma pack(pop)
 
 /* Main Functions */
 void nrf24l01p_rx_init(channel MHz, air_data_rate bps);
@@ -86,7 +104,8 @@ uint8_t nrf24l01p_get_fifo_status();
 uint8_t nrf24l01p_get_receivedPower();
 
 // Static payload lengths
-void nrf24l01p_rx_set_payload_widths(widths bytes);
+void nrf24l01p_rx_set_payload_widths_P0(widths bytes);
+void nrf24l01p_rx_set_payload_widths_P1(widths bytes);
 
 uint8_t nrf24l01p_read_rx_fifo(uint8_t* rx_payload);
 uint8_t nrf24l01p_write_tx_fifo(uint8_t* tx_payload);
@@ -103,10 +122,16 @@ void nrf24l01p_set_rf_channel(channel MHz);
 void nrf24l01p_set_rf_tx_output_power(output_power dBm);
 void nrf24l01p_set_rf_air_data_rate(air_data_rate bps);
 
+void nrf24l01p_disable_crc();
 void nrf24l01p_set_crc_length(length bytes);
 void nrf24l01p_set_address_widths(widths bytes);
 void nrf24l01p_auto_retransmit_count(count cnt);
 void nrf24l01p_auto_retransmit_delay(delay us);
+
+void nrf24l01p_startListening();
+void nrf24l01p_sendOnce(uint8_t* tx_payload);
+
+void delay_us(uint32_t us);
 
 
 /* nRF24L01+ Commands */

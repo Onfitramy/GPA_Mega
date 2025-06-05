@@ -115,9 +115,9 @@ HAL_StatusTypeDef IMU1_ReadSensorData(LSM6DSR_Data_t *data) {
         uint8_t rx[6] = { 0 };
         status = IMU1_read_reg(LSM6DSR_OUTX_L_G, 6, rx);    // read gyro data
         if (status != HAL_OK) return status;
-        data->gyro[0] = (float)((int16_t)(rx[1] << 8 | rx[0])) * IMU1G_FS_LSB / 8000; // gyro_X [dps]
-        data->gyro[1] = (float)((int16_t)(rx[3] << 8 | rx[2])) * IMU1G_FS_LSB / 8000; // gyro_Y [dps]
-        data->gyro[2] = (float)((int16_t)(rx[5] << 8 | rx[4])) * IMU1G_FS_LSB / 8000; // gyro_Z [dps]
+        data->gyro[0] = (float)((int16_t)(rx[1] << 8 | rx[0])) * IMU1G_FS_LSB / 8000 * M_PI / 180; // gyro_X [rad/s]
+        data->gyro[1] = (float)((int16_t)(rx[3] << 8 | rx[2])) * IMU1G_FS_LSB / 8000 * M_PI / 180; // gyro_Y [rad/s]
+        data->gyro[2] = (float)((int16_t)(rx[5] << 8 | rx[4])) * IMU1G_FS_LSB / 8000 * M_PI / 180; // gyro_Z [rad/s]
     }
     if(available & 0x04) {
         uint8_t rx[2] = { 0 };

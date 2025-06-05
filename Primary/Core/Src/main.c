@@ -36,6 +36,7 @@
 #include "bmp390.h"
 #include "Stepper.h"
 #include "NRF24L01P.h"
+#include "signalPlotter.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -129,15 +130,18 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM4_Init();
   MX_TIM5_Init();
+  MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
 
   int counter1, counter2, counter3;
 
   SERVO_Init(1);
+
+  //SERVO_TestSequence();
+
   BMP_SelfTest();
   BMP_enable();
   BMP_Read_Calibration_Params(&bmp_handle);
-
 
   #ifdef RECEIVER
   nrf24l01p_rx_init(2450, _1Mbps);
@@ -153,20 +157,20 @@ int main(void)
 
   if(IMU1_Init() == HAL_OK && IMU2_Init() == HAL_OK && MAG_Init() == HAL_OK) Set_LED(0, 0, 255, 0);
   else Set_LED(0, 255, 0, 0);
-  Set_Brightness(10);
+  Set_Brightness(5);
   WS2812_Send();
 
   IMU1_VerifyDataReady();
   IMU2_VerifyDataReady();
   MAG_VerifyDataReady();
 
-  MAG_ConfigSensor(LIS3MDL_OM_ULTRA, LIS3MDL_ODR_80_Hz, LIS3MDL_FS_4, 1, 1);
+  MAG_ConfigSensor(LIS3MDL_OM_ULTRA, LIS3MDL_ODR_80_Hz, LIS3MDL_FS_4, LIS3MDL_FAST_ODR_ON, LIS3MDL_TEMP_ON);
 
-  IMU1_ConfigXL(LSM6DSR_ODR_6660_Hz, LSM6DSR_FS_XL_2, 0);
-  IMU1_ConfigG(LSM6DSR_ODR_6660_Hz, LSM6DSR_FS_G_500);
+  IMU1_ConfigXL(LSM6DSR_ODR_1660_Hz, LSM6DSR_FS_XL_2, 0);
+  IMU1_ConfigG(LSM6DSR_ODR_1660_Hz, LSM6DSR_FS_G_2000);
 
-  IMU2_ConfigXL(LSM6DSR_ODR_6660_Hz, LSM6DSR_FS_XL_16, 0);
-  IMU2_ConfigG(LSM6DSR_ODR_6660_Hz, LSM6DSR_FS_G_4000);
+  IMU2_ConfigXL(ISM330DHCX_ODR_6660_Hz, ISM330DHCX_FS_XL_16, 0);
+  IMU2_ConfigG(ISM330DHCX_ODR_6660_Hz, ISM330DHCX_FS_G_4000);
 
   /* USER CODE END 2 */
 

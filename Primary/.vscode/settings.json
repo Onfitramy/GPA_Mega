@@ -34,7 +34,12 @@
         "usbd_cdc_if.h": "c",
         "string.h": "c",
         "interboardcom.h": "c",
-        "stdarg.h": "c"
+        "stdarg.h": "c",
+        "armmathaddon.h": "c",
+        "calibration_data.h": "c",
+        "servo.h": "c",
+        "navigation.h": "c",
+        "math.h": "c"
     },
     "cortex-debug.variableUseNaturalFormat": true
 }

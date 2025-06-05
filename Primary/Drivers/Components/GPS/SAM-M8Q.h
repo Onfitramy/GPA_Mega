@@ -66,10 +66,10 @@ typedef struct {
     int32_t velE;      // Velocity east in millimeters/second
     int32_t velD;      // Velocity down in millimeters/second
     int32_t gSpeed;    // 2D Ground speed in millimeters/second
-    int32_t headMot;   // Heading of motion 2D in degrees
+    int32_t headMot;   // Heading of motion 2D in degrees * 1e-5
     int32_t sAcc;      // Speed accuracy estimate in millimeters/second
-    int32_t headAcc;   // Heading accuracy estimate in degrees
-    uint16_t pDOP;     // Position DOP (0.01)
+    int32_t headAcc;   // Heading accuracy estimate in degrees * 1e-5
+    uint16_t pDOP;     // Position DOP (* 0.01)
     uint16_t flags3;   // Flags
     uint32_t reserved1;// Reserved for future use
     uint32_t headVeh;   // Heading of vehicle in degrees

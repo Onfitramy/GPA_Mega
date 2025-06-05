@@ -74,4 +74,10 @@ uint8_t MAG_Offset(int16_t set_x, int16_t set_y, int16_t set_z);
 #define LIS3MDL_FS_12   0b10
 #define LIS3MDL_FS_16   0b11
 
+#define LIS3MDL_FAST_ODR_ON 1
+#define LIS3MDL_FAST_ODR_OFF 0
+
+#define LIS3MDL_TEMP_ON 1
+#define LIS3MDL_TEMP_OFF 0
+
 #endif /* LIS3MDL_H_ */
