@@ -397,7 +397,9 @@ void StartDefaultTask(void *argument)
   signalPlotter_setSignalName(26, "pos x fix");
   signalPlotter_setSignalName(27, "pos y fix");
   signalPlotter_setSignalName(28, "pos z fix");
-  
+  signalPlotter_setSignalName(29, "pressure");
+  signalPlotter_setSignalName(30, "temperature");
+
   arm_vec3_element_product_f32(K, Tv, Kd);
   Tn[0] = 1 / Tn[0];
   Tn[1] = 1 / Tn[1];
@@ -673,6 +675,8 @@ void Start100HzTask(void *argument) {
     signalPlotter_sendData(26, z2[3]);
     signalPlotter_sendData(27, z2[4]);
     signalPlotter_sendData(28, z2[5]);
+    signalPlotter_sendData(29, pressure);
+    signalPlotter_sendData(30, temperature);
 
     signalPlotter_executeTransmission(HAL_GetTick());
 

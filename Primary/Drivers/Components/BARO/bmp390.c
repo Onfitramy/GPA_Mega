@@ -27,19 +27,20 @@ uint8_t BMP_SelfTest(void)
 }
 
 // Ab hier Test von Daniel
-uint8_t BMP_enable(void) {
- 
-    // 1. Power Control Register: Pressure + Temperature aktiviert, Mode = Normal (bit 1:0 = 11)
-    BMP_write_reg(BMP_390_PWR_CTRL_REG, 0x33);  // press_en=1, temp_en=1, mode=11
+uint8_t BMP_enable(void) 
+{
+     BMP_write_reg(BMP_390_PWR_CTRL_REG, 0x33);  // press_en=1, temp_en=1, mode=11
 
     // 2. Oversampling: osrs_p = x8 (0b011), osrs_t = x1 (0b000)
     BMP_write_reg(BMP_390_OSR_REG, 0x03);       // [5:3]=osrs_t=000, [2:0]=osrs_p=011
 
     // 3. Output Data Rate (ODR): 50 Hz → odr_sel = 0x02
-    BMP_write_reg(BMP_390_ODR_REG, 0x02);       // odr_sel = 0x02
+    BMP_write_reg(BMP_390_ODR_REG, 0x03);       // odr_sel = 0x02
 
     // 4. IIR Filter: IIR coefficient = 2 → ir_filter = 0b010
-    BMP_write_reg(BMP_390_IIR_REG, 0x04);       // bits 2:1 = 0b010 (IIR=2), bit 0 = short_in = 0
+    BMP_write_reg(BMP_390_IIR_REG, 0x00);       // bits 2:1 = 0b010 (IIR=2), bit 0 = short_in = 0
+
+    return 0;
 }
 
 uint8_t BMP_VerifyDataReady(void) {
