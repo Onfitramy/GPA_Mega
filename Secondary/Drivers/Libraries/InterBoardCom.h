@@ -11,7 +11,8 @@ typedef enum {
     PACKET_ID_BMP = 0x05,
     PACKET_ID_CALIBRATION = 0x06,
     PACKET_ID_SELFTEST = 0x07,
-    PACKET_ID_GPA_SV = 0x08,
+    PACKET_ID_GPA = 0x08,
+    PACKET_ID_FLASHSAVE = 0x09 //This packet is supposed to be saved in flash memory
 } PacketID_t;
 
 #pragma pack(push, 1)

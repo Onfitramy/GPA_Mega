@@ -5,7 +5,8 @@
         "stm32f4xx_hal.h": "c",
         "vr.h": "c",
         "math.h": "c",
-        "interboardcom.h": "c"
+        "interboardcom.h": "c",
+        "stream_buffer.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

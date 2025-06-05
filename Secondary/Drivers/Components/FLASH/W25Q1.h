@@ -1,0 +1,38 @@
+extern SPI_HandleTypeDef hspi2;
+#define W25Q1_SPI hspi2
+
+#define numBLOCK 256 //256 Blocks in the 128Mbit FLASH
+
+typedef struct {
+    uint8_t * const buffer;
+    int head;
+    int tail;
+    const int maxlen;
+} circ_bbuf_t;
+
+#define CIRC_BBUF_DEF(x,y)                \
+    uint8_t x##_data_space[y];            \
+    circ_bbuf_t x = {                     \
+        .buffer = x##_data_space,         \
+        .head = 0,                        \
+        .tail = 0,                        \
+        .maxlen = y                       \
+    }
+
+void W25Q1_Reset(void);
+uint32_t W25Q1_ReadID(void);
+void W25Q_Erase_Sector (uint16_t numsector);
+void W25Q_Read (uint32_t startPage, uint8_t offset, uint32_t size, uint8_t *rData);
+void W25Q_FastRead (uint32_t startPage, uint8_t offset, uint32_t size, uint8_t *rData);
+void W25Q_Write_Page (uint32_t page, uint16_t offset, uint32_t size, uint8_t *data);
+void W25Q_Write_Byte (uint32_t Addr, uint8_t data);
+void W25Q_Write (uint32_t page, uint16_t offset, uint32_t size, uint8_t *data);
+void W25Q_Write_NUM (uint32_t page, uint16_t offset, float data);
+float W25Q_Read_NUM (uint32_t page, uint16_t offset);
+void W25Q_Write_32B (uint32_t page, uint16_t offset, uint32_t size, uint32_t *data);
+void W25Q_Read_32B (uint32_t page, uint16_t offset, uint32_t size, uint32_t *data);
+void W25Q_Chip_Erase (void);
+void W25Q_readLogPos(void);
+void W25Q_Write_Cleared(uint32_t page, uint16_t offset, uint32_t size, uint8_t *data);
+void W25Q_SaveLog(void);
+uint8_t W25Q_AppendLog(uint8_t *event, uint32_t eventSize, float data1, float data2, float data3);
