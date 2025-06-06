@@ -521,7 +521,7 @@ void StartDefaultTask(void *argument)
     }
 
 
-    if(nrf_timeout > 100) {
+    if(nrf_timeout > 250) {
       euler_set[0] = 90;
       euler_set[1] = 0;
 
@@ -740,6 +740,12 @@ void Start10HzTask(void *argument) {
     if(gps_data.gpsFix == 3) {
       UBLOXtoWGS84(gps_data.lat, gps_data.lon, gps_data.height, WGS84);
       WGS84toECEF(WGS84, ECEF);
+      if(flight_status == 0) {
+        for(int i = 0; i <= 2; i++) {
+          WGS84_ref[i] = WGS84[i];
+        }
+        WGS84toECEF(WGS84_ref, ECEF_ref);
+      }
       ECEFtoENU(WGS84_ref, ECEF_ref, ECEF, ENU);
 
       z2[0] = (float)gps_data.velE / 1000.f;
