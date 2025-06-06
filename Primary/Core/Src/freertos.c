@@ -87,12 +87,6 @@ arm_matrix_instance_f32 M_rot_inv = {3, 3, M_rot_inv_data};
 // euler angles from accelerations and magnetic field
 float phi_fix, theta_fix, psi_fix;
 
-// Variables for calibration
-float gyr_sumup[3] = {0, 0, 0};
-float gyr_offset[3] = {0, 0, 0};
-float acc_sumup[3] = {0, 0, 0};
-float mag_sumup[3] = {0, 0, 0};
-
 // PID STUFF
 // euler angles from control
 float euler_set[3] = {90, 0, 0};
@@ -132,6 +126,7 @@ float h_I_sum = 0;
 
 float a_WorldFrame[3] = {0}; // Acceleration
 float a_BodyFrame[3] = {0};
+float a_abs;
 float gravity_world_vec[3] = {0, 0, 9.8};
 float gravity_body_vec[3];
 
@@ -505,6 +500,7 @@ void StartDefaultTask(void *argument)
     // calculate acceleration w/o gravity in body frame
     arm_mat_vec_mult_f32(&M_rot, gravity_world_vec, gravity_body_vec);
     arm_vec3_sub_f32(imu1_data.accel, gravity_body_vec, a_BodyFrame);
+    a_abs = arm_vec3_length_f32(a_BodyFrame);
 
     // KALMAN FILTER, POSITION
     if(gps_data.gpsFix == 3) {
@@ -556,8 +552,10 @@ void StartDefaultTask(void *argument)
       WS2812_Send();
     } 
     else if(flight_status == 1) { // ALIGN GUIDANCE
-      arm_vec3_copy_f32(WGS84, WGS84_ref);
-      arm_vec3_copy_f32(ECEF, ECEF_ref);
+      for(int i = 0; i <= 2; i++) {
+        WGS84_ref[i] = WGS84[i];
+      }
+      WGS84toECEF(WGS84_ref, ECEF_ref);
 
       if(throttle_cmd > 50) {
         flight_status = 2; // flight mode entered manually
@@ -751,7 +749,7 @@ void Start10HzTask(void *argument) {
       z2[4] = (float)ENU[1];
       z2[5] = (float)ENU[2];
 
-      arm_mat_set_diag_f32(&R2, 0, 0, 3, (float)gps_data.sAcc * gps_data.sAcc / 1e6f * 0.01f);
+      arm_mat_set_diag_f32(&R2, 0, 0, 3, (float)gps_data.sAcc * gps_data.sAcc / 1e6f * 0.001f * (1 + a_abs));
       arm_mat_set_diag_f32(&R2, 3, 3, 2, (float)gps_data.hAcc * gps_data.hAcc / 1e6f * 100.f);
       arm_mat_set_entry_f32(&R2, 5, 5, (float)gps_data.vAcc * gps_data.vAcc / 1e6f * 100.f);
 
@@ -788,11 +786,11 @@ void StartInterruptHandlerTask(void *argument)
       if(receivedData == 0x10) {
         ublox_ReadOutput(GPS_Buffer); //Read the GPS output and decode it
       }else if (receivedData == 0x11) {
-        HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
         
         if(nrf_mode) {
           nrf24l01p_tx_irq();
         } else {
+          HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
           uint8_t rx_buf[NRF24L01P_RX_PAYLOAD_LENGTH] = {0};
           nrf24l01p_rx_receive(rx_buf);
           if(rx_buf[4] != rx_buf[5]) { // discard trash data
