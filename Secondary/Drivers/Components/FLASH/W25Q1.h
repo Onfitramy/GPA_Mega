@@ -3,6 +3,10 @@ extern SPI_HandleTypeDef hspi2;
 
 #define numBLOCK 256 //256 Blocks in the 128Mbit FLASH
 
+#define CONFIG_PAGE 16 //Start of the configuration page, ends at 127->32KB
+#define GPS_ASSIST_PAGE 256 //Start of the GPS assist data page, ends at 767->128KB
+#define LOG_PAGE 1024 //Start of the log page, runs till the end of the flash memory ~16MB
+
 typedef struct {
     uint8_t * const buffer;
     int head;
@@ -19,6 +23,16 @@ typedef struct {
         .maxlen = y                       \
     }
 
+#pragma pack(push, 1)
+typedef struct {
+    uint8_t ID[2]; // 2 bytes for ID AP in hex
+    uint32_t curr_configPage; // Current configuration page
+    uint32_t curr_configOffset; // Current configuration offset
+    uint32_t curr_logPage; // Current log page
+    uint32_t curr_logOffset; // Current log offset
+} W25QPage0_config_t;
+#pragma pack(pop)
+
 void W25Q1_Reset(void);
 uint32_t W25Q1_ReadID(void);
 void W25Q_Erase_Sector (uint16_t numsector);
@@ -32,7 +46,10 @@ float W25Q_Read_NUM (uint32_t page, uint16_t offset);
 void W25Q_Write_32B (uint32_t page, uint16_t offset, uint32_t size, uint32_t *data);
 void W25Q_Read_32B (uint32_t page, uint16_t offset, uint32_t size, uint32_t *data);
 void W25Q_Chip_Erase (void);
-void W25Q_readLogPos(void);
+void W25Q_updateLogPosition(void);
 void W25Q_Write_Cleared(uint32_t page, uint16_t offset, uint32_t size, uint8_t *data);
-void W25Q_SaveLog(void);
-uint8_t W25Q_AppendLog(uint8_t *event, uint32_t eventSize, float data1, float data2, float data3);
+void W25Q_SaveToLog(uint8_t *data, uint32_t size);
+void W25Q_LoadFromLog(uint8_t *data, uint32_t size, uint32_t log_page, uint32_t log_offset);
+void W25Q_GetConfig();
+//void W25Q_SaveLog(void);
+//uint8_t W25Q_AppendLog(uint8_t *event, uint32_t eventSize, float data1, float data2, float data3);

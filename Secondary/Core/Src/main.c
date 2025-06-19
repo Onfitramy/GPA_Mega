@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+#include "queue.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -61,6 +62,8 @@ TIM_HandleTypeDef htim3;
 UART_HandleTypeDef huart1;
 
 PCD_HandleTypeDef hpcd_USB_OTG_HS;
+
+extern QueueHandle_t InterBoardPacketQueue; // Queue for InterBoardPacket_t packets
 
 /* USER CODE BEGIN PV */
 
@@ -134,7 +137,6 @@ int main(void)
   MX_ADC2_Init();
   MX_I2C2_Init();
   /* USER CODE BEGIN 2 */
-  InterBoardCom_ActivateReceive(); //Activate the SPI DMA receive
   uint32_t flashid = W25Q1_ReadID(); //Check if the FLASH works, flashid = 0xEF4017
   /* USER CODE END 2 */
 
@@ -172,9 +174,19 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi){
   if (1) {
     // DMA transfer complete callback for SPI1
     // Process the received data in receiveBuffer
-    HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin);
-    InterBoardCom_ReceivePacket();
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    InterBoardPacket_t packet = InterBoardCom_ReceivePacket();
+    xQueueSendFromISR(InterBoardPacketQueue, &packet, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    //Pass the received packet to a que to be processed by the task
   }
+}
+
+void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi) {
+    if (hspi->Instance == SPI1) {
+        // Reactivate DMA receive on error
+        InterBoardCom_ReactivateDMAReceive();
+    }
 }
 
 /**

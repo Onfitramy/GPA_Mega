@@ -6,39 +6,77 @@
 
 #include "main.h"
 #include "W25Q1.h"
+#include "string.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
-CIRC_BBUF_DEF(event_circ_buf, 8192);
+W25QPage0_config_t W25Q_FLASH_CONFIG = {
+	.ID = {0x41, 0x45}, // AP in hex
+	.curr_configPage = CONFIG_PAGE, // Start at the configuration page
+	.curr_configOffset = 0, // Start at the beginning of the configuration page
+	.curr_logPage = LOG_PAGE, // Start at the log page
+	.curr_logOffset = 0 // Start at the beginning of the log page
+};
 
-int circ_bbuf_push(circ_bbuf_t *c, uint8_t data)
+// CIRC_BBUF_DEF(event_circ_buf, 8192);
+
+// int circ_bbuf_push(circ_bbuf_t *c, uint8_t data)
+// {
+//     int next;
+
+//     next = c->head + 1;  // next is where head will point to after this write.
+//     if (next >= c->maxlen)
+//         next = 0;
+
+//     if (next == c->tail)  // if the head + 1 == tail, circular buffer is full
+//         return -1;
+
+//     c->buffer[c->head] = data;  // Load data and then move
+//     c->head = next;             // head to next data offset.
+//     return 0;  // return success to indicate successful push.
+// }
+
+// int circ_bbuf_pop(circ_bbuf_t *c, uint8_t *data)
+// {
+//     int next;
+
+//     if (c->head == c->tail)  // if the head == tail, we don't have any data
+//         return -1;
+
+//     next = c->tail + 1;  // next is where tail will point to after this read.
+//     if(next >= c->maxlen)
+//         next = 0;
+
+//     *data = c->buffer[c->tail];  // Read data and then move
+//     c->tail = next;              // tail to next offset.
+//     return 0;  // return success to indicate successful push.
+// }
+
+//Saves the data to the log page
+void W25Q_SaveToLog(uint8_t *data, uint32_t size)
 {
-    int next;
+	if (size == 0) return; // nothing to save
 
-    next = c->head + 1;  // next is where head will point to after this write.
-    if (next >= c->maxlen)
-        next = 0;
+	// Check if we have enough space in the current log page
+	if (W25Q_FLASH_CONFIG.curr_logOffset + size >= 256) {
+		W25Q_FLASH_CONFIG.curr_logPage += 1; // Move to next page
+		W25Q_FLASH_CONFIG.curr_logOffset = 0; // Reset offset
+	}
 
-    if (next == c->tail)  // if the head + 1 == tail, circular buffer is full
-        return -1;
+	W25Q_Write_Cleared(W25Q_FLASH_CONFIG.curr_logPage, W25Q_FLASH_CONFIG.curr_logOffset, size, data);
 
-    c->buffer[c->head] = data;  // Load data and then move
-    c->head = next;             // head to next data offset.
-    return 0;  // return success to indicate successful push.
+	W25Q_FLASH_CONFIG.curr_logOffset += size;
+
+	uint32_t tData32[2] = {W25Q_FLASH_CONFIG.curr_logPage, W25Q_FLASH_CONFIG.curr_logOffset};
+	W25Q_Write_32B(0, 0, 2, tData32); // Save current log page and offset at 0
 }
 
-int circ_bbuf_pop(circ_bbuf_t *c, uint8_t *data)
+void W25Q_LoadFromLog(uint8_t *data, uint32_t size, uint32_t log_page, uint32_t log_offset)
 {
-    int next;
+	// Load data from the log page
+	if (size == 0) return; // nothing to load
 
-    if (c->head == c->tail)  // if the head == tail, we don't have any data
-        return -1;
-
-    next = c->tail + 1;  // next is where tail will point to after this read.
-    if(next >= c->maxlen)
-        next = 0;
-
-    *data = c->buffer[c->tail];  // Read data and then move
-    c->tail = next;              // tail to next offset.
-    return 0;  // return success to indicate successful push.
+	W25Q_Read(LOG_PAGE+log_page, log_offset, size, data);
 }
 
 void csLOW(void) 
@@ -72,7 +110,8 @@ void W25Q1_Reset(void)
     HAL_SPI_Transmit(&W25Q1_SPI , &tData[0], 1, 1000);
     HAL_SPI_Transmit(&W25Q1_SPI , &tData[1], 1, 1000);
     csHIGH();
-    HAL_Delay(20);
+	
+    vTaskDelay(20); // Wait for the chip to reset
 }
 
 uint32_t W25Q1_ReadID(void)
@@ -84,19 +123,7 @@ uint32_t W25Q1_ReadID(void)
     HAL_SPI_Receive(&W25Q1_SPI , rData, 3, 1000);
     csHIGH();
 
-    /*uint8_t tData[4];
-    tData[0] = 0xAB;    //Device ID
-    tData[1] = 0xFF;
-    tData[2] = 0xFF;
-    tData[3] = 0xFF;
-    uint8_t iData;
-    csLOW();
-    HAL_SPI_Transmit(&W25Q1_SPI , tData, 4, 1000);
-    HAL_SPI_Receive(&W25Q1_SPI , iData, 1, 1000);
-    csHIGH();*/
-
     return ((rData[0]<<16)|(rData[1]<<8)|rData[2]);
-    //return iData;
 }
 
 void W25Q_Read (uint32_t startPage, uint8_t offset, uint32_t size, uint8_t *rData)
@@ -195,7 +222,7 @@ void enable_write (void)
 	csLOW();  // pull the CS LOW
 	HAL_SPI_Transmit(&W25Q1_SPI, &tData, 1, 100);
 	csHIGH();  // pull the HIGH
-	HAL_Delay(5);  // Write cycle delay (5ms)
+	vTaskDelay(5);  // Write cycle delay (5ms)
 }
 
 void disable_write (void)
@@ -204,7 +231,7 @@ void disable_write (void)
 	csLOW();  // pull the CS LOW
 	HAL_SPI_Transmit(&W25Q1_SPI, &tData, 1, 100);
 	csHIGH();  // pull the HIGH
-	HAL_Delay(5);  // Write cycle delay (5ms)
+	vTaskDelay(5);  // Write cycle delay (5ms)
 }
 
 void W25Q_Erase_Sector (uint16_t numsector)
@@ -226,7 +253,7 @@ void W25Q_Erase_Sector (uint16_t numsector)
 	  csHIGH();
 	}
 
-	HAL_Delay(450);  // 450ms delay for sector erase
+	vTaskDelay(450);  // 450ms delay for sector erase
 
 	disable_write();
 
@@ -284,7 +311,7 @@ void W25Q_Write_Page (uint32_t page, uint16_t offset, uint32_t size, uint8_t *da
 		size = size-bytesremaining;
 		dataPosition = dataPosition+bytesremaining;
 
-        HAL_Delay(4);
+        vTaskDelay(4);
 		disable_write();
     }
 }
@@ -344,7 +371,7 @@ void W25Q_Write_Byte (uint32_t Addr, uint8_t data)
 		HAL_SPI_Transmit(&W25Q1_SPI, tData, indx, 100);
 		csHIGH();
 
-		HAL_Delay(5);
+		vTaskDelay(5);
 		disable_write();
 	}
 }
@@ -424,25 +451,22 @@ void W25Q_Read_32B (uint32_t page, uint16_t offset, uint32_t size, uint32_t *dat
 	}
 }
 
-uint32_t curr_logPage = 1;
-uint16_t curr_logOffset = 0;
-
 void W25Q_Chip_Erase (void)
 {
     uint8_t tData[1];
     tData[0] = 0xC7;    //Chip erase
-	curr_logPage = 1;	//Reset Log offset to zero
-	curr_logOffset = 0;
+	W25Q_FLASH_CONFIG.curr_logPage = LOG_PAGE;	//Reset Log offset to zero
+	W25Q_FLASH_CONFIG.curr_logOffset = 0;
     
     enable_write();
     csLOW();
     HAL_SPI_Transmit(&W25Q1_SPI, tData, 1, 100);
     csHIGH();
 
-    HAL_Delay(40000); //should be 40s - 200s
+    vTaskDelay(40000); //should be 40s - 200s
 	disable_write();
 
-	uint32_t tData32[2] = {curr_logPage, curr_logOffset};
+	uint32_t tData32[2] = {W25Q_FLASH_CONFIG.curr_logPage, W25Q_FLASH_CONFIG.curr_logOffset};
 
 	W25Q_Write_32B(0, 0, 2, tData32); //Save current log page and offset at 0
 
@@ -453,13 +477,39 @@ void W25Q_Chip_Erase (void)
   * @param None
   * @retval None
   */
-void W25Q_readLogPos(void){
+void W25Q_updateLogPosition(void){
 	uint32_t LogPos[2];
 
 	W25Q_Read_32B(0, 0, 2, LogPos);
 
-	curr_logPage = LogPos[0];
-	curr_logOffset = LogPos[1];
+	if (LogPos[0] >= 1024 && LogPos[0] <= 65536) { // Check if the log page is valid
+		W25Q_FLASH_CONFIG.curr_logPage = LogPos[0];
+		W25Q_FLASH_CONFIG.curr_logOffset = LogPos[1];
+	}else {
+		W25Q_FLASH_CONFIG.curr_logPage = LOG_PAGE; // Reset to default log page
+		W25Q_FLASH_CONFIG.curr_logOffset = 0; // Reset offset
+		uint32_t tData32[2] = {W25Q_FLASH_CONFIG.curr_logPage, W25Q_FLASH_CONFIG.curr_logOffset};
+
+		W25Q_Write_32B(0, 0, 2, tData32); //Save current log page and offset at 0
+	}
+
+}
+
+void W25Q_GetConfig()
+{
+	uint8_t tempConfig[256];
+	// Copy the config on the chip to a local variable
+	W25Q_Read(0, 0, sizeof(W25QPage0_config_t), tempConfig);
+	// Copy the data to the W25Q_FLASH_CONFIG structure if ID is correct
+	if (tempConfig[0] == W25Q_FLASH_CONFIG.ID[0] && tempConfig[1] == W25Q_FLASH_CONFIG.ID[1])
+	{
+		memcpy(&W25Q_FLASH_CONFIG, tempConfig, sizeof(W25QPage0_config_t));
+	}
+	else
+	{
+		// If the ID does not match, save the default config
+		W25Q_Write_Page(0, 0, sizeof(W25QPage0_config_t), (uint8_t *)&W25Q_FLASH_CONFIG);
+	}
 }
 
 /**
@@ -514,98 +564,98 @@ void W25Q_Write_Cleared(uint32_t page, uint16_t offset, uint32_t size, uint8_t *
 		size = size-bytesremaining;
 		dataPosition = dataPosition+bytesremaining;
 
-        HAL_Delay(4);
+        vTaskDelay(4);
 		disable_write();
     }
 }
 
-void W25Q_SaveLog(void)
-{
-	uint8_t tData[4096];
-	uint8_t out_data;
-	uint32_t size = 0;
-	for(int i=0 ;circ_bbuf_pop(&event_circ_buf, &out_data)!=-1; i++){
-		size += 1;
-		tData[i] = out_data;
-	}
+// void W25Q_SaveLog(void)
+// {
+// 	uint8_t tData[4096];
+// 	uint8_t out_data;
+// 	uint32_t size = 0;
+// 	for(int i=0 ;circ_bbuf_pop(&event_circ_buf, &out_data)!=-1; i++){
+// 		size += 1;
+// 		tData[i] = out_data;
+// 	}
 
-	W25Q_Write_Cleared(curr_logPage, curr_logOffset, size, tData);
+// 	W25Q_Write_Cleared(curr_logPage, curr_logOffset, size, tData);
 
-	if (curr_logOffset + size >= 256){
-		curr_logPage += 1;
-		size -= 256;
-		while (curr_logOffset + size >= 256){
-			curr_logPage += 1;
-			size -= 256;
-		}
-	}
-	curr_logOffset += size;
+// 	if (curr_logOffset + size >= 256){
+// 		curr_logPage += 1;
+// 		size -= 256;
+// 		while (curr_logOffset + size >= 256){
+// 			curr_logPage += 1;
+// 			size -= 256;
+// 		}
+// 	}
+// 	curr_logOffset += size;
 
-	//uint32_t tData32[2] = {curr_logPage, curr_logOffset};
+// 	//uint32_t tData32[2] = {curr_logPage, curr_logOffset};
 
-	//W25Q_Write_32B(0, 0, 2, tData32); //Save current log page and offset at 0
+// 	//W25Q_Write_32B(0, 0, 2, tData32); //Save current log page and offset at 0
 
-}
+// }
 
-/**
-  * @brief Append the LOG with a event , eventsize is alway wscode shown - 1
-  * @param None
-  * @retval None
-  */
-uint8_t W25Q_AppendLog(uint8_t *event, uint32_t eventSize, float data1, float data2, float data3)
-{
-	uint32_t timestamp = HAL_GetTick();
-	uint8_t tData[37];
-	uint32_t size = 6; //initial size only \n and  timestamp 
-	tData[0] = 0x5C; 
-	tData[1] = 0x6E;	// backslash n
-	tData[2] = (timestamp>>24)&0xFF;   // add timestamp
-	tData[3] = (timestamp>>16)&0xFF;
-	tData[4] = (timestamp>>8)&0xFF;
-	tData[5] = timestamp&0xFF;
+// /**
+//   * @brief Append the LOG with a event , eventsize is alway wscode shown - 1
+//   * @param None
+//   * @retval None
+//   */
+// uint8_t W25Q_AppendLog(uint8_t *event, uint32_t eventSize, float data1, float data2, float data3)
+// {
+// 	uint32_t timestamp = HAL_GetTick();
+// 	uint8_t tData[37];
+// 	uint32_t size = 6; //initial size only \n and  timestamp 
+// 	tData[0] = 0x5C; 
+// 	tData[1] = 0x6E;	// backslash n
+// 	tData[2] = (timestamp>>24)&0xFF;   // add timestamp
+// 	tData[3] = (timestamp>>16)&0xFF;
+// 	tData[4] = (timestamp>>8)&0xFF;
+// 	tData[5] = timestamp&0xFF;
 	
-	if (eventSize>16){
-		return 0; //to long event description
-	}else{
-		size += eventSize + 1;
-		tData[6] = 0x3A; //":"
-		for (int i=0; i<eventSize; i++)
-		{
-			tData[7+i] = event[i];   //add event
-		}
-	}
+// 	if (eventSize>16){
+// 		return 0; //to long event description
+// 	}else{
+// 		size += eventSize + 1;
+// 		tData[6] = 0x3A; //":"
+// 		for (int i=0; i<eventSize; i++)
+// 		{
+// 			tData[7+i] = event[i];   //add event
+// 		}
+// 	}
 
-	if (data1 != 0){
-		tData[size] = 0x3A; //":"
-		float2Bytes(tempBytes, data1);
-		tData[size+1] = tempBytes[0];
-		tData[size+2] = tempBytes[1];
-		tData[size+3] = tempBytes[2];
-		tData[size+4] = tempBytes[3];
-		size += 5;
-	}
+// 	if (data1 != 0){
+// 		tData[size] = 0x3A; //":"
+// 		float2Bytes(tempBytes, data1);
+// 		tData[size+1] = tempBytes[0];
+// 		tData[size+2] = tempBytes[1];
+// 		tData[size+3] = tempBytes[2];
+// 		tData[size+4] = tempBytes[3];
+// 		size += 5;
+// 	}
 
-	if (data2 != 0){
-		tData[size] = 0x3A; //":"
-		float2Bytes(tempBytes, data2);
-		tData[size+1] = tempBytes[0];
-		tData[size+2] = tempBytes[1];
-		tData[size+3] = tempBytes[2];
-		tData[size+4] = tempBytes[3];
-		size += 5;
-	}
+// 	if (data2 != 0){
+// 		tData[size] = 0x3A; //":"
+// 		float2Bytes(tempBytes, data2);
+// 		tData[size+1] = tempBytes[0];
+// 		tData[size+2] = tempBytes[1];
+// 		tData[size+3] = tempBytes[2];
+// 		tData[size+4] = tempBytes[3];
+// 		size += 5;
+// 	}
 
-	if (data3 != 0){
-		tData[size] = 0x3A; //":"
-		float2Bytes(tempBytes, data3);
-		tData[size+1] = tempBytes[0];
-		tData[size+2] = tempBytes[1];
-		tData[size+3] = tempBytes[2];
-		tData[size+4] = tempBytes[3];
-		size += 5;
-	}
+// 	if (data3 != 0){
+// 		tData[size] = 0x3A; //":"
+// 		float2Bytes(tempBytes, data3);
+// 		tData[size+1] = tempBytes[0];
+// 		tData[size+2] = tempBytes[1];
+// 		tData[size+3] = tempBytes[2];
+// 		tData[size+4] = tempBytes[3];
+// 		size += 5;
+// 	}
 
-	for (int i=0; i<size; i++){
-		circ_bbuf_push(&event_circ_buf, tData[i]);
-	}
-}
+// 	for (int i=0; i<size; i++){
+// 		circ_bbuf_push(&event_circ_buf, tData[i]);
+// 	}
+// }

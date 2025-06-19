@@ -2,26 +2,36 @@
 #define InterBoardCom_H_
 
 #include "stm32h7xx_hal.h"
+#include "Packets.h"
 
+//The Bitfield describe what should be expected and done with the data received
 typedef enum {
-    PACKET_ID_GPS = 0x01,
-    PACKET_ID_IMU1 = 0x02,
-    PACKET_ID_IMU2 = 0x03,
-    PACKET_ID_MAG = 0x04,
-    PACKET_ID_BMP = 0x05,
-    PACKET_ID_CALIBRATION = 0x06,
-    PACKET_ID_SELFTEST = 0x07,
-    PACKET_ID_GPA = 0x08,
-} PacketID_t;
+    // Status Packets:
+    InterBoardPACKET_ID_SELFTEST = 0x01,        // Used to check if the communication is working
+    InterBoardPACKET_ID_DataAck = 0x02,         // Acknowledge data reception
 
+    // Command Packets:
+    InterBoardPACKET_ID_DataLoadFLASH = 0x11,   // Load data from the flash memory
+    InterBoardPACKET_ID_ResetFLASH = 0x12,      // Full Reset the flash memory ~40s
+    InterBoardPACKET_ID_DataLoadSD = 0x13,      // Load data from the SD card
+    InterBoardPACKET_ID_DataRequest = 0x14,     // Request data from the Groundstation
+
+    // Data Packets:
+    InterBoardPACKET_ID_DataSaveFLASH = 0x21,   // Save data to the flash memory
+    InterBoardPACKET_ID_DataSaveSD = 0x22,      // Save data to the SD card
+    InterBoardPACKET_ID_DataSend = 0x23,        // Send data to the Groundstation via NRF/XBee
+    InterBoardPACKET_ID_DataSaveFLASHSend = 0x24,    // Save data to the flash memory and send it to the Groundstation via NRF/XBee
+} InterBoardPacketID_t;
+
+//Wrapper for the DataPacket to be used to send via SPI1
 #pragma pack(push, 1)
 typedef struct {
-    uint8_t Packet_ID;
-    uint8_t Data[16];
-    uint8_t crc;
+    uint8_t InterBoardPacket_ID;
+    uint8_t Data[32];
 } InterBoardPacket_t;
 #pragma pack(pop)
 
 void InterBoardCom_SendTestPacket(void);
+void InterBoardCom_SendDataPacket(InterBoardPacketID_t Inter_ID, PacketType_t Packet_ID, PacketData_u *packet);
 
 #endif /* InterBoardCom_H_ */

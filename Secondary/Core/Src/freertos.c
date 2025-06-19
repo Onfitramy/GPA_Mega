@@ -29,6 +29,7 @@
 
 #include "W25Q1.h"
 #include "VR.h"
+#include "InterBoardCom.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -37,7 +38,7 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+QueueHandle_t InterBoardPacketQueue;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -61,6 +62,13 @@ const osThreadAttr_t defaultTask_attributes = {
   .priority = (osPriority_t) osPriorityNormal,
 };
 
+osThreadId_t InterBoardComHandle;
+const osThreadAttr_t InterBoardCom_attributes = {
+  .name = "InterBoardCom",
+  .stack_size = 128 * 48,
+  .priority = (osPriority_t) osPriorityHigh,
+};
+
 extern double TemperatureAMS;
 extern double voltage5V0bus;
 extern double voltageBATbus;
@@ -73,6 +81,7 @@ extern double voltageBATbus;
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
+void StartInterBoardComTask(void *argument);
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
@@ -93,11 +102,13 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
+  InterBoardPacketQueue = xQueueCreate(64, sizeof(InterBoardPacket_t)); // Queue for 64 InterBoardPacket_t packets
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+  InterBoardComHandle = osThreadNew(StartInterBoardComTask, NULL, &InterBoardCom_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -109,6 +120,7 @@ void MX_FREERTOS_Init(void) {
 
 }
 
+uint8_t temperatureSaved[128];
 /* USER CODE BEGIN Header_StartDefaultTask */
 /**
   * @brief  Function implementing the defaultTask thread.
@@ -121,15 +133,33 @@ void StartDefaultTask(void *argument)
   /* USER CODE BEGIN StartDefaultTask */
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 10; //100 Hz
+
   /* Infinite loop */
   for(;;) {
     TemperatureAMS = readTemperature(1);
     voltage5V0bus = readVoltage(1) * (10 + 10) / 10;
     voltageBATbus = readVoltage(2) * (10 + 2.2) / 2.2;
+
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }
 
   /* USER CODE END StartDefaultTask */
+}
+
+void StartInterBoardComTask(void *argument)
+{
+  /* USER CODE BEGIN StartInterBoardComTask */
+  W25Q_GetConfig();
+  InterBoardCom_ActivateReceive();
+  /* Infinite loop */
+  for(;;) {
+    InterBoardPacket_t packet;
+    if (xQueueReceive(InterBoardPacketQueue, &packet, portMAX_DELAY) == pdPASS) {
+        HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin); // Toggle M2 LED to indicate packet received
+        InterBoardCom_ParsePacket(packet);
+    }
+  }
+  /* USER CODE END StartInterBoardComTask */
 }
 
 /* USER CODE END Application */

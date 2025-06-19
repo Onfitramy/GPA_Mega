@@ -42,6 +42,7 @@
 #include "signalPlotter.h"
 #include "calibration_data.h"
 #include "InterBoardCom.h"
+#include "Packets.h"
 
 #include "navigation.h"
 /* USER CODE END Includes */
@@ -295,7 +296,25 @@ void Start10HzTask(void *argument) {
   for(;;) {
     GPS_ReadSensorData(&gps_data);
 
-    InterBoardCom_SendTestPacket(); //Send a test packet to the other board
+    IMUPacket_t imu_packet = {
+      .timestamp = HAL_GetTick(),
+      .gyroX = imu1_data.gyro[0],
+      .gyroY = imu1_data.gyro[1],
+      .gyroZ = imu1_data.gyro[2],
+      .accelX = imu1_data.accel[0],
+      .accelY = imu1_data.accel[1],
+      .accelZ = imu1_data.accel[2],
+      .magX = mag_data.field[0],
+      .magY = mag_data.field[1],
+      .magZ = mag_data.field[2],
+      .unused1 = 0,
+      .unused2 = 0,
+      .unused3 = 0
+    };
+
+    PacketData_u packet_data;
+    packet_data.imu = imu_packet;
+    InterBoardCom_SendDataPacket(InterBoardPACKET_ID_DataSaveFLASH ,PACKET_ID_IMU, &packet_data);
 
     #ifdef TRANSMITTER
       nrf24l01p_tx_transmit(tx_data);
