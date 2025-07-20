@@ -172,6 +172,14 @@ int main(void)
   IMU2_ConfigXL(ISM330DHCX_ODR_6660_Hz, ISM330DHCX_FS_XL_16, 0);
   IMU2_ConfigG(ISM330DHCX_ODR_6660_Hz, ISM330DHCX_FS_G_4000);
 
+  int steps = 300;
+  int step_time = 500;
+
+  Stepper_moveSteps(steps, step_time);
+  HAL_Delay(1000);
+  Stepper_moveSteps(-steps, step_time);
+  HAL_Delay(1000);
+
   /* USER CODE END 2 */
 
   /* Init scheduler */
