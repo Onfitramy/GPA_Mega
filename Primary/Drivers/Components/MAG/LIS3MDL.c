@@ -58,7 +58,7 @@ HAL_StatusTypeDef MAG_Init(void) {
     MAG_write_reg(LIS3MDL_CTRL_REG3, 1, tx); // enable temperature sensor and continuous-conversion mode
     MAG_read_reg(LIS3MDL_CTRL_REG3, 1, rx);
 
-    if(rx[0] != 0x90 || rx[2] != 0x00) return HAL_ERROR;
+    if(rx[0] != 0x00) return HAL_ERROR;
     else return HAL_OK;
 }
 

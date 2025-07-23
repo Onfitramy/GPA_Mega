@@ -43,6 +43,7 @@
 #include "calibration_data.h"
 #include "InterBoardCom.h"
 #include "Packets.h"
+#include "status.h"
 
 #include "navigation.h"
 /* USER CODE END Includes */
@@ -64,6 +65,8 @@ bmp390_handle_t bmp_handle;
 float temperature, pressure;
 
 uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO, 4: GPS, 7:All checks passed
+
+int8_t primary_status = 0;
 
 #ifdef TRANSMITTER
   uint8_t tx_data[NRF24L01P_PAYLOAD_LENGTH] = {0}; //Bit(Payload Lenght) array to store sending data
@@ -283,6 +286,8 @@ void Start100HzTask(void *argument) {
 
     signalPlotter_executeTransmission(HAL_GetTick());
 
+    ShowStatus(RGB_PRIMARY, primary_status, 1, 100);
+
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }
   /* USER CODE END Start10HzTask */
@@ -295,6 +300,13 @@ void Start10HzTask(void *argument) {
   /* Infinite loop */
   for(;;) {
     GPS_ReadSensorData(&gps_data);
+    if(primary_status > 0) {
+      switch(gps_data.gpsFix) {
+        case 0: primary_status = STATUS_GNSS_ALIGN; break;
+        case 2: primary_status = STATUS_GNSS_2D; break;
+        case 3: primary_status = STATUS_STANDBY; break;
+      }
+    }
 
     IMUPacket_t imu_packet = {
       .timestamp = HAL_GetTick(),
@@ -350,13 +362,13 @@ void StartInterruptHandlerTask(void *argument)
         #ifdef RECEIVER
           nrf24l01p_rx_receive(rx_data);
           if(nrf24l01p_get_receivedPower()) {
-            Set_LED(0, 0, 255, 0);
+            /*Set_LED(0, 0, 255, 0);
             Set_Brightness(45);
-            WS2812_Send();
+            WS2812_Send();*/
           } else {
-            Set_LED(0, 255, 0, 0);
+            /*Set_LED(0, 255, 0, 0);
             Set_Brightness(45);
-            WS2812_Send();
+            WS2812_Send();*/
           }
         #endif
       }
@@ -370,9 +382,8 @@ void StartInterruptHandlerTask(void *argument)
 
 uint8_t SelfTest(void) {
   if((SelfTest_Bitfield == 0b11111) && (SelfTest_Bitfield != 0b10011111)){
-    Set_LED(0, 0, 255, 0);
-    Set_Brightness(45);
-    WS2812_Send();
+    if(primary_status >= 0) primary_status = STATUS_GNSS_ALIGN;
+
     SelfTest_Bitfield |= (1<<7);  //All checks passed
   }
   else if(SelfTest_Bitfield != 0b10011111){
@@ -382,9 +393,7 @@ uint8_t SelfTest(void) {
     SelfTest_Bitfield |= (BMP_SelfTest()<<3);
     SelfTest_Bitfield |= (GPS_VER_CHECK()<<4); //Check if GPS is connected and working
 
-    Set_LED(0, 255, 0, 0);
-    Set_Brightness(45);
-    WS2812_Send();
+    if(primary_status > 0) primary_status = STATUS_STARTUP;
   }
 
   return SelfTest_Bitfield;

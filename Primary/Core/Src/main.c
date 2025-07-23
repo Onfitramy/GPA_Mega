@@ -37,6 +37,7 @@
 #include "Stepper.h"
 #include "NRF24L01P.h"
 #include "signalPlotter.h"
+#include "status.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -155,10 +156,10 @@ int main(void)
   for(counter2 = 0; IMU2_SelfTest() != 1; counter2++);
   for(counter3 = 0; MAG_SelfTest() != 1; counter3++);
 
-  if(IMU1_Init() == HAL_OK && IMU2_Init() == HAL_OK && MAG_Init() == HAL_OK) Set_LED(0, 0, 255, 0);
-  else Set_LED(0, 255, 0, 0);
-  Set_Brightness(5);
-  WS2812_Send();
+
+  // !!!
+  if(IMU1_Init() == HAL_OK && IMU2_Init() == HAL_OK && MAG_Init() == HAL_OK) ;
+  else ;
 
   IMU1_VerifyDataReady();
   IMU2_VerifyDataReady();
@@ -171,14 +172,6 @@ int main(void)
 
   IMU2_ConfigXL(ISM330DHCX_ODR_6660_Hz, ISM330DHCX_FS_XL_16, 0);
   IMU2_ConfigG(ISM330DHCX_ODR_6660_Hz, ISM330DHCX_FS_G_4000);
-
-  int steps = 300;
-  int step_time = 500;
-
-  Stepper_moveSteps(steps, step_time);
-  HAL_Delay(1000);
-  Stepper_moveSteps(-steps, step_time);
-  HAL_Delay(1000);
 
   /* USER CODE END 2 */
 
