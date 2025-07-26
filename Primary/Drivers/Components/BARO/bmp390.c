@@ -2,16 +2,33 @@
 
 HAL_StatusTypeDef BMP_I2C_status;
 
-void BMP_write_reg(uint8_t reg, uint8_t data)
+HAL_StatusTypeDef BMP_write_reg(uint8_t reg, uint8_t data)
 {
+    HAL_StatusTypeDef status;
     uint8_t buffer[2] = {reg, data};
-    BMP_I2C_status = HAL_I2C_Master_Transmit(&hi2c3, BMP390_I2C_ADDR, buffer, 2, 100);
+
+    status = HAL_I2C_Master_Transmit(&hi2c3, BMP390_I2C_ADDR, buffer, 2, 100);
+    return status;
 }
 
-void BMP_read_reg(uint8_t reg, uint8_t *data)
+HAL_StatusTypeDef BMP_read_reg(uint8_t reg, uint8_t *data)
 {
-    BMP_I2C_status = HAL_I2C_Master_Transmit(&hi2c3, BMP390_I2C_ADDR, &reg, 1, 100);
-    BMP_I2C_status = HAL_I2C_Master_Receive(&hi2c3, BMP390_I2C_ADDR, data, 1, 100);
+    HAL_StatusTypeDef status;
+    status = HAL_I2C_Master_Transmit(&hi2c3, BMP390_I2C_ADDR, &reg, 1, 100);
+    if (status != HAL_OK) return status;
+
+    status = HAL_I2C_Master_Receive(&hi2c3, BMP390_I2C_ADDR, data, 1, 100);
+    return status;
+}
+
+HAL_StatusTypeDef BMP_read_burst(uint8_t start_reg, uint8_t *data, uint8_t length)
+{
+    HAL_StatusTypeDef status;
+    status = HAL_I2C_Master_Transmit(&hi2c3, BMP390_I2C_ADDR, &start_reg, 1, 100);
+    if (status != HAL_OK) return status;
+    
+    status = HAL_I2C_Master_Receive(&hi2c3, BMP390_I2C_ADDR, data, length, 100);
+    return status;
 }
 
 uint8_t BMP_SelfTest(void)
@@ -29,16 +46,16 @@ uint8_t BMP_SelfTest(void)
 // Ab hier Test von Daniel
 uint8_t BMP_enable(void) 
 {
-     BMP_write_reg(BMP_390_PWR_CTRL_REG, 0x33);  // press_en=1, temp_en=1, mode=11
+    BMP_write_reg(BMP_390_PWR_CTRL_REG, 0x33);  // press_en=1, temp_en=1, mode=11
 
     // 2. Oversampling: osrs_p = x8 (0b011), osrs_t = x1 (0b000)
     BMP_write_reg(BMP_390_OSR_REG, 0x03);       // [5:3]=osrs_t=000, [2:0]=osrs_p=011
 
     // 3. Output Data Rate (ODR): 50 Hz → odr_sel = 0x02
-    BMP_write_reg(BMP_390_ODR_REG, 0x03);       // odr_sel = 0x02
+    BMP_write_reg(BMP_390_ODR_REG, 0x02);       // odr_sel = 0x02
 
-    // 4. IIR Filter: IIR coefficient = 2 → ir_filter = 0b010
-    BMP_write_reg(BMP_390_IIR_REG, 0x00);       // bits 2:1 = 0b010 (IIR=2), bit 0 = short_in = 0
+    // 4. IIR Filter: IIR coefficient = 2 → ir_filter = 0b001
+    BMP_write_reg(BMP_390_IIR_REG, 0x02);       // bits 2:1 = 0b010 (IIR=2), bit 0 = short_in = 0
 
     return 0;
 }
@@ -49,26 +66,27 @@ uint8_t BMP_VerifyDataReady(void) {
     return status;
 }
 
-uint8_t BMP_GetPressureRaw(uint32_t *pressure_raw) {
-    if(BMP_VerifyDataReady() == 0x70) {
-        uint8_t Data_0, Data_1, Data_2;
-        BMP_read_reg(0x04, &Data_0);
-        BMP_read_reg(0x05, &Data_1);
-        BMP_read_reg(0x06, &Data_2);
-        *pressure_raw = (uint32_t)Data_2 << 16 | Data_1 << 8 | Data_0;
-        return 1;
-    } else return 0;
-}
 
-uint8_t BMP_GetTemperatureRaw(uint32_t *temperature_raw) {
-    if(BMP_VerifyDataReady() == 0x70) {
-        uint8_t Data_3, Data_4, Data_5;
-        BMP_read_reg(0x07, &Data_3);
-        BMP_read_reg(0x08, &Data_4);
-        BMP_read_reg(0x09, &Data_5);
-        *temperature_raw = (uint32_t)Data_5 << 16 | Data_4 << 8 | Data_3;
+uint8_t BMP_GetRawData(uint32_t *pressure_raw, uint32_t *temperature_raw)
+{
+    if (BMP_VerifyDataReady() == 0x70) {
+        uint8_t buffer[6];
+        if (BMP_read_burst(0x04, buffer, 6) != HAL_OK)
+            return 0;
+
+        *pressure_raw =
+            ((uint32_t)buffer[2] << 16) |
+            ((uint32_t)buffer[1] << 8) |
+            ((uint32_t)buffer[0]);
+
+        *temperature_raw =
+            ((uint32_t)buffer[5] << 16) |
+            ((uint32_t)buffer[4] << 8) |
+            ((uint32_t)buffer[3]);
+
         return 1;
-    } else return 0;
+    }
+    return 0;
 }
 
 

@@ -238,8 +238,7 @@ void StartDefaultTask(void *argument)
     TimeMeasureStart(); // Start measuring time
     SelfTest();         // Run self-test on startup
 
-    BMP_GetPressureRaw(&pressure_raw);
-    BMP_GetTemperatureRaw(&temperature_raw);
+    BMP_GetRawData(&pressure_raw, &temperature_raw);
 
     if(IMU1_VerifyDataReady() & 0x03 == 0x03) {
       IMU1_ReadSensorData(&imu1_data);

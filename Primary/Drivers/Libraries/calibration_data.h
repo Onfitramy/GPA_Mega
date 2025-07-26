@@ -2,7 +2,7 @@
 #define CALIBRATION_DATA_H
 
 /* ### CALIBRATION AND OFFSET DATA FOR BOARDS 1 - 5 ### */
-#define GPA_MEGA_4
+#define GPA_MEGA_3
 
 //#define calibration_mode // enable raw sensor data
 
