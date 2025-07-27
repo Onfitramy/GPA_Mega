@@ -221,17 +221,28 @@ void StartDefaultTask(void *argument)
   /* USER CODE BEGIN StartDefaultTask */
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 1; //1000 Hz
-  signalPlotter_setSignalName(0, "MAG_X");
-  signalPlotter_setSignalName(1, "MAG_Y");
-  signalPlotter_setSignalName(2, "MAG_Z");
-  signalPlotter_setSignalName(3, "ACC_X");
-  signalPlotter_setSignalName(4, "ACC_Y");
-  signalPlotter_setSignalName(5, "ACC_Z");
-  signalPlotter_setSignalName(6, "GYR_X");
-  signalPlotter_setSignalName(7, "GYR_Y");
-  signalPlotter_setSignalName(8, "GYR_Z");
-  signalPlotter_setSignalName(9, "yaw");
-  signalPlotter_setSignalName(31, "delta Time");
+  signalPlotter_setSignalName(0, "dt");
+  signalPlotter_setSignalName(1, "MAG_X");
+  signalPlotter_setSignalName(2, "MAG_Y");
+  signalPlotter_setSignalName(3, "MAG_Z");
+  signalPlotter_setSignalName(4, "ACC_X");
+  signalPlotter_setSignalName(5, "ACC_Y");
+  signalPlotter_setSignalName(6, "ACC_Z");
+  signalPlotter_setSignalName(7, "GYR_X");
+  signalPlotter_setSignalName(8, "GYR_Y");
+  signalPlotter_setSignalName(9, "GYR_Z");
+  signalPlotter_setSignalName(10, "p");
+  signalPlotter_setSignalName(11, "T");
+  signalPlotter_setSignalName(12, "numSV");
+  signalPlotter_setSignalName(13, "hor_acc");
+  signalPlotter_setSignalName(14, "ver_acc");
+  signalPlotter_setSignalName(15, "vel_acc");
+  signalPlotter_setSignalName(16, "lat");
+  signalPlotter_setSignalName(17, "lon");
+  signalPlotter_setSignalName(18, "height");
+  signalPlotter_setSignalName(19, "velN");
+  signalPlotter_setSignalName(20, "velE");
+  signalPlotter_setSignalName(21, "velD");
 
   /* Infinite loop */
   for(;;) {
@@ -271,17 +282,27 @@ void Start100HzTask(void *argument) {
   const TickType_t xFrequency = 10; //100 Hz
   /* Infinite loop */
   for(;;) {
-    signalPlotter_sendData(1, (float)nrf_timeout);
-
-    signalPlotter_sendData(0, mag_data.field[0]);
-    signalPlotter_sendData(1, mag_data.field[1]);
-    signalPlotter_sendData(2, mag_data.field[2]);
-    signalPlotter_sendData(3, imu1_data.accel[0]);
-    signalPlotter_sendData(4, imu1_data.accel[1]);
-    signalPlotter_sendData(5, imu1_data.accel[2]);
-    signalPlotter_sendData(6, imu1_data.gyro[0]);
-    signalPlotter_sendData(7, imu1_data.gyro[1]);
-    signalPlotter_sendData(8, imu1_data.gyro[2]);
+    signalPlotter_sendData(1, mag_data.field[0]);
+    signalPlotter_sendData(2, mag_data.field[1]);
+    signalPlotter_sendData(3, mag_data.field[2]);
+    signalPlotter_sendData(4, imu1_data.accel[0]);
+    signalPlotter_sendData(5, imu1_data.accel[1]);
+    signalPlotter_sendData(6, imu1_data.accel[2]);
+    signalPlotter_sendData(7, imu1_data.gyro[0]);
+    signalPlotter_sendData(8, imu1_data.gyro[1]);
+    signalPlotter_sendData(9, imu1_data.gyro[2]);
+    signalPlotter_sendData(10, pressure);
+    signalPlotter_sendData(11, temperature);
+    signalPlotter_sendData(12, (float)gps_data.numSV);
+    signalPlotter_sendData(13, (float)gps_data.hAcc/1000.f);
+    signalPlotter_sendData(14, (float)gps_data.vAcc/1000.f);
+    signalPlotter_sendData(15, (float)gps_data.sAcc/1000.f);
+    signalPlotter_sendData(16, (float)gps_data.lat*1e-7);
+    signalPlotter_sendData(17, (float)gps_data.lon*1e-7);
+    signalPlotter_sendData(18, (float)gps_data.height/1000.f);
+    signalPlotter_sendData(19, (float)gps_data.velN/1000.f);
+    signalPlotter_sendData(20, (float)gps_data.velE/1000.f);
+    signalPlotter_sendData(21, (float)gps_data.velD/1000.f);
 
     signalPlotter_executeTransmission(HAL_GetTick());
 
