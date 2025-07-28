@@ -122,7 +122,10 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/Libraries/signalPlotter.c
     ../../Drivers/Libraries/calibration_data.c
     ../../Drivers/Libraries/InterBoardCom.c
+
+    ../../Drivers/Libraries/guidance.c
     ../../Drivers/Libraries/navigation.c
+    ../../Drivers/Libraries/control.c
 )
 
 target_link_directories(stm32cubemx INTERFACE

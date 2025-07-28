@@ -53,8 +53,4 @@ void SERVO_ZeroAll();
 
 void SERVO_TestSequence();
 
-void SERVO_TVC(float angle_x, float angle_z, float twist_y);
-
-float fconstrain(float variable, float min, float max);
-
 #endif /* SERVO_H_ */

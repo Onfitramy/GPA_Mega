@@ -178,21 +178,3 @@ void SERVO_TestSequence() {
     HAL_Delay(100);
     SERVO_Sweep(60, 10);
 }
-
-void SERVO_TVC(float angle_x, float angle_z, float twist_y) {
-    twist_y = fconstrain(twist_y, -30, 30);
-    SERVO_MoveToAngle(PX_SERVO, (float)PX_ZERO + fconstrain(twist_y + angle_x, -60, 60));
-    SERVO_MoveToAngle(NX_SERVO, (float)NX_ZERO + fconstrain(twist_y - angle_x, -60, 60));
-    SERVO_MoveToAngle(PZ_SERVO, (float)PZ_ZERO + fconstrain(twist_y - angle_z, -60, 60));
-    SERVO_MoveToAngle(NZ_SERVO, (float)NZ_ZERO + fconstrain(twist_y + angle_z, -60, 60));
-}
-
-float fconstrain(float variable, float min, float max) {
-    if(variable > max) {
-        return max;
-    } else if(variable < min) {
-        return min;
-    } else {
-        return variable;
-    }
-}
