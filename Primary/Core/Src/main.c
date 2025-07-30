@@ -37,6 +37,7 @@
 #include "Stepper.h"
 #include "NRF24L01P.h"
 #include "signalPlotter.h"
+#include "status.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -155,10 +156,10 @@ int main(void)
   for(counter2 = 0; IMU2_SelfTest() != 1; counter2++);
   for(counter3 = 0; MAG_SelfTest() != 1; counter3++);
 
-  if(IMU1_Init() == HAL_OK && IMU2_Init() == HAL_OK && MAG_Init() == HAL_OK) Set_LED(0, 0, 255, 0);
-  else Set_LED(0, 255, 0, 0);
-  Set_Brightness(5);
-  WS2812_Send();
+
+  // !!!
+  if(IMU1_Init() == HAL_OK && IMU2_Init() == HAL_OK && MAG_Init() == HAL_OK) ;
+  else ;
 
   IMU1_VerifyDataReady();
   IMU2_VerifyDataReady();
@@ -166,7 +167,7 @@ int main(void)
 
   MAG_ConfigSensor(LIS3MDL_OM_ULTRA, LIS3MDL_ODR_80_Hz, LIS3MDL_FS_4, LIS3MDL_FAST_ODR_ON, LIS3MDL_TEMP_ON);
 
-  IMU1_ConfigXL(LSM6DSR_ODR_1660_Hz, LSM6DSR_FS_XL_2, 0);
+  IMU1_ConfigXL(LSM6DSR_ODR_1660_Hz, LSM6DSR_FS_XL_8, 0);
   IMU1_ConfigG(LSM6DSR_ODR_1660_Hz, LSM6DSR_FS_G_2000);
 
   IMU2_ConfigXL(ISM330DHCX_ODR_6660_Hz, ISM330DHCX_FS_XL_16, 0);

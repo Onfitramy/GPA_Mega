@@ -120,6 +120,7 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/CMSIS/DSP_DRIVERS/Lib/armMathAddon.c
 
     ../../Drivers/Libraries/signalPlotter.c
+    ../../Drivers/Libraries/status.c
     ../../Drivers/Libraries/calibration_data.c
     ../../Drivers/Libraries/InterBoardCom.c
 

@@ -78,12 +78,9 @@ extern bmp390_handle_t bmp_handle;
 
 // Funktionsdeklarationen
 uint8_t BMP_SelfTest(void);
-void BMP_write_reg(uint8_t reg, uint8_t data);
-void BMP_read_reg(uint8_t reg, uint8_t *data);
 uint8_t BMP_enable(void);
 void BMP_Read_Calibration_Params(bmp390_handle_t *handle);
-uint8_t BMP_GetPressureRaw(uint32_t *pressure);
-uint8_t BMP_GetTemperatureRaw(uint32_t *temperature);
+uint8_t BMP_GetRawData(uint32_t *pressure_raw, uint32_t *temperature_raw);
 float bmp390_compensate_pressure(uint32_t uncomp_press, bmp390_handle_t *handle);
 float bmp390_compensate_temperature(uint32_t uncomp_temp, bmp390_handle_t *handle);
 

@@ -85,8 +85,7 @@ BaseType_t cmd_set_led(char *pcWriteBuffer, size_t xWriteBufferLen, const char *
     b = atoi(pcParameter); // Convert to integercCommandString, 1, &xParameterStringLength );
     
     /* Toggle the LED */
-    Set_LED(0, r, g, b);
-    Set_Brightness(45);
+    Set_LED(r, g, b);
     WS2812_Send();
 
     

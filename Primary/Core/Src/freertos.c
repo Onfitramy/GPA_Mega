@@ -43,6 +43,7 @@
 #include "calibration_data.h"
 #include "InterBoardCom.h"
 #include "Packets.h"
+#include "status.h"
 
 #include "guidance.h"
 #include "navigation.h"
@@ -404,8 +405,7 @@ void StartDefaultTask(void *argument)
     TimeMeasureStart(); // Start measuring time
     SelfTest();         // Run self-test on startup
 
-    BMP_GetPressureRaw(&pressure_raw);
-    BMP_GetTemperatureRaw(&temperature_raw);
+    BMP_GetRawData(&pressure_raw, &temperature_raw);
 
     if(IMU1_VerifyDataReady() & 0x03 == 0x03) {
       IMU1_ReadSensorData(&imu1_data);
@@ -511,17 +511,27 @@ void Start100HzTask(void *argument) {
   const TickType_t xFrequency = 10; //100 Hz
   /* Infinite loop */
   for(;;) {
-    signalPlotter_sendData(1, (float)nrf_timeout);
-
-    signalPlotter_sendData(0, mag_data.field[0]);
-    signalPlotter_sendData(1, mag_data.field[1]);
-    signalPlotter_sendData(2, mag_data.field[2]);
-    signalPlotter_sendData(3, imu1_data.accel[0]);
-    signalPlotter_sendData(4, imu1_data.accel[1]);
-    signalPlotter_sendData(5, imu1_data.accel[2]);
-    signalPlotter_sendData(6, imu1_data.gyro[0]);
-    signalPlotter_sendData(7, imu1_data.gyro[1]);
-    signalPlotter_sendData(8, imu1_data.gyro[2]);
+    signalPlotter_sendData(1, mag_data.field[0]);
+    signalPlotter_sendData(2, mag_data.field[1]);
+    signalPlotter_sendData(3, mag_data.field[2]);
+    signalPlotter_sendData(4, imu1_data.accel[0]);
+    signalPlotter_sendData(5, imu1_data.accel[1]);
+    signalPlotter_sendData(6, imu1_data.accel[2]);
+    signalPlotter_sendData(7, imu1_data.gyro[0]);
+    signalPlotter_sendData(8, imu1_data.gyro[1]);
+    signalPlotter_sendData(9, imu1_data.gyro[2]);
+    signalPlotter_sendData(10, pressure);
+    signalPlotter_sendData(11, temperature);
+    signalPlotter_sendData(12, (float)gps_data.numSV);
+    signalPlotter_sendData(13, (float)gps_data.hAcc/1000.f);
+    signalPlotter_sendData(14, (float)gps_data.vAcc/1000.f);
+    signalPlotter_sendData(15, (float)gps_data.sAcc/1000.f);
+    signalPlotter_sendData(16, (float)gps_data.lat*1e-7);
+    signalPlotter_sendData(17, (float)gps_data.lon*1e-7);
+    signalPlotter_sendData(18, (float)gps_data.height/1000.f);
+    signalPlotter_sendData(19, (float)gps_data.velN/1000.f);
+    signalPlotter_sendData(20, (float)gps_data.velE/1000.f);
+    signalPlotter_sendData(21, (float)gps_data.velD/1000.f);
 
     signalPlotter_executeTransmission(HAL_GetTick());
 
@@ -552,6 +562,7 @@ void Start100HzTask(void *argument) {
     nrf24l01p_sendOnce(tx_buf);
     HAL_Delay(2);
     nrf24l01p_startListening();
+    ShowStatus(RGB_PRIMARY, primary_status, 1, 100);
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }
@@ -565,6 +576,13 @@ void Start10HzTask(void *argument) {
   /* Infinite loop */
   for(;;) {
     GPS_ReadSensorData(&gps_data);
+    if(primary_status > 0) {
+      switch(gps_data.gpsFix) {
+        case 0: primary_status = STATUS_GNSS_ALIGN; break;
+        case 2: primary_status = STATUS_GNSS_2D; break;
+        case 3: primary_status = STATUS_STANDBY; break;
+      }
+    }
 
     IMUPacket_t imu_packet = {
       .timestamp = HAL_GetTick(),
@@ -656,9 +674,8 @@ void StartInterruptHandlerTask(void *argument)
 
 uint8_t SelfTest(void) {
   if((SelfTest_Bitfield == 0b11111) && (SelfTest_Bitfield != 0b10011111)){
-    Set_LED(0, 0, 255, 0);
-    Set_Brightness(45);
-    WS2812_Send();
+    if(primary_status >= 0) primary_status = STATUS_GNSS_ALIGN;
+
     SelfTest_Bitfield |= (1<<7);  //All checks passed
   }
   else if(SelfTest_Bitfield != 0b10011111){
@@ -668,9 +685,7 @@ uint8_t SelfTest(void) {
     SelfTest_Bitfield |= (BMP_SelfTest()<<3);
     SelfTest_Bitfield |= (GPS_VER_CHECK()<<4); //Check if GPS is connected and working
 
-    Set_LED(0, 255, 0, 0);
-    Set_Brightness(45);
-    WS2812_Send();
+    if(primary_status > 0) primary_status = STATUS_STARTUP;
   }
 
   return SelfTest_Bitfield;
