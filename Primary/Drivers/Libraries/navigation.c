@@ -77,7 +77,7 @@ void ECEFtoENU(double *WGS84_ref, double *ECEF_ref, double *ECEF, double *ENU) {
     // transform difference to ENU frame
     ENU[0] = -sin(lon_rad) * dx + cos(lon_rad) * dy;                                                    // East
     ENU[1] = -sin(lat_rad) * cos(lon_rad) * dx - sin(lat_rad) * sin(lon_rad) * dy + cos(lat_rad) * dz;  // North
-    ENU[2] =  cos(lat_rad) * cos(lon_rad) * dx + cos(lat_rad) * sin(lon_rad) * dy + sin(lat_rad) * dz;  // West
+    ENU[2] =  cos(lat_rad) * cos(lon_rad) * dx + cos(lat_rad) * sin(lon_rad) * dy + sin(lat_rad) * dz;  // Up
 }
 
 // attitude estimation using magnetometer and accelerometer
