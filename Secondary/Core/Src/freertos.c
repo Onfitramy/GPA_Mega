@@ -27,6 +27,7 @@
 #include "semphr.h"
 #include "queue.h"
 
+#include "ws2812.h"
 #include "W25Q1.h"
 #include "VR.h"
 #include "InterBoardCom.h"
@@ -139,6 +140,9 @@ void StartDefaultTask(void *argument)
     TemperatureAMS = readTemperature(1);
     voltage5V0bus = readVoltage(1) * (10 + 10) / 10;
     voltageBATbus = readVoltage(2) * (10 + 2.2) / 2.2;
+    
+    Set_LED(255, 0, 255);
+    WS2812_Send();
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }

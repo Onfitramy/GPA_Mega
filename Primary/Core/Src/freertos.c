@@ -66,6 +66,8 @@ uint32_t temperature_raw;
 bmp390_handle_t bmp_handle;
 float temperature, pressure;
 
+int8_t primary_status;
+
 double WGS84[3];
 double WGS84_ref[3];
 
@@ -480,20 +482,12 @@ void StartDefaultTask(void *argument)
       if(gps_data.gpsFix == 3) {
         flight_status = 1;
       }
-
-      Set_LED(0, 255, 255, 0);
-      Set_Brightness(45);
-      WS2812_Send();
     } 
     else if(flight_status == 1) { // ALIGN GUIDANCE
       for(int i = 0; i <= 2; i++) {
         WGS84_ref[i] = WGS84[i];
       }
       WGS84toECEF(WGS84_ref, ECEF_ref);
-
-      Set_LED(0, 0, 255, 0);
-      Set_Brightness(45);
-      WS2812_Send();
     }
 
     // send TVC command with deflection physically limited to 60° and twist limited to 30° to ensure xz stability
@@ -562,6 +556,7 @@ void Start100HzTask(void *argument) {
     nrf24l01p_sendOnce(tx_buf);
     HAL_Delay(2);
     nrf24l01p_startListening();
+    
     ShowStatus(RGB_PRIMARY, primary_status, 1, 100);
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
