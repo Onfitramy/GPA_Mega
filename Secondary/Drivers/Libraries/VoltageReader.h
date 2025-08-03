@@ -1,5 +1,5 @@
-#ifndef VR_H_
-#define VR_H_
+#ifndef VoltageReader_H_
+#define VoltageReader_H_
 
 #include "stm32f4xx_hal.h"
 
@@ -9,4 +9,4 @@ extern ADC_HandleTypeDef hadc2;
 double readVoltage(int channel);
 double readTemperature(int channel);
 
-#endif /*VR_H_*/
+#endif /*VoltageReader_H_*/

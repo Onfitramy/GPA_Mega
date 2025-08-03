@@ -29,8 +29,9 @@
 
 #include "ws2812.h"
 #include "W25Q1.h"
-#include "VR.h"
+#include "VoltageReader.h"
 #include "InterBoardCom.h"
+#include "status.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -73,6 +74,8 @@ const osThreadAttr_t InterBoardCom_attributes = {
 extern double TemperatureAMS;
 extern double voltage5V0bus;
 extern double voltageBATbus;
+
+int8_t secondary_status = 0;
 
 /* USER CODE END Variables */
 
@@ -140,9 +143,8 @@ void StartDefaultTask(void *argument)
     TemperatureAMS = readTemperature(1);
     voltage5V0bus = readVoltage(1) * (10 + 10) / 10;
     voltageBATbus = readVoltage(2) * (10 + 2.2) / 2.2;
-    
-    Set_LED(255, 0, 255);
-    WS2812_Send();
+
+    ShowStatus(RGB_SECONDARY, secondary_status, 1, 100);
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }

@@ -66,7 +66,7 @@ uint32_t temperature_raw;
 bmp390_handle_t bmp_handle;
 float temperature, pressure;
 
-int8_t primary_status;
+int8_t primary_status = 0;
 
 double WGS84[3];
 double WGS84_ref[3];

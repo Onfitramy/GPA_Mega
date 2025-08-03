@@ -3,7 +3,6 @@
 volatile uint8_t datasentflag;
 
 uint8_t LED_Data[3];
-uint8_t LED_Mod[3];
 
 void Set_LED (int Red, int Green, int Blue)
 {
@@ -12,7 +11,7 @@ void Set_LED (int Red, int Green, int Blue)
 	LED_Data[2] = Blue;
 }
 
-uint16_t pwmData[24+50] = { 0 };
+uint32_t pwmData[24+64] = { 0 };
 
 void WS2812_Send (void)
 {
@@ -24,15 +23,16 @@ void WS2812_Send (void)
 	for (int i=23; i>=0; i--)
 	{
 		if (color&(1<<i)) 
-			pwmData[indx] = 50;  //50 2/3 of 75
+			pwmData[indx] = 70;
 
 		else
-			pwmData[indx] = 25;  //25 1/3 of 75
+			pwmData[indx] = 35;
 
 		indx++;
 	}
 
-	HAL_TIM_PWM_Start_DMA(&htim2, TIM_CHANNEL_2, (uint32_t *)pwmData, (24 + 50));
+	HAL_TIM_PWM_Start_DMA(&htim2, TIM_CHANNEL_2, (uint32_t *)pwmData, (24 + 64));
+	
 	while (!datasentflag){}; // !FIX! This blocks the thread until the DMA transfer is complete if the DMA transfer is not complete, the thread will not continue
 	datasentflag = 0;
 }
