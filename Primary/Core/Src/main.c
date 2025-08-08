@@ -50,7 +50,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+volatile uint8_t datasentflag_ws2812;
+volatile uint8_t datasentflag_Stepper;
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -131,6 +132,7 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM4_Init();
   MX_TIM5_Init();
+  MX_TIM8_Init();
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
 
@@ -307,7 +309,17 @@ void PeriphCommonClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
+{
+    if (htim->Instance == TIM8 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1) {
+        HAL_TIM_PWM_Stop_DMA(&htim8, TIM_CHANNEL_1);
+        datasentflag_ws2812 = 1;
+    }
+    else if (htim->Instance == TIM3 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_3) {
+        HAL_TIM_PWM_Stop_DMA(&htim3, TIM_CHANNEL_3);
+        datasentflag_Stepper = 1;
+    }
+}
 /* USER CODE END 4 */
 
 /**

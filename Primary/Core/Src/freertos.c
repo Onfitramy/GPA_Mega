@@ -38,6 +38,7 @@
 #include "SAM-M8Q.h"
 #include "SERVO.h"
 #include "NRF24L01P.h"
+#include "Stepper.h"
 
 #include "signalPlotter.h"
 #include "calibration_data.h"
@@ -570,6 +571,7 @@ void Start10HzTask(void *argument) {
   const TickType_t xFrequency = 100; //10 Hz
   /* Infinite loop */
   for(;;) {
+
     GPS_ReadSensorData(&gps_data);
     if(primary_status > 0) {
       switch(gps_data.gpsFix) {

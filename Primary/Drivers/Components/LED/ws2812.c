@@ -1,9 +1,6 @@
 #include "ws2812.h"
 
-volatile uint8_t datasentflag;
-
 uint8_t LED_Data[3];
-uint8_t LED_Mod[3];
 
 void Set_LED (int Red, int Green, int Blue)
 {
@@ -32,13 +29,7 @@ void WS2812_Send (void)
 		indx++;
 	}
 
-	HAL_TIM_PWM_Start_DMA(&htim3, TIM_CHANNEL_1, (uint32_t *)pwmData, (24 + 50));
-	while (!datasentflag){}; // !FIX! This blocks the thread until the DMA transfer is complete if the DMA transfer is not complete, the thread will not continue
-	datasentflag = 0;
-}
-
-void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
-{
-	HAL_TIM_PWM_Stop_DMA(&htim3, TIM_CHANNEL_1);
-	datasentflag = 1;
+	HAL_TIM_PWM_Start_DMA(&htim8, TIM_CHANNEL_1, (uint32_t *)pwmData, (24 + 50));
+	while (!datasentflag_ws2812){}; // !FIX! This blocks the thread until the DMA transfer is complete if the DMA transfer is not complete, the thread will not continue
+	datasentflag_ws2812 = 0;
 }
