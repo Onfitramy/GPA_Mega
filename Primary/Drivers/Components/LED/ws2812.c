@@ -29,7 +29,10 @@ void WS2812_Send (void)
 		indx++;
 	}
 
+	if (dma_waiting_ws2812){
+        while(dma_waiting_ws2812){};
+    }
+
 	HAL_TIM_PWM_Start_DMA(&htim8, TIM_CHANNEL_1, (uint32_t *)pwmData, (24 + 50));
-	while (!datasentflag_ws2812){}; // !FIX! This blocks the thread until the DMA transfer is complete if the DMA transfer is not complete, the thread will not continue
-	datasentflag_ws2812 = 0;
+	dma_waiting_ws2812 = 1;
 }
