@@ -51,7 +51,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 volatile uint8_t datasentflag_ws2812;
-volatile uint8_t datasentflag_Stepper;
+volatile uint8_t dma_waiting_stepper;
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -317,7 +317,8 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
     }
     else if (htim->Instance == TIM3 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_3) {
         HAL_TIM_PWM_Stop_DMA(&htim3, TIM_CHANNEL_3);
-        datasentflag_Stepper = 1;
+        dma_waiting_stepper = 0;
+
     }
 }
 /* USER CODE END 4 */

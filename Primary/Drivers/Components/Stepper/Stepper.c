@@ -13,6 +13,10 @@ float pos_Stepper = 0;
 void Stepper_moveSteps(int steps) {
     HAL_GPIO_WritePin(GPIO13_GPIO_Port, GPIO13_Pin, GPIO_PIN_RESET); // enable
 
+    if (dma_waiting_stepper){
+        while(dma_waiting_stepper){};
+    }
+
     // Set direction based on sign of steps
     if (steps > 0) {
         HAL_GPIO_WritePin(GPIO12_GPIO_Port, GPIO12_Pin, GPIO_PIN_SET);      // Forward
@@ -29,8 +33,7 @@ void Stepper_moveSteps(int steps) {
 	}
 
 	HAL_TIM_PWM_Start_DMA(&htim3, TIM_CHANNEL_3, (uint32_t *)pwmData, steps);
-	while (!datasentflag_Stepper){}; // !FIX! This blocks the thread until the DMA transfer is complete if the DMA transfer is not complete, the thread will not continue
-	datasentflag_Stepper = 0;
+    dma_waiting_stepper = 1;
 
     HAL_GPIO_WritePin(GPIO13_GPIO_Port, GPIO13_Pin, GPIO_PIN_SET);  // disable
 }
