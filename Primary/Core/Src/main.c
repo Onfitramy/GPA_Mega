@@ -136,10 +136,6 @@ int main(void)
 
   int counter1, counter2, counter3;
 
-  SERVO_Init(1);
-
-  //SERVO_TestSequence();
-
   BMP_SelfTest();
   BMP_enable();
   BMP_Read_Calibration_Params(&bmp_handle);

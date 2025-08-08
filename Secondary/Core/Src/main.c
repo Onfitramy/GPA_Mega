@@ -140,8 +140,6 @@ int main(void)
   /* USER CODE BEGIN 2 */
   uint32_t flashid = W25Q1_ReadID(); //Check if the FLASH works, flashid = 0xEF4017
 
-  buzzerInit();
-  playMelody();
   /* USER CODE END 2 */
 
   /* Init scheduler */

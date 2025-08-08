@@ -93,28 +93,8 @@ void SERVO_MoveToAngle(uint16_t au16_SERVO_Instance, float af_Angle)
     *(SERVO_CfgParam[au16_SERVO_Instance].TIM_CCRx) = au16_Pulse;
 }
 
-void SERVO_Sweep(int8_t angle, uint8_t dt) {
-    SERVO_ZeroAll();
-    for(int i = 0; i < angle; i++) {
-        SERVO_MoveToAngle(PX_SERVO, PX_ZERO + i);
-        SERVO_MoveToAngle(NX_SERVO, NX_ZERO + i);
-        SERVO_MoveToAngle(PZ_SERVO, PZ_ZERO + i);
-        SERVO_MoveToAngle(NZ_SERVO, NZ_ZERO + i);
-        HAL_Delay(dt);
-    }
-
-    for(int i = 0; i < angle; i++) {
-        SERVO_MoveToAngle(PX_SERVO, PX_ZERO - i);
-        SERVO_MoveToAngle(NX_SERVO, NX_ZERO - i);
-        SERVO_MoveToAngle(PZ_SERVO, PZ_ZERO - i);
-        SERVO_MoveToAngle(NZ_SERVO, NZ_ZERO - i);
-        HAL_Delay(dt);
-    }
-    SERVO_ZeroAll();
-}
-
 void SERVO_Test(uint8_t Servo, uint8_t Zero_val, int8_t angle, uint8_t dt) {
-    SERVO_ZeroAll();
+    SERVO_MoveToAngle(Servo, Zero_val);
     for(int i = 0; i < angle; i++) {
         SERVO_MoveToAngle(Servo, Zero_val + i);
         HAL_Delay(dt);
@@ -123,58 +103,11 @@ void SERVO_Test(uint8_t Servo, uint8_t Zero_val, int8_t angle, uint8_t dt) {
         SERVO_MoveToAngle(Servo, Zero_val - i);
         HAL_Delay(dt);
     }
-    SERVO_ZeroAll();
-}
-
-void SERVO_TestX(int8_t angle, uint8_t dt) {
-    SERVO_ZeroAll();
-    for(int i = 0; i < angle; i++) {
-        SERVO_MoveToAngle(PX_SERVO, PX_ZERO + i);
-        SERVO_MoveToAngle(NX_SERVO, NX_ZERO - i);
-        HAL_Delay(dt);
-    }
-    for(int i = 0; i < angle; i++) {
-        SERVO_MoveToAngle(PX_SERVO, PX_ZERO - i);
-        SERVO_MoveToAngle(NX_SERVO, NX_ZERO + i);
-        HAL_Delay(dt);
-    }
-    SERVO_ZeroAll();
-}
-
-void SERVO_TestZ(int8_t angle, uint8_t dt) {
-    SERVO_ZeroAll();
-    for(int i = 0; i < angle; i++) {
-        SERVO_MoveToAngle(PZ_SERVO, PZ_ZERO + i);
-        SERVO_MoveToAngle(NZ_SERVO, NZ_ZERO - i);
-        HAL_Delay(dt);
-    }
-    for(int i = 0; i < angle; i++) {
-        SERVO_MoveToAngle(PZ_SERVO, PZ_ZERO - i);
-        SERVO_MoveToAngle(NZ_SERVO, NZ_ZERO + i);
-        HAL_Delay(dt);
-    }
-    SERVO_ZeroAll();
+    SERVO_MoveToAngle(Servo, Zero_val);
 }
 
 void SERVO_ZeroAll() {
-    SERVO_MoveToAngle(PX_SERVO, PX_ZERO);
-    SERVO_MoveToAngle(NX_SERVO, NX_ZERO);
-    SERVO_MoveToAngle(PZ_SERVO, PZ_ZERO);
-    SERVO_MoveToAngle(NZ_SERVO, NZ_ZERO);
-}
-
-void SERVO_TestSequence() {
-    SERVO_MoveToAngle(PY_MOTOR, 180);
-    SERVO_MoveToAngle(NY_MOTOR, 180);
-    SERVO_Test(PX_SERVO, PX_ZERO, 60, 10);
-    SERVO_Test(PZ_SERVO, PZ_ZERO, 60, 10);
-    SERVO_Test(NX_SERVO, NX_ZERO, 60, 10);
-    SERVO_Test(NZ_SERVO, NZ_ZERO, 60, 10);
-    SERVO_MoveToAngle(PY_MOTOR, 0);
-    SERVO_MoveToAngle(NY_MOTOR, 0);
-    HAL_Delay(100);
-    SERVO_TestX(60, 10);
-    SERVO_TestZ(60, 10);
-    HAL_Delay(100);
-    SERVO_Sweep(60, 10);
+    for(uint16_t i = 1; i <= SERVO_NUM; i++) {
+        SERVO_MoveToAngle(i, 0);
+    }
 }
