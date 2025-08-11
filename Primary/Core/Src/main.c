@@ -34,7 +34,6 @@
 #include "LIS3MDL.h"
 #include "ws2812.h"
 #include "bmp390.h"
-#include "Stepper.h"
 #include "NRF24L01P.h"
 #include "signalPlotter.h"
 #include "status.h"
@@ -53,6 +52,8 @@
 volatile uint8_t datasentflag_ws2812;
 volatile uint8_t dma_waiting_stepper;
 volatile uint8_t dma_waiting_ws2812;
+
+uint16_t pwmData[MAX_STEPPER_STEPS];
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -136,6 +137,8 @@ int main(void)
   MX_TIM8_Init();
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
+
+  Stepper_Init();
 
   int counter1, counter2, counter3;
 

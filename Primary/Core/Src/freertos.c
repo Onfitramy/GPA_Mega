@@ -38,7 +38,6 @@
 #include "SAM-M8Q.h"
 #include "SERVO.h"
 #include "NRF24L01P.h"
-#include "Stepper.h"
 
 #include "signalPlotter.h"
 #include "calibration_data.h"
@@ -571,7 +570,7 @@ void Start10HzTask(void *argument) {
   const TickType_t xFrequency = 100; //10 Hz
   /* Infinite loop */
   for(;;) {
-
+    Stepper_moveSteps(20);
     GPS_ReadSensorData(&gps_data);
     if(primary_status > 0) {
       switch(gps_data.gpsFix) {
@@ -580,7 +579,7 @@ void Start10HzTask(void *argument) {
         case 3: primary_status = STATUS_STANDBY; break;
       }
     }
-
+    
     IMUPacket_t imu_packet = {
       .timestamp = HAL_GetTick(),
       .gyroX = imu1_data.gyro[0],

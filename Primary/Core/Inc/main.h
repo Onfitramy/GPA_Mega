@@ -31,6 +31,7 @@ extern "C" {
 #include "FreeRTOS.h"
 #include "queue.h"
 
+#include "Stepper.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #define RECEIVER
