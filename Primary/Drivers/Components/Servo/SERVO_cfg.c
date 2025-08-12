@@ -1,14 +1,11 @@
 /*
-    Servo Configuration, added two Example Servos based on the Test ones. NOT FINAL!
+ *  Servo Configuration. Cheap Servos go from 500us to 2400us while expensive ones can go from 1000us to 2000us.
  */
 
 #include "SERVO.h"
 
-const SERVO_CfgType SERVO_CfgParam[SERVO_NUM + 1] =
+SERVO_CfgType SERVO_Data[SERVO_NUM] =
 {
-	{
-		// Servo 0 does not exist.
-	},
 	/* CH1 PWM Configurations */
     {
 	    GPIOA,          // GPIO Port
@@ -16,9 +13,6 @@ const SERVO_CfgType SERVO_CfgParam[SERVO_NUM + 1] =
 		TIM2,           // TIM Instance
 		&TIM2->CCR1, 	// Pointer to Capture/Compare Register
 		TIM_CHANNEL_1,  // Timer Channel
-		1000,          	// Timer Clock Frequency (Update Rate, this is how many different Steps there are in Voltage)
-		2,              // Max pulse width
-		1               // min Pulse width
 	},
 
     /* CH2 PWM Configurations */
@@ -28,9 +22,6 @@ const SERVO_CfgType SERVO_CfgParam[SERVO_NUM + 1] =
 		TIM2,
 		&TIM2->CCR2,
 		TIM_CHANNEL_2,
-		1000,
-		2,
-		1
 	},
 
     /* CH3 PWM Configurations */
@@ -40,9 +31,6 @@ const SERVO_CfgType SERVO_CfgParam[SERVO_NUM + 1] =
 		TIM2,
 		&TIM2->CCR3,
 		TIM_CHANNEL_3,
-		1000,
-		2,
-		1
 	},
 
     /* CH4 PWM Configurations */
@@ -52,9 +40,6 @@ const SERVO_CfgType SERVO_CfgParam[SERVO_NUM + 1] =
 		TIM2,
 		&TIM2->CCR4,
 		TIM_CHANNEL_4,
-		1000,
-		2,
-		1
 	},
 
     /* CH5 PWM Configurations */
@@ -64,9 +49,6 @@ const SERVO_CfgType SERVO_CfgParam[SERVO_NUM + 1] =
 		TIM4,
 		&TIM4->CCR1,
 		TIM_CHANNEL_1,
-		1000,
-		2,
-		1
 	},
 
     /* CH6 PWM Configurations */
@@ -76,9 +58,6 @@ const SERVO_CfgType SERVO_CfgParam[SERVO_NUM + 1] =
 		TIM4,
 		&TIM4->CCR2,
 		TIM_CHANNEL_2,
-		1000,
-		2,
-		1
 	},
 
     /* CH7 PWM Configurations */
@@ -88,9 +67,6 @@ const SERVO_CfgType SERVO_CfgParam[SERVO_NUM + 1] =
 		TIM4,
 		&TIM4->CCR3,
 		TIM_CHANNEL_3,
-		1000,
-		2,
-		1
 	},
 
     /* CH8 PWM Configurations */
@@ -100,9 +76,6 @@ const SERVO_CfgType SERVO_CfgParam[SERVO_NUM + 1] =
 		TIM4,
 		&TIM4->CCR4,
 		TIM_CHANNEL_4,
-		1000,
-		2,
-		1
 	}
 
 };

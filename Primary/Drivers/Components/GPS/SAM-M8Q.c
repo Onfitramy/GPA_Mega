@@ -84,7 +84,7 @@ UBX_MessageType ublox_ReadOutput(char* UBX_MessageReturn) {
     if (status == HAL_OK){
         uUbxProtocolDecode((char*)buffer, len, &UBX_Message.messageClass, &UBX_Message.messageId, UBX_Message.messageBody, len, NULL);
         UBX_Message.status = 1; //Read Success
-        for (size_t i = 0; i <= length; i++) {
+        for (size_t i = 0; i < length; i++) {
             buffer[i] = 0;
         }
     }else{
