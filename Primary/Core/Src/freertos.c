@@ -410,7 +410,6 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;) {
     TimeMeasureStart(); // Start measuring time
-    SelfTest();         // Run self-test on startup
 
     BMP_GetRawData(&pressure_raw, &temperature_raw);
 
@@ -585,6 +584,8 @@ void Start10HzTask(void *argument) {
   const TickType_t xFrequency = 100; //10 Hz
   /* Infinite loop */
   for(;;) {
+    SelfTest();         // Run self-test on startup
+
     Stepper_moveSteps(20);
     GPS_ReadSensorData(&gps_data);
     if(primary_status > 0) {
@@ -683,7 +684,7 @@ uint8_t SelfTest(void) {
 
     SelfTest_Bitfield |= (1<<7);  //All checks passed
   }
-  else if (selftest_tries > 200){
+  else if (selftest_tries > 100){
     primary_status = STATUS_ERROR_STARTUP;
     return SelfTest_Bitfield;
   }
