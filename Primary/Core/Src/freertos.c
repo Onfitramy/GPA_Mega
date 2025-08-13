@@ -38,6 +38,7 @@
 #include "bmp390.h"
 #include "SAM-M8Q.h"
 #include "SERVO.h"
+#include "NRF24L01P.h"
 #include "Stepper.h"
 
 #include "signalPlotter.h"
@@ -176,6 +177,7 @@ typedef struct {
 
 Data_Package_Send tx_data;
 
+int Servo_counter = 0;
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -560,6 +562,17 @@ void Start100HzTask(void *argument) {
     radioSend(tx_buf);
     
     ShowStatus(RGB_PRIMARY, primary_status, 1, 100);
+
+    // SERVO TEST
+    Servo_counter++;
+    if(Servo_counter >= 180) {
+      Servo_counter = -180;
+    }
+    if(Servo_counter < 0) {
+      SERVO_MoveToAngle(1, -Servo_counter);
+    } else {
+      SERVO_MoveToAngle(1, Servo_counter);
+    }
     TimeMeasureStop(); // Stop measuring time
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }
@@ -572,7 +585,7 @@ void Start10HzTask(void *argument) {
   const TickType_t xFrequency = 100; //10 Hz
   /* Infinite loop */
   for(;;) {
-
+    Stepper_moveSteps(20);
     GPS_ReadSensorData(&gps_data);
     if(primary_status > 0) {
       switch(gps_data.gpsFix) {
@@ -581,7 +594,7 @@ void Start10HzTask(void *argument) {
         case 3: primary_status = STATUS_STANDBY; break;
       }
     }
-
+    
     IMUPacket_t imu_packet = {
       .timestamp = HAL_GetTick(),
       .gyroX = imu1_data.gyro[0],
