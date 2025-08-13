@@ -143,17 +143,11 @@ int main(void)
   BMP_enable();
   BMP_Read_Calibration_Params(&bmp_handle);
 
-  #ifdef RECEIVER
-  nrf24l01p_rx_init(2450, _1Mbps);
-  #endif
+  nrf24l01p_init(2462, _1Mbps);
 
-  #ifdef TRANSMITTER
-  nrf24l01p_tx_init(2450, _1Mbps);
-  #endif
-
-  for(counter1 = 0; IMU1_SelfTest() != 1; counter1++);
-  for(counter2 = 0; IMU2_SelfTest() != 1; counter2++);
-  for(counter3 = 0; MAG_SelfTest() != 1; counter3++);
+  for(counter1 = 0; IMU1_SelfTest() != 1 && counter1 < 100000; counter1++);
+  for(counter2 = 0; IMU2_SelfTest() != 1 && counter2 < 100000; counter2++);
+  for(counter3 = 0; MAG_SelfTest() != 1 && counter3 < 100000; counter3++);
 
 
   // !!!

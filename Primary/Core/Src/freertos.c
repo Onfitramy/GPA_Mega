@@ -27,6 +27,7 @@
 #include "armMathAddon.h"
 #include "semphr.h"
 #include "queue.h"
+#include <stdio.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -37,7 +38,6 @@
 #include "bmp390.h"
 #include "SAM-M8Q.h"
 #include "SERVO.h"
-#include "NRF24L01P.h"
 #include "Stepper.h"
 
 #include "signalPlotter.h"
@@ -49,6 +49,7 @@
 #include "guidance.h"
 #include "navigation.h"
 #include "control.h"
+#include "radio.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -174,8 +175,6 @@ typedef struct {
 #pragma pack(pop)
 
 Data_Package_Send tx_data;
-
-Data_Package_Receive rx_data;
 
 /* USER CODE END PD */
 
@@ -331,7 +330,7 @@ void StartDefaultTask(void *argument)
   KalmanFilterInit(&Kalman2, x_size2, z_size2, u_size2);
 
   signalPlotter_setSignalName(0, "delta Time");
-  signalPlotter_setSignalName(1, "NRF timeout");
+  signalPlotter_setSignalName(1, "NRF Data");
   signalPlotter_setSignalName(2, "a_x world");
   signalPlotter_setSignalName(3, "a_y world");
   signalPlotter_setSignalName(4, "a_z world");
@@ -402,6 +401,9 @@ void StartDefaultTask(void *argument)
   x[0] = z[0];
   x[1] = z[1];
   x[2] = z[2];
+
+  radioSet(NRF_24_ACTIVE);
+  radioSetMode(RADIO_MODE_TRANSCEIVER);
 
   /* Infinite loop */
   for(;;) {
@@ -493,7 +495,7 @@ void StartDefaultTask(void *argument)
 
     // send TVC command with deflection physically limited to 60° and twist limited to 30° to ensure xz stability
 
-    TimeMeasureStop(); // Stop measuring time
+    
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz) Always at the end of the loop
   }
 
@@ -552,14 +554,13 @@ void Start100HzTask(void *argument) {
     psi = x[2];
 
     // transmit data
-    uint8_t tx_buf[NRF24L01P_TX_PAYLOAD_LENGTH] = {0};  
-    memcpy(tx_buf, &tx_data, sizeof(tx_buf));
-    nrf24l01p_sendOnce(tx_buf);
-    HAL_Delay(2);
-    nrf24l01p_startListening();
+    //First to bytes are unimportant
+    uint8_t tx_buf[NRF24L01P_PAYLOAD_LENGTH];
+    sprintf(&tx_buf[2], "I live");
+    radioSend(tx_buf);
     
     ShowStatus(RGB_PRIMARY, primary_status, 1, 100);
-
+    TimeMeasureStop(); // Stop measuring time
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }
   /* USER CODE END Start10HzTask */
@@ -608,10 +609,6 @@ void Start10HzTask(void *argument) {
       }
       ECEFtoENU(WGS84_ref, ECEF_ref, ECEF, ENU);
 
-    PacketData_u packet_data;
-    packet_data.imu = imu_packet;
-    InterBoardCom_SendDataPacket(InterBoardPACKET_ID_DataSaveFLASH ,PACKET_ID_IMU, &packet_data);
-
       arm_mat_set_diag_f32(&R2, 0, 0, 3, (float)gps_data.sAcc * gps_data.sAcc / 1e6f * 0.001f * (1 + a_abs));
       arm_mat_set_diag_f32(&R2, 3, 3, 2, (float)gps_data.hAcc * gps_data.hAcc / 1e6f * 100.f);
       arm_mat_set_entry_f32(&R2, 5, 5, (float)gps_data.vAcc * gps_data.vAcc / 1e6f * 100.f);
@@ -622,7 +619,6 @@ void Start10HzTask(void *argument) {
     }
 
     // KF2 correction steps
-
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
   }
   /* USER CODE END Start10HzTask */
@@ -635,6 +631,7 @@ void Start10HzTask(void *argument) {
   * @retval None
   */
 /* USER CODE END InterruptHandlerTask */
+uint8_t rx_recieve_buf[NRF24L01P_PAYLOAD_LENGTH] = {0};
 void StartInterruptHandlerTask(void *argument)
 {
   /* init code for USB_DEVICE */
@@ -654,11 +651,9 @@ void StartInterruptHandlerTask(void *argument)
           nrf24l01p_tx_irq();
         } else {
           HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
-          uint8_t rx_buf[NRF24L01P_RX_PAYLOAD_LENGTH] = {0};
-          nrf24l01p_rx_receive(rx_buf);
-          if(rx_buf[4] != rx_buf[5]) { // discard trash data
-            memcpy(&rx_data, rx_buf, sizeof(Data_Package_Receive));
-          }        
+          memset(rx_recieve_buf, 0, NRF24L01P_PAYLOAD_LENGTH);
+          nrf24l01p_rx_receive(rx_recieve_buf);
+          radioDecode(rx_recieve_buf, radio_rx_data, NRF24L01P_PAYLOAD_LENGTH);
         }
       }
     }
@@ -668,14 +663,19 @@ void StartInterruptHandlerTask(void *argument)
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
-
+uint8_t selftest_tries = 0;
 uint8_t SelfTest(void) {
   if((SelfTest_Bitfield == 0b11111) && (SelfTest_Bitfield != 0b10011111)){
     if(primary_status >= 0) primary_status = STATUS_GNSS_ALIGN;
 
     SelfTest_Bitfield |= (1<<7);  //All checks passed
   }
+  else if (selftest_tries > 200){
+    primary_status = STATUS_ERROR_STARTUP;
+    return SelfTest_Bitfield;
+  }
   else if(SelfTest_Bitfield != 0b10011111){
+    selftest_tries += 1;
     SelfTest_Bitfield |= IMU1_SelfTest();
     SelfTest_Bitfield |= (IMU2_SelfTest()<<1);
     SelfTest_Bitfield |= (MAG_SelfTest()<<2);

@@ -36,9 +36,7 @@ extern SPI_HandleTypeDef hspi6;
 #define NRF_IRQ_PORT   GPIOD
 #define NRF_IRQ_PIN    GPIO_PIN_5
 
-#define NRF24L01P_RX_PAYLOAD_LENGTH 7     // 1 - 32bytes
-#define NRF24L01P_PAYLOAD_LENGTH 8     // 1 - 32bytes
-#define NRF24L01P_TX_PAYLOAD_LENGTH 32    // 1 - 32bytes
+#define NRF24L01P_PAYLOAD_LENGTH 32     // 1 - 32bytes
 
 /* nRF24L01+ typedefs */
 typedef uint8_t count;
@@ -80,6 +78,8 @@ typedef struct {
 #pragma pack(pop)
 
 /* Main Functions */
+void nrf24l01p_init(channel MHz, air_data_rate bps);
+
 void nrf24l01p_rx_init(channel MHz, air_data_rate bps);
 void nrf24l01p_tx_init(channel MHz, air_data_rate bps);
 
@@ -87,8 +87,12 @@ void nrf24l01p_rx_receive(uint8_t* rx_payload);
 void nrf24l01p_tx_transmit(uint8_t* tx_payload);
 
 // Check tx_ds or max_rt
-void nrf24l01p_tx_irq();  
+void nrf24l01p_rx_receive(uint8_t* rx_payload);
 
+//Switch to tx_Mode
+void nrf24l01p_txMode(void);
+
+void nrf24l01p_rxMode(void);
 
 /* Sub Functions */
 void nrf24l01p_reset();
@@ -117,11 +121,13 @@ void nrf24l01p_flush_tx_fifo();
 void nrf24l01p_clear_rx_dr();
 void nrf24l01p_clear_tx_ds();
 void nrf24l01p_clear_max_rt();
+void nrf24l01p_tx_irq();
 
 void nrf24l01p_set_rf_channel(channel MHz);
 void nrf24l01p_set_rf_tx_output_power(output_power dBm);
 void nrf24l01p_set_rf_air_data_rate(air_data_rate bps);
 
+void nrf24l01p_enable_crc();
 void nrf24l01p_disable_crc();
 void nrf24l01p_set_crc_length(length bytes);
 void nrf24l01p_set_address_widths(widths bytes);

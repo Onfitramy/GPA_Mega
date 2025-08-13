@@ -12,6 +12,9 @@ void ShowStatus(device_handle device, int8_t status, float freq_cycle, float fre
     if(device == RGB_PRIMARY) {
 
         switch(status) {
+            case -4: // Selftest, error
+                SetLED_slide(COLOR_RED, COLOR_ORANGE);
+                break;
             case -3: // Error, other
                 SetLED_blink(COLOR_RED);
                 break;

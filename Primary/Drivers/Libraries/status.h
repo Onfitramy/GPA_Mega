@@ -17,6 +17,7 @@ void SetLED_color(color_handle color);
 #define LED_SECONDARY   4
 #define BUZZER          5
 
+#define STATUS_ERROR_STARTUP -4
 #define STATUS_ERROR_OTHER  -3
 #define STATUS_ERROR_MEMS   -2
 #define STATUS_ERROR_FATAL  -1

@@ -70,6 +70,45 @@ void write_register_bytes(uint8_t reg, const uint8_t* data, uint8_t len) {
     cs_high();
 }
 
+/* Initializes the NRF24 into Standby 1 mode, ready for both Transmit and receive  */
+void nrf24l01p_init(channel MHz, air_data_rate bps) {
+
+    nrf24l01p_reset();
+
+    nrf24l01p_power_up();
+
+    HAL_Delay(5);
+
+    nrf24l01p_rx_set_payload_widths_P0(NRF24L01P_PAYLOAD_LENGTH);
+    write_register(NRF24L01P_REG_EN_AA, 0x3F); //Activate Auto Acknowledgement
+    write_register(NRF24L01P_REG_FEATURE, 0x01); //Enables the W_TX_PAYLOAD_NOACK command
+
+    nrf24l01p_set_rf_channel(MHz);
+    nrf24l01p_set_rf_air_data_rate(bps);
+    nrf24l01p_set_rf_tx_output_power(_0dBm);
+
+    nrf24l01p_set_crc_length(1);
+    nrf24l01p_disable_crc();
+    nrf24l01p_set_address_widths(5);
+
+    nrf24l01p_auto_retransmit_count(3);
+    nrf24l01p_auto_retransmit_delay(250);
+
+    //Set RX_ADDR_P0 (Receive Adress)
+    uint8_t addr[5] = {"ATHMO"};
+    write_register_bytes(NRF24L01P_REG_RX_ADDR_P0, addr, 5);
+
+    //Set TX_ADDR (Transmit address)
+    write_register_bytes(NRF24L01P_REG_TX_ADDR, addr, 5);
+
+    //uint8_t rx = 0;
+    //rx = read_register(0x00);
+
+    ce_low();
+    //Goes into standby 1
+
+    nrf_mode = 0;
+}
 
 /* nRF24L01+ Main Functions */
 void nrf24l01p_rx_init(channel MHz, air_data_rate bps) {
@@ -81,7 +120,7 @@ void nrf24l01p_rx_init(channel MHz, air_data_rate bps) {
 
     HAL_Delay(5);
 
-    nrf24l01p_rx_set_payload_widths_P1(NRF24L01P_RX_PAYLOAD_LENGTH);
+    nrf24l01p_rx_set_payload_widths_P1(NRF24L01P_PAYLOAD_LENGTH);
 
     nrf24l01p_set_rf_channel(MHz);
     nrf24l01p_set_rf_air_data_rate(bps);
@@ -98,7 +137,7 @@ void nrf24l01p_rx_init(channel MHz, air_data_rate bps) {
     write_register(NRF24L01P_REG_EN_AA, 0x00);
 
     //Set RX_ADDR_P0 (Receive Adress)
-    uint8_t addr[5] = {"OMHTA"};
+    uint8_t addr[5] = {"ATHMO"};
     write_register_bytes(NRF24L01P_REG_RX_ADDR_P1, addr, 5);
 
     //uint8_t rx = 0;
@@ -204,30 +243,68 @@ void nrf24l01p_reset() {
     nrf24l01p_flush_tx_fifo();
 }
 
-void nrf24l01p_prx_mode() {
-    uint8_t new_config = read_register(NRF24L01P_REG_CONFIG);
-    new_config |= 1 << 0; // PRIM_RX
-
-    write_register(NRF24L01P_REG_CONFIG, new_config);
-}
-
-void nrf24l01p_ptx_mode() {
-    uint8_t new_config = read_register(NRF24L01P_REG_CONFIG);
-    new_config &= 0xFE;   // PRIM_TX
-
-    write_register(NRF24L01P_REG_CONFIG, new_config);
-}
 
 uint8_t nrf24l01p_read_rx_fifo(uint8_t* rx_payload) {
     uint8_t command = NRF24L01P_CMD_R_RX_PAYLOAD;
     uint8_t status;
 
+
+    // RX (one burst)
+    uint8_t rx[1 + NRF24L01P_PAYLOAD_LENGTH];
+    uint8_t tx[1 + NRF24L01P_PAYLOAD_LENGTH] = { NRF24L01P_CMD_R_RX_PAYLOAD };
     cs_low();
-    HAL_SPI_TransmitReceive(&NRF_SPI, &command, &status, 1, 2000);
-    HAL_SPI_Receive(&NRF_SPI, rx_payload, NRF24L01P_RX_PAYLOAD_LENGTH, 2000);
+    HAL_SPI_TransmitReceive(&NRF_SPI, tx, rx, sizeof tx, 2000);
     cs_high();
+    status = rx[0];
+    memcpy(rx_payload, &rx[1], NRF24L01P_PAYLOAD_LENGTH);
+
+    /*cs_low();
+    HAL_SPI_TransmitReceive(&NRF_SPI, &command, &status, 1, 2000);
+    HAL_SPI_Receive(&NRF_SPI, rx_payload, NRF24L01P_PAYLOAD_LENGTH, 2000);
+    cs_high();*/
 
     return status;
+}
+
+void nrf24l01p_txMode(void){
+    nrf_mode = 1;
+
+    ce_low();
+
+    write_register(NRF24L01P_REG_EN_AA, 0x3F);
+
+    write_register(NRF24L01P_REG_FEATURE, 0x01);
+
+    uint8_t config = read_register(NRF24L01P_REG_CONFIG);
+    config &= ~(1 << 0);  // PRIM_TX
+    write_register(NRF24L01P_REG_CONFIG, config);
+
+    ce_high();
+    delay_us(15);
+    ce_low();
+
+    delay_us(150);
+}
+
+void nrf24l01p_rxMode(void){
+    nrf_mode = 0;
+
+    ce_low();
+
+    write_register(NRF24L01P_REG_EN_AA, 0x00);
+
+    write_register(NRF24L01P_REG_FEATURE, 0x01);
+
+    uint8_t config = read_register(NRF24L01P_REG_CONFIG);
+    config |= (1 << 0);   // PRIM_RX
+    config &= ~(1 << 3);  // EN_CRC = 0
+    write_register(NRF24L01P_REG_CONFIG, config);
+
+    ce_high();
+
+    delay_us(150);
+
+    nrf24l01p_flush_rx_fifo();
 }
 
 uint8_t nrf24l01p_write_tx_fifo(uint8_t* tx_payload) {
@@ -235,10 +312,18 @@ uint8_t nrf24l01p_write_tx_fifo(uint8_t* tx_payload) {
     uint8_t command = NRF24L01P_CMD_W_TX_PAYLOAD_NOACK;
     uint8_t status;
 
-    cs_low();
+    /*cs_low();
     HAL_SPI_TransmitReceive(&NRF_SPI, &command, &status, 1, 2000);
-    HAL_SPI_Transmit(&NRF_SPI, tx_payload, NRF24L01P_TX_PAYLOAD_LENGTH, 2000);
+    HAL_SPI_Transmit(&NRF_SPI, tx_payload, NRF24L01P_PAYLOAD_LENGTH, 2000);
+    cs_high();*/
+    // TX (one burst)
+    uint8_t rx[1 + NRF24L01P_PAYLOAD_LENGTH];
+    uint8_t tx[1 + NRF24L01P_PAYLOAD_LENGTH] = { NRF24L01P_CMD_W_TX_PAYLOAD_NOACK };
+    for (uint8_t i=1; i < (1+NRF24L01P_PAYLOAD_LENGTH); i++){ tx[i] = tx_payload[i];}
+    cs_low();
+    HAL_SPI_TransmitReceive(&NRF_SPI, tx, rx, sizeof tx, 2000);
     cs_high();
+    status = rx[0];
 
     return status;
 }
@@ -345,6 +430,14 @@ void nrf24l01p_set_crc_length(length bytes) {
     write_register(NRF24L01P_REG_CONFIG, new_config);
 }
 
+void nrf24l01p_enable_crc(){
+    uint8_t new_config = read_register(NRF24L01P_REG_CONFIG);
+    
+    // set byte 3 to 1
+    new_config |= (1 << 3);
+    write_register(NRF24L01P_REG_CONFIG, new_config);
+}
+
 void nrf24l01p_disable_crc() {
     uint8_t new_config = read_register(NRF24L01P_REG_CONFIG);
     
@@ -411,10 +504,10 @@ void nrf24l01p_startListening() {
 
     write_register(NRF24L01P_REG_EN_AA, 0x00);
 
-    write_register(NRF24L01P_REG_FEATURE, 0x00);
+    write_register(NRF24L01P_REG_FEATURE, 0x01);
 
     uint8_t config = read_register(NRF24L01P_REG_CONFIG);
-    config |= (1 << 1);   // PWR_UP (can skip if always set)
+    //config |= (1 << 1);   // PWR_UP (can skip if always set)
     config |= (1 << 0);   // PRIM_RX
     config &= ~(1 << 3);  // EN_CRC = 0
     write_register(NRF24L01P_REG_CONFIG, config);
@@ -436,10 +529,10 @@ void nrf24l01p_sendOnce(uint8_t* tx_payload) {
     write_register(NRF24L01P_REG_FEATURE, 0x01);
 
     uint8_t config = read_register(NRF24L01P_REG_CONFIG);
-    config |= (1 << 1);   // PWR_UP (can skip if always set)
+    //config |= (1 << 1);   // PWR_UP (can skip if always set)
     config &= ~(1 << 0);  // PRIM_TX
-    config |= (1 << 3);   // EN_CRC = 1
-    config &= 0xFB;       // CRCO = 1 byte
+    //config |= (1 << 3);   // EN_CRC = 1
+    //config &= 0xFB;       // CRCO = 1 byte
     write_register(NRF24L01P_REG_CONFIG, config);
 
     nrf24l01p_write_tx_fifo(tx_payload);
@@ -451,7 +544,7 @@ void nrf24l01p_sendOnce(uint8_t* tx_payload) {
     delay_us(150);
 }
 
-void delay_us(uint32_t us) {
+void delay_us(uint32_t us) { //TODO: Deal with Overflow as this could massivly increase Delay
     uint32_t start_time = HAL_GetTickUS();
     while(HAL_GetTickUS() < (start_time + us));
 }
