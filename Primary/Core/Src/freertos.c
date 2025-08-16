@@ -176,8 +176,6 @@ typedef struct {
 #pragma pack(pop)
 
 Data_Package_Send tx_data;
-
-int Servo_counter = 0;
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -562,16 +560,6 @@ void Start100HzTask(void *argument) {
     
     ShowStatus(RGB_PRIMARY, primary_status, 1, 100);
 
-    // SERVO TEST
-    Servo_counter++;
-    if(Servo_counter >= 180) {
-      Servo_counter = -180;
-    }
-    if(Servo_counter < 0) {
-      SERVO_MoveToAngle(1, -Servo_counter);
-    } else {
-      SERVO_MoveToAngle(1, Servo_counter);
-    }
     TimeMeasureStop(); // Stop measuring time
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }

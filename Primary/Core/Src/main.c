@@ -138,7 +138,11 @@ int main(void)
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
 
-  SERVO_Init(1, 500, 2400);
+  SERVO_Init(1, 500, 2500, 270);
+  SERVO_Init(2, 500, 2500, 270);
+  SERVO_MoveToAngle(1, 135);
+  SERVO_MoveToAngle(2, 135);
+
   Stepper_Init();
 
   int counter1, counter2, counter3;

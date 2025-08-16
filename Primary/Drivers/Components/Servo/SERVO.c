@@ -11,10 +11,11 @@
 #include "main.h"
 
 /*Initiate a Servo defined by a 16bit number */
-void SERVO_Init(uint16_t au16_SERVO_Instance, uint16_t MinPulse_us, uint16_t MaxPulse_us) {
+void SERVO_Init(uint16_t au16_SERVO_Instance, uint16_t MinPulse_us, uint16_t MaxPulse_us, uint16_t max_angle) {
     au16_SERVO_Instance--; // Convert to 0 based index
     SERVO_Data[au16_SERVO_Instance].MinPulse = MinPulse_us;
     SERVO_Data[au16_SERVO_Instance].MaxPulse = MaxPulse_us;
+    SERVO_Data[au16_SERVO_Instance].MaxAngle = max_angle;
 
     // Channel Number 1 - 8
     TIM_HandleTypeDef htim;
@@ -85,7 +86,7 @@ void SERVO_MoveToAngle(uint16_t au16_SERVO_Instance, float af_Angle)
     // Channel Number 1 - 8
     uint16_t au16_Pulse = 0;
 
-    au16_Pulse = SERVO_Data[au16_SERVO_Instance].MinPeriod + (af_Angle/180.0)*(SERVO_Data[au16_SERVO_Instance].MaxPeriod - SERVO_Data[au16_SERVO_Instance].MinPeriod);
+    au16_Pulse = SERVO_Data[au16_SERVO_Instance].MinPeriod + (af_Angle/SERVO_Data[au16_SERVO_Instance].MaxAngle)*(SERVO_Data[au16_SERVO_Instance].MaxPeriod - SERVO_Data[au16_SERVO_Instance].MinPeriod);
 
     *(SERVO_Data[au16_SERVO_Instance].TIM_CCRx) = au16_Pulse;
 }
