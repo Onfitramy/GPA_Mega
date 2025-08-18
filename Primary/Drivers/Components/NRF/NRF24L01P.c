@@ -88,7 +88,7 @@ void nrf24l01p_init(channel MHz, air_data_rate bps) {
     nrf24l01p_set_rf_tx_output_power(_0dBm);
 
     nrf24l01p_set_crc_length(1);
-    nrf24l01p_disable_crc();
+    nrf24l01p_enable_crc();
     nrf24l01p_set_address_widths(5);
 
     nrf24l01p_auto_retransmit_count(3);
@@ -108,83 +108,6 @@ void nrf24l01p_init(channel MHz, air_data_rate bps) {
     //Goes into standby 1
 
     nrf_mode = 0;
-}
-
-/* nRF24L01+ Main Functions */
-void nrf24l01p_rx_init(channel MHz, air_data_rate bps) {
-
-    nrf24l01p_reset();
-
-    nrf24l01p_prx_mode();
-    nrf24l01p_power_up();
-
-    HAL_Delay(5);
-
-    nrf24l01p_rx_set_payload_widths_P1(NRF24L01P_PAYLOAD_LENGTH);
-
-    nrf24l01p_set_rf_channel(MHz);
-    nrf24l01p_set_rf_air_data_rate(bps);
-    nrf24l01p_set_rf_tx_output_power(_0dBm);
-
-    //nrf24l01p_set_crc_length(1);
-    nrf24l01p_disable_crc();
-    nrf24l01p_set_address_widths(5);
-
-    nrf24l01p_auto_retransmit_count(3);
-    nrf24l01p_auto_retransmit_delay(250);
-
-    // activate NOACK for all pipes
-    write_register(NRF24L01P_REG_EN_AA, 0x00);
-
-    //Set RX_ADDR_P0 (Receive Adress)
-    uint8_t addr[5] = {"ATHMO"};
-    write_register_bytes(NRF24L01P_REG_RX_ADDR_P1, addr, 5);
-
-    //uint8_t rx = 0;
-    //rx = read_register(0x00);
-
-    ce_high();
-    //Goes into standby 1
-
-    nrf_mode = 0;
-}
-
-void nrf24l01p_tx_init(channel MHz, air_data_rate bps) {
-    //Resert Chip, all on registers reset value, flush fifo
-    nrf24l01p_reset();
-
-    //Set Chip Config[0] to 0 = PTX
-    nrf24l01p_ptx_mode();
-    //Power on chip, set Config[1] to 1
-    nrf24l01p_power_up();
-    //Chip now in Standby 1
-    HAL_Delay(5);
-    
-    nrf24l01p_set_rf_channel(MHz);
-    nrf24l01p_set_rf_air_data_rate(bps);
-    nrf24l01p_set_rf_tx_output_power(_0dBm);
-
-    nrf24l01p_set_crc_length(1);
-    //nrf24l01p_disable_crc();
-    nrf24l01p_set_address_widths(5);
-
-    nrf24l01p_auto_retransmit_count(3);
-    nrf24l01p_auto_retransmit_delay(250);
-
-    //Activate NOACK
-    write_register(NRF24L01P_REG_FEATURE, 0x01);
-
-    //Set TX_ADDR (Transmit address)
-    uint8_t addr[5] = {"ATHMO"};
-    write_register_bytes(NRF24L01P_REG_TX_ADDR, addr, 5);
-
-    //Set RX_ADDR_P0 (Receive Adress) for Auto acknowledgement
-    write_register_bytes(NRF24L01P_REG_RX_ADDR_P0, addr, 5);
-
-    ce_high();
-    //Goes into standby 1
-
-    nrf_mode = 1;
 }
 
 void nrf24l01p_rx_receive(uint8_t* rx_payload) {
@@ -273,8 +196,6 @@ void nrf24l01p_txMode(void){
 
     write_register(NRF24L01P_REG_EN_AA, 0x3F);
 
-    write_register(NRF24L01P_REG_FEATURE, 0x01);
-
     uint8_t config = read_register(NRF24L01P_REG_CONFIG);
     config &= ~(1 << 0);  // PRIM_TX
     write_register(NRF24L01P_REG_CONFIG, config);
@@ -291,13 +212,10 @@ void nrf24l01p_rxMode(void){
 
     ce_low();
 
-    write_register(NRF24L01P_REG_EN_AA, 0x00);
-
-    write_register(NRF24L01P_REG_FEATURE, 0x01);
+    write_register(NRF24L01P_REG_EN_AA, 0x3F);
 
     uint8_t config = read_register(NRF24L01P_REG_CONFIG);
     config |= (1 << 0);   // PRIM_RX
-    config &= ~(1 << 3);  // EN_CRC = 0
     write_register(NRF24L01P_REG_CONFIG, config);
 
     ce_high();
@@ -308,22 +226,17 @@ void nrf24l01p_rxMode(void){
 }
 
 uint8_t nrf24l01p_write_tx_fifo(uint8_t* tx_payload) {
-    //uint8_t command = NRF24L01P_CMD_W_TX_PAYLOAD;
-    uint8_t command = NRF24L01P_CMD_W_TX_PAYLOAD_NOACK;
-    uint8_t status;
+    uint8_t command = NRF24L01P_CMD_W_TX_PAYLOAD;
+    //uint8_t command = NRF24L01P_CMD_W_TX_PAYLOAD_NOACK;
 
-    /*cs_low();
-    HAL_SPI_TransmitReceive(&NRF_SPI, &command, &status, 1, 2000);
-    HAL_SPI_Transmit(&NRF_SPI, tx_payload, NRF24L01P_PAYLOAD_LENGTH, 2000);
-    cs_high();*/
-    // TX (one burst)
     uint8_t rx[1 + NRF24L01P_PAYLOAD_LENGTH];
-    uint8_t tx[1 + NRF24L01P_PAYLOAD_LENGTH] = { NRF24L01P_CMD_W_TX_PAYLOAD_NOACK };
+    uint8_t tx[1 + NRF24L01P_PAYLOAD_LENGTH];
+    tx[0] = command;
     for (uint8_t i=1; i < (1+NRF24L01P_PAYLOAD_LENGTH); i++){ tx[i] = tx_payload[i];}
     cs_low();
     HAL_SPI_TransmitReceive(&NRF_SPI, tx, rx, sizeof tx, 2000);
     cs_high();
-    status = rx[0];
+    uint8_t status = rx[0];
 
     return status;
 }

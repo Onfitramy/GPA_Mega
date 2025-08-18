@@ -551,12 +551,6 @@ void Start100HzTask(void *argument) {
     phi = x[0];
     theta = x[1];
     psi = x[2];
-
-    // transmit data
-    //First to bytes are unimportant
-    uint8_t tx_buf[NRF24L01P_PAYLOAD_LENGTH];
-    sprintf(&tx_buf[2], "I live");
-    radioSend(tx_buf);
     
     ShowStatus(RGB_PRIMARY, primary_status, 1, 100);
 
@@ -620,6 +614,11 @@ void Start10HzTask(void *argument) {
       KalmanFilterCorrectCM(&Kalman2, &K2, &C2, &P2);
     }
 
+    // transmit data
+    uint8_t tx_buf[NRF24L01P_PAYLOAD_LENGTH];
+    sprintf(&tx_buf[1], "I live");
+    radioSend(tx_buf);
+
     // KF2 correction steps
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
   }
@@ -655,7 +654,6 @@ void StartInterruptHandlerTask(void *argument)
           HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
           memset(rx_recieve_buf, 0, NRF24L01P_PAYLOAD_LENGTH);
           nrf24l01p_rx_receive(rx_recieve_buf);
-          radioDecode(rx_recieve_buf, radio_rx_data, NRF24L01P_PAYLOAD_LENGTH);
         }
       }
     }
