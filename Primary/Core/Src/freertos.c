@@ -644,10 +644,10 @@ void StartInterruptHandlerTask(void *argument)
   for(;;)
   { 
     if (xQueueReceive(InterruptQueue, &receivedData, portMAX_DELAY) == pdTRUE) {
-      if(receivedData == 0x10) {
+      if(receivedData == 0x10) { // Handle GPS interrupt
         ublox_ReadOutput(GPS_Buffer); //Read the GPS output and decode it
-      }else if (receivedData == 0x11) {
-        
+
+      } else if (receivedData == 0x11) { //Handle NRF interrupt
         if(nrf_mode) {
           nrf24l01p_tx_irq();
         } else {
@@ -655,6 +655,11 @@ void StartInterruptHandlerTask(void *argument)
           memset(rx_recieve_buf, 0, NRF24L01P_PAYLOAD_LENGTH);
           nrf24l01p_rx_receive(rx_recieve_buf);
         }
+
+      } else if (receivedData == 0x12) { //Handle F4 interrupt
+        //InterBoardPacket_t receivedPacket = InterBoardCom_ReceivePacket();
+        //InterBoardCom_ProcessReceivedPacket(&receivedPacket);
+        continue;
       }
     }
     osDelay(5);

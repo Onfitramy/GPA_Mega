@@ -2,6 +2,7 @@
 #define InterBoardCom_H_
 
 #include "stm32f4xx_hal.h"
+#include "Packets.h"
 
 //The Bitfield describe what should be expected and done with the data received
 typedef enum {
@@ -37,5 +38,11 @@ InterBoardPacket_t InterBoardCom_ReceivePacket(void);
 void InterBoardCom_ParsePacket(InterBoardPacket_t packet);
 
 void InterBoardCom_ReactivateDMAReceive(void);
+
+void InterBoardCom_SendPacket(InterBoardPacket_t packet);
+
+InterBoardPacket_t InterBoardCom_CreatePacket(InterBoardPacketID_t ID);
+void InterBoardCom_FillRaw(InterBoardPacket_t *packet, int num, ...);
+void InterBoardCom_FillData(InterBoardPacket_t *packet, DataPacket_t *data_packet);
 
 #endif /* InterBoardCom_H_ */

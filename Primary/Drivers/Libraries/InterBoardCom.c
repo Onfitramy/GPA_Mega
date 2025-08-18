@@ -7,6 +7,10 @@
 
 extern SPI_HandleTypeDef hspi1;
 
+extern DMA_HandleTypeDef hdma_spi1_rx;
+
+InterBoardPacket_t receiveBuffer;
+
 /**
  * @brief Creates and initializes an InterBoardPacket_t structure.
  *
@@ -80,7 +84,34 @@ void InterBoardCom_FillData(InterBoardPacket_t *packet, DataPacket_t *data_packe
 void InterBoardCom_SendPacket(InterBoardPacket_t *packet) {
     
     // Send the packet via SPI
-    HAL_SPI_Transmit_DMA(&hspi1, (uint8_t *)packet, sizeof(InterBoardPacket_t));
+    HAL_StatusTypeDef status = HAL_SPI_Transmit_DMA(&hspi1, (uint8_t *)packet, sizeof(InterBoardPacket_t));
+}
+
+InterBoardPacket_t InterBoardCom_ReceivePacket() {
+    // Receive the packet via SPI
+    return receiveBuffer;
+}
+
+void InterBoardCom_ActivateReceive(void) {
+    // Start receiving the packet via SPI
+    //HAL_SPI_DMAStop(&hspi1);
+    //__HAL_DMA_CLEAR_FLAG(&hdma_spi1_rx, DMA_FLAG_TEIF0_4 | DMA_FLAG_FEIF0_4 | DMA_FLAG_DMEIF0_4 | DMA_FLAG_HTIF0_4 | DMA_FLAG_TCIF0_4);
+    HAL_StatusTypeDef status = HAL_SPI_Receive_DMA(&hspi1, (uint8_t *)&receiveBuffer, sizeof(InterBoardPacket_t));
+    if (status != HAL_OK) {
+        // Handle error
+    }
+}
+
+void InterBoardCom_ProcessReceivedPacket(InterBoardPacket_t *packet) {
+    // Process the received packet based on its ID
+    switch (packet->InterBoardPacket_ID) {
+        case InterBoardPACKET_ID_SELFTEST:
+            // Handle self-test packet
+            break;
+        // Add cases for other packet IDs as needed
+        default:
+            break;
+    }
 }
 
 void InterBoardCom_SendTestPacket(void) {

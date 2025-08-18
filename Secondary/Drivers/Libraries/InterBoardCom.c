@@ -1,5 +1,6 @@
 #include "InterBoardCom.h"
 #include "string.h"
+#include <stdarg.h>
 #include "Packets.h"
 #include "W25Q1.h"
 
@@ -8,24 +9,6 @@ extern SPI_HandleTypeDef hspi1;
 extern DMA_HandleTypeDef hdma_spi1_rx;
 
 InterBoardPacket_t receiveBuffer;
-
-/**
- * @brief Creates and initializes an InterBoardPacket_t structure.
- *
- * This function initializes a new InterBoardPacket_t packet with the specified PacketID_t ID.
- * The Data array is set to zero, and the CRC field is initialized to zero.
- *
- * @param ID The PacketID_t identifier to assign to the packet.
- * @return InterBoardPacket_t The initialized packet structure.
- */
-InterBoardPacket_t InterBoardCom_CreatePacket(InterBoardPacketID_t ID) {
-    InterBoardPacket_t packet;
-    packet.InterBoardPacket_ID = ID;
-    for (int i = 0; i < 16; i++) {
-        packet.Data[i] = 0; // Initialize Data array to 0
-    }
-    return packet;
-}
 
 void InterBoardCom_ActivateReceive(void) {
     //Called to activate the SPI DMA receive
@@ -39,12 +22,52 @@ InterBoardPacket_t InterBoardCom_ReceivePacket(void) {
     return receiveBuffer;
 }
 
+InterBoardPacket_t InterBoardCom_CreatePacket(InterBoardPacketID_t ID) {
+    InterBoardPacket_t packet;
+    packet.InterBoardPacket_ID = ID;
+    for (int i = 0; i < 32; i++) {
+        packet.Data[i] = 0; // Initialize Data array to 0
+    }
+    return packet;
+}
+
+void InterBoardCom_FillRaw(InterBoardPacket_t *packet, int num, ...) {
+    va_list args;
+    va_start(args, num);
+    for (int i = 0; i < num && i < 32; i++) {
+        packet->Data[i] = (uint8_t)va_arg(args, int); // 'int' is promoted type for variadic args
+    }
+    va_end(args);
+}
+
+void InterBoardCom_FillData(InterBoardPacket_t *packet, DataPacket_t *data_packet) {
+    // Copy the data from the DataPacket_t structure to the InterBoardPacket_t structure
+    // Calculate CRC (XOR checksum)
+    data_packet->crc = 0;
+    for (int i = 0; i < sizeof(data_packet->Data.raw); i++) {
+        data_packet->crc ^= data_packet->Data.raw[i];
+    }
+
+    memcpy(packet->Data, data_packet, 32);
+}
+
+void InterBoardCom_SendPacket(InterBoardPacket_t packet) {
+    //First interrupt main to signal incomming packet
+    //HAL_SPI_DMAStop(&hspi1);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+    //HAL_StatusTypeDef status = HAL_SPI_Transmit_DMA(&hspi1, (uint8_t *)&packet, sizeof(InterBoardPacket_t));
+
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+    //InterBoardCom_ReactivateDMAReceive();
+    //Called to send a packet over SPI
+}
+
 DataPacket_t InterBoardCom_UnpackPacket(InterBoardPacket_t packet) {
     //This function is used to move a InterBoardPacket_t to a DataPacket_t
     DataPacket_t dataPacket;
     memcpy(dataPacket.Header, &packet.Data[0], 2);
     memcpy(&dataPacket.Packet_ID, &packet.Data[2], 1);
-    memcpy(dataPacket.Data, &packet.Data[3], 28);
+    memcpy(&dataPacket.Data, &packet.Data[3], 28);
     memcpy(&dataPacket.crc, &packet.Data[31], 1);
     
     return dataPacket;

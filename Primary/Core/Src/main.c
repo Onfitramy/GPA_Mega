@@ -37,6 +37,7 @@
 #include "NRF24L01P.h"
 #include "signalPlotter.h"
 #include "status.h"
+#include "InterBoardCom.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -218,6 +219,38 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
     xQueueSendFromISR(InterruptQueue, &sendData, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
   }
+
+  if (GPIO_Pin == F4_INT_Pin) {
+    //Receive Data from Secondary
+    InterBoardCom_ActivateReceive();
+  }
+}
+
+void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi){
+  if (hspi->Instance == SPI1) {
+    // DMA transfer complete callback for SPI1
+    // Process the received data in receiveBuffer
+    InterBoardPacket_t receivedPacket = InterBoardCom_ReceivePacket();
+    /*BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    uint8_t sendData = 0x12;
+    xQueueSendFromISR(InterruptQueue, &sendData, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);*/
+  }
+}
+
+void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi){
+  if (hspi->Instance == SPI1) {
+    // DMA transfer complete callback for SPI1
+    // Process the received data in receiveBuffer
+    return; // No further processing needed here
+  }
+}
+
+void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi) {
+    if (hspi->Instance == SPI1) {
+        // Reactivate DMA receive on error
+        return;
+    }
 }
 
 uint32_t HAL_GetTickUS(){

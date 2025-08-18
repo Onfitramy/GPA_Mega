@@ -63,7 +63,7 @@ typedef union {
 typedef struct {
     uint8_t Header[2]; // 0x41, 0x45 (AP)
     uint8_t Packet_ID; // Packet ID
-    PacketData_u Data[28];
+    PacketData_u Data;
     uint8_t crc;
 } DataPacket_t;
 #pragma pack(pop)

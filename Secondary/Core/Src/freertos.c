@@ -64,6 +64,13 @@ const osThreadAttr_t defaultTask_attributes = {
   .priority = (osPriority_t) osPriorityNormal,
 };
 
+osThreadId_t Hz10TaskHandle;
+const osThreadAttr_t Hz10Task_attributes = {
+  .name = "10HzTask",
+  .stack_size = 128 * 48,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+
 osThreadId_t InterBoardComHandle;
 const osThreadAttr_t InterBoardCom_attributes = {
   .name = "InterBoardCom",
@@ -85,6 +92,7 @@ int8_t secondary_status = 0;
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
+void Start10HzTask(void *argument);
 void StartInterBoardComTask(void *argument);
 
 /* Private application code --------------------------------------------------*/
@@ -112,6 +120,7 @@ void MX_FREERTOS_Init(void) {
   /* Create the thread(s) */
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+  Hz10TaskHandle = osThreadNew(Start10HzTask, NULL, &Hz10Task_attributes);
   InterBoardComHandle = osThreadNew(StartInterBoardComTask, NULL, &InterBoardCom_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
@@ -150,6 +159,23 @@ void StartDefaultTask(void *argument)
   }
 
   /* USER CODE END StartDefaultTask */
+}
+
+void Start10HzTask(void *argument){
+  /* USER CODE BEGIN Start10HzTask */
+  TickType_t xLastWakeTime = xTaskGetTickCount();
+  const TickType_t xFrequency = 100; // 10 Hz
+
+  /* Infinite loop */
+  for(;;) {
+    InterBoardPacket_t packet = InterBoardCom_CreatePacket(InterBoardPACKET_ID_SELFTEST);
+    InterBoardCom_FillRaw(&packet, 10, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+    InterBoardCom_SendPacket(packet);
+
+    vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
+  }
+
+  /* USER CODE END Start10HzTask */
 }
 
 void StartInterBoardComTask(void *argument)
