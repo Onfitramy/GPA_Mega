@@ -616,7 +616,7 @@ void Start10HzTask(void *argument) {
 
     // transmit data
     uint8_t tx_buf[NRF24L01P_PAYLOAD_LENGTH];
-    sprintf(&tx_buf[1], "I live");
+    tx_buf[1] = gps_data.sec; // Packet type
     radioSend(tx_buf);
 
     // KF2 correction steps
