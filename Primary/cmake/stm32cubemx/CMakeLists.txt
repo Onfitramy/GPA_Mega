@@ -50,6 +50,7 @@ target_sources(stm32cubemx INTERFACE
     ../../Core/Src/cli_app.c
     ../../Core/Src/adc.c
     ../../Core/Src/dma.c
+    ../../Core/Src/dts.c
     ../../Core/Src/i2c.c
     ../../Core/Src/memorymap.c
     ../../Core/Src/spi.c
@@ -74,6 +75,7 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_hsem.c
     ../../Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dma.c
     ../../Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dma_ex.c
+    ../../Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_dts.c
     ../../Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_mdma.c
     ../../Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_pwr.c
     ../../Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_pwr_ex.c

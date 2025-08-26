@@ -21,6 +21,7 @@
 #include "cmsis_os.h"
 #include "adc.h"
 #include "dma.h"
+#include "dts.h"
 #include "i2c.h"
 #include "memorymap.h"
 #include "spi.h"
@@ -135,6 +136,7 @@ int main(void)
   MX_TIM4_Init();
   MX_TIM5_Init();
   MX_TIM8_Init();
+  MX_DTS_Init();
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
 
@@ -146,6 +148,8 @@ int main(void)
   Stepper_Init();
 
   int counter1, counter2, counter3;
+
+  HAL_DTS_Start(&hdts);
 
   BMP_SelfTest();
   BMP_enable();
@@ -192,6 +196,7 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+    continue;
     //HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
     //HAL_Delay(1000);
     /* USER CODE BEGIN 3 */

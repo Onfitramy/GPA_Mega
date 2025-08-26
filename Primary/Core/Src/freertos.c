@@ -21,6 +21,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "main.h"
+#include "dts.h"
 #include "cmsis_os.h"
 #include "cli_app.h"
 #include "stream_buffer.h"
@@ -68,6 +69,9 @@ uint32_t pressure_raw;
 uint32_t temperature_raw;
 bmp390_handle_t bmp_handle;
 float temperature, pressure;
+static int32_t DTS_temperature;
+
+uint32_t uid[3];
 
 int8_t primary_status = 0;
 
@@ -323,6 +327,10 @@ void StartDefaultTask(void *argument)
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 1; //1000 Hz
 
+  uid[0] = HAL_GetUIDw0();
+  uid[1] = HAL_GetUIDw1();
+  uid[2] = HAL_GetUIDw2();
+
   // define Kalman Filter dimensions for orientation
   KalmanFilterInit(&Kalman1, x_size1, z_size1, u_size1);
 
@@ -410,6 +418,8 @@ void StartDefaultTask(void *argument)
     TimeMeasureStart(); // Start measuring time
 
     BMP_GetRawData(&pressure_raw, &temperature_raw);
+
+    HAL_DTS_GetTemperature(&hdts, &DTS_temperature);
 
     if(IMU1_VerifyDataReady() & 0x03 == 0x03) {
       IMU1_ReadSensorData(&imu1_data);
