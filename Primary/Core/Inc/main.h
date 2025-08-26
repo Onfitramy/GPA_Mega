@@ -153,6 +153,10 @@ uint32_t HAL_GetTickUS(void);
 #define MAG_INT_EXTI_IRQn EXTI0_IRQn
 
 /* USER CODE BEGIN Private defines */
+#define AVG_SLOPE (4.3F)
+#define V_AT_25C  (1.43F)
+#define V_REF_INT (1.2F)
+
 typedef struct {
   double accel[3];  // X, Y, Z
   double gyro[3];   // X, Y, Z

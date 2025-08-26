@@ -55,6 +55,22 @@ void MX_DMA_Init(void)
 
 }
 
+/**
+  * Enable DMA controller clock
+  */
+void MX_BDMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_BDMA_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* BDMA_Channel0_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(BDMA_Channel0_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(BDMA_Channel0_IRQn);
+
+}
+
 /* USER CODE BEGIN 2 */
 
 /* USER CODE END 2 */

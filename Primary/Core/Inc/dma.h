@@ -40,6 +40,8 @@ extern "C" {
 
 void MX_DMA_Init(void);
 
+void MX_BDMA_Init(void);
+
 /* USER CODE BEGIN Prototypes */
 
 /* USER CODE END Prototypes */

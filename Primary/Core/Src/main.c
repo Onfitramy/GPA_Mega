@@ -53,6 +53,9 @@
 volatile uint8_t datasentflag_ws2812;
 volatile uint8_t dma_waiting_stepper;
 volatile uint8_t dma_waiting_ws2812;
+uint16_t adc3_buf[3];
+
+extern float ADC_Temperature, ADC_V_Sense, ADC_V_Ref;
 
 uint16_t pwmData[MAX_STEPPER_STEPS];
 /* USER CODE END PD */
@@ -122,6 +125,7 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
+  MX_BDMA_Init();
   MX_I2C2_Init();
   MX_SPI1_Init();
   MX_SPI3_Init();
@@ -129,6 +133,7 @@ int main(void)
   MX_SPI6_Init();
   MX_I2C3_Init();
   MX_ADC1_Init();
+  MX_ADC3_Init();
   MX_I2C1_Init();
   MX_SPI2_Init();
   MX_TIM2_Init();
@@ -156,6 +161,8 @@ int main(void)
   BMP_Read_Calibration_Params(&bmp_handle);
 
   nrf24l01p_init(2462, _1Mbps);
+
+  HAL_ADCEx_Calibration_Start(&hadc3, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
 
   for(counter1 = 0; IMU1_SelfTest() != 1 && counter1 < 100000; counter1++);
   for(counter2 = 0; IMU2_SelfTest() != 1 && counter2 < 100000; counter2++);
@@ -223,6 +230,15 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
     xQueueSendFromISR(InterruptQueue, &sendData, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
   }
+}
+
+/*UNUSED FOR NOW, NEEDED IF DMA TEMP IS REQ*/
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
+{
+  // Calculate The Temperature
+  ADC_V_Ref = (float)((V_REF_INT * 4095.0)/adc3_buf[0]);
+  ADC_V_Sense = (float)(adc3_buf[1] * ADC_V_Ref) / 4095.0;
+  ADC_Temperature = (((V_AT_25C - ADC_V_Sense) * 1000.0) /AVG_SLOPE) + 25.0;
 }
 
 uint32_t HAL_GetTickUS(){

@@ -69,7 +69,10 @@ uint32_t pressure_raw;
 uint32_t temperature_raw;
 bmp390_handle_t bmp_handle;
 float temperature, pressure;
-static int32_t DTS_temperature;
+static int32_t DTS_Temperature;
+
+extern ADC_HandleTypeDef hadc3;
+uint32_t ADC_Temperature, ADC_V_Ref;
 
 uint32_t uid[3];
 
@@ -232,6 +235,7 @@ const osThreadAttr_t InterruptHandlerTask_attributes = {
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
 uint8_t SelfTest(void);
+void ReadInternalADC(uint32_t* temperature, uint32_t* v_ref);
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
@@ -419,7 +423,9 @@ void StartDefaultTask(void *argument)
 
     BMP_GetRawData(&pressure_raw, &temperature_raw);
 
-    HAL_DTS_GetTemperature(&hdts, &DTS_temperature);
+    HAL_DTS_GetTemperature(&hdts, &DTS_Temperature);
+
+    ReadInternalADC(&ADC_Temperature, &ADC_V_Ref);
 
     if(IMU1_VerifyDataReady() & 0x03 == 0x03) {
       IMU1_ReadSensorData(&imu1_data);
@@ -696,6 +702,19 @@ uint8_t SelfTest(void) {
   }
 
   return SelfTest_Bitfield;
+}
+
+void ReadInternalADC(uint32_t* temperature, uint32_t* v_ref) {
+  HAL_ADC_Start(&hadc3);
+  HAL_ADC_PollForConversion(&hadc3, 0xFFFF);
+  uint32_t vrefint_raw = HAL_ADC_GetValue(&hadc3);
+  HAL_ADC_PollForConversion(&hadc3, 0xFFFF);
+  uint32_t temp_raw = HAL_ADC_GetValue(&hadc3);
+  uint32_t vdda_voltage = __HAL_ADC_CALC_VREFANALOG_VOLTAGE(vrefint_raw, ADC_RESOLUTION_12B);
+
+  *v_ref = vdda_voltage; // in mV
+  *temperature = __HAL_ADC_CALC_TEMPERATURE(vdda_voltage, temp_raw, ADC_RESOLUTION_12B);
+  HAL_ADC_Stop(&hadc3);
 }
 
 /* USER CODE END Application */
