@@ -32,6 +32,7 @@ extern "C" {
 #include "queue.h"
 
 #include "Stepper.h"
+#include "signalPlotter.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 /* USER CODE END Includes */

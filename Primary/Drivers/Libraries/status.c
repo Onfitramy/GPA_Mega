@@ -36,6 +36,12 @@ void ShowStatus(device_handle device, int8_t status, float freq_cycle, float fre
             case 3: // GNSS 2D Fix
                 SetLED_slide(COLOR_BLUE, COLOR_GREEN);
                 break;
+            case 4: // Servo moving
+                SetLED_slide(COLOR_YELLOW, COLOR_GREEN);
+                break;
+            case 5: // Move complete
+                SetLED_color(COLOR_CYAN);
+                break;
         }
     }
     if(device == RGB_SECONDARY) {

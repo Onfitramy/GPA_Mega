@@ -37,7 +37,13 @@ void arm_mat_get_column_f32(const arm_matrix_instance_f32 *mat, int col, float32
 
 void arm_mat_set_column_f32(arm_matrix_instance_f32 *mat, int col, float32_t *vec) {
   for (int row = 0; row < mat->numRows; row++) {
-    arm_mat_set_entry_f32(mat, row, col,  vec[row]);
+    arm_mat_set_entry_f32(mat, row, col, vec[row]);
+  }
+}
+
+void arm_mat_set_row_f32(arm_matrix_instance_f32 *mat, int row, float32_t *vec) {
+  for (int col = 0; col < mat->numCols; col++) {
+    arm_mat_set_entry_f32(mat, row, col, vec[col]);
   }
 }
 
@@ -188,3 +194,41 @@ void arm_vecN_print_f32(int N, float32_t *vec) {
     printf("]\n");
   }
 }
+
+void arm_quaternion_product_f32(float32_t *qA, float32_t *qB, float32_t *qOut) {
+  qOut[0] = qA[0]*qB[0] - qA[1]*qB[1] - qA[2]*qB[2] - qA[3]*qB[3];
+  qOut[1] = qA[0]*qB[1] + qA[1]*qB[0] + qA[2]*qB[3] - qA[3]*qB[2];
+  qOut[2] = qA[0]*qB[2] - qA[1]*qB[3] + qA[2]*qB[0] + qA[3]*qB[1];
+  qOut[3] = qA[0]*qB[3] + qA[1]*qB[2] - qA[2]*qB[1] + qA[3]*qB[0];
+}
+
+void arm_quaternion_conjugate_f32(float32_t *q, float32_t *qConj) {
+  qConj[0] =  q[0];
+  qConj[1] = -q[1];
+  qConj[2] = -q[2];
+  qConj[3] = -q[3];
+}
+
+void arm_quaternion_normalize_f32(float32_t *q, float32_t *qOut) {
+  float norm = sqrtf(q[0]*q[0] + q[1]*q[1] + q[2]*q[2] + q[3]*q[3]);
+  norm = 1./norm;
+  qOut[0] = q[0] * norm;
+  qOut[1] = q[1] * norm;
+  qOut[2] = q[2] * norm;
+  qOut[3] = q[3] * norm;
+}
+
+/*
+void arm_quaternion_rotate_vec3_f32(float *q, float *vec, float *vecOut) {
+  float qVec[4] = {0, vec[0], vec[1], vec[2]};
+  float qConj[4];
+  float qTemp[4];
+
+  arm_quaternion_conjugate_f32(q, qConj);
+  arm_quaternion_product_f32(q, qVec, qTemp);
+  arm_quaternion_product_f32(qTemp, qConj, qVec);
+
+  vecOut[0] = qVec[1];
+  vecOut[1] = qVec[2];
+  vecOut[2] = qVec[3];
+}*/

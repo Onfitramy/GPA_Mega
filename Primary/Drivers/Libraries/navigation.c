@@ -68,7 +68,7 @@ void ECEFtoENU(double *WGS84_ref, double *ECEF_ref, double *ECEF, double *ENU) {
     // calculate differences in ECEF frame
     double dx = ECEF[0] - ECEF_ref[0];
     double dy = ECEF[1] - ECEF_ref[1];
-    double dz = ECEF[2] - ECEF_ref[2];
+    double vt = ECEF[2] - ECEF_ref[2];
 
     // convert reference point angles to radians
     double lat_rad = WGS84_ref[0] * PI / 180.;
@@ -76,20 +76,20 @@ void ECEFtoENU(double *WGS84_ref, double *ECEF_ref, double *ECEF, double *ENU) {
 
     // transform difference to ENU frame
     ENU[0] = -sin(lon_rad) * dx + cos(lon_rad) * dy;                                                    // East
-    ENU[1] = -sin(lat_rad) * cos(lon_rad) * dx - sin(lat_rad) * sin(lon_rad) * dy + cos(lat_rad) * dz;  // North
-    ENU[2] =  cos(lat_rad) * cos(lon_rad) * dx + cos(lat_rad) * sin(lon_rad) * dy + sin(lat_rad) * dz;  // Up
+    ENU[1] = -sin(lat_rad) * cos(lon_rad) * dx - sin(lat_rad) * sin(lon_rad) * dy + cos(lat_rad) * vt;  // North
+    ENU[2] =  cos(lat_rad) * cos(lon_rad) * dx + cos(lat_rad) * sin(lon_rad) * dy + sin(lat_rad) * vt;  // Up
 }
 
 // attitude estimation using magnetometer and accelerometer
-void OrientationFix(float *accel_vec, float *mag_vec, float *output_angles) {
+void EulerOrientationFix(float *a_vec, float *m_vec, float *output_angles) {
     // unit basis vectors of inertial system expressed in body coordinates
     float base_xi[3];
     float base_yi[3];
     float base_zi[3];
 
     // normalize a and m vectors
-    arm_vec3_copy_f32(mag_vec, base_yi);
-    arm_vec3_copy_f32(accel_vec, base_zi);
+    arm_vec3_copy_f32(m_vec, base_yi);
+    arm_vec3_copy_f32(a_vec, base_zi);
     arm_vec3_normalize_f32(base_zi);
 
     // calculate unit basis vectors
@@ -103,7 +103,36 @@ void OrientationFix(float *accel_vec, float *mag_vec, float *output_angles) {
     output_angles[2] = atan2(base_yi[0], base_xi[0]);
 }
 
-// create rotation matrix from euler angles
+// attitude estimation using magnetometer and accelerometer | World To Body, DCMbi
+void RotationMatrixOrientationFix(float *a_vec, float *m_vec, arm_matrix_instance_f32 *mat, direct_cosine_matrix_t dcm_type) {
+    // unit basis vectors of inertial system expressed in body coordinates
+    float base_xi[3];
+    float base_yi[3];
+    float base_zi[3];
+
+    // normalize a and m vectors
+    arm_vec3_copy_f32(m_vec, base_yi);
+    arm_vec3_copy_f32(a_vec, base_zi);
+    arm_vec3_normalize_f32(base_zi);
+
+    // calculate unit basis vectors
+    arm_vec3_cross_product_f32(base_yi, base_zi, base_xi);
+    arm_vec3_normalize_f32(base_xi);
+    arm_vec3_cross_product_f32(base_zi, base_xi, base_yi);
+
+    // set rotation matrix
+    if(dcm_type == DCM_bi_WorldToBody) {
+        arm_mat_set_column_f32(mat, 0, base_xi);
+        arm_mat_set_column_f32(mat, 1, base_yi);
+        arm_mat_set_column_f32(mat, 2, base_zi);
+    } else if(dcm_type == DCM_ib_BodyToWorld) {
+        arm_mat_set_row_f32(mat, 0, base_xi);
+        arm_mat_set_row_f32(mat, 1, base_zi);
+        arm_mat_set_row_f32(mat, 2, base_yi);
+    }
+}
+
+// create rotation matrix from euler angles | World To Body, DCMbi
 void RotationMatrixFromEuler(float phi, float theta, float psi, arm_matrix_instance_f32 *mat) {
     float sin_vec[3]; // vector containing sines
     float cos_vec[3]; // vector containing cosines
@@ -131,6 +160,56 @@ void RotationMatrixFromEuler(float phi, float theta, float psi, arm_matrix_insta
     arm_mat_set_column_f32(mat, 2, c3);
 }
 
+void EulerFromRotationMatrix(arm_matrix_instance_f32 *mat, float *euler) {
+    euler[0] = atan2(arm_mat_get_entry_f32(mat, 1, 2), arm_mat_get_entry_f32(mat, 2, 2));
+    euler[1] = asin(-arm_mat_get_entry_f32(mat, 0, 2));
+    euler[2] = atan2(arm_mat_get_entry_f32(mat, 0, 1), arm_mat_get_entry_f32(mat, 0, 0));
+}
+
+// create rotation matrix from quaternion
+void RotationMatrixFromQuaternion(float *q, arm_matrix_instance_f32 *mat, direct_cosine_matrix_t dcm_type) {
+    arm_mat_set_entry_f32(mat, 0, 0, 1 - 2*(q[2]*q[2] + q[3]*q[3]));
+    arm_mat_set_entry_f32(mat, 0, 1, 2*(q[1]*q[2] - q[0]*q[3]*dcm_type));
+    arm_mat_set_entry_f32(mat, 0, 2, 2*(q[1]*q[3] + q[0]*q[2]*dcm_type));
+    arm_mat_set_entry_f32(mat, 1, 0, 2*(q[1]*q[2] + q[0]*q[3]*dcm_type));
+    arm_mat_set_entry_f32(mat, 1, 1, 1 - 2*(q[1]*q[1] + q[3]*q[3]));
+    arm_mat_set_entry_f32(mat, 1, 2, 2*(q[2]*q[3] - q[0]*q[1]*dcm_type));
+    arm_mat_set_entry_f32(mat, 2, 0, 2*(q[1]*q[3] - q[0]*q[2]*dcm_type));
+    arm_mat_set_entry_f32(mat, 2, 1, 2*(q[2]*q[3] + q[0]*q[1]*dcm_type));
+    arm_mat_set_entry_f32(mat, 2, 2, 1 - 2*(q[1]*q[1] + q[2]*q[2]));
+}
+
+// create quaternion from rotation matrix
+void QuaternionFromRotationMatrix(arm_matrix_instance_f32 *mat, float *q) {
+    float trace = arm_mat_get_entry_f32(mat, 0, 0) + arm_mat_get_entry_f32(mat, 1, 1) + arm_mat_get_entry_f32(mat, 2, 2);
+    if(trace > 0) {
+        float s = 2.0f * sqrtf(trace + 1.0f);
+        q[0] = 0.25f * s;
+        q[1] = (arm_mat_get_entry_f32(mat, 2, 1) - arm_mat_get_entry_f32(mat, 1, 2)) / s;
+        q[2] = (arm_mat_get_entry_f32(mat, 0, 2) - arm_mat_get_entry_f32(mat, 2, 0)) / s;
+        q[3] = (arm_mat_get_entry_f32(mat, 1, 0) - arm_mat_get_entry_f32(mat, 0, 1)) / s;
+    } else if(arm_mat_get_entry_f32(mat, 0, 0) > arm_mat_get_entry_f32(mat, 1, 1) && arm_mat_get_entry_f32(mat, 0, 0) > arm_mat_get_entry_f32(mat, 2, 2)) {
+        float s = 2.0f * sqrtf(1.0f + arm_mat_get_entry_f32(mat, 0, 0) - arm_mat_get_entry_f32(mat, 1, 1) - arm_mat_get_entry_f32(mat, 2, 2));
+        q[0] = (arm_mat_get_entry_f32(mat, 2, 1) - arm_mat_get_entry_f32(mat, 1, 2)) / s;
+        q[1] = 0.25f * s;
+        q[2] = (arm_mat_get_entry_f32(mat, 0, 1) + arm_mat_get_entry_f32(mat, 1, 0)) / s;
+        q[3] = (arm_mat_get_entry_f32(mat, 0, 2) + arm_mat_get_entry_f32(mat, 2, 0)) / s;
+    } else if(arm_mat_get_entry_f32(mat, 1, 1) > arm_mat_get_entry_f32(mat, 2, 2)) {
+        float s = 2.0f * sqrtf(1.0f + arm_mat_get_entry_f32(mat, 1, 1) - arm_mat_get_entry_f32(mat, 0, 0) - arm_mat_get_entry_f32(mat, 2, 2));
+        q[0] = (arm_mat_get_entry_f32(mat, 0, 2) - arm_mat_get_entry_f32(mat, 2, 0)) / s;
+        q[1] = (arm_mat_get_entry_f32(mat, 0, 1) + arm_mat_get_entry_f32(mat, 1, 0)) / s;
+        q[2] = 0.25f * s;
+        q[3] = (arm_mat_get_entry_f32(mat, 1, 2) + arm_mat_get_entry_f32(mat, 2, 1)) / s;
+    } else {
+        float s = 2.0f * sqrtf(1.0f + arm_mat_get_entry_f32(mat, 2, 2) - arm_mat_get_entry_f32(mat, 0, 0) - arm_mat_get_entry_f32(mat, 1, 1));
+        q[0] = (arm_mat_get_entry_f32(mat, 1, 0) - arm_mat_get_entry_f32(mat, 0, 1)) / s;
+        q[1] = (arm_mat_get_entry_f32(mat, 0, 2) + arm_mat_get_entry_f32(mat, 2, 0)) / s;
+        q[2] = (arm_mat_get_entry_f32(mat, 1, 2) + arm_mat_get_entry_f32(mat, 2, 1)) / s;
+        q[3] = 0.25f * s;
+    }
+    arm_quaternion_normalize_f32(q, q);
+}
+
 void DeulerMatrixFromEuler(float phi, float theta, arm_matrix_instance_f32 *mat) {
     float sin_vec[2]; // vector containing sines
     float cos_vec[2]; // vector containing cosines
@@ -152,13 +231,141 @@ void DeulerMatrixFromEuler(float phi, float theta, arm_matrix_instance_f32 *mat)
 }
 
 // transform vector from body frame to world frame
-void Vec3_BodyToWorld(float *vec3_body, arm_matrix_instance_f32 *mat_rot, float *vec3_world) {
+void Vec3_BodyToWorld(float *vec3_body, arm_matrix_instance_f32 *mat, float *vec3_world) {
     float M_data[9];
     arm_matrix_instance_f32 M = {3, 3, M_data};
 
-    arm_mat_trans_f32(mat_rot, &M);
+    arm_mat_trans_f32(mat, &M);
     arm_mat_vec_mult_f32(&M, vec3_body, vec3_world);
 }
+
+// calculate initial quaternion from accelerometer and magnetometer readings
+void EKFInitQuaternion(float *q, float *a_vec, float *m_vec) {
+    float DCMbi_data[9];
+    arm_matrix_instance_f32 DCMbi = {3, 3, DCMbi_data};
+
+    RotationMatrixOrientationFix(a_vec, m_vec, &DCMbi, DCM_bi_WorldToBody);
+    QuaternionFromRotationMatrix(&DCMbi, q);
+}
+
+// prediction step for quaternion state vector
+void EKFPredictQuaternionSV(float *q, float *gyr_vec, const float dt) {
+    float omega[4];
+    omega[0] = 0;
+    omega[1] = gyr_vec[0];
+    omega[2] = gyr_vec[1];
+    omega[3] = gyr_vec[2];
+
+    float q_omega[4];
+    arm_quaternion_product_f32(q, omega, q_omega);
+
+    for(int i = 0; i < 4; i++) {
+        q[i] = q[i] + 0.5f * q_omega[i] * dt;
+    }
+    arm_quaternion_normalize_f32(q, q);
+}
+
+// prediction step for quaternion covariance matrix
+void EKFPredictQuaternionCM(float *q, const float dt, const float gyro_var, arm_matrix_instance_f32 *F_mat, arm_matrix_instance_f32 *P_mat) {
+    float M1_data[4*4];
+    arm_matrix_instance_f32 M1 = {4*4, M1_data};
+    float M2_data[4*4];
+    arm_matrix_instance_f32 M2 = {4*4, M2_data};
+
+    // defube W and W'
+    float W_mat_data[4*3] = {-q[1], -q[2], -q[3],
+                              q[0], -q[3],  q[2],
+                              q[3],  q[0], -q[1],
+                             -q[2],  q[1],  q[0]};
+    arm_matrix_instance_f32 W_mat = {4, 3, W_mat_data};
+    float W_trans_data[3*4];
+    arm_matrix_instance_f32 W_trans = {3, 4, W_trans_data};
+    arm_mat_trans_f32(&W_mat, &W_trans);
+
+    // calculate Process Noise Covariance Matrix Q = gyro_var^2 * W * W'
+    float Q_temp_data[4*4];
+    arm_matrix_instance_f32 Q_mat = {4, 4, Q_temp_data};
+    arm_mat_mult_f32(&W_mat, &W_trans, &Q_mat);
+    arm_mat_scale_f32(&Q_mat, 0.25f*dt*dt*gyro_var*gyro_var, &Q_mat);
+
+    // calculate Covariance Matrix P(t)^ = F * P(t-1) * F' + Q(t)
+    arm_mat_trans_f32(F_mat, &M1);
+    arm_mat_mult_f32(P_mat, &M1, &M2);
+    arm_mat_mult_f32(F_mat, &M2, &M1);
+    arm_mat_add_f32(&M1, &Q_mat, P_mat);
+}
+
+void EKFCorrectQuaternionSV(float *q, float *acc_vec, float *mag_vec) {
+    // Calculate expected a and m vectors from quaternion
+    float DCMbi_data[9];
+    arm_matrix_instance_f32 DCMbi = {3, 3, DCMbi_data};
+
+    float a_vec[3];
+    float a_exp[3];
+    float g_vec_enu[3] = {0, 0, 1};
+
+    float m_vec[3];
+    float m_exp[3];
+    float m_vec_enu[3] = {0, cos(magnetic_dip_angle * PI / 180.f), -sin(magnetic_dip_angle * PI / 180.f)};
+
+    arm_vec3_copy_f32(acc_vec, a_vec);
+    arm_vec3_copy_f32(mag_vec, m_vec);
+    arm_vec3_normalize_f32(a_vec);
+    arm_vec3_normalize_f32(m_vec);
+
+    // this section could be optimized (g and m contain zeroes)
+    RotationMatrixFromQuaternion(q, &DCMbi, DCM_bi_WorldToBody);
+    arm_mat_vec_mult_f32(&DCMbi, g_vec_enu, a_exp);
+    arm_mat_vec_mult_f32(&DCMbi, m_vec_enu, m_exp);
+}
+
+void EKFGetStateTransitionJacobian(float *gyro_vec, float dt, arm_matrix_instance_f32 *F_mat) {
+    arm_mat_set_entry_f32(F_mat, 0, 1, -0.5f*dt*gyro_vec[0]);
+    arm_mat_set_entry_f32(F_mat, 0, 2, -0.5f*dt*gyro_vec[1]);
+    arm_mat_set_entry_f32(F_mat, 0, 3, -0.5f*dt*gyro_vec[2]);
+    arm_mat_set_entry_f32(F_mat, 1, 0,  0.5f*dt*gyro_vec[0]);
+    arm_mat_set_entry_f32(F_mat, 1, 2,  0.5f*dt*gyro_vec[2]);
+    arm_mat_set_entry_f32(F_mat, 1, 3, -0.5f*dt*gyro_vec[1]);
+    arm_mat_set_entry_f32(F_mat, 2, 0,  0.5f*dt*gyro_vec[1]);
+    arm_mat_set_entry_f32(F_mat, 2, 1, -0.5f*dt*gyro_vec[2]);
+    arm_mat_set_entry_f32(F_mat, 2, 3,  0.5f*dt*gyro_vec[0]);
+    arm_mat_set_entry_f32(F_mat, 3, 0,  0.5f*dt*gyro_vec[2]);
+    arm_mat_set_entry_f32(F_mat, 3, 1,  0.5f*dt*gyro_vec[1]);
+    arm_mat_set_entry_f32(F_mat, 3, 2, -0.5f*dt*gyro_vec[0]);
+}
+
+void EKFGetObservationJacobian(float *q, arm_matrix_instance_f32 *H_mat) {
+    //float g_vec_enu[3] = {0, 0, 1};
+    float m_vec_enu[3] = {0, cos(magnetic_dip_angle * PI / 180.f), -sin(magnetic_dip_angle * PI / 180.f)};
+
+    arm_mat_set_entry_f32(H_mat, 0, 0, -2*q[2]);
+    arm_mat_set_entry_f32(H_mat, 0, 1,  2*q[3]);
+    arm_mat_set_entry_f32(H_mat, 0, 2, -2*q[0]);
+    arm_mat_set_entry_f32(H_mat, 0, 3,  2*q[1]);
+    arm_mat_set_entry_f32(H_mat, 1, 0,  2*q[1]);
+    arm_mat_set_entry_f32(H_mat, 1, 1,  2*q[0]);
+    arm_mat_set_entry_f32(H_mat, 1, 2,  2*q[3]);
+    arm_mat_set_entry_f32(H_mat, 1, 3,  2*q[2]);
+    arm_mat_set_entry_f32(H_mat, 2, 0,  2*q[0]);
+    arm_mat_set_entry_f32(H_mat, 2, 1, -2*q[1]);
+    arm_mat_set_entry_f32(H_mat, 2, 2, -2*q[2]);
+    arm_mat_set_entry_f32(H_mat, 2, 3,  2*q[3]);
+    arm_mat_set_entry_f32(H_mat, 3, 0,  2*(m_vec_enu[1]*q[3]-m_vec_enu[2]*q[2]));
+    arm_mat_set_entry_f32(H_mat, 3, 1,  2*(m_vec_enu[1]*q[2]+m_vec_enu[2]*q[3]));
+    arm_mat_set_entry_f32(H_mat, 3, 2,  2*(m_vec_enu[1]*q[1]-m_vec_enu[2]*q[0]));
+    arm_mat_set_entry_f32(H_mat, 3, 3,  2*(m_vec_enu[1]*q[0]+m_vec_enu[2]*q[1]));
+    arm_mat_set_entry_f32(H_mat, 4, 0,  2*(m_vec_enu[1]*q[0]+m_vec_enu[2]*q[1]));
+    arm_mat_set_entry_f32(H_mat, 4, 1, -2*(m_vec_enu[1]*q[1]-m_vec_enu[2]*q[0]));
+    arm_mat_set_entry_f32(H_mat, 4, 2,  2*(m_vec_enu[1]*q[2]+m_vec_enu[2]*q[3]));
+    arm_mat_set_entry_f32(H_mat, 4, 3, -2*(m_vec_enu[1]*q[3]-m_vec_enu[2]*q[2]));
+    arm_mat_set_entry_f32(H_mat, 5, 0, -2*(m_vec_enu[1]*q[1]-m_vec_enu[2]*q[0]));
+    arm_mat_set_entry_f32(H_mat, 5, 1, -2*(m_vec_enu[1]*q[0]+m_vec_enu[2]*q[1]));
+    arm_mat_set_entry_f32(H_mat, 5, 2,  2*(m_vec_enu[1]*q[3]-m_vec_enu[2]*q[2]));
+    arm_mat_set_entry_f32(H_mat, 5, 3,  2*(m_vec_enu[1]*q[2]+m_vec_enu[2]*q[3]));
+}
+
+
+
 
 // create new Kalman Filter instance
 void KalmanFilterInit(Kalman_Instance *Kalman, uint8_t x_vec_size, uint8_t z_vec_size, uint8_t u_vec_size) {
@@ -168,66 +375,75 @@ void KalmanFilterInit(Kalman_Instance *Kalman, uint8_t x_vec_size, uint8_t z_vec
 }
 
 // predicting state vector x
-void KalmanFilterPredictSV(Kalman_Instance *Kalman, arm_matrix_instance_f32 *A_mat, float *x_vec, arm_matrix_instance_f32 *B_mat, float *u_vec) {
+void KalmanFilterPredictSV(Kalman_Instance *Kalman, arm_matrix_instance_f32 *F_mat, float *x_vec, arm_matrix_instance_f32 *B_mat, float *u_vec) {
     float dx[Kalman->x_size];
 
-    arm_mat_vec_mult_f32(A_mat, x_vec, x_vec);
+    // calculate predicted state x(t)^ = F * x(t-1) + B * u(t)
+    arm_mat_vec_mult_f32(F_mat, x_vec, x_vec);
     arm_mat_vec_mult_f32(B_mat, u_vec, dx);
     arm_vecN_add_f32(Kalman->x_size, x_vec, dx, x_vec);
 }
 
 // predicting covariance matrix P
-void KalmanFilterPredictCM(Kalman_Instance *Kalman, const arm_matrix_instance_f32 *A_mat, arm_matrix_instance_f32 *P_mat, const arm_matrix_instance_f32 *Q_mat) {
+void KalmanFilterPredictCM(Kalman_Instance *Kalman, const arm_matrix_instance_f32 *F_mat, arm_matrix_instance_f32 *P_mat, const arm_matrix_instance_f32 *Q_mat) {
     float M1_data[Kalman->x_size*Kalman->x_size];
     arm_matrix_instance_f32 M1 = {Kalman->x_size, Kalman->x_size, M1_data};
     float M2_data[Kalman->x_size*Kalman->x_size];
     arm_matrix_instance_f32 M2 = {Kalman->x_size, Kalman->x_size, M2_data};
 
-    arm_mat_trans_f32(A_mat, &M1);
+    // calculate Covariance Matrix P(t)^ = F * P(t-1) * F' + Q(t)
+    arm_mat_trans_f32(F_mat, &M1);
     arm_mat_mult_f32(P_mat, &M1, &M2);
-    arm_mat_mult_f32(A_mat, &M2, &M1);
+    arm_mat_mult_f32(F_mat, &M2, &M1);
     arm_mat_add_f32(&M1, Q_mat, P_mat);
 }
 
 // updating Kalman Gain
-void KalmanFilterUpdateGain(Kalman_Instance *Kalman, arm_matrix_instance_f32 *P_mat, arm_matrix_instance_f32 *C_mat, arm_matrix_instance_f32 *R_mat, arm_matrix_instance_f32 *K_mat) {
+void KalmanFilterUpdateGain(Kalman_Instance *Kalman, arm_matrix_instance_f32 *P_mat, arm_matrix_instance_f32 *H_mat, arm_matrix_instance_f32 *R_mat, arm_matrix_instance_f32 *K_mat) {
     float M3_data[Kalman->z_size*Kalman->z_size];
     arm_matrix_instance_f32 M3 = {Kalman->z_size, Kalman->z_size, M3_data};
-    float M4_data[Kalman->z_size*Kalman->z_size];
-    arm_matrix_instance_f32 M4 = {Kalman->z_size, Kalman->z_size, M4_data};
+    float St_data[Kalman->z_size*Kalman->z_size];
+    arm_matrix_instance_f32 S_mat = {Kalman->z_size, Kalman->z_size, St_data};
     float M5_data[Kalman->x_size*Kalman->z_size];
-    arm_matrix_instance_f32 M5 = {Kalman->x_size, Kalman->z_size, M5_data};
+    arm_matrix_instance_f32 Ht_mat = {Kalman->x_size, Kalman->z_size, M5_data};
     float M6_data[Kalman->x_size*Kalman->z_size];
     arm_matrix_instance_f32 M6 = {Kalman->x_size, Kalman->z_size, M6_data};
     
-    arm_mat_trans_f32(C_mat, &M5);
-    arm_mat_mult_f32(P_mat, &M5, &M6);
-    arm_mat_mult_f32(C_mat, &M6, &M3);
-    arm_mat_add_f32(&M3, R_mat, &M4);
-    arm_mat_inverse_f32(&M4, &M3);
-    arm_mat_mult_f32(&M5, &M3, &M6);
+    // calculate Measurement Prediction Covariance S(t) = H(t) * P(t)^ * H(t)' + R
+    arm_mat_trans_f32(H_mat, &Ht_mat);
+    arm_mat_mult_f32(P_mat, &Ht_mat, &M6);
+    arm_mat_mult_f32(H_mat, &M6, &M3);
+    arm_mat_add_f32(&M3, R_mat, &S_mat);
+
+    // calculate Kalman Gain K(t) = P(t)^ * H(t)' * inv(S(t))
+    arm_mat_inverse_f32(&S_mat, &M3);
+    arm_mat_mult_f32(&Ht_mat, &M3, &M6);
     arm_mat_mult_f32(P_mat, &M6, K_mat);
 }
 
 // corecting state vector x
-void KalmanFilterCorrectSV(Kalman_Instance *Kalman, arm_matrix_instance_f32 *K_mat, float *z_vec, arm_matrix_instance_f32 *C_mat, float *x_vec) {
+void KalmanFilterCorrectSV(Kalman_Instance *Kalman, arm_matrix_instance_f32 *K_mat, float *z_vec, arm_matrix_instance_f32 *H_mat, float *x_vec) {
     float dx[Kalman->x_size];
-    float dz[Kalman->z_size];
+    float vt[Kalman->z_size];
 
-    arm_mat_vec_mult_f32(C_mat, x_vec, dz);
-    arm_vecN_sub_f32(Kalman->z_size, z_vec, dz, dz);
-    arm_mat_vec_mult_f32(K_mat, dz, dx);
+    // calculate innovation vt(t) = z(t) - H * x(t)^
+    arm_mat_vec_mult_f32(H_mat, x_vec, vt);
+    arm_vecN_sub_f32(Kalman->z_size, z_vec, vt, vt);
+
+    // update state x(t) = x(t)^ + K(t) * vt(t)
+    arm_mat_vec_mult_f32(K_mat, vt, dx);
     arm_vecN_add_f32(Kalman->x_size, x_vec, dx, x_vec);
 }
 
 // correcting x's covariance matrix P
-void KalmanFilterCorrectCM(Kalman_Instance *Kalman, arm_matrix_instance_f32 *K_mat, arm_matrix_instance_f32 *C_mat, arm_matrix_instance_f32 *P_mat) {
+void KalmanFilterCorrectCM(Kalman_Instance *Kalman, arm_matrix_instance_f32 *K_mat, arm_matrix_instance_f32 *H_mat, arm_matrix_instance_f32 *P_mat) {
     float M2_data[Kalman->x_size*Kalman->x_size];
     arm_matrix_instance_f32 M2 = {Kalman->x_size, Kalman->x_size, M2_data};
     float M7_data[Kalman->z_size*Kalman->x_size];
     arm_matrix_instance_f32 M7 = {Kalman->z_size, Kalman->x_size, M7_data};
 
-    arm_mat_mult_f32(C_mat, P_mat, &M7);
+    // update Covariance Matrix P(t) = P(t)^ - K(t) * H(t) * P(t)^
+    arm_mat_mult_f32(H_mat, P_mat, &M7);
     arm_mat_mult_f32(K_mat, &M7, &M2);
     arm_mat_sub_f32(P_mat, &M2, P_mat);
 }

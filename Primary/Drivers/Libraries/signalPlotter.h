@@ -3,6 +3,10 @@
 
 #include "stm32h7xx_hal.h"
 
+//#define SIGNAL_PLOTTER_OUT_1 // position ekf testing
+//#define SIGNAL_PLOTTER_OUT_2 // raw sensor data
+#define SIGNAL_PLOTTER_OUT_3 // orientation ekf testing
+
 // actually performs send operation to signal plotter
 // (is done automatically)
 void signalPlotter_executeTransmission(uint32_t millisTime);
