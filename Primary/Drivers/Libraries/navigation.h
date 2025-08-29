@@ -24,12 +24,19 @@ typedef enum {
     DCM_ib_BodyToWorld = 1
 } direct_cosine_matrix_t;
 
+typedef enum {
+    EKF1_type,
+    EKF2_type,
+    EKF3_type
+} kalman_instance_t;
+
 // standard KF variables
 typedef struct {
+    kalman_instance_t type;
     uint8_t x_size;
     uint8_t z_size;
     uint8_t u_size;
-} Kalman_Instance;
+} kalman_data_t;
 
 // stores actual data for orientation KF
 typedef struct {
@@ -82,16 +89,17 @@ void Vec3_BodyToWorld(float *vec3_body, arm_matrix_instance_f32 *mat_rot, float 
 void EKFInitQuaternion(float *q, float *a_vec, float *m_vec);
 void EKFPredictQuaternionSV(float *q, float *gyr_vec, const float dt);
 void EKFPredictQuaternionCM(float *q, const float dt, const float gyro_var, arm_matrix_instance_f32 *F_mat, arm_matrix_instance_f32 *P_mat);
-void EKFCorrectQuaternionSV(float *q, float *acc_vec, float *mag_vec);
+void EKFCorrectQuaternionSV(float *q, arm_matrix_instance_f32 *K_mat, float *vt);
 void EKFGetStateTransitionJacobian(float *gyro_vec, float dt, arm_matrix_instance_f32 *F_mat);
 void EKFGetObservationJacobian(float *q, arm_matrix_instance_f32 *H_mat);
 
-void KalmanFilterInit(Kalman_Instance *Kalman, uint8_t x_vec_size, uint8_t z_vec_size, uint8_t u_vec_size);
-void KalmanFilterPredictSV(Kalman_Instance *Kalman, arm_matrix_instance_f32 *F_mat, float *x_vec, arm_matrix_instance_f32 *B_mat, float *u_vec);
-void KalmanFilterPredictCM(Kalman_Instance *Kalman, const arm_matrix_instance_f32 *F_mat, arm_matrix_instance_f32 *P_mat, const arm_matrix_instance_f32 *Q_mat);
-void KalmanFilterUpdateGain(Kalman_Instance *Kalman, arm_matrix_instance_f32 *P_mat, arm_matrix_instance_f32 *H_mat, arm_matrix_instance_f32 *R_mat, arm_matrix_instance_f32 *K_mat);
-void KalmanFilterCorrectSV(Kalman_Instance *Kalman, arm_matrix_instance_f32 *K_mat, float *z_vec, arm_matrix_instance_f32 *H_mat, float *x_vec);
-void KalmanFilterCorrectCM(Kalman_Instance *Kalman, arm_matrix_instance_f32 *K_mat, arm_matrix_instance_f32 *H_mat, arm_matrix_instance_f32 *P_mat);
+void KalmanFilterInit(kalman_data_t *Kalman, kalman_instance_t kalman_type, uint8_t x_vec_size, uint8_t z_vec_size, uint8_t u_vec_size);
+void KalmanFilterPredictSV(kalman_data_t *Kalman, arm_matrix_instance_f32 *F_mat, float *x_vec, arm_matrix_instance_f32 *B_mat, float *u_vec);
+void KalmanFilterPredictCM(kalman_data_t *Kalman, const arm_matrix_instance_f32 *F_mat, arm_matrix_instance_f32 *P_mat, const arm_matrix_instance_f32 *Q_mat);
+void EKFPredictQuaternionZ(float *q, float *a_exp, float *m_exp);
+void KalmanFilterUpdateGain(kalman_data_t *Kalman, arm_matrix_instance_f32 *P_mat, arm_matrix_instance_f32 *H_mat, arm_matrix_instance_f32 *R_mat, arm_matrix_instance_f32 *K_mat);
+void KalmanFilterCorrectSV(kalman_data_t *Kalman, arm_matrix_instance_f32 *K_mat, float *z_vec, arm_matrix_instance_f32 *H_mat, float *x_vec);
+void KalmanFilterCorrectCM(kalman_data_t *Kalman, arm_matrix_instance_f32 *K_mat, arm_matrix_instance_f32 *H_mat, arm_matrix_instance_f32 *P_mat);
 
     /*float H_data[6*4] = { original observation model jacobian
         2*(g_vec_enu[0]*q[0]+g_vec_enu[1]*q[3]-g_vec_enu[2]*q[2]), 2*(g_vec_enu[0]*q[1]+g_vec_enu[1]*q[2]+g_vec_enu[2]*q[3]), 2*(-g_vec_enu[0]*q[2]+g_vec_enu[1]*q[1]-g_vec_enu[2]*q[0]), 2*(-g_vec_enu[0]*q[3]+g_vec_enu[1]*q[0]+g_vec_enu[2]*q[1]),

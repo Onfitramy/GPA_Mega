@@ -21,7 +21,7 @@ void ShowStatus(device_handle device, int8_t status, float freq_cycle, float fre
             case -2: // MEMS Sensor Error
                 SetLED_pulse(COLOR_RED);
                 break;
-            case -1: // Fatal Error
+            case -1: // Fatal Error, Hard Fault
                 SetLED_color(COLOR_RED);
                 break;
             case 0: // Startup

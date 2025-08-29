@@ -33,6 +33,8 @@ extern "C" {
 
 #include "Stepper.h"
 #include "signalPlotter.h"
+#include "ws2812.h"
+#include "status.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 /* USER CODE END Includes */

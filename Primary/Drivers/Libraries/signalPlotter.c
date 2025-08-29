@@ -152,8 +152,23 @@ void signalPlotter_init(void) {
   #ifdef SIGNAL_PLOTTER_OUT_3 // orientation ekf testing
   signalPlotter_setSignalName(0, "delta Time");
   signalPlotter_setSignalName(1, "NRF Data");
-  signalPlotter_setSignalName(2, "phi");
-  signalPlotter_setSignalName(3, "theta");
-  signalPlotter_setSignalName(4, "psi");
+  signalPlotter_setSignalName(2, "quat phi");
+  signalPlotter_setSignalName(3, "quat theta");
+  signalPlotter_setSignalName(4, "quat psi");
+  signalPlotter_setSignalName(5, "gx exp");
+  signalPlotter_setSignalName(6, "gy exp");
+  signalPlotter_setSignalName(7, "gz exp");
+  signalPlotter_setSignalName(8, "mx exp");
+  signalPlotter_setSignalName(9, "my exp");
+  signalPlotter_setSignalName(10, "mz exp");
+  signalPlotter_setSignalName(11, "ax meas");
+  signalPlotter_setSignalName(12, "ay meas");
+  signalPlotter_setSignalName(13, "az meas");
+  signalPlotter_setSignalName(14, "mx meas");
+  signalPlotter_setSignalName(15, "my meas");
+  signalPlotter_setSignalName(16, "mz meas");
+  signalPlotter_setSignalName(17, "euler phi");
+  signalPlotter_setSignalName(18, "euler theta");
+  signalPlotter_setSignalName(19, "euler psi");
   #endif
 }

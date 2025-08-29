@@ -120,7 +120,7 @@ uint8_t flight_status = 0; // 0 = awaiting gnss fix | 1 = align guidance | 2 = f
 const float dt = 0.001;
 
 // create new Kalman Filter instance for orientation
-Kalman_Instance Kalman1;
+kalman_data_t EKF1;
 
 // state and output vectors
 float x[x_size1] = {0};
@@ -146,7 +146,7 @@ arm_matrix_instance_f32 Mdeuler = {3, 3, Mdeuler_data};
 
 
 // create new Kalman Filter instance for velocity and position
-Kalman_Instance Kalman2;
+kalman_data_t EKF2;
 
 // state and output vectors
 float x2[x_size2] = {0};
@@ -169,7 +169,7 @@ arm_matrix_instance_f32 K2 = {x_size2, z_size2, K2_data};
 
 
 // Quaternion EKF variables
-Kalman_Instance Kalman3;
+kalman_data_t EKF3;
 
 // state and output vectors
 float x3[x_size3] = {0};
@@ -193,6 +193,8 @@ arm_matrix_instance_f32 M_rot_q = {3, 3, M_rot_q_data};
 
 float euler_from_q[3] = {0};
 
+float g_expected[3] = {0};
+float m_expected[3] = {0};
 
 // NRF24L01+ packages
 #pragma pack(push, 1)
@@ -362,13 +364,13 @@ void StartDefaultTask(void *argument)
   uid[2] = HAL_GetUIDw2();
 
   // define Kalman Filter dimensions for orientation
-  KalmanFilterInit(&Kalman1, x_size1, z_size1, u_size1);
+  KalmanFilterInit(&EKF1, EKF1_type, x_size1, z_size1, u_size1);
 
   // define Kalman Filter dimensions for velocity and position
-  KalmanFilterInit(&Kalman2, x_size2, z_size2, u_size2);
+  KalmanFilterInit(&EKF2, EKF2_type, x_size2, z_size2, u_size2);
 
   // define Kalman Filter dimensions for Quaternion EKF
-  KalmanFilterInit(&Kalman3, x_size3, z_size3, u_size3);
+  KalmanFilterInit(&EKF3, EKF3_type, x_size3, z_size3, u_size3);
 
   // define output signal names
   signalPlotter_init();
@@ -464,7 +466,7 @@ void StartDefaultTask(void *argument)
     arm_mat_insert_mult_32(&Mdeuler, &B1, 0, 0, dt);
 
     // predicting state vector x
-    KalmanFilterPredictSV(&Kalman1, &F1, x, &B1, imu1_data.gyro);
+    KalmanFilterPredictSV(&EKF1, &F1, x, &B1, imu1_data.gyro);
 
     // normalize phi, theta, psi to be within +-180 deg
     normalizeAngleVector(x, 0, 2, PI, -PI, 2*PI);
@@ -478,7 +480,7 @@ void StartDefaultTask(void *argument)
     euler_deg[2] = psi * 180. / PI;
 
     // predicting state vector's covariance matrix P
-    KalmanFilterPredictCM(&Kalman1, &F1, &P1, &Q1);
+    KalmanFilterPredictCM(&EKF1, &F1, &P1, &Q1);
 
     // transform measured body acceleration to world-frame acceleration
     RotationMatrixFromEuler(phi, theta, psi, &M_rot);
@@ -499,8 +501,8 @@ void StartDefaultTask(void *argument)
       arm_mat_insert_mult_32(&M_rot_inv, &B2, 0, 0, dt);
       arm_mat_insert_mult_32(&M_rot_inv, &B2, 3, 0, 0.5*dt*dt);
 
-      KalmanFilterPredictSV(&Kalman2, &F2, x2, &B2, a_BodyFrame);
-      KalmanFilterPredictCM(&Kalman2, &F2, &P2, &Q2);
+      KalmanFilterPredictSV(&EKF2, &F2, x2, &B2, a_BodyFrame);
+      KalmanFilterPredictCM(&EKF2, &F2, &P2, &Q2);
 
       v_WorldFrame[0] = x2[0];
       v_WorldFrame[1] = x2[1];
@@ -522,7 +524,17 @@ void StartDefaultTask(void *argument)
     }
 
     // KALMAN FILTER, QUATERNION
+    // predicting orientation based on gyro readouts
     EKFPredictQuaternionSV(x3, imu1_data.gyro, dt);
+
+    // calculate state transition matrix from gyro readouts
+    EKFGetStateTransitionJacobian(imu1_data.gyro, dt, &F3);
+
+    // predicting state covariance matrix
+    EKFPredictQuaternionCM(x3, dt, 0.3*0.3, &F3, &P3);
+
+    
+    EKFPredictQuaternionZ(x3, g_expected, m_expected);
 
     // Conversion to Euler
     RotationMatrixFromQuaternion(x3, &M_rot_q, DCM_bi_WorldToBody);
@@ -602,6 +614,21 @@ void Start100HzTask(void *argument) {
     signalPlotter_sendData(2, euler_from_q[0]);
     signalPlotter_sendData(3, euler_from_q[1]);
     signalPlotter_sendData(4, euler_from_q[2]);
+    signalPlotter_sendData(5, g_expected[0]);
+    signalPlotter_sendData(6, g_expected[1]);
+    signalPlotter_sendData(7, g_expected[2]);
+    signalPlotter_sendData(8, m_expected[0]);
+    signalPlotter_sendData(9, m_expected[1]);
+    signalPlotter_sendData(10, m_expected[2]);
+    signalPlotter_sendData(11, imu1_data.accel[0]);
+    signalPlotter_sendData(12, imu1_data.accel[1]);
+    signalPlotter_sendData(13, imu1_data.accel[2]);
+    signalPlotter_sendData(14, mag_data.field[0]);
+    signalPlotter_sendData(15, mag_data.field[1]);
+    signalPlotter_sendData(16, mag_data.field[2]);
+    signalPlotter_sendData(17, phi);
+    signalPlotter_sendData(18, theta);
+    signalPlotter_sendData(19, psi);
     #endif
 
     signalPlotter_executeTransmission(HAL_GetTick());
@@ -616,9 +643,9 @@ void Start100HzTask(void *argument) {
     psi_fix = z[2];
 
     // Kalman Filter correction step
-    KalmanFilterUpdateGain(&Kalman1, &P1, &H1, &R1, &K1);
-    KalmanFilterCorrectSV(&Kalman1, &K1, z, &H1, x);
-    KalmanFilterCorrectCM(&Kalman1, &K1, &H1, &P1);
+    KalmanFilterUpdateGain(&EKF1, &P1, &H1, &R1, &K1);
+    KalmanFilterCorrectSV(&EKF1, &K1, z, &H1, x);
+    KalmanFilterCorrectCM(&EKF1, &K1, &H1, &P1);
 
     // normalize phi, theta, psi to be within +-180 deg
     normalizeAngleVector(x, 0, 2, PI, -PI, 2*PI);
@@ -644,13 +671,13 @@ void Start10HzTask(void *argument) {
     SelfTest();         // Run self-test on startup
 
     GPS_ReadSensorData(&gps_data);
-    /*if(primary_status > 0) {
+    if(primary_status > 0) {
       switch(gps_data.gpsFix) {
         case 0: primary_status = STATUS_GNSS_ALIGN; break;
         case 2: primary_status = STATUS_GNSS_2D; break;
         case 3: primary_status = STATUS_STANDBY; break;
       }
-    }*/
+    }
     
     IMUPacket_t imu_packet = {
       .timestamp = HAL_GetTick(),
@@ -690,9 +717,9 @@ void Start10HzTask(void *argument) {
       arm_mat_set_diag_f32(&R2, 3, 3, 2, (float)gps_data.hAcc * gps_data.hAcc / 1e6f * 100.f);
       arm_mat_set_entry_f32(&R2, 5, 5, (float)gps_data.vAcc * gps_data.vAcc / 1e6f * 100.f);
 
-      KalmanFilterUpdateGain(&Kalman2, &P2, &H2, &R2, &K2);
-      KalmanFilterCorrectSV(&Kalman2, &K2, z2, &H2, x2);
-      KalmanFilterCorrectCM(&Kalman2, &K2, &H2, &P2);
+      KalmanFilterUpdateGain(&EKF2, &P2, &H2, &R2, &K2);
+      KalmanFilterCorrectSV(&EKF2, &K2, z2, &H2, x2);
+      KalmanFilterCorrectCM(&EKF2, &K2, &H2, &P2);
 
       SERVO_MoveToAngle(1, 0);
       SERVO_MoveToAngle(2, 0);
@@ -704,7 +731,7 @@ void Start10HzTask(void *argument) {
     radioSend(tx_buf);
 
     // RECOVERY TEST
-    if(uwTick > 5500 && primary_status > 0 && primary_status != 5 && primary_status == 4) {
+    /*if(uwTick > 5500 && primary_status > 0 && primary_status != 5 && primary_status == 4) {
       primary_status = 5;
       SERVO_MoveToAngle(1, 0);
       SERVO_MoveToAngle(2, 0);
@@ -713,7 +740,7 @@ void Start10HzTask(void *argument) {
       primary_status = 4;
       SERVO_MoveToAngle(1, 90);
       SERVO_MoveToAngle(2, 90);
-    }
+    }*/
 
     // KF2 correction steps
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
