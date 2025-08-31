@@ -202,13 +202,6 @@ void arm_quaternion_product_f32(float32_t *qA, float32_t *qB, float32_t *qOut) {
   qOut[3] = qA[0]*qB[3] + qA[1]*qB[2] - qA[2]*qB[1] + qA[3]*qB[0];
 }
 
-void arm_quaternion_conjugate_f32(float32_t *q, float32_t *qConj) {
-  qConj[0] =  q[0];
-  qConj[1] = -q[1];
-  qConj[2] = -q[2];
-  qConj[3] = -q[3];
-}
-
 void arm_quaternion_normalize_f32(float32_t *q, float32_t *qOut) {
   float norm = sqrtf(q[0]*q[0] + q[1]*q[1] + q[2]*q[2] + q[3]*q[3]);
   norm = 1./norm;
@@ -216,6 +209,12 @@ void arm_quaternion_normalize_f32(float32_t *q, float32_t *qOut) {
   qOut[1] = q[1] * norm;
   qOut[2] = q[2] * norm;
   qOut[3] = q[3] * norm;
+}
+
+void arm_quaternion_conjugate_f32(float32_t *q) {
+  q[1] = -q[1];
+  q[2] = -q[2];
+  q[3] = -q[3];
 }
 
 /*

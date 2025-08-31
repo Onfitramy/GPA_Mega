@@ -34,6 +34,6 @@ void arm_vecN_scalar_mult_f32(int N, float32_t *vec, float scalar, float32_t *re
 void arm_vecN_print_f32(int N, float32_t *vec);
 
 void arm_quaternion_product_f32(float32_t *qA, float32_t *qB, float32_t *qOut);
-void arm_quaternion_conjugate_f32(float32_t *q, float32_t *qConj);
 void arm_quaternion_normalize_f32(float32_t *q, float32_t *qOut);
+void arm_quaternion_conjugate_f32(float32_t *q);
 

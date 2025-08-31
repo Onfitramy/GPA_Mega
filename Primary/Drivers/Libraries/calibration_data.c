@@ -40,8 +40,8 @@ const float IMU2_offset[3] = {0, 0, 0};
 const float IMU2_scale[3] = {1, 1, 1};
 
 // Magnetometer
-const float MAG_offset[3] = {0.625, -0.12, -0.15}; 
-const float MAG_scale[3] = {0.9333, 0.9245, 1.0889};
+const float MAG_offset[3] = {0.6186, -0.1259, -0.1587}; 
+const float MAG_scale[3] = {1.18, 1.14, 1.32};
 
 #endif
 

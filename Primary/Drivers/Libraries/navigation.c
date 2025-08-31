@@ -245,7 +245,8 @@ void EKFInitQuaternion(float *q, float *a_vec, float *m_vec) {
     arm_matrix_instance_f32 DCMbi = {3, 3, DCMbi_data};
 
     RotationMatrixOrientationFix(a_vec, m_vec, &DCMbi, DCM_bi_WorldToBody);
-    QuaternionFromRotationMatrix(&DCMbi, q);
+    QuaternionFromRotationMatrix(&DCMbi, q); // does this function want body to world????
+    arm_quaternion_conjugate_f32(q);
 }
 
 // prediction step for quaternion state vector
@@ -268,11 +269,11 @@ void EKFPredictQuaternionSV(float *q, float *gyr_vec, const float dt) {
 // prediction step for quaternion covariance matrix
 void EKFPredictQuaternionCM(float *q, const float dt, const float gyro_var, arm_matrix_instance_f32 *F_mat, arm_matrix_instance_f32 *P_mat) {
     float M1_data[4*4];
-    arm_matrix_instance_f32 M1 = {4*4, M1_data};
+    arm_matrix_instance_f32 M1 = {4, 4, M1_data};
     float M2_data[4*4];
-    arm_matrix_instance_f32 M2 = {4*4, M2_data};
+    arm_matrix_instance_f32 M2 = {4, 4, M2_data};
 
-    // defube W and W'
+    // define W and W'
     float W_mat_data[4*3] = {-q[1], -q[2], -q[3],
                               q[0], -q[3],  q[2],
                               q[3],  q[0], -q[1],
@@ -286,7 +287,7 @@ void EKFPredictQuaternionCM(float *q, const float dt, const float gyro_var, arm_
     float Q_temp_data[4*4];
     arm_matrix_instance_f32 Q_mat = {4, 4, Q_temp_data};
     arm_mat_mult_f32(&W_mat, &W_trans, &Q_mat);
-    arm_mat_scale_f32(&Q_mat, 0.25f*dt*dt*gyro_var*gyro_var, &Q_mat);
+    arm_mat_scale_f32(&Q_mat, 0.25f*dt*dt*gyro_var, &Q_mat);
 
     // calculate Covariance Matrix P(t)^ = F * P(t-1) * F' + Q(t)
     arm_mat_trans_f32(F_mat, &M1);
@@ -323,8 +324,8 @@ void EKFGetInnovation(float *a_exp, float *m_exp, float *a_vec, float *m_vec, fl
     
     
     for(int i = 0; i < 3; i++) {
-        vt[i]   = a_vec[i] - a_exp[i];
-        vt[i+3] = m_vec[i] - m_exp[i];
+        vt[i]   = a_norm_vec[i] - a_exp[i];
+        vt[i+3] = m_norm_vec[i] - m_exp[i];
     }
 }
 

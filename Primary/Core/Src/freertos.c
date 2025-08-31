@@ -174,6 +174,7 @@ kalman_data_t EKF3;
 // state and output vectors
 float x3[x_size3] = {0};
 float z3[z_size3] = {0};
+float v3[z_size3] = {0}; // innovation
 
 float F3_data[x_size3*x_size3] = {0}; // 4x4
 arm_matrix_instance_f32 F3 = {x_size3, x_size3, F3_data};
@@ -185,6 +186,8 @@ float H3_data[z_size3*x_size3] = {0}; // 6x4
 arm_matrix_instance_f32 H3 = {z_size3, x_size3, H3_data};
 float R3_data[z_size3*z_size3] = {0}; // 6x6
 arm_matrix_instance_f32 R3 = {z_size3, z_size3, R3_data};
+float S3_data[z_size3*z_size3] = {0}; // 6x6
+arm_matrix_instance_f32 S3 = {z_size3, z_size3, S3_data};
 float K3_data[x_size3*z_size3];       // 4x6
 arm_matrix_instance_f32 K3 = {x_size3, z_size3, K3_data};
 
@@ -428,7 +431,11 @@ void StartDefaultTask(void *argument)
   radioSetMode(RADIO_MODE_TRANSCEIVER);
 
   // Quaternion EKF initialization
-  EKFInitQuaternion(x3, imu1_data.accel, mag_data.field);
+  //EKFInitQuaternion(x3, imu1_data.accel, mag_data.field);
+  x3[0] = 1;
+  x3[1] = 0;
+  x3[2] = 0;
+  x3[3] = 0;
 
   /* Infinite loop */
   for(;;) {
@@ -524,17 +531,18 @@ void StartDefaultTask(void *argument)
     }
 
     // KALMAN FILTER, QUATERNION
-    // predicting orientation based on gyro readouts
+    // predicting step
     EKFPredictQuaternionSV(x3, imu1_data.gyro, dt);
-
-    // calculate state transition matrix from gyro readouts
     EKFGetStateTransitionJacobian(imu1_data.gyro, dt, &F3);
-
-    // predicting state covariance matrix
-    EKFPredictQuaternionCM(x3, dt, 0.3*0.3, &F3, &P3);
-
-    
+    EKFPredictQuaternionCM(x3, dt, 0.3*0.3, &F3, &P3); // 0.3 * 0.3
     EKFPredictQuaternionZ(x3, g_expected, m_expected);
+
+    // correction step
+    EKFGetInnovation(g_expected, m_expected, imu1_data.accel, mag_data.field, v3);
+    EKFGetObservationJacobian(x3, &H3);
+    EKFUpdateKalmanGain(&H3, &P3, &R3, &S3, &K3);
+    EKFCorrectQuaternionSV(x3, &K3, v3);
+    EKFCorrectQuaternionCM(&EKF3, &P3, &K3, &H3);
 
     // Conversion to Euler
     RotationMatrixFromQuaternion(x3, &M_rot_q, DCM_bi_WorldToBody);
