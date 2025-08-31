@@ -431,11 +431,7 @@ void StartDefaultTask(void *argument)
   radioSetMode(RADIO_MODE_TRANSCEIVER);
 
   // Quaternion EKF initialization
-  //EKFInitQuaternion(x3, imu1_data.accel, mag_data.field);
-  x3[0] = 1;
-  x3[1] = 0;
-  x3[2] = 0;
-  x3[3] = 0;
+  EKFInitQuaternion(&EKF3, x3, imu1_data.accel, mag_data.field);
 
   /* Infinite loop */
   for(;;) {
@@ -532,16 +528,16 @@ void StartDefaultTask(void *argument)
 
     // KALMAN FILTER, QUATERNION
     // predicting step
-    EKFPredictQuaternionSV(x3, imu1_data.gyro, dt);
-    EKFGetStateTransitionJacobian(imu1_data.gyro, dt, &F3);
-    EKFPredictQuaternionCM(x3, dt, 0.3*0.3, &F3, &P3); // 0.3 * 0.3
-    EKFPredictQuaternionZ(x3, g_expected, m_expected);
+    EKFPredictQuaternionSV(&EKF3, x3, imu1_data.gyro, dt);
+    EKFGetStateTransitionJacobian(&EKF3, imu1_data.gyro, dt, &F3);
+    EKFPredictQuaternionCM(&EKF3, x3, dt, 0.3*0.3, &F3, &P3); // 0.3 * 0.3
+    EKFPredictQuaternionZ(&EKF3, x3, g_expected, m_expected);
 
     // correction step
-    EKFGetInnovation(g_expected, m_expected, imu1_data.accel, mag_data.field, v3);
-    EKFGetObservationJacobian(x3, &H3);
-    EKFUpdateKalmanGain(&H3, &P3, &R3, &S3, &K3);
-    EKFCorrectQuaternionSV(x3, &K3, v3);
+    EKFGetInnovation(&EKF3, g_expected, m_expected, imu1_data.accel, mag_data.field, v3);
+    EKFGetObservationJacobian(&EKF3, x3, &H3);
+    EKFUpdateKalmanGain(&EKF3, &H3, &P3, &R3, &S3, &K3);
+    EKFCorrectQuaternionSV(&EKF3, x3, &K3, v3);
     EKFCorrectQuaternionCM(&EKF3, &P3, &K3, &H3);
 
     // Conversion to Euler
