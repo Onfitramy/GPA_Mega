@@ -184,6 +184,15 @@ void arm_vecN_scalar_mult_f32(int N, float32_t *vec, float scalar, float32_t *re
   }
 }
 
+void arm_vecN_concatenate_f32(int N1, float32_t *vec1, int N2, float32_t *vec2, float32_t *result) {
+  for (int i = 0; i < N1; i++) {
+    result[i] = vec1[i];
+  }
+  for (int i = 0; i < N2; i++) {
+    result[i+N1] = vec2[i];
+  }
+}
+
 void arm_vecN_print_f32(int N, float32_t *vec) {
 
   printf("Vector:\n");
@@ -202,13 +211,13 @@ void arm_quaternion_product_f32(float32_t *qA, float32_t *qB, float32_t *qOut) {
   qOut[3] = qA[0]*qB[3] + qA[1]*qB[2] - qA[2]*qB[1] + qA[3]*qB[0];
 }
 
-void arm_quaternion_normalize_f32(float32_t *q, float32_t *qOut) {
+void arm_quaternion_normalize_f32(float32_t *q) {
   float norm = sqrtf(q[0]*q[0] + q[1]*q[1] + q[2]*q[2] + q[3]*q[3]);
   norm = 1./norm;
-  qOut[0] = q[0] * norm;
-  qOut[1] = q[1] * norm;
-  qOut[2] = q[2] * norm;
-  qOut[3] = q[3] * norm;
+  q[0] *= norm;
+  q[1] *= norm;
+  q[2] *= norm;
+  q[3] *= norm;
 }
 
 void arm_quaternion_conjugate_f32(float32_t *q) {

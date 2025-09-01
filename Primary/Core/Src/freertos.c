@@ -123,8 +123,10 @@ const float dt = 0.001;
 kalman_data_t EKF1;
 
 // state and output vectors
-float x[x_size1] = {0};
-float z[z_size1] = {0};
+float x1[x_size1] = {0};
+float z1[z_size1] = {0};
+float h1[z_size1] = {0};
+float v1[z_size1] = {0};
 
 float F1_data[x_size1*x_size1] = {0}; // 6x6
 arm_matrix_instance_f32 F1 = {x_size1, x_size1, F1_data};
@@ -138,6 +140,8 @@ float H1_data[z_size1*x_size1] = {0}; // 3x6
 arm_matrix_instance_f32 H1 = {z_size1, x_size1, H1_data};
 float R1_data[z_size1*z_size1] = {0}; // 3x3
 arm_matrix_instance_f32 R1 = {z_size1, z_size1, R1_data};
+float S1_data[z_size1*z_size1] = {0}; // 3x3
+arm_matrix_instance_f32 S1 = {z_size1, z_size1, S1_data};
 float K1_data[x_size1*z_size1];       // 6x3
 arm_matrix_instance_f32 K1 = {x_size1, z_size1, K1_data};
 
@@ -151,6 +155,8 @@ kalman_data_t EKF2;
 // state and output vectors
 float x2[x_size2] = {0};
 float z2[z_size2] = {0};
+float h2[z_size2] = {0};
+float v2[z_size2] = {0}; // innovation
 
 float F2_data[x_size2*x_size2] = {0}; // 6x6
 arm_matrix_instance_f32 F2 = {x_size2, x_size2, F2_data};
@@ -164,6 +170,8 @@ float H2_data[z_size2*x_size2] = {0}; // 3x6
 arm_matrix_instance_f32 H2 = {z_size2, x_size2, H2_data};
 float R2_data[z_size2*z_size2] = {0}; // 3x3
 arm_matrix_instance_f32 R2 = {z_size2, z_size2, R2_data};
+float S2_data[z_size2*z_size2] = {0}; // 6x6
+arm_matrix_instance_f32 S2 = {z_size2, z_size2, S2_data};
 float K2_data[x_size2*z_size2];       // 6x3
 arm_matrix_instance_f32 K2 = {x_size2, z_size2, K2_data};
 
@@ -174,6 +182,7 @@ kalman_data_t EKF3;
 // state and output vectors
 float x3[x_size3] = {0};
 float z3[z_size3] = {0};
+float h3[z_size3] = {0};
 float v3[z_size3] = {0}; // innovation
 
 float F3_data[x_size3*x_size3] = {0}; // 4x4
@@ -196,8 +205,8 @@ arm_matrix_instance_f32 M_rot_q = {3, 3, M_rot_q_data};
 
 float euler_from_q[3] = {0};
 
-float g_expected[3] = {0};
-float m_expected[3] = {0};
+float g_predicted[3] = {0};
+float m_predicted[3] = {0};
 
 // NRF24L01+ packages
 #pragma pack(push, 1)
@@ -367,48 +376,16 @@ void StartDefaultTask(void *argument)
   uid[2] = HAL_GetUIDw2();
 
   // define Kalman Filter dimensions for orientation
-  KalmanFilterInit(&EKF1, EKF1_type, x_size1, z_size1, u_size1);
+  EKFInit(&EKF1, EKF1_type, x_size1, z_size1, u_size1, dt, &F1, &H1, &K1, &P1, &Q1, &R1, &S1, &B1, x1, z1, h1, imu1_data.gyro, v1);
 
   // define Kalman Filter dimensions for velocity and position
-  KalmanFilterInit(&EKF2, EKF2_type, x_size2, z_size2, u_size2);
+  EKFInit(&EKF2, EKF2_type, x_size2, z_size2, u_size2, dt, &F2, &H2, &K2, &P2, &Q2, &R2, &S2, &B2, x2, z2, h2, a_BodyFrame, v2);
 
   // define Kalman Filter dimensions for Quaternion EKF
-  KalmanFilterInit(&EKF3, EKF3_type, x_size3, z_size3, u_size3);
+  EKFInit(&EKF3, EKF3_type, x_size3, z_size3, u_size3, dt, &F3, &H3, &K3, &P3, &Q3, &R3, &S3, NULL, x3, z3, h3, imu1_data.gyro, v3);
 
   // define output signal names
   signalPlotter_init();
-
-  // configure orientation KF matrices
-  arm_mat_fill_diag_f32(&F1, 0, 0, 1.);
-  arm_mat_fill_diag_f32(&H1, 0, 0, 1.);
-  arm_mat_fill_diag_f32(&R1, 0, 0, 1.);    // angle fixing method variance (noise)
-
-  arm_mat_set_diag_f32(&P1, 0, 0, 3, 0.1);   // initial guess for angle variance
-  arm_mat_set_diag_f32(&P1, 3, 3, 3, 0.001); // initial guess for offset variance
-
-  arm_mat_set_diag_f32(&Q1, 0, 0, 3, 1e-8);  // variance of gyroscope data   (noise)
-  arm_mat_set_diag_f32(&Q1, 3, 3, 3, 1e-12); // variance of gyroscope offset (drift)
-
-  // configure position KF matrices
-  arm_mat_fill_diag_f32(&F2, 0, 0, 1.);
-  arm_mat_set_diag_f32(&F2, 3, 0, 3, dt);
-  arm_mat_fill_diag_f32(&H2, 0, 0, 1.);
-
-  arm_mat_set_diag_f32(&P2, 0, 0, 3, 1.);  // initial guess for velocity variance
-  arm_mat_set_diag_f32(&P2, 3, 3, 3, 10.);
-  arm_mat_set_diag_f32(&P2, 6, 6, 3, 0.5); // initial guess for accelerometer offset variance
-
-  arm_mat_set_diag_f32(&Q2, 0, 0, 3, 1e-3f*dt*dt); // variance of accelerometer data   (noise)
-  arm_mat_set_diag_f32(&Q2, 3, 3, 3, 1e-3f*0.25*dt*dt*dt*dt);
-  arm_mat_set_diag_f32(&Q2, 6, 6, 3, 1e-12f); // variance of accelerometer offset (drift)
-
-  // configure Quaternion EKF matrices
-  arm_mat_fill_diag_f32(&F3, 0, 0, 1.);
-
-  arm_mat_fill_diag_f32(&P3, 0, 0, 1.);
-
-  arm_mat_set_diag_f32(&R3, 0, 0, 3, 0.5*0.5);    // accelerometer variance (noise)
-  arm_mat_set_diag_f32(&R3, 3, 3, 3, 0.8*0.8);    // magnetometer variance (noise)
 
   // starting point for KF
   while(IMU1_VerifyDataReady() & 0x03 != 0x03); // wait for IMU1 data
@@ -421,17 +398,21 @@ void StartDefaultTask(void *argument)
   arm_vec3_sub_f32(mag_data.field, MAG_offset, mag_data.field);
   arm_vec3_element_product_f32(mag_data.field, MAG_scale, mag_data.field);
 
-  EulerOrientationFix(imu1_data.accel, mag_data.field, z);
+  EulerOrientationFix(imu1_data.accel, mag_data.field, z1);
 
-  x[0] = z[0];
-  x[1] = z[1];
-  x[2] = z[2];
+  x1[0] = z1[0];
+  x1[1] = z1[1];
+  x1[2] = z1[2];
 
   radioSet(NRF_24_ACTIVE);
   radioSetMode(RADIO_MODE_TRANSCEIVER);
 
   // Quaternion EKF initialization
-  EKFInitQuaternion(&EKF3, x3, imu1_data.accel, mag_data.field);
+  //EKFInitQuaternion(&EKF3, imu1_data.accel, mag_data.field);
+  x3[0] = 1;
+  x3[1] = 0;
+  x3[2] = 0;
+  x3[3] = 0;
 
   /* Infinite loop */
   for(;;) {
@@ -469,21 +450,21 @@ void StartDefaultTask(void *argument)
     arm_mat_insert_mult_32(&Mdeuler, &B1, 0, 0, dt);
 
     // predicting state vector x
-    KalmanFilterPredictSV(&EKF1, &F1, x, &B1, imu1_data.gyro);
+    EKFPredictStateV(&EKF1);
 
     // normalize phi, theta, psi to be within +-180 deg
-    normalizeAngleVector(x, 0, 2, PI, -PI, 2*PI);
+    normalizeAngleVector(x1, 0, 2, PI, -PI, 2*PI);
 
-    phi = x[0];
-    theta = x[1];
-    psi = x[2];
+    phi = x1[0];
+    theta = x1[1];
+    psi = x1[2];
 
     euler_deg[0] = phi * 180. / PI;
     euler_deg[1] = theta * 180. / PI;
     euler_deg[2] = psi * 180. / PI;
 
     // predicting state vector's covariance matrix P
-    KalmanFilterPredictCM(&EKF1, &F1, &P1, &Q1);
+    EKFPredictCovariance(&EKF1);
 
     // transform measured body acceleration to world-frame acceleration
     RotationMatrixFromEuler(phi, theta, psi, &M_rot);
@@ -504,8 +485,8 @@ void StartDefaultTask(void *argument)
       arm_mat_insert_mult_32(&M_rot_inv, &B2, 0, 0, dt);
       arm_mat_insert_mult_32(&M_rot_inv, &B2, 3, 0, 0.5*dt*dt);
 
-      KalmanFilterPredictSV(&EKF2, &F2, x2, &B2, a_BodyFrame);
-      KalmanFilterPredictCM(&EKF2, &F2, &P2, &Q2);
+      EKFPredictStateV(&EKF2);
+      EKFPredictCovariance(&EKF2);
 
       v_WorldFrame[0] = x2[0];
       v_WorldFrame[1] = x2[1];
@@ -528,17 +509,18 @@ void StartDefaultTask(void *argument)
 
     // KALMAN FILTER, QUATERNION
     // predicting step
-    EKFPredictQuaternionSV(&EKF3, x3, imu1_data.gyro, dt);
-    EKFGetStateTransitionJacobian(&EKF3, imu1_data.gyro, dt, &F3);
-    EKFPredictQuaternionCM(&EKF3, x3, dt, 0.3*0.3, &F3, &P3); // 0.3 * 0.3
-    EKFPredictQuaternionZ(&EKF3, x3, g_expected, m_expected);
+    EKFPredictStateV(&EKF3);
+    EKFGetStateTransitionJacobian(&EKF3);
+    EKFPredictCovariance(&EKF3);
+    EKFPredictMeasurement(&EKF3);
 
     // correction step
-    EKFGetInnovation(&EKF3, g_expected, m_expected, imu1_data.accel, mag_data.field, v3);
-    EKFGetObservationJacobian(&EKF3, x3, &H3);
-    EKFUpdateKalmanGain(&EKF3, &H3, &P3, &R3, &S3, &K3);
-    EKFCorrectQuaternionSV(&EKF3, x3, &K3, v3);
-    EKFCorrectQuaternionCM(&EKF3, &P3, &K3, &H3);
+    arm_vecN_concatenate_f32(3, imu1_data.accel, 3, mag_data.field, z3); // put measurements into z vector
+    EKFGetInnovation(&EKF3);
+    EKFGetObservationJacobian(&EKF3);
+    EKFUpdateKalmanGain(&EKF3);
+    EKFCorrectStateV(&EKF3);
+    EKFCorrectCovariance(&EKF3);
 
     // Conversion to Euler
     RotationMatrixFromQuaternion(x3, &M_rot_q, DCM_bi_WorldToBody);
@@ -618,12 +600,12 @@ void Start100HzTask(void *argument) {
     signalPlotter_sendData(2, euler_from_q[0]);
     signalPlotter_sendData(3, euler_from_q[1]);
     signalPlotter_sendData(4, euler_from_q[2]);
-    signalPlotter_sendData(5, g_expected[0]);
-    signalPlotter_sendData(6, g_expected[1]);
-    signalPlotter_sendData(7, g_expected[2]);
-    signalPlotter_sendData(8, m_expected[0]);
-    signalPlotter_sendData(9, m_expected[1]);
-    signalPlotter_sendData(10, m_expected[2]);
+    signalPlotter_sendData(5, h3[0]);
+    signalPlotter_sendData(6, h3[1]);
+    signalPlotter_sendData(7, h3[2]);
+    signalPlotter_sendData(8, h3[3]);
+    signalPlotter_sendData(9, h3[4]);
+    signalPlotter_sendData(10, h3[5]);
     signalPlotter_sendData(11, imu1_data.accel[0]);
     signalPlotter_sendData(12, imu1_data.accel[1]);
     signalPlotter_sendData(13, imu1_data.accel[2]);
@@ -633,30 +615,38 @@ void Start100HzTask(void *argument) {
     signalPlotter_sendData(17, phi);
     signalPlotter_sendData(18, theta);
     signalPlotter_sendData(19, psi);
+    signalPlotter_sendData(20, imu1_data.gyro[0]);
+    signalPlotter_sendData(21, imu1_data.gyro[1]);
+    signalPlotter_sendData(22, imu1_data.gyro[2]);
+    //signalPlotter_sendData(23, x3[4]);
+    //signalPlotter_sendData(24, x3[5]);
+    //signalPlotter_sendData(25, x3[6]);
     #endif
 
     signalPlotter_executeTransmission(HAL_GetTick());
 
     // attitude estimation using magnetometer and accelerometer
-    EulerOrientationFix(imu1_data.accel, mag_data.field, z);
+    EulerOrientationFix(imu1_data.accel, mag_data.field, z1);
 
-    normalizeAnglePairVector(x, z, 0, 2, PI, -PI, 2*PI);
+    normalizeAnglePairVector(x1, z1, 0, 2, PI, -PI, 2*PI);
 
-    phi_fix = z[0];
-    theta_fix = z[1];
-    psi_fix = z[2];
+    phi_fix = z1[0];
+    theta_fix = z1[1];
+    psi_fix = z1[2];
 
     // Kalman Filter correction step
-    KalmanFilterUpdateGain(&EKF1, &P1, &H1, &R1, &K1);
-    KalmanFilterCorrectSV(&EKF1, &K1, z, &H1, x);
-    KalmanFilterCorrectCM(&EKF1, &K1, &H1, &P1);
+    EKFUpdateKalmanGain(&EKF1);
+    EKFPredictMeasurement(&EKF1);
+    EKFGetInnovation(&EKF1);
+    EKFCorrectStateV(&EKF1);
+    EKFCorrectCovariance(&EKF1);
 
     // normalize phi, theta, psi to be within +-180 deg
-    normalizeAngleVector(x, 0, 2, PI, -PI, 2*PI);
+    normalizeAngleVector(x1, 0, 2, PI, -PI, 2*PI);
 
-    phi = x[0];
-    theta = x[1];
-    psi = x[2];
+    phi = x1[0];
+    theta = x1[1];
+    psi = x1[2];
     
     ShowStatus(RGB_PRIMARY, primary_status, 1, 100);
 
@@ -721,9 +711,12 @@ void Start10HzTask(void *argument) {
       arm_mat_set_diag_f32(&R2, 3, 3, 2, (float)gps_data.hAcc * gps_data.hAcc / 1e6f * 100.f);
       arm_mat_set_entry_f32(&R2, 5, 5, (float)gps_data.vAcc * gps_data.vAcc / 1e6f * 100.f);
 
-      KalmanFilterUpdateGain(&EKF2, &P2, &H2, &R2, &K2);
-      KalmanFilterCorrectSV(&EKF2, &K2, z2, &H2, x2);
-      KalmanFilterCorrectCM(&EKF2, &K2, &H2, &P2);
+      // Kalman Filter correction step
+      EKFUpdateKalmanGain(&EKF2);
+      EKFPredictMeasurement(&EKF2);
+      EKFGetInnovation(&EKF2);
+      EKFCorrectStateV(&EKF2);
+      EKFCorrectCovariance(&EKF2);
 
       SERVO_MoveToAngle(1, 0);
       SERVO_MoveToAngle(2, 0);

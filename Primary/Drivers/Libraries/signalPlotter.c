@@ -170,5 +170,11 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(17, "euler phi");
   signalPlotter_setSignalName(18, "euler theta");
   signalPlotter_setSignalName(19, "euler psi");
+  signalPlotter_setSignalName(20, "gyro x");
+  signalPlotter_setSignalName(21, "gyro y");
+  signalPlotter_setSignalName(22, "gyro z");
+  signalPlotter_setSignalName(23, "gyro x bias");
+  signalPlotter_setSignalName(24, "gyro y bias");
+  signalPlotter_setSignalName(25, "gyro z bias");
   #endif
 }
