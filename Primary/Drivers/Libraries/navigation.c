@@ -289,23 +289,24 @@ void EKFInit(kalman_data_t *Kalman, kalman_instance_t kalman_type, uint8_t x_vec
         arm_mat_set_diag_f32(Kalman->F, 3, 0, 3, dt);
         arm_mat_fill_diag_f32(Kalman->H, 0, 0, 1.);
 
-        arm_mat_set_diag_f32(Kalman->P, 0, 0, 3, 1.);  // initial guess for velocity variance
+        arm_mat_set_diag_f32(Kalman->P, 0, 0, 3, 1.);           // initial guess for velocity variance
         arm_mat_set_diag_f32(Kalman->P, 3, 3, 3, 10.);
-        arm_mat_set_diag_f32(Kalman->P, 6, 6, 3, 0.5); // initial guess for accelerometer offset variance
+        arm_mat_set_diag_f32(Kalman->P, 6, 6, 3, 0.5);          // initial guess for accelerometer offset variance
 
-        arm_mat_set_diag_f32(Kalman->Q, 0, 0, 3, 1e-3f*dt*dt); // variance of accelerometer data   (noise)
+        arm_mat_set_diag_f32(Kalman->Q, 0, 0, 3, 1e-3f*dt*dt);  // variance of accelerometer data   (noise)
         arm_mat_set_diag_f32(Kalman->Q, 3, 3, 3, 1e-3f*0.25*dt*dt*dt*dt);
-        arm_mat_set_diag_f32(Kalman->Q, 6, 6, 3, 1e-12f); // variance of accelerometer offset (drift)
+        arm_mat_set_diag_f32(Kalman->Q, 6, 6, 3, 1e-12f);       // variance of accelerometer offset (drift)
 
     } else if(kalman_type == EKF3_type) {
         // initialize EKF3 matrices
         // configure Quaternion EKF matrices
         arm_mat_fill_diag_f32(Kalman->F, 0, 0, 1.);
 
-        arm_mat_fill_diag_f32(Kalman->P, 0, 0, 1.);
+        arm_mat_set_diag_f32(Kalman->P, 0, 0, 4, 1.);       // first guess of orientation
+        arm_mat_set_diag_f32(Kalman->P, 4, 4, 3, 1e-3);     // first guess of gyro bias
 
-        arm_mat_set_diag_f32(Kalman->R, 0, 0, 3, 0.5*0.5);    // accelerometer variance (noise)
-        arm_mat_set_diag_f32(Kalman->R, 3, 3, 3, 0.8*0.8);    // magnetometer variance (noise)
+        arm_mat_set_diag_f32(Kalman->R, 0, 0, 3, 0.5*0.5);  // accelerometer variance (noise)
+        arm_mat_set_diag_f32(Kalman->R, 3, 3, 3, 0.8*0.8);  // magnetometer variance (noise)
 
     }
 }
@@ -315,12 +316,12 @@ void EKFStateVInit(kalman_data_t *Kalman) {
         // calculate initial quaternion from accelerometer and magnetometer readings
         float *q = Kalman->x;
 
-        float DCMbi_data[9];
+        float DCMbi_data[9] = {0};
         arm_matrix_instance_f32 DCMbi = {3, 3, DCMbi_data};
 
         RotationMatrixOrientationFix(&Kalman->z[0], &Kalman->z[3], &DCMbi, DCM_bi_WorldToBody);
         QuaternionFromRotationMatrix(&DCMbi, q); // does this function want body to world????
-        arm_quaternion_conjugate_f32(q);
+        arm_quaternion_conjugate_f32(q);         // quick fix
     }
 }
 
@@ -339,9 +340,9 @@ void EKFPredictStateV(kalman_data_t *Kalman) {
 
         float omega[4];
         omega[0] = 0;
-        omega[1] = Kalman->u[0];
-        omega[2] = Kalman->u[1];
-        omega[3] = Kalman->u[2];
+        omega[1] = Kalman->u[0] - Kalman->x[4];
+        omega[2] = Kalman->u[1] - Kalman->x[5];
+        omega[3] = Kalman->u[2] - Kalman->x[6];
 
         float q_omega[4];
         arm_quaternion_product_f32(q, omega, q_omega);
@@ -360,6 +361,8 @@ void EKFPredictCovariance(kalman_data_t *Kalman) {
     if(Kalman->type == EKF3_type) {
         float *q = Kalman->x;
 
+        float M1_data[4*4];
+        arm_matrix_instance_f32 M1 = {4, 4, M1_data};
         // define W and W'
         float W_mat_data[4*3] = {-q[1], -q[2], -q[3],
                                   q[0], -q[3],  q[2],
@@ -369,10 +372,11 @@ void EKFPredictCovariance(kalman_data_t *Kalman) {
         float W_trans_data[3*4];
         arm_matrix_instance_f32 W_trans = {3, 4, W_trans_data};
         arm_mat_trans_f32(&W_mat, &W_trans);
-
+        
         // calculate Process Noise Covariance Matrix Q = gyro_var^2 * W * W'
-        arm_mat_mult_f32(&W_mat, &W_trans, Kalman->Q);
-        arm_mat_scale_f32(Kalman->Q, 0.25f*Kalman->dt*Kalman->dt*GYRO_VAR, Kalman->Q);
+        arm_mat_mult_f32(&W_mat, &W_trans, &M1); // 4x4
+        arm_mat_insert_mult_f32(&M1, Kalman->Q, 0, 0, 0.25f*Kalman->dt*Kalman->dt*GYRO_VAR);
+        arm_mat_set_diag_f32(Kalman->Q, 4, 4, 3, BIAS_VAR);
     }
 
     float M1_data[Kalman->x_size*Kalman->x_size];
@@ -487,7 +491,14 @@ void EKFGetStateTransitionJacobian(kalman_data_t *Kalman) {
     } else if(Kalman->type == EKF2_type) {
 
     } else if(Kalman->type == EKF3_type) {
-        float *gyro_vec = Kalman->u;
+        float *q = Kalman->x;
+
+        float gyro_vec[3];
+        float gyro_bias[3];
+
+        arm_vec3_copy_f32(Kalman->u, gyro_vec);
+        arm_vec3_copy_f32(&Kalman->x[4], gyro_bias);
+        arm_vec3_sub_f32(gyro_vec, gyro_bias, gyro_vec);
 
         arm_mat_set_entry_f32(Kalman->F, 0, 1, -0.5f*Kalman->dt*gyro_vec[0]);
         arm_mat_set_entry_f32(Kalman->F, 0, 2, -0.5f*Kalman->dt*gyro_vec[1]);
@@ -501,7 +512,18 @@ void EKFGetStateTransitionJacobian(kalman_data_t *Kalman) {
         arm_mat_set_entry_f32(Kalman->F, 3, 0,  0.5f*Kalman->dt*gyro_vec[2]);
         arm_mat_set_entry_f32(Kalman->F, 3, 1,  0.5f*Kalman->dt*gyro_vec[1]);
         arm_mat_set_entry_f32(Kalman->F, 3, 2, -0.5f*Kalman->dt*gyro_vec[0]);
-        
+        arm_mat_set_entry_f32(Kalman->F, 0, 4,  0.5f*Kalman->dt*q[1]);
+        arm_mat_set_entry_f32(Kalman->F, 0, 5,  0.5f*Kalman->dt*q[2]);
+        arm_mat_set_entry_f32(Kalman->F, 0, 6,  0.5f*Kalman->dt*q[3]);
+        arm_mat_set_entry_f32(Kalman->F, 1, 4, -0.5f*Kalman->dt*q[0]);
+        arm_mat_set_entry_f32(Kalman->F, 1, 5,  0.5f*Kalman->dt*q[3]);
+        arm_mat_set_entry_f32(Kalman->F, 1, 6, -0.5f*Kalman->dt*q[2]);
+        arm_mat_set_entry_f32(Kalman->F, 2, 4, -0.5f*Kalman->dt*q[3]);
+        arm_mat_set_entry_f32(Kalman->F, 2, 5, -0.5f*Kalman->dt*q[0]);
+        arm_mat_set_entry_f32(Kalman->F, 2, 6,  0.5f*Kalman->dt*q[1]);
+        arm_mat_set_entry_f32(Kalman->F, 3, 4,  0.5f*Kalman->dt*q[2]);
+        arm_mat_set_entry_f32(Kalman->F, 3, 5, -0.5f*Kalman->dt*q[1]);
+        arm_mat_set_entry_f32(Kalman->F, 3, 6, -0.5f*Kalman->dt*q[0]);
     }
 }
 

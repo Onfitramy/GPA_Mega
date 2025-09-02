@@ -59,7 +59,7 @@ void arm_mat_set_diag_f32(arm_matrix_instance_f32 *mat, int row_00, int col_00, 
   }
 }
 
-void arm_mat_insert_32(const arm_matrix_instance_f32 *src, arm_matrix_instance_f32 *dst, int row_00, int col_00) {
+void arm_mat_insert_f32(const arm_matrix_instance_f32 *src, arm_matrix_instance_f32 *dst, int row_00, int col_00) {
   for(int i = 0; i < src->numRows; i++) {
     for(int j = 0; j < src->numCols; j++) {
       arm_mat_set_entry_f32(dst, i+row_00, j+col_00, arm_mat_get_entry_f32(src, i, j));
@@ -67,7 +67,7 @@ void arm_mat_insert_32(const arm_matrix_instance_f32 *src, arm_matrix_instance_f
   }
 }
 
-void arm_mat_insert_mult_32(const arm_matrix_instance_f32 *src, arm_matrix_instance_f32 *dst, int row_00, int col_00, float factor) {
+void arm_mat_insert_mult_f32(const arm_matrix_instance_f32 *src, arm_matrix_instance_f32 *dst, int row_00, int col_00, float factor) {
   for(int i = 0; i < src->numRows; i++) {
     for(int j = 0; j < src->numCols; j++) {
       arm_mat_set_entry_f32(dst, i+row_00, j+col_00, factor * arm_mat_get_entry_f32(src, i, j));

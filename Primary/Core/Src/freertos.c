@@ -185,28 +185,25 @@ float z3[z_size3] = {0};
 float h3[z_size3] = {0};
 float v3[z_size3] = {0}; // innovation
 
-float F3_data[x_size3*x_size3] = {0}; // 4x4
+float F3_data[x_size3*x_size3] = {0}; // 7x7
 arm_matrix_instance_f32 F3 = {x_size3, x_size3, F3_data};
-float Q3_data[x_size3*x_size3] = {0}; // 4x4
+float Q3_data[x_size3*x_size3] = {0}; // 7x7
 arm_matrix_instance_f32 Q3 = {x_size3, x_size3, Q3_data};
-float P3_data[x_size3*x_size3] = {0}; // 4x4
+float P3_data[x_size3*x_size3] = {0}; // 7x7
 arm_matrix_instance_f32 P3 = {x_size3, x_size3, P3_data};
-float H3_data[z_size3*x_size3] = {0}; // 6x4
+float H3_data[z_size3*x_size3] = {0}; // 6x7
 arm_matrix_instance_f32 H3 = {z_size3, x_size3, H3_data};
 float R3_data[z_size3*z_size3] = {0}; // 6x6
 arm_matrix_instance_f32 R3 = {z_size3, z_size3, R3_data};
 float S3_data[z_size3*z_size3] = {0}; // 6x6
 arm_matrix_instance_f32 S3 = {z_size3, z_size3, S3_data};
-float K3_data[x_size3*z_size3];       // 4x6
+float K3_data[x_size3*z_size3];       // 7x6
 arm_matrix_instance_f32 K3 = {x_size3, z_size3, K3_data};
 
 float M_rot_q_data[9];
 arm_matrix_instance_f32 M_rot_q = {3, 3, M_rot_q_data};
 
 float euler_from_q[3] = {0};
-
-float g_predicted[3] = {0};
-float m_predicted[3] = {0};
 
 // NRF24L01+ packages
 #pragma pack(push, 1)
@@ -408,11 +405,8 @@ void StartDefaultTask(void *argument)
   radioSetMode(RADIO_MODE_TRANSCEIVER);
 
   // Quaternion EKF initialization
-  //EKFInitQuaternion(&EKF3, imu1_data.accel, mag_data.field);
-  x3[0] = 1;
-  x3[1] = 0;
-  x3[2] = 0;
-  x3[3] = 0;
+  arm_vecN_concatenate_f32(3, imu1_data.accel, 3, mag_data.field, z3); // put measurements into z vector
+  EKFStateVInit(&EKF3);
 
   /* Infinite loop */
   for(;;) {
@@ -446,8 +440,8 @@ void StartDefaultTask(void *argument)
     // KALMAN FILTER, ORIENTATION
     // initialize A and B matrix
     DeulerMatrixFromEuler(phi, theta, &Mdeuler);
-    arm_mat_insert_mult_32(&Mdeuler, &F1, 0, 3, -dt);
-    arm_mat_insert_mult_32(&Mdeuler, &B1, 0, 0, dt);
+    arm_mat_insert_mult_f32(&Mdeuler, &F1, 0, 3, -dt);
+    arm_mat_insert_mult_f32(&Mdeuler, &B1, 0, 0, dt);
 
     // predicting state vector x
     EKFPredictStateV(&EKF1);
@@ -480,10 +474,10 @@ void StartDefaultTask(void *argument)
     // KALMAN FILTER, POSITION
     if(gps_data.gpsFix == 3) {
       // update A and B with rotation matrix to keep accelerometer bias aligned to body axis
-      arm_mat_insert_mult_32(&M_rot_inv, &F2, 0, 6, -dt);
-      arm_mat_insert_mult_32(&M_rot_inv, &F2, 3, 6, -0.5*dt*dt);
-      arm_mat_insert_mult_32(&M_rot_inv, &B2, 0, 0, dt);
-      arm_mat_insert_mult_32(&M_rot_inv, &B2, 3, 0, 0.5*dt*dt);
+      arm_mat_insert_mult_f32(&M_rot_inv, &F2, 0, 6, -dt);
+      arm_mat_insert_mult_f32(&M_rot_inv, &F2, 3, 6, -0.5*dt*dt);
+      arm_mat_insert_mult_f32(&M_rot_inv, &B2, 0, 0, dt);
+      arm_mat_insert_mult_f32(&M_rot_inv, &B2, 3, 0, 0.5*dt*dt);
 
       EKFPredictStateV(&EKF2);
       EKFPredictCovariance(&EKF2);
@@ -618,9 +612,12 @@ void Start100HzTask(void *argument) {
     signalPlotter_sendData(20, imu1_data.gyro[0]);
     signalPlotter_sendData(21, imu1_data.gyro[1]);
     signalPlotter_sendData(22, imu1_data.gyro[2]);
-    //signalPlotter_sendData(23, x3[4]);
-    //signalPlotter_sendData(24, x3[5]);
-    //signalPlotter_sendData(25, x3[6]);
+    signalPlotter_sendData(23, x3[4]);
+    signalPlotter_sendData(24, x3[5]);
+    signalPlotter_sendData(25, x3[6]);
+    signalPlotter_sendData(26, x1[3]);
+    signalPlotter_sendData(27, x1[4]);
+    signalPlotter_sendData(28, x1[5]);
     #endif
 
     signalPlotter_executeTransmission(HAL_GetTick());

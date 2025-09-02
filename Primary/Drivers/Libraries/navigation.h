@@ -8,6 +8,7 @@
 #define magnetic_dip_angle 64.0f
 
 #define GYRO_VAR 0.3*0.3
+#define BIAS_VAR 1e-12
 
 #define x_size1 6
 #define z_size1 3
@@ -17,7 +18,7 @@
 #define z_size2 6
 #define u_size2 3
 
-#define x_size3 4
+#define x_size3 7
 #define z_size3 6
 #define u_size3 3 // NO B MATRIX THOUGH
 

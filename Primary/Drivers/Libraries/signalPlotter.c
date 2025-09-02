@@ -176,5 +176,8 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(23, "gyro x bias");
   signalPlotter_setSignalName(24, "gyro y bias");
   signalPlotter_setSignalName(25, "gyro z bias");
+  signalPlotter_setSignalName(26, "egyro x bias");
+  signalPlotter_setSignalName(27, "egyro y bias");
+  signalPlotter_setSignalName(28, "egyro z bias");
   #endif
 }
