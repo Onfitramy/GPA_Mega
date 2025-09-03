@@ -37,6 +37,7 @@ target_include_directories(stm32cubemx INTERFACE
     ../../Drivers/Components/PYRO
     ../../Drivers/Components/Stepper
     ../../Drivers/Components/NRF
+    ../../Drivers/Components/XBee
     ../../Drivers/CMSIS/DSP_DRIVERS/Include
     ../../Drivers/CMSIS/DSP_DRIVERS/Bin
     ../../Drivers/Libraries
@@ -119,6 +120,7 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/Components/PYRO/Pyro.c
     ../../Drivers/Components/Stepper/Stepper.c
     ../../Drivers/Components/NRF/NRF24L01P.c
+    ../../Drivers/Components/XBee/xBee.c
     ../../Drivers/CMSIS/DSP_DRIVERS/Lib/armMathAddon.c
 
     ../../Drivers/Libraries/signalPlotter.c

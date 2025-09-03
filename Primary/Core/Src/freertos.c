@@ -41,6 +41,7 @@
 #include "SERVO.h"
 #include "NRF24L01P.h"
 #include "Stepper.h"
+#include "xBee.h"
 
 #include "signalPlotter.h"
 #include "calibration_data.h"
@@ -660,6 +661,8 @@ void Start10HzTask(void *argument) {
   /* Infinite loop */
   for(;;) {
     SelfTest();         // Run self-test on startup
+
+    XBee_TestDeviceIdentifier();
 
     GPS_ReadSensorData(&gps_data);
     if(primary_status > 0) {
