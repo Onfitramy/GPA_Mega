@@ -223,6 +223,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
   if (GPIO_Pin == F4_INT_Pin) {
     //Receive Data from Secondary
     InterBoardCom_ActivateReceive();
+    HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
   }
 }
 

@@ -95,9 +95,11 @@ InterBoardPacket_t InterBoardCom_ReceivePacket() {
 void InterBoardCom_ActivateReceive(void) {
     // Start receiving the packet via SPI
     //HAL_SPI_DMAStop(&hspi1);
+    uint8_t dummyTx[sizeof(InterBoardPacket_t)] = {0};
     //__HAL_DMA_CLEAR_FLAG(&hdma_spi1_rx, DMA_FLAG_TEIF0_4 | DMA_FLAG_FEIF0_4 | DMA_FLAG_DMEIF0_4 | DMA_FLAG_HTIF0_4 | DMA_FLAG_TCIF0_4);
     HAL_StatusTypeDef status = HAL_SPI_Receive_DMA(&hspi1, (uint8_t *)&receiveBuffer, sizeof(InterBoardPacket_t));
     if (status != HAL_OK) {
+        status = HAL_ERROR;
         // Handle error
     }
 }

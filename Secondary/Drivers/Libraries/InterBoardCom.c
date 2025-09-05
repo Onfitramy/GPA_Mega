@@ -51,12 +51,22 @@ void InterBoardCom_FillData(InterBoardPacket_t *packet, DataPacket_t *data_packe
     memcpy(packet->Data, data_packet, 32);
 }
 
+static uint8_t rx_dummy[sizeof(InterBoardPacket_t)];
+static uint8_t tx_dma_buffer[sizeof(InterBoardPacket_t)];
 void InterBoardCom_SendPacket(InterBoardPacket_t packet) {
     //First interrupt main to signal incomming packet
-    //HAL_SPI_DMAStop(&hspi1);
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
-    //HAL_StatusTypeDef status = HAL_SPI_Transmit_DMA(&hspi1, (uint8_t *)&packet, sizeof(InterBoardPacket_t));
 
+    HAL_SPI_DMAStop(&hspi1);
+    memcpy(tx_dma_buffer, (uint8_t *)&packet, sizeof(InterBoardPacket_t));
+    HAL_StatusTypeDef status = HAL_SPI_TransmitReceive_DMA(&hspi1, tx_dma_buffer, rx_dummy, sizeof(InterBoardPacket_t));
+    if (status != HAL_OK) {
+        // Transmission Error
+        uint32_t err = HAL_SPI_GetError(&hspi1);
+        status = HAL_ERROR;
+        // Handle error accordingly (e.g., log it, retry, etc.)
+    }
+    HAL_Delay(1); // Short delay to ensure the slave has time to process the CS line
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
     //InterBoardCom_ReactivateDMAReceive();
     //Called to send a packet over SPI
