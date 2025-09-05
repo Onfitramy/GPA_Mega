@@ -5,7 +5,7 @@
 #include "stdbool.h"
 #include "armMathAddon.h"
 
-#define magnetic_dip_angle 64.0f
+#define magnetic_dip_angle 66.0f
 
 #define GYRO_VAR 0.3*0.3
 #define BIAS_VAR 1e-12

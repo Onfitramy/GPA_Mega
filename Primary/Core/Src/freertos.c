@@ -509,14 +509,6 @@ void StartDefaultTask(void *argument)
     EKFPredictCovariance(&EKF3);
     EKFPredictMeasurement(&EKF3);
 
-    // correction step
-    arm_vecN_concatenate_f32(3, imu1_data.accel, 3, mag_data.field, z3); // put measurements into z vector
-    EKFGetInnovation(&EKF3);
-    EKFGetObservationJacobian(&EKF3);
-    EKFUpdateKalmanGain(&EKF3);
-    EKFCorrectStateV(&EKF3);
-    EKFCorrectCovariance(&EKF3);
-
     // Conversion to Euler
     RotationMatrixFromQuaternion(x3, &M_rot_q, DCM_bi_WorldToBody);
     EulerFromRotationMatrix(&M_rot_q, euler_from_q);
@@ -632,7 +624,7 @@ void Start100HzTask(void *argument) {
     theta_fix = z1[1];
     psi_fix = z1[2];
 
-    // Kalman Filter correction step
+    // Kalman Filter eulercorrection step
     EKFUpdateKalmanGain(&EKF1);
     EKFPredictMeasurement(&EKF1);
     EKFGetInnovation(&EKF1);
@@ -645,6 +637,15 @@ void Start100HzTask(void *argument) {
     phi = x1[0];
     theta = x1[1];
     psi = x1[2];
+
+    // KALMAN FILTER, QUATERNION
+    // correction step
+    arm_vecN_concatenate_f32(3, imu1_data.accel, 3, mag_data.field, z3); // put measurements into z vector
+    EKFGetInnovation(&EKF3);
+    EKFGetObservationJacobian(&EKF3);
+    EKFUpdateKalmanGain(&EKF3);
+    EKFCorrectStateV(&EKF3);
+    EKFCorrectCovariance(&EKF3);
     
     ShowStatus(RGB_PRIMARY, primary_status, 1, 100);
 
