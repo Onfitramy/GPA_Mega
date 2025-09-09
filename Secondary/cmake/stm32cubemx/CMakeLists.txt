@@ -25,6 +25,7 @@ target_include_directories(stm32cubemx INTERFACE
     ../../Drivers/Components/Buzzer
     ../../Drivers/Components/LED
     ../../Drivers/Components/FLASH
+    ../../Drivers/Components/XBee
     ../../Drivers/Libraries
 )
 
@@ -77,6 +78,7 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/Components/LED/ws2812.c
     ../../Drivers/Components/Buzzer/Buzzer.c
     ../../Drivers/Components/FLASH/W25Q1.c
+    ../../Drivers/Components/XBee/xBee.c
     ../../Drivers/Libraries/InterBoardCom.c
     ../../Drivers/Libraries/VoltageReader.c
     ../../Drivers/Libraries/Status.c

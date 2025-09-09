@@ -41,7 +41,6 @@
 #include "SERVO.h"
 #include "NRF24L01P.h"
 #include "Stepper.h"
-#include "xBee.h"
 
 #include "signalPlotter.h"
 #include "calibration_data.h"
@@ -655,7 +654,6 @@ void Start100HzTask(void *argument) {
   /* USER CODE END Start10HzTask */
 }
 
-uint8_t XBee_receive[100] = {0};
 void Start10HzTask(void *argument) {
   /* USER CODE BEGIN Start10HzTask */
   TickType_t xLastWakeTime = xTaskGetTickCount();
@@ -663,12 +661,6 @@ void Start10HzTask(void *argument) {
   /* Infinite loop */
   for(;;) {
     SelfTest();         // Run self-test on startup
-
-    //uint8_t broadcast[10] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-    //XBee_Transmit(broadcast, sizeof(broadcast), 0x0013a200426b848b);
-    //XBee_GetTemperature();
-
-    XBee_Receive(XBee_receive);
 
     GPS_ReadSensorData(&gps_data);
     if(primary_status > 0) {

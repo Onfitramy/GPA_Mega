@@ -29,18 +29,20 @@
 
 #include "ws2812.h"
 #include "W25Q1.h"
+#include "xBee.h"
 #include "VoltageReader.h"
 #include "InterBoardCom.h"
 #include "status.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+extern UART_HandleTypeDef huart1;
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 QueueHandle_t InterBoardPacketQueue;
+QueueHandle_t XBeeDataQueue;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -71,10 +73,18 @@ const osThreadAttr_t InterBoardCom_attributes = {
   .priority = (osPriority_t) osPriorityHigh,
 };
 
+osThreadId_t InterruptTaskHandle;
+const osThreadAttr_t InterruptTask_attributes = {
+  .name = "InterruptTask",
+  .stack_size = 128 * 24,
+  .priority = (osPriority_t) osPriorityRealtime,
+};
+
 extern double TemperatureAMS;
 extern double voltage5V0bus;
 extern double voltageBATbus;
 
+uint8_t XBee_Temp;
 int8_t secondary_status = 0;
 
 /* USER CODE END Variables */
@@ -86,6 +96,7 @@ int8_t secondary_status = 0;
 
 void StartDefaultTask(void *argument);
 void StartInterBoardComTask(void *argument);
+void StartInterruptTask(void *argument);
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
@@ -107,12 +118,14 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_QUEUES */
   InterBoardPacketQueue = xQueueCreate(64, sizeof(InterBoardPacket_t)); // Queue for 64 InterBoardPacket_t packets
+  XBeeDataQueue = xQueueCreate(4, sizeof(xbee_frame_t)); // Queue for 4 XBee data packets
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
   InterBoardComHandle = osThreadNew(StartInterBoardComTask, NULL, &InterBoardCom_attributes);
+  InterruptTaskHandle = osThreadNew(StartInterruptTask, NULL, &InterruptTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -136,7 +149,9 @@ void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
   TickType_t xLastWakeTime = xTaskGetTickCount();
-  const TickType_t xFrequency = 10; //100 Hz
+  const TickType_t xFrequency = 100; //100 Hz
+
+  uint8_t transmitPayload[32] = {1, 2, 3, 4, 5};
 
   /* Infinite loop */
   for(;;) {
@@ -144,7 +159,9 @@ void StartDefaultTask(void *argument)
     voltage5V0bus = readVoltage(1) * (10 + 10) / 10;
     voltageBATbus = readVoltage(2) * (10 + 2.2) / 2.2;
 
-    ShowStatus(RGB_SECONDARY, secondary_status, 1, 100);
+    ShowStatus(RGB_SECONDARY, secondary_status, 1, 10);
+
+    XBee_Transmit(transmitPayload, 5, 0x00);
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }
@@ -166,6 +183,51 @@ void StartInterBoardComTask(void *argument)
     }
   }
   /* USER CODE END StartInterBoardComTask */
+}
+
+void StartInterruptTask(void *argument)
+{
+  /* USER CODE BEGIN StartInterruptTask */
+  /* Infinite loop */
+  for(;;) {
+    xbee_frame_t packet;
+    if (xQueueReceive(XBeeDataQueue, &packet, portMAX_DELAY) == pdPASS) {
+      if (packet.frame_data[0] == 0x88) { // Local AT Command Response
+
+        //Temperature Response
+        if (packet.frame_data[2] == 'T' && packet.frame_data[3] == 'P') { // TP command
+          // Extract temperature from the response
+          if (packet.frame_data[4] == 0x00) { // Check if command was successful
+            uint16_t rawTemp = packet.frame_data[6];
+            XBee_Temp = rawTemp;
+          } else {
+            // Handle error
+            XBee_Temp = 255; // Invalid temperature
+          }
+        
+        //Device Identifier Response
+        } else if (packet.frame_data[2] == 'D' && packet.frame_data[3] == 'D') { // DD command
+          // Device Identifier Response
+          if (packet.frame_data[4] == 0x00) { // Check if command was successful
+            // Process device identifier if needed
+          } else {
+            // Handle error
+          }
+        } 
+      }  else if (packet.frame_data[0] == 0x90) { // RX Packet
+          // Process received RF data
+          uint8_t* rfData = &packet.frame_data[12]; // RF data starts at byte 12
+          uint16_t rfDataLength = (packet.frame_length[0] << 8 | packet.frame_length[1]) - 12; // Length of RF data
+          // Handle rfData as needed
+      } else if (packet.frame_data[0] == 0x8B) { // Transmit Status
+          // Process transmit status
+          uint8_t frameID = packet.frame_data[1];
+          uint8_t transmitStatus = packet.frame_data[5];
+          // Handle transmit status as needed
+      }
+    }
+  }
+  /* USER CODE END StartInterruptTask */
 }
 
 /* USER CODE END Application */

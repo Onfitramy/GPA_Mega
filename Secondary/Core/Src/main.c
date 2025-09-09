@@ -65,6 +65,7 @@ UART_HandleTypeDef huart1;
 PCD_HandleTypeDef hpcd_USB_OTG_HS;
 
 extern QueueHandle_t InterBoardPacketQueue; // Queue for InterBoardPacket_t packets
+extern QueueHandle_t XBeeDataQueue; // Queue for XBee data packets
 
 /* USER CODE BEGIN PV */
 
@@ -94,7 +95,7 @@ static void MX_I2C2_Init(void);
 double TemperatureAMS;
 double voltage5V0bus;
 double voltageBATbus;
-uint8_t RX_Buffer [1] ;
+uint8_t UART_RX_Buffer [64]; // Buffer for UART receive interrupt
 /* USER CODE END 0 */
 
 /**
@@ -140,6 +141,8 @@ int main(void)
   /* USER CODE BEGIN 2 */
   uint32_t flashid = W25Q1_ReadID(); //Check if the FLASH works, flashid = 0xEF4017
 
+  HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 1); // Start UART receive interrupt
+
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -181,6 +184,37 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi){
     xQueueSendFromISR(InterBoardPacketQueue, &packet, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     //Pass the received packet to a que to be processed by the task
+  }
+}
+
+uint8_t UART_PacketProgress = 0; // Packet reception in progress flag (0 = No Packet, 1 = Receiving Length, 2 = Receiving Data)
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
+  if(huart->Instance == USART1) {
+    // Check if data is 0x7e (start byte)
+    if (UART_RX_Buffer[0] == 0x7E && UART_PacketProgress == 0) {
+      // If start byte, read the next 2 bytes to get the length
+      UART_PacketProgress = 1;
+      HAL_UART_Receive_IT(&huart1, &UART_RX_Buffer[1], 2);
+
+    }else if (UART_PacketProgress == 1) {
+      // If receiving length, calculate total packet length and read the rest of the packet
+      uint16_t length = (UART_RX_Buffer[1] << 8) | UART_RX_Buffer[2];
+      UART_PacketProgress = 2;
+      HAL_UART_Receive_IT(&huart1, &UART_RX_Buffer[3], length + 1); // +1 for checksum
+
+    }else if (UART_PacketProgress == 2) {
+      UART_PacketProgress = 0;
+      // Process the complete packet in UART_RX_Buffer
+      BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+      xQueueSendFromISR(XBeeDataQueue, &UART_RX_Buffer, &xHigherPriorityTaskWoken);
+      portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+
+      HAL_UART_Receive_IT(&huart1, &UART_RX_Buffer[0], 1);
+      UART_PacketProgress = 0;
+    }else{
+      HAL_UART_Receive_IT(&huart1, &UART_RX_Buffer[0], 1);
+      UART_PacketProgress = 0;
+    }
   }
 }
 
@@ -611,7 +645,7 @@ static void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 115200;
+  huart1.Init.BaudRate = 9600;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
