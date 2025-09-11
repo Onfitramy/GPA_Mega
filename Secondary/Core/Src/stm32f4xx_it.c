@@ -94,8 +94,6 @@ void HardFault_Handler(void)
   while (1)
   {
     /* USER CODE BEGIN W1_HardFault_IRQn 0 */
-    volatile uint32_t cfsr = SCB->CFSR;   // look at UFSR.UNALIGNED (bit 9)
-    volatile uint32_t bfar = SCB->BFAR;   // often points near frame->dest_addr
     /* USER CODE END W1_HardFault_IRQn 0 */
   }
 }

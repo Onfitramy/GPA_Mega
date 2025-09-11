@@ -1,5 +1,4 @@
 #include "xBee.h"
-#include <string.h>
 
 #define XBEE_CS_GPIO_PIN GPIO_PIN_4
 #define XBEE_CS_GPIO_PORT GPIOD
@@ -16,50 +15,45 @@ extern UART_HandleTypeDef huart1;
  * @param frame_payload Pointer to the payload data to be transmitted.
  * @param payload_length Length of the payload data in bytes.
  */
-void constructTransmitFrame(xbee_tx_req_t* frame, uint8_t frame_id, uint8_t* dest_addr, uint8_t* frame_payload, uint16_t payload_length)
+void constructTransmitFrame(xbee_tx_req_t* frame, uint8_t frame_id, uint64_t dest_addr, uint8_t* frame_payload, uint16_t payload_length)
 {
+    if (dest_addr == 0) {
+        dest_addr = 0x000000000000FFFF; // Broadcast address
+    }
 
     frame->start_delimiter = 0x7E;
-    uint16_t length = XBEE_TX_HDR_SIZE + payload_length;
-    frame->frame_length[0] = (length >> 8) & 0xFF; // High byte
-    frame->frame_length[1] = length & 0xFF; // Low byte
-    frame->frame_type = 0x10; // Transmit Request
-
+    frame->frame_length[0] = (payload_length + 14) >> 8; // High byte
+    frame->frame_length[1] = (payload_length + 14) & 0xFF; // Low byte
+    frame->frame_type = 0x10; // AT Command frame
     frame->frame_id = frame_id;
-
-    // src: const uint8_t src[8]  (your destAddr)
-    // dst: the on-wire field inside your packed struct
-    // note: This is the biggest bullshit I have ever seen in my life. Deepending on optimization settings, what the content of the dest_addr array is, and probably other factors,
-    // the compiler may optimize the following assignements into a series of half-word or word stores, which due to the unaligned address of the dest_addr field, will sometimes cause a hardfault on the STM32.
-    // Unluckely this is the case exactly for the Broadcast address 0x000000000000FFFF which is used to do a general broadcast. I want to kill the person who thought this optimisation was a good idea. Look up UFSR.UNALIGNED in the ARM documentation and content-dependent codegen causing a misaligned half/word/doubleword store
-    // I have looked quite a bit, but no solution yet. If it hardfaults, its probably this fault, if it works, its probably luck.
-    uint8_t *dst = &frame->dest_addr[0];
-
-    // prevent combining into half/word stores:
-    volatile uint8_t *vdst = (volatile uint8_t *)dst;
-
-    vdst[0] = dest_addr[0];
-    vdst[1] = dest_addr[1];
-    vdst[2] = dest_addr[2];
-    vdst[3] = dest_addr[3];
-    vdst[4] = dest_addr[4];
-    vdst[5] = dest_addr[5];
-    vdst[6] = dest_addr[6];
-    vdst[7] = dest_addr[7];
-
-    frame->reserved[0] = 0xFF;
-    frame->reserved[1] = 0xFE;
+    frame->dest_addr = dest_addr;
+    frame->reserved_16 = 0xFFFE; // Reserved
     frame->broadcast_radius = 0x00; // Maximum hops
     frame->options = 0x00; // No special options
-    
-    memcpy(frame->rf_data, frame_payload, payload_length);
-
+    for (uint16_t i = 0; i < payload_length; i++) {
+        frame->rf_data[i] = frame_payload[i];
+    }
     // Calculate and append checksum
     uint64_t checksum = 0;
     // Add all bytes of the packet, except the start delimiter 0x7E and the length (the second and third bytes).
-    const uint8_t* data = &frame->frame_type;
-    for (uint16_t i = 0; i < length; i++) {
-        checksum += data[i];
+    checksum += frame->frame_type;
+    checksum += frame->frame_id;
+    // Add destination address (8 bytes)
+    checksum += (frame->dest_addr >> 56) & 0xFF;
+    checksum += (frame->dest_addr >> 48) & 0xFF;
+    checksum += (frame->dest_addr >> 40) & 0xFF;
+    checksum += (frame->dest_addr >> 32) & 0xFF;
+    checksum += (frame->dest_addr >> 24) & 0xFF;
+    checksum += (frame->dest_addr >> 16) & 0xFF;
+    checksum += (frame->dest_addr >> 8) & 0xFF;
+    checksum += (frame->dest_addr) & 0xFF;
+    // Add reserved_16 (2 bytes)
+    checksum += (frame->reserved_16 >> 8) & 0xFF;
+    checksum += (frame->reserved_16) & 0xFF;
+    checksum += frame->broadcast_radius;
+    checksum += frame->options;
+    for (uint16_t i = 0; i < payload_length; i++) {
+        checksum += frame->rf_data[i];
     }
     //Keep only the lowest 8 bits from the result and subtract this from 0xFF.
     frame->checksum = 0xFF - (checksum & 0xFF);
@@ -151,7 +145,7 @@ void XBee_GetTemperature()
 }
 
 xbee_tx_req_t tx_req_frame;
-void XBee_Transmit(uint8_t* data, uint16_t length, uint8_t* destinationAddress)
+void XBee_Transmit(uint8_t* data, uint16_t length, uint64_t destinationAddress)
 {
     constructTransmitFrame(&tx_req_frame, 0x01, destinationAddress, data, length);
     sendAPIFrame((uint8_t*)&tx_req_frame, tx_req_frame.frame_length[0] << 8 | tx_req_frame.frame_length[1]);

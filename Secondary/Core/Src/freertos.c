@@ -152,7 +152,6 @@ void StartDefaultTask(void *argument)
   const TickType_t xFrequency = 100; //100 Hz
 
   uint8_t transmitPayload[32] = {1, 2, 3, 4, 5};
-  uint8_t destAddr[8] = {0x00, 0x13, 0xa2, 0x00, 0x42, 0x6e, 0x53, 0x0e}; // Board 1 receive address
 
   /* Infinite loop */
   for(;;) {
@@ -162,7 +161,7 @@ void StartDefaultTask(void *argument)
 
     ShowStatus(RGB_SECONDARY, secondary_status, 1, 10);
 
-    XBee_Transmit(transmitPayload, 5, destAddr);
+    XBee_Transmit(transmitPayload, 5, 0x00);
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }
@@ -192,7 +191,7 @@ void StartInterruptTask(void *argument)
   /* Infinite loop */
   for(;;) {
     xbee_frame_t packet;
-    if (xQueueReceive(XBeeDataQueue, (uint8_t*)&packet, portMAX_DELAY) == pdPASS) {
+    if (xQueueReceive(XBeeDataQueue, &packet, portMAX_DELAY) == pdPASS) {
       if (packet.frame_data[0] == 0x88) { // Local AT Command Response
 
         //Temperature Response

@@ -7,11 +7,10 @@ void XBee_TestDeviceIdentifier();
 void XBee_SetAPIMode(uint8_t mode);
 void XBee_GetTemperature();
 void XBee_Broadcast(uint8_t* data, uint16_t length);
-void XBee_Transmit(uint8_t* data, uint16_t length, uint8_t* destinationAddress);
+void XBee_Transmit(uint8_t* data, uint16_t length, uint64_t destinationAddress);
 void XBee_Receive(uint8_t* response_buffer);
 
 #define XBEE_MAX_FRAME_SIZE 64
-#define XBEE_TX_HDR_SIZE 14
 
 #pragma pack(push, 1)
 typedef struct {
@@ -29,8 +28,8 @@ typedef struct {
     uint8_t frame_length[2];
     uint8_t frame_type;
     uint8_t frame_id;
-    uint8_t dest_addr[8];
-    uint8_t reserved[2];
+    uint64_t dest_addr;
+    uint16_t reserved_16;
     uint8_t broadcast_radius;
     uint8_t options;
     uint8_t rf_data[XBEE_MAX_FRAME_SIZE - 13];
