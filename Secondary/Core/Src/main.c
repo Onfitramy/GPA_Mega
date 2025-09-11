@@ -206,7 +206,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
       UART_PacketProgress = 0;
       // Process the complete packet in UART_RX_Buffer
       BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-      xQueueSendFromISR(XBeeDataQueue, &UART_RX_Buffer, &xHigherPriorityTaskWoken);
+      xQueueSendFromISR(XBeeDataQueue, UART_RX_Buffer, &xHigherPriorityTaskWoken);
       portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 
       HAL_UART_Receive_IT(&huart1, &UART_RX_Buffer[0], 1);
