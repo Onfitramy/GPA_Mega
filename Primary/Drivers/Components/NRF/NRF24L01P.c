@@ -1,5 +1,6 @@
 #include "NRF24L01P.h"
 #include "main.h"
+#include <string.h>
 
 HAL_StatusTypeDef NRF_SPI_status;
 

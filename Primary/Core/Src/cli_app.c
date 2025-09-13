@@ -13,7 +13,7 @@
 #include "usbd_cdc_if.h"
 #include "ws2812.h"
 #include "LSM6DSR.h"
-#include "freeRTOS.h"
+#include "FreeRTOS.h"
 
 #define MAX_INPUT_LENGTH 50
 #define USING_VS_CODE_TERMINAL 0

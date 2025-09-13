@@ -8,6 +8,7 @@
 
 #include "SERVO.h"
 #include "SERVO_cfg.h"
+#include "tim.h"
 #include "main.h"
 
 /*Initiate a Servo defined by a 16bit number */

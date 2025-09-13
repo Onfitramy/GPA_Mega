@@ -150,7 +150,7 @@ int main(void)
   SERVO_MoveToAngle(1, 0);
   SERVO_MoveToAngle(2, 0);
 
-  Stepper_Init();
+  // Stepper_Init();
 
   int counter1, counter2, counter3;
 

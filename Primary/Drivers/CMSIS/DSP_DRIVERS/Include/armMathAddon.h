@@ -10,6 +10,7 @@ void arm_mat_copy_f32(const arm_matrix_instance_f32 *src, arm_matrix_instance_f3
 void arm_mat_vec_mult_f32(arm_matrix_instance_f32 *pSrcMat, float32_t *pVec, float32_t *pDst);
 void arm_mat_get_column_f32(const arm_matrix_instance_f32 *mat, int col, float32_t *vec);
 void arm_mat_set_column_f32(arm_matrix_instance_f32 *mat, int col, float32_t *vec);
+void arm_mat_set_row_f32(arm_matrix_instance_f32 *mat, int row, float32_t *vec);
 void arm_mat_fill_diag_f32(arm_matrix_instance_f32 *mat, int row_00, int col_00, float value);
 void arm_mat_set_diag_f32(arm_matrix_instance_f32 *mat, int row_00, int col_00, int num_entries, float value);
 void arm_mat_insert_f32(const arm_matrix_instance_f32 *src, arm_matrix_instance_f32 *dst, int row_00, int col_00);
