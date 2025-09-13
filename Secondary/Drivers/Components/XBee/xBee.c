@@ -18,7 +18,7 @@ extern UART_HandleTypeDef huart1;
 void constructTransmitFrame(xbee_tx_req_t* frame, uint8_t frame_id, uint64_t dest_addr, uint8_t* frame_payload, uint16_t payload_length)
 {
     if (dest_addr == 0) {
-        dest_addr = 0x000000000000FFFF; // Broadcast address
+        dest_addr = 0xFFFF000000000000; // Broadcast address
     }
 
     frame->start_delimiter = 0x7E;

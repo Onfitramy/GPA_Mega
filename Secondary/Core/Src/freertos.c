@@ -149,7 +149,7 @@ void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
   TickType_t xLastWakeTime = xTaskGetTickCount();
-  const TickType_t xFrequency = 100; //100 Hz
+  const TickType_t xFrequency = 10; //100 Hz
 
   uint8_t transmitPayload[32] = {1, 2, 3, 4, 5};
 
@@ -159,7 +159,7 @@ void StartDefaultTask(void *argument)
     voltage5V0bus = readVoltage(1) * (10 + 10) / 10;
     voltageBATbus = readVoltage(2) * (10 + 2.2) / 2.2;
 
-    ShowStatus(RGB_SECONDARY, secondary_status, 1, 10);
+    ShowStatus(RGB_SECONDARY, secondary_status, 1, 100);
 
     XBee_Transmit(transmitPayload, 5, 0x00);
 
@@ -185,13 +185,14 @@ void StartInterBoardComTask(void *argument)
   /* USER CODE END StartInterBoardComTask */
 }
 
+uint8_t transmitStatus;
 void StartInterruptTask(void *argument)
 {
   /* USER CODE BEGIN StartInterruptTask */
   /* Infinite loop */
   for(;;) {
     xbee_frame_t packet;
-    if (xQueueReceive(XBeeDataQueue, &packet, portMAX_DELAY) == pdPASS) {
+    if (xQueueReceive(XBeeDataQueue, (uint8_t*)&packet, portMAX_DELAY) == pdPASS) {
       if (packet.frame_data[0] == 0x88) { // Local AT Command Response
 
         //Temperature Response
@@ -222,7 +223,7 @@ void StartInterruptTask(void *argument)
       } else if (packet.frame_data[0] == 0x8B) { // Transmit Status
           // Process transmit status
           uint8_t frameID = packet.frame_data[1];
-          uint8_t transmitStatus = packet.frame_data[5];
+          transmitStatus = packet.frame_data[5];
           // Handle transmit status as needed
       }
     }
