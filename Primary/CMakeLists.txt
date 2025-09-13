@@ -62,7 +62,7 @@ target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
 
 set(DSP_LIB ${CMAKE_SOURCE_DIR}/Drivers/CMSIS/DSP_DRIVERS/libarm_cortexM7lfsp_math.a)
 
-include_directories(${DSP_LIB}/Include)
+include_directories(${CMAKE_SOURCE_DIR}/Drivers/CMSIS/DSP_DRIVERS/Include)
 
 # Add linked libraries
 target_link_libraries(${CMAKE_PROJECT_NAME}

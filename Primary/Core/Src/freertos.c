@@ -382,7 +382,7 @@ void StartDefaultTask(void *argument)
   EKFInit(&EKF3, EKF3_type, x_size3, z_size3, u_size3, dt, &F3, &H3, &K3, &P3, &Q3, &R3, &S3, NULL, x3, z3, h3, imu1_data.gyro, v3);
 
   // define output signal names
-  signalPlotter_init();
+  // signalPlotter_init();
 
   // starting point for KF
   while(IMU1_VerifyDataReady() & 0x03 != 0x03); // wait for IMU1 data

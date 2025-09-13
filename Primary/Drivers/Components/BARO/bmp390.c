@@ -1,4 +1,4 @@
-#include "BMP390.h"
+#include "bmp390.h"
 
 HAL_StatusTypeDef BMP_I2C_status;
 
