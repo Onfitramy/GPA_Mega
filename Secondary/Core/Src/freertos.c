@@ -186,6 +186,7 @@ void StartInterBoardComTask(void *argument)
 }
 
 uint8_t transmitStatus;
+uint8_t test = 0;
 void StartInterruptTask(void *argument)
 {
   /* USER CODE BEGIN StartInterruptTask */
@@ -219,6 +220,7 @@ void StartInterruptTask(void *argument)
           // Process received RF data
           uint8_t* rfData = &packet.frame_data[12]; // RF data starts at byte 12
           uint16_t rfDataLength = (packet.frame_length[0] << 8 | packet.frame_length[1]) - 12; // Length of RF data
+          test += 1;
           // Handle rfData as needed
       } else if (packet.frame_data[0] == 0x8B) { // Transmit Status
           // Process transmit status

@@ -9,56 +9,46 @@ extern UART_HandleTypeDef huart1;
 /**
  * @brief Constructs an XBee Transmit Request frame.
  *
- * @param frame Pointer to the xbee_tx_req_t structure to be populated.
+ * @param frame Pointer to a buffer to be populated.
  * @param frame_id The frame ID to assign to this frame (used for response tracking).
  * @param dest_addr The 64-bit destination address for the frame (set as 0 to indicate broadcast).
  * @param frame_payload Pointer to the payload data to be transmitted.
  * @param payload_length Length of the payload data in bytes.
  */
-void constructTransmitFrame(xbee_tx_req_t* frame, uint8_t frame_id, uint64_t dest_addr, uint8_t* frame_payload, uint16_t payload_length)
+void constructTransmitFrame(uint8_t* frame, uint8_t frame_id, uint64_t dest_addr, uint8_t* frame_payload, uint16_t payload_length)
 {
     if (dest_addr == 0) {
-        dest_addr = 0xFFFF000000000000; // Broadcast address
+        dest_addr = 0x000000000000FFFF; // Broadcast address
     }
 
-    frame->start_delimiter = 0x7E;
-    frame->frame_length[0] = (payload_length + 14) >> 8; // High byte
-    frame->frame_length[1] = (payload_length + 14) & 0xFF; // Low byte
-    frame->frame_type = 0x10; // AT Command frame
-    frame->frame_id = frame_id;
-    frame->dest_addr = dest_addr;
-    frame->reserved_16 = 0xFFFE; // Reserved
-    frame->broadcast_radius = 0x00; // Maximum hops
-    frame->options = 0x00; // No special options
+    frame[0] = 0x7E;
+    frame[1] = (payload_length + 14) >> 8; // High byte
+    frame[2] = (payload_length + 14) & 0xFF; // Low byte
+    frame[3] = 0x10; // AT Command frame
+    frame[4] = frame_id;
+    frame[5] = (dest_addr >> 56) & 0xFF;
+    frame[6] = (dest_addr >> 48) & 0xFF;
+    frame[7] = (dest_addr >> 40) & 0xFF;
+    frame[8] = (dest_addr >> 32) & 0xFF;
+    frame[9] = (dest_addr >> 24) & 0xFF;
+    frame[10] = (dest_addr >> 16) & 0xFF;
+    frame[11] = (dest_addr >> 8) & 0xFF;
+    frame[12] = dest_addr & 0xFF;
+    frame[13] = 0xFF;
+    frame[14] = 0xFE;
+    frame[15] = 0x00; // Maximum hops
+    frame[16] = 0x00; // No special options
     for (uint16_t i = 0; i < payload_length; i++) {
-        frame->rf_data[i] = frame_payload[i];
+        frame[17 + i] = frame_payload[i];
     }
     // Calculate and append checksum
     uint64_t checksum = 0;
     // Add all bytes of the packet, except the start delimiter 0x7E and the length (the second and third bytes).
-    checksum += frame->frame_type;
-    checksum += frame->frame_id;
-    // Add destination address (8 bytes)
-    checksum += (frame->dest_addr >> 56) & 0xFF;
-    checksum += (frame->dest_addr >> 48) & 0xFF;
-    checksum += (frame->dest_addr >> 40) & 0xFF;
-    checksum += (frame->dest_addr >> 32) & 0xFF;
-    checksum += (frame->dest_addr >> 24) & 0xFF;
-    checksum += (frame->dest_addr >> 16) & 0xFF;
-    checksum += (frame->dest_addr >> 8) & 0xFF;
-    checksum += (frame->dest_addr) & 0xFF;
-    // Add reserved_16 (2 bytes)
-    checksum += (frame->reserved_16 >> 8) & 0xFF;
-    checksum += (frame->reserved_16) & 0xFF;
-    checksum += frame->broadcast_radius;
-    checksum += frame->options;
-    for (uint16_t i = 0; i < payload_length; i++) {
-        checksum += frame->rf_data[i];
+    for (uint16_t i = 3; i < payload_length + 18; i++) {
+        checksum += frame[i];
     }
     //Keep only the lowest 8 bits from the result and subtract this from 0xFF.
-    frame->checksum = 0xFF - (checksum & 0xFF);
-    //Also set the checksum in the raw frame for transmission
-    frame->rf_data[payload_length] = frame->checksum;
+    frame[17 + payload_length] = 0xFF - (checksum & 0xFF);
 }
 
 void constructATFrame(xbee_at_cmd_t* frame, uint8_t frame_id, uint16_t ATCommand, uint8_t *payload, uint16_t payload_length)
@@ -143,10 +133,9 @@ void XBee_GetTemperature()
     constructATFrame(&at_frame, 0x01, ('T' << 8) | 'P', NULL, 0);
     sendAPIFrame((uint8_t*)&at_frame, at_frame.frame_length[0] << 8 | at_frame.frame_length[1]);
 }
-
-xbee_tx_req_t tx_req_frame;
+uint8_t xbee_frame_buffer[XBEE_MAX_FRAME_SIZE+4];
 void XBee_Transmit(uint8_t* data, uint16_t length, uint64_t destinationAddress)
 {
-    constructTransmitFrame(&tx_req_frame, 0x01, destinationAddress, data, length);
-    sendAPIFrame((uint8_t*)&tx_req_frame, tx_req_frame.frame_length[0] << 8 | tx_req_frame.frame_length[1]);
+    constructTransmitFrame(xbee_frame_buffer, 0x01, destinationAddress, data, length);
+    sendAPIFrame(xbee_frame_buffer, xbee_frame_buffer[1] << 8 | xbee_frame_buffer[2]);
 }
