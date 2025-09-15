@@ -753,6 +753,7 @@ void Start10HzTask(void *argument) {
   */
 /* USER CODE END InterruptHandlerTask */
 uint8_t rx_recieve_buf[NRF24L01P_PAYLOAD_LENGTH] = {0};
+uint8_t InterBoardPacket_receive_num = 0;
 void StartInterruptHandlerTask(void *argument)
 {
   /* init code for USB_DEVICE */
@@ -781,6 +782,7 @@ void StartInterruptHandlerTask(void *argument)
     }
     if (xQueueReceive(InterBoardCom_Queue, &InterBoardCom_Packet, 10) == pdTRUE) {
       uint8_t Packet_ID = InterBoardCom_Packet.InterBoardPacket_ID;
+      InterBoardPacket_receive_num += 1;
       HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
       // Process received InterBoardCom_Packet
     }
