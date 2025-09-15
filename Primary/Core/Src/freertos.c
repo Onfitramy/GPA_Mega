@@ -187,6 +187,7 @@ Data_Package_Send tx_data;
 /* USER CODE BEGIN Variables */
 StreamBufferHandle_t xStreamBuffer;
 QueueHandle_t InterruptQueue;
+QueueHandle_t InterBoardCom_Queue;
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -283,6 +284,7 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_QUEUES */
   InterruptQueue = xQueueCreate(10, sizeof(uint8_t)); // Queue for 10 bytes
+  InterBoardCom_Queue = xQueueCreate(10, sizeof(InterBoardPacket_t));
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -619,6 +621,8 @@ void Start10HzTask(void *argument) {
     sprintf(&tx_buf[1], "I live");
     radioSend(tx_buf);
 
+    InterBoardCom_SendTestPacket();
+
     // KF2 correction steps
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
   }
@@ -638,12 +642,13 @@ void StartInterruptHandlerTask(void *argument)
   /* init code for USB_DEVICE */
   /* USER CODE BEGIN StartDefaultTask */
   uint8_t receivedData;
+  InterBoardPacket_t InterBoardCom_Packet;
   char GPS_Buffer[100]; // Buffer for GPS data
   //HAL_NVIC_EnableIRQ(EXTI15_10_IRQn); //Disabled due to always triggering when GPS is not connected
   /* Infinite loop */
   for(;;)
   { 
-    if (xQueueReceive(InterruptQueue, &receivedData, portMAX_DELAY) == pdTRUE) {
+    if (xQueueReceive(InterruptQueue, &receivedData, 10) == pdTRUE) {
       if(receivedData == 0x10) { // Handle GPS interrupt
         ublox_ReadOutput(GPS_Buffer); //Read the GPS output and decode it
 
@@ -651,16 +656,17 @@ void StartInterruptHandlerTask(void *argument)
         if(nrf_mode) {
           nrf24l01p_tx_irq();
         } else {
-          HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
+          //HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
           memset(rx_recieve_buf, 0, NRF24L01P_PAYLOAD_LENGTH);
           nrf24l01p_rx_receive(rx_recieve_buf);
         }
 
-      } else if (receivedData == 0x12) { //Handle F4 interrupt
-        //InterBoardPacket_t receivedPacket = InterBoardCom_ReceivePacket();
-        //InterBoardCom_ProcessReceivedPacket(&receivedPacket);
-        continue;
       }
+    }
+    if (xQueueReceive(InterBoardCom_Queue, &InterBoardCom_Packet, 10) == pdTRUE) {
+      uint8_t Packet_ID = InterBoardCom_Packet.InterBoardPacket_ID;
+      HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
+      // Process received InterBoardCom_Packet
     }
     osDelay(5);
   }

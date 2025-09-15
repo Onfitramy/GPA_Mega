@@ -10,15 +10,17 @@ extern DMA_HandleTypeDef hdma_spi1_rx;
 
 InterBoardPacket_t receiveBuffer;
 
+uint8_t SPI1_STATUS = 0; // 0= Idle, 1 = Receiving, 2 = Transmitting
+
 void InterBoardCom_ActivateReceive(void) {
     //Called to activate the SPI DMA receive
+    SPI1_STATUS = 1; // Receiving
     HAL_SPI_Receive_DMA(&hspi1, (uint8_t *)&receiveBuffer, sizeof(InterBoardPacket_t));
 }
 
 
 InterBoardPacket_t InterBoardCom_ReceivePacket(void) {
     //Called when a packet is received inside the SPI_DMA receive complete callback
-    HAL_SPI_Receive_DMA(&hspi1, (uint8_t *)&receiveBuffer, sizeof(InterBoardPacket_t)); // Re-activate the SPI DMA receive for the next packet
     return receiveBuffer;
 }
 
@@ -52,13 +54,14 @@ void InterBoardCom_FillData(InterBoardPacket_t *packet, DataPacket_t *data_packe
 }
 
 static uint8_t rx_dummy[sizeof(InterBoardPacket_t)];
-static uint8_t tx_dma_buffer[sizeof(InterBoardPacket_t)];
+static uint8_t tx_dma_buffer[sizeof(InterBoardPacket_t) + 1]; // +1 For SPI quirk
 void InterBoardCom_SendPacket(InterBoardPacket_t packet) {
     //First interrupt main to signal incomming packet
 
-    HAL_SPI_DMAStop(&hspi1);
     memcpy(tx_dma_buffer, (uint8_t *)&packet, sizeof(InterBoardPacket_t));
-    HAL_StatusTypeDef status = HAL_SPI_TransmitReceive_DMA(&hspi1, tx_dma_buffer, rx_dummy, sizeof(InterBoardPacket_t));
+    tx_dma_buffer[sizeof(InterBoardPacket_t)] = 1; // SPI quirk: Send one extra byte to ensure the last byte of the actual data is sent
+    SPI1_STATUS = 2; // Transmitting
+    HAL_StatusTypeDef status = HAL_SPI_TransmitReceive_DMA(&hspi1, tx_dma_buffer, rx_dummy, sizeof(InterBoardPacket_t) + 1);
     if (status != HAL_OK) {
         // Transmission Error
         uint32_t err = HAL_SPI_GetError(&hspi1);
@@ -86,10 +89,16 @@ DataPacket_t InterBoardCom_UnpackPacket(InterBoardPacket_t packet) {
 uint8_t selftestPacketsReceived = 0;
 void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
     //This function is used to parse the received packet
+    //If no response is needed SPI DMA receive is reactivated here, else it is reactivated after the response has been sent in the coresponding DMA interrupt
     switch (packet.InterBoardPacket_ID) {
         case InterBoardPACKET_ID_SELFTEST:
             //Handle self-test packet
             selftestPacketsReceived += 1;
+            InterBoardPacket_t responsePacket = InterBoardCom_CreatePacket(InterBoardPACKET_ID_DataAck);
+            InterBoardCom_FillRaw(&packet, 32, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+                                      16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31);
+            //InterBoardCom_ActivateReceive();
+            InterBoardCom_SendPacket(responsePacket);
             break;
         
         case InterBoardPACKET_ID_DataSaveFLASH:

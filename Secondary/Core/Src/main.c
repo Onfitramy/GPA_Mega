@@ -67,6 +67,8 @@ PCD_HandleTypeDef hpcd_USB_OTG_HS;
 
 extern QueueHandle_t InterBoardPacketQueue; // Queue for InterBoardPacket_t packets
 
+extern uint8_t SPI1_STATUS; // 0= Idle, 1 = Receiving, 2 = Transmitting
+
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -157,8 +159,6 @@ int main(void)
   //Set_Brightness(45);
   //WS2812_Send();
 
-
-
   //buzzerInit();
   //playMelody();
 
@@ -177,11 +177,23 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi){
   if (1) {
     // DMA transfer complete callback for SPI1
     // Process the received data in receiveBuffer
+    // We wait with reactivating the DMA receive until after the packet has been processed in the task to avoid tx rx conflicts
+    //InterBoardCom_ActivateReceive();
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     InterBoardPacket_t packet = InterBoardCom_ReceivePacket();
+    SPI1_STATUS = 0; // Idle
     xQueueSendFromISR(InterBoardPacketQueue, &packet, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     //Pass the received packet to a que to be processed by the task
+  }
+}
+
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
+  if (1) {
+    // Activate DMA receive after transmission is complete
+    SPI1_STATUS = 0; // Idle
+
+    InterBoardCom_ActivateReceive();
   }
 }
 

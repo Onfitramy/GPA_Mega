@@ -39,6 +39,7 @@ extern "C" {
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
 extern QueueHandle_t InterruptQueue;
+extern QueueHandle_t InterBoardCom_Queue;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/

@@ -55,6 +55,8 @@ volatile uint8_t dma_waiting_stepper;
 volatile uint8_t dma_waiting_ws2812;
 
 uint16_t pwmData[MAX_STEPPER_STEPS];
+extern uint8_t SPI1_State; // 0: Ready, 1: TX busy, 2: RX busy
+extern volatile uint8_t SPI1_ReceivePending; // Flag to indicate a pending receive request
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -223,27 +225,29 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
   if (GPIO_Pin == F4_INT_Pin) {
     //Receive Data from Secondary
     InterBoardCom_ActivateReceive();
-    HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
   }
 }
 
 void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi){
   if (hspi->Instance == SPI1) {
+    SPI1_State = 0;
     // DMA transfer complete callback for SPI1
     // Process the received data in receiveBuffer
     InterBoardPacket_t receivedPacket = InterBoardCom_ReceivePacket();
-    /*BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    uint8_t sendData = 0x12;
-    xQueueSendFromISR(InterruptQueue, &sendData, &xHigherPriorityTaskWoken);
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);*/
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    xQueueSendFromISR(InterBoardCom_Queue, &receivedPacket, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
   }
 }
 
 void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi){
   if (hspi->Instance == SPI1) {
-    // DMA transfer complete callback for SPI1
-    // Process the received data in receiveBuffer
-    return; // No further processing needed here
+    SPI1_State = 0;
+    // If a receive was requested during TX, start it now
+    if (SPI1_ReceivePending) {
+      SPI1_ReceivePending = 0;
+      InterBoardCom_ActivateReceive();
+    }
   }
 }
 

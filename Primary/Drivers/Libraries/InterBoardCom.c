@@ -3,13 +3,19 @@
 #include <stdarg.h>
 
 //The H7 send data to the F4 via SPI1. The data is made up of packets which are sent immediatly after completion of the previous packet.
-//The Packets are made up of 1byte of Packet_ID, 16bytes of Data and a crc. In total the packet is 18 bytes long.
+//The Packets are made up of 1byte of Packet_ID and 32bytes of Data 33 bytes long.
+
+#define SPI1_RX_SIZE (sizeof(InterBoardPacket_t) + 1) // +1 for SPI1 detection time(no CS Pin used)
 
 extern SPI_HandleTypeDef hspi1;
 
 extern DMA_HandleTypeDef hdma_spi1_rx;
 
 InterBoardPacket_t receiveBuffer;
+uint8_t SPI1_DMA_Rx_Buffer[SPI1_RX_SIZE]; // +1 for SPI1 detection time(no CS Pin used)
+
+uint8_t SPI1_State = 0; //0: Ready, 1: TX busy, 2: RX busy
+volatile uint8_t SPI1_ReceivePending = 0;
 
 /**
  * @brief Creates and initializes an InterBoardPacket_t structure.
@@ -84,23 +90,34 @@ void InterBoardCom_FillData(InterBoardPacket_t *packet, DataPacket_t *data_packe
 void InterBoardCom_SendPacket(InterBoardPacket_t *packet) {
     
     // Send the packet via SPI
+    if (SPI1_State != 0) {
+        // SPI is busy, cannot send now
+        return;
+    }
     HAL_StatusTypeDef status = HAL_SPI_Transmit_DMA(&hspi1, (uint8_t *)packet, sizeof(InterBoardPacket_t));
 }
 
 InterBoardPacket_t InterBoardCom_ReceivePacket() {
     // Receive the packet via SPI
-    return receiveBuffer;
+    InterBoardPacket_t receivedPacket;
+    receivedPacket.InterBoardPacket_ID = SPI1_DMA_Rx_Buffer[1]; // First byte after detection time
+    memcpy(receivedPacket.Data, &SPI1_DMA_Rx_Buffer[2], 32);
+    return receivedPacket;
 }
 
 void InterBoardCom_ActivateReceive(void) {
     // Start receiving the packet via SPI
-    //HAL_SPI_DMAStop(&hspi1);
-    uint8_t dummyTx[sizeof(InterBoardPacket_t)] = {0};
-    //__HAL_DMA_CLEAR_FLAG(&hdma_spi1_rx, DMA_FLAG_TEIF0_4 | DMA_FLAG_FEIF0_4 | DMA_FLAG_DMEIF0_4 | DMA_FLAG_HTIF0_4 | DMA_FLAG_TCIF0_4);
-    HAL_StatusTypeDef status = HAL_SPI_Receive_DMA(&hspi1, (uint8_t *)&receiveBuffer, sizeof(InterBoardPacket_t));
-    if (status != HAL_OK) {
-        status = HAL_ERROR;
-        // Handle error
+    if (SPI1_State == 0) { // Ready for RX
+        SPI1_State = 2; // Mark as RX busy
+        HAL_StatusTypeDef status = HAL_SPI_Receive_DMA(&hspi1, SPI1_DMA_Rx_Buffer, SPI1_RX_SIZE);
+        if (status != HAL_OK) {
+            SPI1_State = 0; // Mark as ready again on error
+            status = HAL_ERROR;
+            // Handle error
+        }
+    } else {
+        // SPI is busy, set flag to receive after current operation
+        SPI1_ReceivePending = 1;
     }
 }
 
@@ -116,10 +133,11 @@ void InterBoardCom_ProcessReceivedPacket(InterBoardPacket_t *packet) {
     }
 }
 
+InterBoardPacket_t TestPacket;
 void InterBoardCom_SendTestPacket(void) {
-    InterBoardPacket_t packet = InterBoardCom_CreatePacket(InterBoardPACKET_ID_SELFTEST);
-    InterBoardCom_FillRaw(&packet, 32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32);
-    InterBoardCom_SendPacket(&packet);
+    TestPacket = InterBoardCom_CreatePacket(InterBoardPACKET_ID_SELFTEST);
+    InterBoardCom_FillRaw(&TestPacket, 32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32);
+    InterBoardCom_SendPacket(&TestPacket);
 }
 
 /**
