@@ -55,6 +55,7 @@ SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
 SPI_HandleTypeDef hspi3;
 DMA_HandleTypeDef hdma_spi1_rx;
+DMA_HandleTypeDef hdma_spi1_tx;
 DMA_HandleTypeDef hdma_tim2_ch2_ch4;
 
 TIM_HandleTypeDef htim2;
@@ -66,6 +67,8 @@ PCD_HandleTypeDef hpcd_USB_OTG_HS;
 
 extern QueueHandle_t InterBoardPacketQueue; // Queue for InterBoardPacket_t packets
 extern QueueHandle_t XBeeDataQueue; // Queue for XBee data packets
+
+extern uint8_t SPI1_STATUS; // 0= Idle, 1 = Receiving, 2 = Transmitting
 
 /* USER CODE BEGIN PV */
 
@@ -159,8 +162,6 @@ int main(void)
   //Set_Brightness(45);
   //WS2812_Send();
 
-
-
   //buzzerInit();
   //playMelody();
 
@@ -172,18 +173,6 @@ int main(void)
     /* USER CODE BEGIN 3 */
     //HAL_Delay(500); //!BUG!In Reality 500.08 rarely 500.1 ms. Check timing config and HSE
   /* USER CODE END 3 */
-  }
-}
-
-void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi){
-  if (1) {
-    // DMA transfer complete callback for SPI1
-    // Process the received data in receiveBuffer
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    InterBoardPacket_t packet = InterBoardCom_ReceivePacket();
-    xQueueSendFromISR(InterBoardPacketQueue, &packet, &xHigherPriorityTaskWoken);
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-    //Pass the received packet to a que to be processed by the task
   }
 }
 
@@ -215,6 +204,31 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
       HAL_UART_Receive_IT(&huart1, &UART_RX_Buffer[0], 1);
       UART_PacketProgress = 0;
     }
+  }
+}
+
+void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi){
+  if (1) {
+    // DMA transfer complete callback for SPI1
+    // Process the received data in receiveBuffer
+    // We wait with reactivating the DMA receive until after the packet has been processed in the task to avoid tx rx conflicts
+    //InterBoardCom_ActivateReceive();
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    InterBoardPacket_t packet = InterBoardCom_ReceivePacket();
+    SPI1_STATUS = 0; // Idle
+    xQueueSendFromISR(InterBoardPacketQueue, &packet, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    //Pass the received packet to a que to be processed by the task
+  }
+}
+
+
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
+  if (1) {
+    // Activate DMA receive after transmission is complete
+    SPI1_STATUS = 0; // Idle
+
+    InterBoardCom_ActivateReceive();
   }
 }
 
@@ -440,7 +454,8 @@ static void MX_SPI1_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN SPI1_Init 2 */
-
+    HAL_NVIC_SetPriority(SPI1_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(SPI1_IRQn);
   /* USER CODE END SPI1_Init 2 */
 
 }
@@ -714,6 +729,8 @@ static void MX_DMA_Init(void)
   HAL_NVIC_EnableIRQ(DMA1_Stream6_IRQn);
   HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
 
 }
 

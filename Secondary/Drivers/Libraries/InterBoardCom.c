@@ -1,5 +1,6 @@
 #include "InterBoardCom.h"
 #include "string.h"
+#include <stdarg.h>
 #include "Packets.h"
 #include "W25Q1.h"
 
@@ -9,34 +10,69 @@ extern DMA_HandleTypeDef hdma_spi1_rx;
 
 InterBoardPacket_t receiveBuffer;
 
-/**
- * @brief Creates and initializes an InterBoardPacket_t structure.
- *
- * This function initializes a new InterBoardPacket_t packet with the specified PacketID_t ID.
- * The Data array is set to zero, and the CRC field is initialized to zero.
- *
- * @param ID The PacketID_t identifier to assign to the packet.
- * @return InterBoardPacket_t The initialized packet structure.
- */
-InterBoardPacket_t InterBoardCom_CreatePacket(InterBoardPacketID_t ID) {
-    InterBoardPacket_t packet;
-    packet.InterBoardPacket_ID = ID;
-    for (int i = 0; i < 16; i++) {
-        packet.Data[i] = 0; // Initialize Data array to 0
-    }
-    return packet;
-}
+uint8_t SPI1_STATUS = 0; // 0= Idle, 1 = Receiving, 2 = Transmitting
 
 void InterBoardCom_ActivateReceive(void) {
     //Called to activate the SPI DMA receive
+    SPI1_STATUS = 1; // Receiving
     HAL_SPI_Receive_DMA(&hspi1, (uint8_t *)&receiveBuffer, sizeof(InterBoardPacket_t));
 }
 
 
 InterBoardPacket_t InterBoardCom_ReceivePacket(void) {
     //Called when a packet is received inside the SPI_DMA receive complete callback
-    HAL_SPI_Receive_DMA(&hspi1, (uint8_t *)&receiveBuffer, sizeof(InterBoardPacket_t)); // Re-activate the SPI DMA receive for the next packet
     return receiveBuffer;
+}
+
+InterBoardPacket_t InterBoardCom_CreatePacket(InterBoardPacketID_t ID) {
+    InterBoardPacket_t packet;
+    packet.InterBoardPacket_ID = ID;
+    for (int i = 0; i < 32; i++) {
+        packet.Data[i] = 0; // Initialize Data array to 0
+    }
+    return packet;
+}
+
+void InterBoardCom_FillRaw(InterBoardPacket_t *packet, int num, ...) {
+    va_list args;
+    va_start(args, num);
+    for (int i = 0; i < num && i < 32; i++) {
+        packet->Data[i] = (uint8_t)va_arg(args, int); // 'int' is promoted type for variadic args
+    }
+    va_end(args);
+}
+
+void InterBoardCom_FillData(InterBoardPacket_t *packet, DataPacket_t *data_packet) {
+    // Copy the data from the DataPacket_t structure to the InterBoardPacket_t structure
+    // Calculate CRC (XOR checksum)
+    data_packet->crc = 0;
+    for (int i = 0; i < sizeof(data_packet->Data.raw); i++) {
+        data_packet->crc ^= data_packet->Data.raw[i];
+    }
+
+    memcpy(packet->Data, data_packet, 32);
+}
+
+static uint8_t rx_dummy[sizeof(InterBoardPacket_t)];
+static uint8_t tx_dma_buffer[sizeof(InterBoardPacket_t) + 1]; // +1 For SPI quirk
+void InterBoardCom_SendPacket(InterBoardPacket_t packet) {
+    //First interrupt main to signal incomming packet
+
+    memcpy(tx_dma_buffer, (uint8_t *)&packet, sizeof(InterBoardPacket_t));
+    tx_dma_buffer[sizeof(InterBoardPacket_t)] = 1; // SPI quirk: Send one extra byte to ensure the last byte of the actual data is sent
+    SPI1_STATUS = 2; // Transmitting
+    HAL_StatusTypeDef status = HAL_SPI_TransmitReceive_DMA(&hspi1, tx_dma_buffer, rx_dummy, sizeof(InterBoardPacket_t) + 1);
+    if (status != HAL_OK) {
+        // Transmission Error
+        uint32_t err = HAL_SPI_GetError(&hspi1);
+        status = HAL_ERROR;
+        // Handle error accordingly (e.g., log it, retry, etc.)
+    }
+    HAL_Delay(1); // Short delay to ensure the slave has time to process the CS line
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+    //InterBoardCom_ReactivateDMAReceive();
+    //Called to send a packet over SPI
 }
 
 DataPacket_t InterBoardCom_UnpackPacket(InterBoardPacket_t packet) {
@@ -44,7 +80,7 @@ DataPacket_t InterBoardCom_UnpackPacket(InterBoardPacket_t packet) {
     DataPacket_t dataPacket;
     memcpy(dataPacket.Header, &packet.Data[0], 2);
     memcpy(&dataPacket.Packet_ID, &packet.Data[2], 1);
-    memcpy(dataPacket.Data, &packet.Data[3], 28);
+    memcpy(&dataPacket.Data, &packet.Data[3], 28);
     memcpy(&dataPacket.crc, &packet.Data[31], 1);
     
     return dataPacket;
@@ -53,10 +89,16 @@ DataPacket_t InterBoardCom_UnpackPacket(InterBoardPacket_t packet) {
 uint8_t selftestPacketsReceived = 0;
 void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
     //This function is used to parse the received packet
+    //If no response is needed SPI DMA receive is reactivated here, else it is reactivated after the response has been sent in the coresponding DMA interrupt
     switch (packet.InterBoardPacket_ID) {
         case InterBoardPACKET_ID_SELFTEST:
             //Handle self-test packet
             selftestPacketsReceived += 1;
+            InterBoardPacket_t responsePacket = InterBoardCom_CreatePacket(InterBoardPACKET_ID_DataAck);
+            InterBoardCom_FillRaw(&responsePacket, 32, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+                                      16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31);
+            //InterBoardCom_ActivateReceive();
+            InterBoardCom_SendPacket(responsePacket);
             break;
         
         case InterBoardPACKET_ID_DataSaveFLASH:
