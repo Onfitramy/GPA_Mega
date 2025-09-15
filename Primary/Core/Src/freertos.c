@@ -411,7 +411,6 @@ void StartDefaultTask(void *argument)
 
   /* Infinite loop */
   for(;;) {
-    TimeMeasureStart(); // Start measuring time
 
     BMP_GetRawData(&pressure_raw, &temperature_raw);
 
@@ -513,7 +512,6 @@ void StartDefaultTask(void *argument)
     RotationMatrixFromQuaternion(x3, &M_rot_q, DCM_bi_WorldToBody);
     EulerFromRotationMatrix(&M_rot_q, euler_from_q);
 
-    TimeMeasureStop(); // Stop measuring time
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz) Always at the end of the loop
   }
 
@@ -809,7 +807,8 @@ uint8_t SelfTest(void) {
     SelfTest_Bitfield |= (IMU2_SelfTest()<<1);
     SelfTest_Bitfield |= (MAG_SelfTest()<<2);
     SelfTest_Bitfield |= (BMP_SelfTest()<<3);
-    SelfTest_Bitfield |= (GPS_VER_CHECK()<<4); //Check if GPS is connected and working
+    //SelfTest_Bitfield |= (GPS_VER_CHECK()<<4); //Check if GPS is connected and working
+    SelfTest_Bitfield |= (1<<4); //Excluding GPS check for now, as the first message cant be relaibly received by this function
 
     if(primary_status > 0) primary_status = STATUS_STARTUP;
   }

@@ -73,16 +73,18 @@ void ublox_Write(int size, uint8_t *data) {
  */
 UBX_MessageType ublox_ReadOutput(char* UBX_MessageReturn) {
   UBX_MessageType UBX_Message = {0, 0, UBX_MessageReturn, 0}; //Initialize the message structure to zero
-    
   uint16_t length = ublox_ReadLength();
-  length = 1000;
+  if(length > sizeof(buffer)) {
+      length = sizeof(buffer); // Prevent buffer overflow
+  }
   //printf("uBlox Length %5d %04X\n", length, length);
   if (length)
   {
-    uint16_t len = (length < sizeof(buffer)) ? length : sizeof(buffer);
-    HAL_StatusTypeDef status = HAL_I2C_Mem_Read(&GPS_I2C, GPS_I2C_ADDR, 0xFF, 1, buffer, len, 300);
+    TimeMeasureStart(); // Start measuring time
+    HAL_StatusTypeDef status = HAL_I2C_Mem_Read(&GPS_I2C, GPS_I2C_ADDR, 0xFF, 1, buffer, length, 90);
+    TimeMeasureStop(); // Stop measuring time
     if (status == HAL_OK){
-        uUbxProtocolDecode((char*)buffer, len, &UBX_Message.messageClass, &UBX_Message.messageId, UBX_Message.messageBody, len, NULL);
+        uint32_t ret = uUbxProtocolDecode((char*)buffer, length, &UBX_Message.messageClass, &UBX_Message.messageId, UBX_Message.messageBody, length, NULL);
         UBX_Message.status = 1; //Read Success
         for (size_t i = 0; i < length; i++) {
             buffer[i] = 0;
@@ -123,7 +125,7 @@ void GPS_Init(void){
 
 uint8_t GPS_ReadSensorData(UBX_NAV_PVT *posllh) {
   uint8_t UBX_MessageSend[16];
-  char UBX_MessageReturn[96];
+  char UBX_MessageReturn[200];
   int len = uUbxProtocolEncode(0x01, 0x07, NULL, 0, UBX_MessageSend);
   ublox_Write(len, UBX_MessageSend);
   UBX_MessageType UBX_NAV_POSLLH  = ublox_ReadOutput(UBX_MessageReturn);
