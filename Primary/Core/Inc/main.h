@@ -31,7 +31,6 @@ extern "C" {
 #include "FreeRTOS.h"
 #include "queue.h"
 
-#include "Stepper.h"
 #include "signalPlotter.h"
 #include "ws2812.h"
 #include "status.h"

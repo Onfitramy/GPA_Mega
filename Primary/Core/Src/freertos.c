@@ -40,7 +40,6 @@
 #include "SAM-M8Q.h"
 #include "SERVO.h"
 #include "NRF24L01P.h"
-#include "Stepper.h"
 
 #include "signalPlotter.h"
 #include "calibration_data.h"
@@ -382,7 +381,7 @@ void StartDefaultTask(void *argument)
   EKFInit(&EKF3, EKF3_type, x_size3, z_size3, u_size3, dt, &F3, &H3, &K3, &P3, &Q3, &R3, &S3, NULL, x3, z3, h3, imu1_data.gyro, v3);
 
   // define output signal names
-  // signalPlotter_init();
+  signalPlotter_init();
 
   // starting point for KF
   while(IMU1_VerifyDataReady() & 0x03 != 0x03); // wait for IMU1 data
@@ -512,6 +511,7 @@ void StartDefaultTask(void *argument)
     RotationMatrixFromQuaternion(x3, &M_rot_q, DCM_bi_WorldToBody);
     EulerFromRotationMatrix(&M_rot_q, euler_from_q);
 
+    TimeMeasureStop(); // Stop measuring time
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz) Always at the end of the loop
   }
 
@@ -648,7 +648,6 @@ void Start100HzTask(void *argument) {
     
     ShowStatus(RGB_PRIMARY, primary_status, 1, 100);
 
-    TimeMeasureStop(); // Stop measuring time
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }
   /* USER CODE END Start10HzTask */

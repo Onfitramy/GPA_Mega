@@ -50,14 +50,10 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-volatile uint8_t datasentflag_ws2812;
-volatile uint8_t dma_waiting_stepper;
 volatile uint8_t dma_waiting_ws2812;
 uint16_t adc3_buf[3];
 
 extern float ADC_Temperature, ADC_V_Sense, ADC_V_Ref;
-
-uint16_t pwmData[MAX_STEPPER_STEPS];
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -137,7 +133,6 @@ int main(void)
   MX_I2C1_Init();
   MX_SPI2_Init();
   MX_TIM2_Init();
-  MX_TIM3_Init();
   MX_TIM4_Init();
   MX_TIM5_Init();
   MX_TIM8_Init();
@@ -149,8 +144,6 @@ int main(void)
   SERVO_Init(2, 1500, 2500, 135);
   SERVO_MoveToAngle(1, 0);
   SERVO_MoveToAngle(2, 0);
-
-  // Stepper_Init();
 
   int counter1, counter2, counter3;
 
@@ -338,11 +331,6 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
     if (htim->Instance == TIM8 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1) {
         HAL_TIM_PWM_Stop_DMA(&htim8, TIM_CHANNEL_1);
         dma_waiting_ws2812 = 0;
-    }
-    else if (htim->Instance == TIM3 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_3) {
-        HAL_TIM_PWM_Stop_DMA(&htim3, TIM_CHANNEL_3);
-        dma_waiting_stepper = 0;
-
     }
 }
 /* USER CODE END 4 */
