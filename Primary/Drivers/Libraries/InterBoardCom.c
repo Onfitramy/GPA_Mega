@@ -100,8 +100,8 @@ void InterBoardCom_SendPacket(InterBoardPacket_t *packet) {
 InterBoardPacket_t InterBoardCom_ReceivePacket() {
     // Receive the packet via SPI
     InterBoardPacket_t receivedPacket;
-    receivedPacket.InterBoardPacket_ID = SPI1_DMA_Rx_Buffer[1]; // First byte after detection time
-    memcpy(receivedPacket.Data, &SPI1_DMA_Rx_Buffer[2], 32);
+    receivedPacket.InterBoardPacket_ID = SPI1_DMA_Rx_Buffer[0]; // First byte after detection time
+    memcpy(receivedPacket.Data, &SPI1_DMA_Rx_Buffer[1], 32);
     return receivedPacket;
 }
 

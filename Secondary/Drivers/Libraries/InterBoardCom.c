@@ -95,7 +95,7 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
             //Handle self-test packet
             selftestPacketsReceived += 1;
             InterBoardPacket_t responsePacket = InterBoardCom_CreatePacket(InterBoardPACKET_ID_DataAck);
-            InterBoardCom_FillRaw(&packet, 32, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+            InterBoardCom_FillRaw(&responsePacket, 32, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
                                       16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31);
             //InterBoardCom_ActivateReceive();
             InterBoardCom_SendPacket(responsePacket);
