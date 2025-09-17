@@ -85,7 +85,8 @@ double ECEF_ref[3];
 
 double ENU[3];
 
-uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO, 4: GPS, 7:All checks passed
+//uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO, 4: GPS, 7:All checks passed
+StatusPayload_t status_data = {0};
 
 // euler angles
 float phi, theta, psi;
@@ -670,22 +671,6 @@ void Start10HzTask(void *argument) {
       }
     }
     
-    IMUPacket_t imu_packet = {
-      .timestamp = HAL_GetTick(),
-      .gyroX = imu1_data.gyro[0],
-      .gyroY = imu1_data.gyro[1],
-      .gyroZ = imu1_data.gyro[2],
-      .accelX = imu1_data.accel[0],
-      .accelY = imu1_data.accel[1],
-      .accelZ = imu1_data.accel[2],
-      .magX = mag_data.field[0],
-      .magY = mag_data.field[1],
-      .magZ = mag_data.field[2],
-      .unused1 = 0,
-      .unused2 = 0,
-      .unused3 = 0
-    };
-    
     if(gps_data.gpsFix == 3) {
       UBLOXtoWGS84(gps_data.lat, gps_data.lon, gps_data.height, WGS84);
       WGS84toECEF(WGS84, ECEF);
@@ -792,28 +777,28 @@ void StartInterruptHandlerTask(void *argument)
 /* USER CODE BEGIN Application */
 uint8_t selftest_tries = 0;
 uint8_t SelfTest(void) {
-  if((SelfTest_Bitfield == 0b11111) && (SelfTest_Bitfield != 0b10011111)){
+  if((status_data.sensor_status_flags & 0x1f) == 0x1f && ((status_data.sensor_status_flags >> 7) & 0x01) == 0) { //All sensors are working but selftest_pass flag not set
     if(primary_status >= 0) primary_status = STATUS_GNSS_ALIGN;
 
-    SelfTest_Bitfield |= (1<<7);  //All checks passed
-  }
-  else if (selftest_tries > 100){
+    status_data.sensor_status_flags |= (1<<7);  //All checks passed
+
+  } else if (selftest_tries > 100){
     primary_status = STATUS_ERROR_STARTUP;
-    return SelfTest_Bitfield;
+    return status_data.sensor_status_flags;
   }
-  else if(SelfTest_Bitfield != 0b10011111){
+  else if((status_data.sensor_status_flags & 0xff) != 0x9F) { //Run selftest if not all sensors are working or selftest not passed
     selftest_tries += 1;
-    SelfTest_Bitfield |= IMU1_SelfTest();
-    SelfTest_Bitfield |= (IMU2_SelfTest()<<1);
-    SelfTest_Bitfield |= (MAG_SelfTest()<<2);
-    SelfTest_Bitfield |= (BMP_SelfTest()<<3);
-    //SelfTest_Bitfield |= (GPS_VER_CHECK()<<4); //Check if GPS is connected and working
-    SelfTest_Bitfield |= (1<<4); //Excluding GPS check for now, as the first message cant be relaibly received by this function
+    status_data.sensor_status_flags |= IMU1_SelfTest();
+    status_data.sensor_status_flags |= (IMU2_SelfTest()<<1);
+    status_data.sensor_status_flags |= (MAG_SelfTest()<<2);
+    status_data.sensor_status_flags |= (BMP_SelfTest()<<3);
+    //status_data.sensor_status_flags |= (GPS_VER_CHECK()<<4); //Check if GPS is connected and working
+    status_data.sensor_status_flags |= (1<<4); //Excluding GPS check for now, as the first message cant be relaibly received by this function
 
     if(primary_status > 0) primary_status = STATUS_STARTUP;
   }
 
-  return SelfTest_Bitfield;
+  return status_data.sensor_status_flags;
 }
 
 void ReadInternalADC(uint32_t* temperature, uint32_t* v_ref) {

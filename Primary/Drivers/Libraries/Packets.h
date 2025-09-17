@@ -17,55 +17,53 @@ typedef enum {
     PACEKT_ID_ATTITUDE = 0x09, // Attitude data packet
 } PacketType_t;
 
+/* Packet and Payload structure definitions */
+/* Each Payload has to be exactly 26 bytes */
 #pragma pack(push, 1)
 typedef struct {
-    uint32_t timestamp;
-    int32_t Status, Warnings, Errors;
-    int16_t  Unused1, Unused2, Unused3;
-    int16_t Unused4, Unused5, Unused6;
-} StatusPacket_t;
+    int32_t status_flags, sensor_status_flags, error_flags;
+    int32_t  Unused1, Unused2, Unused3;
+    int16_t Unused4;
+} StatusPayload_t;
 
 typedef struct {
-    uint32_t timestamp;
     uint32_t voltage5V0bus, voltageBATbus, unused1;
     uint32_t unused2, unused3, unused4;
-} BatteryPacket_t;
+    int16_t Unused4;
+} BatteryPayload_t;
 
 typedef struct {
-    uint32_t timestamp;
     int32_t latitude, longitude, altitude;
-    int16_t speed, course, unused1;
-    int16_t unused2, unused3, unused4;
-} GPSPacket_t;
+    int16_t speed, course, unused1, unused2, unused3, unused4, unused5;
+} GPSPayload_t;
 
 typedef struct {
-    uint32_t timestamp;
     int16_t gyroX, gyroY, gyroZ;
     int16_t accelX, accelY, accelZ;
     int16_t magX, magY, magZ;
-    uint16_t unused1, unused2, unused3;
-} IMUPacket_t;
+    uint16_t unused1, unused2, unused3, unused4;
+} IMUPayload_t;
 
 typedef struct {
-    uint32_t timestamp;
     int32_t posX, posY, posZ;
     int16_t velX, velY, velZ;
     int16_t accX, accY, accZ;
-} PositionPacket_t;
+    uint16_t unused1;
+} PositionPayload_t;
 
 typedef union {
-    StatusPacket_t status;
-    BatteryPacket_t battery;
-    GPSPacket_t gps;
-    IMUPacket_t imu;
-    PositionPacket_t position;
-    uint8_t raw[28];
-} PacketData_u;
+    StatusPayload_t status;
+    BatteryPayload_t battery;
+    GPSPayload_t gps;
+    IMUPayload_t imu;
+    PositionPayload_t position;
+    uint8_t raw[26];
+} PayloadData_u;
 
 typedef struct {
-    uint8_t Header[2]; // 0x41, 0x45 (AP)
     uint8_t Packet_ID; // Packet ID
-    PacketData_u Data;
+    uint32_t timestamp;
+    PayloadData_u Data;
     uint8_t crc;
 } DataPacket_t;
 #pragma pack(pop)

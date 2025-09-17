@@ -32,7 +32,7 @@ typedef struct {
 #pragma pack(pop)
 
 void InterBoardCom_SendTestPacket(void);
-void InterBoardCom_SendDataPacket(InterBoardPacketID_t Inter_ID, PacketType_t Packet_ID, PacketData_u *packet);
+void InterBoardCom_SendDataPacket(InterBoardPacketID_t Inter_ID, PacketType_t Packet_ID, DataPacket_t *packet);
 InterBoardPacket_t InterBoardCom_ReceivePacket(void);
 void InterBoardCom_ProcessReceivedPacket(InterBoardPacket_t *packet);
 void InterBoardCom_ActivateReceive(void);

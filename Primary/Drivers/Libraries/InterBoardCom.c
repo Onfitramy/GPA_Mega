@@ -151,18 +151,7 @@ void InterBoardCom_SendTestPacket(void) {
  * @param Packet_ID  The type identifier for the packet being sent.
  * @param packet     Pointer to the data packet to be sent.
  */
-void InterBoardCom_SendDataPacket(InterBoardPacketID_t Inter_ID, PacketType_t Packet_ID, PacketData_u *packet){
+void InterBoardCom_SendDataPacket(InterBoardPacketID_t Inter_ID, PacketType_t Packet_ID, DataPacket_t *packet){
     // Create a new InterBoardPacket_t structure
-    InterBoardPacket_t interPacket = InterBoardCom_CreatePacket(Inter_ID);
-    DataPacket_t dataPacket = {
-        .Header = {0x41, 0x45}, // AE header
-        .Packet_ID = Packet_ID,
-    };
-    memcpy(&dataPacket.Data, packet, 28);
-
-    // Fill the Data field of the InterBoardPacket_t with the provided packet data
-    InterBoardCom_FillData(&interPacket, &dataPacket);
-    
-    // Send the filled packet via SPI
-    InterBoardCom_SendPacket(&interPacket);
+    //Implement later
 }
