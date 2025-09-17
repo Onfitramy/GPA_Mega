@@ -5,7 +5,8 @@
 
 //#define SIGNAL_PLOTTER_OUT_1 // position ekf testing
 //#define SIGNAL_PLOTTER_OUT_2 // raw sensor data
-#define SIGNAL_PLOTTER_OUT_3 // orientation ekf testing
+//#define SIGNAL_PLOTTER_OUT_3 // orientation ekf testing
+#define SIGNAL_PLOTTER_OUT_4 // height ekf testing
 
 // actually performs send operation to signal plotter
 // (is done automatically)
@@ -20,5 +21,5 @@ void signalPlotter_sendData(uint8_t id, float value);
 void TimeMeasureStart(void);
 
 // stops the timer and sends the time to the signal plotter
-void TimeMeasureStop(void);
+uint32_t TimeMeasureStop(void);
 #endif /* signalPlotter_H_ */

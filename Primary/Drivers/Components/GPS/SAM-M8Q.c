@@ -80,9 +80,7 @@ UBX_MessageType ublox_ReadOutput(char* UBX_MessageReturn) {
   //printf("uBlox Length %5d %04X\n", length, length);
   if (length)
   {
-    TimeMeasureStart(); // Start measuring time
     HAL_StatusTypeDef status = HAL_I2C_Mem_Read(&GPS_I2C, GPS_I2C_ADDR, 0xFF, 1, buffer, length, 90);
-    TimeMeasureStop(); // Stop measuring time
     if (status == HAL_OK){
         uint32_t ret = uUbxProtocolDecode((char*)buffer, length, &UBX_Message.messageClass, &UBX_Message.messageId, UBX_Message.messageBody, length, NULL);
         UBX_Message.status = 1; //Read Success

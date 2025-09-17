@@ -5,6 +5,13 @@ const double a = 6378137.;
 const double f = 1. / 298.257223563;
 const double e2 = 0.006694379990141317;
 
+// define atmospheric constants
+const double p0 = 101325.;  // Pa
+const double R0 = 287.05;   // J/(kgK)
+const double T0 = 288.15;   // K
+const double L0 = -0.0065;  // K/m
+const double g0 = 9.80665;  // m/s²
+
 // set boundaries for angle
 void normalizeAngle(float *angle, float upper_boundary, float lower_boundary, float step_size) {
     if(*angle > upper_boundary) {
@@ -230,13 +237,18 @@ void DeulerMatrixFromEuler(float phi, float theta, arm_matrix_instance_f32 *mat)
     arm_mat_set_entry_f32(mat, 2, 2, cos_vec[0]/cos_vec[1]);
 }
 
-// transform vector from body frame to world frame
-void Vec3_BodyToWorld(float *vec3_body, arm_matrix_instance_f32 *mat, float *vec3_world) {
-    float M_data[9];
-    arm_matrix_instance_f32 M = {3, 3, M_data};
+// calculate barometric height from static pressure measurement
+void BaroPressureToHeight(float pressure, float *height) {
+    double buffer;
+    buffer = (pow(pressure / p0, -L0 * R0 / g0) - 1.) * T0 / L0;
+    *height = (float)buffer;
+}
 
-    arm_mat_trans_f32(mat, &M);
-    arm_mat_vec_mult_f32(&M, vec3_body, vec3_world);
+// calculate barometric pressure from height
+void BaroHeightToPressure(float height, float *pressure) {
+    double buffer;
+    buffer = pow(L0 / T0 * height + 1., -g0 / L0 / R0) * p0;
+    *pressure = (float)buffer;
 }
 
 // create new Kalman Filter instance
@@ -270,8 +282,9 @@ void EKFInit(kalman_data_t *Kalman, kalman_instance_t kalman_type, uint8_t x_vec
 
     if(kalman_type == EKF1_type) {
         // initialize EKF1 matrices
-        // configure orientation KF matrices
+        // configure orientation EKF matrices
         arm_mat_fill_diag_f32(Kalman->F, 0, 0, 1.);
+
         arm_mat_fill_diag_f32(Kalman->H, 0, 0, 1.);
 
         arm_mat_set_diag_f32(Kalman->P, 0, 0, 3, 0.1);      // initial guess for angle variance
@@ -284,18 +297,20 @@ void EKFInit(kalman_data_t *Kalman, kalman_instance_t kalman_type, uint8_t x_vec
 
     } else if(kalman_type == EKF2_type) {
         // initialize EKF2 matrices
-        // configure position KF matrices
+        // configure height EKF matrices
         arm_mat_fill_diag_f32(Kalman->F, 0, 0, 1.);
-        arm_mat_set_diag_f32(Kalman->F, 3, 0, 3, dt);
-        arm_mat_fill_diag_f32(Kalman->H, 0, 0, 1.);
+        arm_mat_set_entry_f32(Kalman->F, 0, 1, dt);
 
-        arm_mat_set_diag_f32(Kalman->P, 0, 0, 3, 1.);           // initial guess for velocity variance
-        arm_mat_set_diag_f32(Kalman->P, 3, 3, 3, 10.);
-        arm_mat_set_diag_f32(Kalman->P, 6, 6, 3, 0.5);          // initial guess for accelerometer offset variance
+        arm_mat_set_entry_f32(Kalman->H, 0, 0, 1.);
 
-        arm_mat_set_diag_f32(Kalman->Q, 0, 0, 3, 1e-3f*dt*dt);  // variance of accelerometer data   (noise)
-        arm_mat_set_diag_f32(Kalman->Q, 3, 3, 3, 1e-3f*0.25*dt*dt*dt*dt);
-        arm_mat_set_diag_f32(Kalman->Q, 6, 6, 3, 1e-12f);       // variance of accelerometer offset (drift)
+        arm_mat_set_entry_f32(Kalman->P, 0, 0, 10.);          // initial guess for height variance
+        arm_mat_set_entry_f32(Kalman->P, 1, 1, 1.);           // initial guess for vertical velocity variance
+
+        arm_mat_set_entry_f32(Kalman->Q, 0, 0, ACCEL_VAR*0.25*dt*dt*dt*dt);  // variance of accelerometer data   (noise)
+        arm_mat_set_entry_f32(Kalman->Q, 0, 1, ACCEL_VAR*0.5*dt*dt*dt);
+        arm_mat_set_entry_f32(Kalman->Q, 1, 0, ACCEL_VAR*0.5*dt*dt*dt);
+        arm_mat_set_entry_f32(Kalman->Q, 1, 1, ACCEL_VAR*dt*dt);
+        //arm_mat_set_diag_f32(Kalman->Q, 6, 6, 3, 1e-12f);       // variance of accelerometer offset (drift)
 
     } else if(kalman_type == EKF3_type) {
         // initialize EKF3 matrices
@@ -312,7 +327,10 @@ void EKFInit(kalman_data_t *Kalman, kalman_instance_t kalman_type, uint8_t x_vec
 }
 
 void EKFStateVInit(kalman_data_t *Kalman) {
-    if(Kalman->type == EKF3_type) {
+    if(Kalman->type == EKF2_type) {
+        Kalman->x[0] = Kalman->z[0];
+
+    } else if(Kalman->type == EKF3_type) {
         // calculate initial quaternion from accelerometer and magnetometer readings
         float *q = Kalman->x;
 
@@ -326,13 +344,17 @@ void EKFStateVInit(kalman_data_t *Kalman) {
 }
 
 void EKFPredictStateV(kalman_data_t *Kalman) {
-    if(Kalman->type == EKF1_type || Kalman->type == EKF2_type) {
+    if(Kalman->type == EKF1_type) {
         float dx[Kalman->x_size];
 
         // calculate predicted state x^(t) = F * x(t-1) + B * u(t)
         arm_mat_vec_mult_f32(Kalman->F, Kalman->x, Kalman->x);
         arm_mat_vec_mult_f32(Kalman->B, Kalman->u, dx);
         arm_vecN_add_f32(Kalman->x_size, Kalman->x, dx, Kalman->x);
+
+    } else if(Kalman->type == EKF2_type) {
+        Kalman->x[0] += Kalman->x[1]*Kalman->dt + 0.5*Kalman->u[0]*Kalman->dt*Kalman->dt;
+        Kalman->x[1] += Kalman->u[0]*Kalman->dt;
 
     } else if(Kalman->type == EKF3_type) {
         // prediction step for quaternion state vector
@@ -377,6 +399,8 @@ void EKFPredictCovariance(kalman_data_t *Kalman) {
         arm_mat_mult_f32(&W_mat, &W_trans, &M1); // 4x4
         arm_mat_insert_mult_f32(&M1, Kalman->Q, 0, 0, 0.25f*Kalman->dt*Kalman->dt*GYRO_VAR);
         arm_mat_set_diag_f32(Kalman->Q, 4, 4, 3, BIAS_VAR);
+
+        EKFGetStateTransitionJacobian(Kalman);
     }
 
     float M1_data[Kalman->x_size*Kalman->x_size];
@@ -393,9 +417,12 @@ void EKFPredictCovariance(kalman_data_t *Kalman) {
 
 
 void EKFPredictMeasurement(kalman_data_t *Kalman) {
-    if(Kalman->type == EKF1_type || Kalman->type == EKF2_type) {
+    if(Kalman->type == EKF1_type) {
         // h(t) = H * x^(t)
         arm_mat_vec_mult_f32(Kalman->H, Kalman->x, Kalman->h);
+
+    } else if(Kalman->type == EKF2_type) {
+        Kalman->h[0] = Kalman->x[0];
 
     } else if(Kalman->type == EKF3_type) {
         // predict expected accelerometer and magnetometer readings (z vector)
@@ -443,6 +470,10 @@ void EKFGetInnovation(kalman_data_t *Kalman) {
 
 // update Kalman Gain
 void EKFUpdateKalmanGain(kalman_data_t *Kalman) {
+    if(Kalman->type == EKF3_type) {
+        EKFGetObservationJacobian(Kalman);
+    }
+
     float H_trans_data[Kalman->x_size*Kalman->z_size];
     arm_matrix_instance_f32 H_trans_mat = {Kalman->x_size, Kalman->z_size, H_trans_data};
     float Temp1_data[Kalman->x_size*Kalman->z_size];
@@ -557,4 +588,37 @@ void EKFGetObservationJacobian(kalman_data_t *Kalman) {
     arm_mat_set_entry_f32(Kalman->H, 5, 1, -2*(m_vec_enu[1]*q[0]+m_vec_enu[2]*q[1]));
     arm_mat_set_entry_f32(Kalman->H, 5, 2,  2*(m_vec_enu[1]*q[3]-m_vec_enu[2]*q[2]));
     arm_mat_set_entry_f32(Kalman->H, 5, 3,  2*(m_vec_enu[1]*q[2]+m_vec_enu[2]*q[3]));
+}
+
+void EKFPredictionStep(kalman_data_t *Kalman) {
+    // predicting state vector x
+    EKFPredictStateV(Kalman);
+
+    // predicting state vector's covariance matrix P
+    EKFPredictCovariance(Kalman);
+}
+
+void EKFCorrectionStep(kalman_data_t *Kalman, uint8_t correction_variant) {
+    if(Kalman->type == EKF2_type) {
+        switch(correction_variant) {
+            case 1:
+                arm_mat_set_entry_f32(Kalman->R, 0, 0, BARO_VAR);
+                break;
+        }
+    }
+
+    // calculate Kalman Gain
+    EKFUpdateKalmanGain(Kalman);
+
+    // predict measurement
+    EKFPredictMeasurement(Kalman);
+
+    // calculate difference between predicted and actual measurement
+    EKFGetInnovation(Kalman);
+
+    // correct state vector based on innovation and Kalman Gain
+    EKFCorrectStateV(Kalman);
+
+    // update covariance matrix
+    EKFCorrectCovariance(Kalman);
 }

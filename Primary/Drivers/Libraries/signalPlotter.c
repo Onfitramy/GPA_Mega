@@ -12,8 +12,6 @@ typedef struct {
 
 data_t data[32];
 
-uint32_t TimeMeasureTime;
-
 uint32_t TimeMeasureTick = 0;
 
 uint32_t TimerOverflow = 0;
@@ -81,12 +79,13 @@ void TimeMeasureStart(void) {
   TimeMeasureTick = HAL_GetTickUS();
 }
 
-void TimeMeasureStop(void) {
+uint32_t TimeMeasureStop(void) {
+  uint32_t TimeMeasureTime;
   TimeMeasureTime = HAL_GetTickUS() - TimeMeasureTick;
   if (TimeMeasureTime > 1000) {
     TimerOverflow += 1;
   }
-  signalPlotter_sendData(0, (float)TimeMeasureTime / 1000.0f);
+  return TimeMeasureTime;
 }
 
 void signalPlotter_init(void) {
@@ -179,5 +178,37 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(26, "egyro x bias");
   signalPlotter_setSignalName(27, "egyro y bias");
   signalPlotter_setSignalName(28, "egyro z bias");
+  #endif
+
+  #ifdef SIGNAL_PLOTTER_OUT_4 // raw sensor data
+  signalPlotter_setSignalName(0, "delta Time");
+  signalPlotter_setSignalName(1, "NRF Data");
+  signalPlotter_setSignalName(2, "phi");
+  signalPlotter_setSignalName(3, "theta");
+  signalPlotter_setSignalName(4, "psi");
+  signalPlotter_setSignalName(5, "ACC_X");
+  signalPlotter_setSignalName(6, "ACC_Y");
+  signalPlotter_setSignalName(7, "ACC_Z");
+  signalPlotter_setSignalName(8, "AWORLD_X");
+  signalPlotter_setSignalName(9, "AWORLD_Y");
+  signalPlotter_setSignalName(10, "AWORLD_Z");
+  signalPlotter_setSignalName(11, "pressure");
+  signalPlotter_setSignalName(12, "temperature");
+  signalPlotter_setSignalName(13, "height_baro");
+  signalPlotter_setSignalName(14, "GPS_fix");
+  signalPlotter_setSignalName(15, "numSV");
+  signalPlotter_setSignalName(16, "hAcc");
+  signalPlotter_setSignalName(17, "vAcc");
+  signalPlotter_setSignalName(18, "sAcc");
+  signalPlotter_setSignalName(19, "lat");
+  signalPlotter_setSignalName(20, "lon");
+  signalPlotter_setSignalName(21, "height");
+  signalPlotter_setSignalName(22, "velN");
+  signalPlotter_setSignalName(23, "velE");
+  signalPlotter_setSignalName(24, "velD");
+  signalPlotter_setSignalName(25, "EKF height");
+  signalPlotter_setSignalName(26, "EKF vel Z");
+  signalPlotter_setSignalName(27, "EKF height var");
+  signalPlotter_setSignalName(28, "EKF vel Z var");
   #endif
 }

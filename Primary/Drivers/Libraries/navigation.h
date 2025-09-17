@@ -1,27 +1,35 @@
 #ifndef NAVIGATION_H
 #define NAVIGATION_H
 
-#include "stm32h7xx_hal.h"
+#include "main.h"
 #include "stdbool.h"
 #include "armMathAddon.h"
 
+// Quaternion EKF Settings
 #define magnetic_dip_angle 66.0f
 
 #define GYRO_VAR 0.3*0.3
 #define BIAS_VAR 1e-12
 
+// Height EKF Settings
+#define ACCEL_VAR   0.5*0.5
+#define BIAS_VAR    1e-12
+#define BARO_VAR    0.2*0.2
+
+// EKF sizes
 #define x_size1 6
 #define z_size1 3
 #define u_size1 3
 
-#define x_size2 9
-#define z_size2 6
-#define u_size2 3
+#define x_size2 2
+#define z_size2 1
+#define u_size2 1
 
 #define x_size3 7
 #define z_size3 6
 #define u_size3 3 // NO B MATRIX THOUGH
 
+// DCM rotation type
 typedef enum {
     DCM_bi_WorldToBody = -1,
     DCM_ib_BodyToWorld = 1
@@ -73,7 +81,9 @@ void EulerFromRotationMatrix(arm_matrix_instance_f32 *mat, float *euler);
 void RotationMatrixFromQuaternion(float *q, arm_matrix_instance_f32 *mat, direct_cosine_matrix_t dcm_type);
 void QuaternionFromRotationMatrix(arm_matrix_instance_f32 *mat, float *q);
 void DeulerMatrixFromEuler(float phi, float theta, arm_matrix_instance_f32 *mat);
-void Vec3_BodyToWorld(float *vec3_body, arm_matrix_instance_f32 *mat_rot, float *vec3_world);
+
+void BaroPressureToHeight(float pressure, float *height);
+void BaroHeightToPressure(float height, float *pressure);
 
 void EKFInit(kalman_data_t *Kalman, kalman_instance_t kalman_type, uint8_t x_vec_size, uint8_t z_vec_size, uint8_t u_vec_size, const float dt,
                       arm_matrix_instance_f32 *F_mat, arm_matrix_instance_f32 *H_mat, arm_matrix_instance_f32 *K_mat, arm_matrix_instance_f32 *P_mat, 
@@ -87,6 +97,9 @@ void EKFGetInnovation(kalman_data_t *Kalman);
 void EKFUpdateKalmanGain(kalman_data_t *Kalman);
 void EKFCorrectStateV(kalman_data_t *Kalman);
 void EKFCorrectCovariance(kalman_data_t *Kalman);
+
+void EKFPredictionStep(kalman_data_t *Kalman);
+void EKFCorrectionStep(kalman_data_t *Kalman, uint8_t correction_variant);
 
 void EKFGetStateTransitionJacobian(kalman_data_t *Kalman);
 void EKFGetObservationJacobian(kalman_data_t *Kalman);
