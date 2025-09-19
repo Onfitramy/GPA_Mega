@@ -4,11 +4,11 @@ volatile uint8_t datasentflag;
 
 uint8_t LED_Data[3];
 
-void Set_LED (int Red, int Green, int Blue)
+void Set_LED (uint8_t Red, uint8_t Green, uint8_t Blue)
 {
-	LED_Data[0] = Green;
-	LED_Data[1] = Red;
-	LED_Data[2] = Blue;
+	LED_Data[0] = round((float)Green*RGB_MAX_BRIGHTNESS/255.f);
+	LED_Data[1] = round((float)Red*RGB_MAX_BRIGHTNESS/255.f);
+	LED_Data[2] = round((float)Blue*RGB_MAX_BRIGHTNESS/255.f);
 }
 
 uint32_t pwmData[24+64] = { 0 };

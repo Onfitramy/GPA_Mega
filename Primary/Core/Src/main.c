@@ -145,8 +145,10 @@ int main(void)
 
   SERVO_Init(1, 1500, 2500, 135);
   SERVO_Init(2, 1500, 2500, 135);
+  SERVO_Init(3, 1500, 2500, 135);
   SERVO_MoveToAngle(1, 0);
   SERVO_MoveToAngle(2, 0);
+  SERVO_MoveToAngle(3, 0);
 
   int counter1, counter2, counter3;
 

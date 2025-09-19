@@ -82,6 +82,7 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/Libraries/InterBoardCom.c
     ../../Drivers/Libraries/VoltageReader.c
     ../../Drivers/Libraries/Status.c
+    ../../Drivers/Libraries/PowerUnit.c
 )
 
 target_link_directories(stm32cubemx INTERFACE
@@ -94,5 +95,3 @@ target_link_libraries(stm32cubemx INTERFACE
 if(CMAKE_C_STANDARD LESS 11)
     message(ERROR "Generated code requires C11 or higher")
 endif()
-
-

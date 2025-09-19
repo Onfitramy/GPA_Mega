@@ -3,9 +3,11 @@
 
 #include "stm32f4xx_hal.h"
 
+#define RGB_MAX_BRIGHTNESS 100
+
 extern TIM_HandleTypeDef htim2;
 
-void Set_LED (int Red, int Green, int Blue);
+void Set_LED (uint8_t Red, uint8_t Green, uint8_t Blue);
 
 void WS2812_Send (void);
 

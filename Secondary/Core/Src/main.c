@@ -28,6 +28,7 @@
 #include "VoltageReader.h"
 #include "InterBoardCom.h"
 #include "W25Q1.h"
+#include "PowerUnit.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -146,6 +147,26 @@ int main(void)
 
   HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 1); // Start UART receive interrupt
 
+  PU_disableACS();
+  PU_enableCamera();
+  PU_enableRecovery();
+
+  HAL_Delay(1000);
+
+  Camera_SwitchOn();
+
+  HAL_Delay(4000);
+
+  Camera_WifiOn();
+
+  HAL_Delay(2000);
+
+  Camera_WifiOff();
+  //Camera_SkipDate();
+
+  HAL_Delay(1000);
+
+  Camera_SwitchOff();
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -760,8 +781,11 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, ACS_Pin|CAMS_Pin|Recovery_Pin/*|NRF24_CS_Pin*/
-                          |GPIO21_Pin|GPIO22_Pin|GPIO23_Pin|GPIO24_Pin
                           |M2_LED_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO21_Pin|GPIO22_Pin|GPIO23_Pin
+                          |GPIO24_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pins : FLASH_CS_Pin SD_CS_Pin */
   GPIO_InitStruct.Pin = FLASH_CS_Pin|SD_CS_Pin;
@@ -778,10 +802,8 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : ACS_Pin CAMS_Pin Recovery_Pin NRF24_CS_Pin
-                           GPIO21_Pin GPIO22_Pin GPIO23_Pin GPIO24_Pin
                            M2_LED_Pin */
-  GPIO_InitStruct.Pin = ACS_Pin|CAMS_Pin|Recovery_Pin/*|NRF24_CS_Pin*/
-                          |GPIO21_Pin|GPIO22_Pin|GPIO23_Pin|GPIO24_Pin
+  GPIO_InitStruct.Pin = ACS_Pin|CAMS_Pin|Recovery_Pin|NRF24_CS_Pin
                           |M2_LED_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -793,6 +815,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(NRF24_INT_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : GPIO21_Pin GPIO22_Pin GPIO23_Pin GPIO24_Pin */
+  GPIO_InitStruct.Pin = GPIO21_Pin|GPIO22_Pin|GPIO23_Pin|GPIO24_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI2_IRQn, 5, 0);

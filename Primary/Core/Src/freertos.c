@@ -691,14 +691,14 @@ void Start10HzTask(void *argument) {
     SelfTest();         // Run self-test on startup
 
     GPS_ReadSensorData(&gps_data);
-    if(primary_status > 0) {
+    /*if(primary_status > 0) {
       switch(gps_data.gpsFix) {
         case 0: primary_status = STATUS_GNSS_ALIGN; break;
         case 2: primary_status = STATUS_GNSS_2D; break;
         case 3: primary_status = STATUS_STANDBY; break;
       }
     }
-    
+    */
     if(gps_data.gpsFix == 3) {
       UBLOXtoWGS84(gps_data.lat, gps_data.lon, gps_data.height, WGS84);
       WGS84toECEF(WGS84, ECEF);
@@ -735,16 +735,20 @@ void Start10HzTask(void *argument) {
     radioSend(tx_buf);
 
     // RECOVERY TEST
-    /*if(uwTick > 5500 && primary_status > 0 && primary_status != 5 && primary_status == 4) {
+    if(uwTick > 10000 && primary_status == 5) {
+      primary_status = 6;
+      SERVO_MoveToAngle(3, 90);
+    }
+    if(uwTick > 5500 && primary_status == 4) {
       primary_status = 5;
       SERVO_MoveToAngle(1, 0);
       SERVO_MoveToAngle(2, 0);
     }
-    if(uwTick > 5000 && primary_status > 0 && primary_status != 5 && primary_status != 4) {
+    if(uwTick > 5000 && primary_status == 1) {
       primary_status = 4;
       SERVO_MoveToAngle(1, 90);
       SERVO_MoveToAngle(2, 90);
-    }*/
+    }
     InterBoardCom_SendTestPacket();
 
     // KF2 correction steps

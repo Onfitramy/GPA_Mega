@@ -57,6 +57,8 @@ QueueHandle_t XBeeDataQueue;
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
+uint32_t Counter_100Hz = 0;
+
 /* Definitions for defaultTask */
 
 osThreadId_t defaultTaskHandle;
@@ -164,13 +166,14 @@ void StartDefaultTask(void *argument)
 
   /* Infinite loop */
   for(;;) {
+    Counter_100Hz++;
     TemperatureAMS = readTemperature(1);
     voltage5V0bus = readVoltage(1) * (10 + 10) / 10;
     voltageBATbus = readVoltage(2) * (10 + 2.2) / 2.2;
 
     ShowStatus(RGB_SECONDARY, secondary_status, 1, 100);
 
-    XBee_Transmit(transmitPayload, 5, 0x00);
+    //XBee_Transmit(transmitPayload, 5, 0x00);
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }
