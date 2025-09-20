@@ -167,6 +167,11 @@ int main(void)
   HAL_Delay(1000);
 
   Camera_SwitchOff();*/
+  INA219_setBusADC(INA219_BUS_RANGE_16V);
+  INA219_setShuntADC(INA219_ADC_MODE_12_BIT);
+  INA219_setOperatingMode(INA219_MODE_SHUNT_BUS_CONTINUOUS);
+  INA219_setShuntVoltageRange(INA219_SHUNT_RANGE_40mV);
+  INA219_setCurrentCalibration(MAX_CURRENT, SHUNT_RESISTANCE);
   /* USER CODE END 2 */
 
   /* Init scheduler */

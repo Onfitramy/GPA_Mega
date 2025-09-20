@@ -33,6 +33,7 @@
 #include "VoltageReader.h"
 #include "InterBoardCom.h"
 #include "status.h"
+#include "PowerUnit.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -57,8 +58,6 @@ QueueHandle_t XBeeDataQueue;
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
-uint32_t Counter_100Hz = 0;
-
 /* Definitions for defaultTask */
 
 osThreadId_t defaultTaskHandle;
@@ -95,6 +94,14 @@ extern double voltageBATbus;
 
 uint8_t XBee_Temp;
 int8_t secondary_status = 0;
+
+uint32_t Counter_100Hz = 0;
+uint32_t Counter_10Hz = 0;
+
+float PU_voltage_shunt = 0.f;
+float PU_voltage_bus = 0.f;
+float PU_current = 0.f;
+float PU_power = 0.f;
 
 /* USER CODE END Variables */
 
@@ -184,12 +191,18 @@ void StartDefaultTask(void *argument)
 void Start10HzTask(void *argument){
   /* USER CODE BEGIN Start10HzTask */
   TickType_t xLastWakeTime = xTaskGetTickCount();
-  const TickType_t xFrequency = 1000; // 1 Hz
+  const TickType_t xFrequency = 100; // 1 Hz
   InterBoardPacket_t packet = InterBoardCom_CreatePacket(InterBoardPACKET_ID_SELFTEST);
 
   /* Infinite loop */
   for(;;) {
+    Counter_10Hz++;
     //InterBoardCom_SendPacket(packet);
+
+    INA219_readBusVoltage(&PU_voltage_bus);
+    INA219_readShuntVoltage(&PU_voltage_shunt);
+    INA219_readPower(&PU_power);
+    INA219_readCurrent(&PU_current);
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
   }
 
