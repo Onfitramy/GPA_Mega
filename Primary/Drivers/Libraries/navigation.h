@@ -18,16 +18,17 @@
 
 // EKF sizes
 #define x_size1 6
-#define z_size1 3
 #define u_size1 3
+#define z_size1_corr1 3
 
 #define x_size2 2
-#define z_size2 1
 #define u_size2 1
+#define z_size2_corr1 1
+#define z_size2_corr2 2
 
 #define x_size3 7
-#define z_size3 6
 #define u_size3 3 // NO B MATRIX THOUGH
+#define z_size3_corr1 6
 
 // DCM rotation type
 typedef enum {
@@ -39,29 +40,45 @@ typedef enum {
     EKF1_type,
     EKF2_type,
     EKF3_type
-} kalman_instance_t;
+} ekf_instance_t;
 
-// standard KF variables
+typedef enum {
+    corr1_type,
+    corr2_type
+} ekf_correction_t;
+
+// standard EKF variables
 typedef struct {
-    kalman_instance_t type;
+    ekf_instance_t type;
+
     uint8_t x_size;
-    uint8_t z_size;
     uint8_t u_size;
+
     float dt;
-    float *h;
     float *u;
-    float *v;
     float *x;
-    float *z;
+    
     arm_matrix_instance_f32 *B;
     arm_matrix_instance_f32 *F;
-    arm_matrix_instance_f32 *H;
-    arm_matrix_instance_f32 *K;
     arm_matrix_instance_f32 *P;
     arm_matrix_instance_f32 *Q;
+} ekf_data_t;
+
+// correction step EKF variables
+typedef struct {
+    ekf_correction_t type;
+
+    uint8_t z_size;
+
+    float *h;
+    float *v;
+    float *z;
+
+    arm_matrix_instance_f32 *H;
+    arm_matrix_instance_f32 *K;
     arm_matrix_instance_f32 *R;
     arm_matrix_instance_f32 *S;
-} kalman_data_t;
+} ekf_corr_data_t;
 
 void normalizeAngle(float* angle, float upper_boundary, float lower_boundary, float step_size);
 void normalizeAngleVector(float* angle_vec, uint8_t pos_top, uint8_t pos_bottom, float upper_boundary, float lower_boundary, float step_size);
@@ -85,24 +102,26 @@ void DeulerMatrixFromEuler(float phi, float theta, arm_matrix_instance_f32 *mat)
 void BaroPressureToHeight(float pressure, float *height);
 void BaroHeightToPressure(float height, float *pressure);
 
-void EKFInit(kalman_data_t *Kalman, kalman_instance_t kalman_type, uint8_t x_vec_size, uint8_t z_vec_size, uint8_t u_vec_size, const float dt,
-                      arm_matrix_instance_f32 *F_mat, arm_matrix_instance_f32 *H_mat, arm_matrix_instance_f32 *K_mat, arm_matrix_instance_f32 *P_mat, 
-                      arm_matrix_instance_f32 *Q_mat, arm_matrix_instance_f32 *R_mat, arm_matrix_instance_f32 *S_mat, arm_matrix_instance_f32 *B_mat,
-                      float *x_vec, float *z_vec, float *h_vec, float *u_vec, float *v_vec);
-void EKFStateVInit(kalman_data_t *Kalman);
-void EKFPredictStateV(kalman_data_t *Kalman);
-void EKFPredictCovariance(kalman_data_t *Kalman);
-void EKFPredictMeasurement(kalman_data_t *Kalman);
-void EKFGetInnovation(kalman_data_t *Kalman);
-void EKFUpdateKalmanGain(kalman_data_t *Kalman);
-void EKFCorrectStateV(kalman_data_t *Kalman);
-void EKFCorrectCovariance(kalman_data_t *Kalman);
+void EKFInit(ekf_data_t *ekf, ekf_instance_t kalman_type, uint8_t x_vec_size, uint8_t u_vec_size, const float dt,
+             arm_matrix_instance_f32 *F_mat, arm_matrix_instance_f32 *P_mat, arm_matrix_instance_f32 *Q_mat,
+             arm_matrix_instance_f32 *B_mat, float *x_vec, float *u_vec);
+void EKFCorrectionInit(ekf_data_t ekf, ekf_corr_data_t *ekf_corr, ekf_correction_t corr_type, uint8_t z_vec_size,
+                       arm_matrix_instance_f32 *H_mat, arm_matrix_instance_f32 *K_mat, arm_matrix_instance_f32 *R_mat,
+                       arm_matrix_instance_f32 *S_mat, float *z_vec, float *h_vec, float *v_vec);
+void EKFStateVInit(ekf_data_t *Kalman, ekf_corr_data_t *ekf_corr);
+void EKFPredictStateV(ekf_data_t *Kalman);
+void EKFPredictCovariance(ekf_data_t *Kalman);
+void EKFPredictMeasurement(ekf_data_t *Kalman, ekf_corr_data_t *ekf_corr);
+void EKFGetInnovation(ekf_data_t *Kalman, ekf_corr_data_t *ekf_corr);
+void EKFUpdateKalmanGain(ekf_data_t *Kalman, ekf_corr_data_t *ekf_corr);
+void EKFCorrectStateV(ekf_data_t *Kalman, ekf_corr_data_t *ekf_corr);
+void EKFCorrectCovariance(ekf_data_t *Kalman, ekf_corr_data_t *ekf_corr);
 
-void EKFPredictionStep(kalman_data_t *Kalman);
-void EKFCorrectionStep(kalman_data_t *Kalman, uint8_t correction_variant);
+void EKFPredictionStep(ekf_data_t *Kalman);
+void EKFCorrectionStep(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr);
 
-void EKFGetStateTransitionJacobian(kalman_data_t *Kalman);
-void EKFGetObservationJacobian(kalman_data_t *Kalman);
+void EKFGetStateTransitionJacobian(ekf_data_t *Kalman);
+void EKFGetObservationJacobian(ekf_data_t *Kalman, ekf_corr_data_t *ekf_corr);
 
     /*float H_data[6*4] = { original observation model jacobian
         2*(g_vec_enu[0]*q[0]+g_vec_enu[1]*q[3]-g_vec_enu[2]*q[2]), 2*(g_vec_enu[0]*q[1]+g_vec_enu[1]*q[2]+g_vec_enu[2]*q[3]), 2*(-g_vec_enu[0]*q[2]+g_vec_enu[1]*q[1]-g_vec_enu[2]*q[0]), 2*(-g_vec_enu[0]*q[3]+g_vec_enu[1]*q[0]+g_vec_enu[2]*q[1]),

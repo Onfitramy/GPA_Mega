@@ -96,9 +96,6 @@ static void MX_I2C2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-double TemperatureAMS;
-double voltage5V0bus;
-double voltageBATbus;
 uint8_t UART_RX_Buffer [64]; // Buffer for UART receive interrupt
 /* USER CODE END 0 */
 

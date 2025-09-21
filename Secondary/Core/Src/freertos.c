@@ -88,20 +88,30 @@ const osThreadAttr_t InterruptTask_attributes = {
   .priority = (osPriority_t) osPriorityRealtime,
 };
 
-extern double TemperatureAMS;
-extern double voltage5V0bus;
-extern double voltageBATbus;
-
 uint8_t XBee_Temp;
 int8_t secondary_status = 0;
 
 uint32_t Counter_100Hz = 0;
 uint32_t Counter_10Hz = 0;
 
-float PU_voltage_shunt = 0.f;
-float PU_voltage_bus = 0.f;
-float PU_current = 0.f;
-float PU_power = 0.f;
+struct {
+  struct {
+    float reg_3V3;
+    float battery;
+  } temperature;
+  struct {
+    float bus_pu_bat;
+    float bus_gpa_bat;
+    float bus_5V;
+    float shunt_pu;
+  } voltage;
+  struct {
+    float out_pu;
+  } current;
+  struct {
+    float out_pu;
+  } power;
+} health;
 
 /* USER CODE END Variables */
 
@@ -174,9 +184,6 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;) {
     Counter_100Hz++;
-    TemperatureAMS = readTemperature(1);
-    voltage5V0bus = readVoltage(1) * (10 + 10) / 10;
-    voltageBATbus = readVoltage(2) * (10 + 2.2) / 2.2;
 
     ShowStatus(RGB_SECONDARY, secondary_status, 1, 100);
 
@@ -199,10 +206,16 @@ void Start10HzTask(void *argument){
     Counter_10Hz++;
     //InterBoardCom_SendPacket(packet);
 
-    INA219_readBusVoltage(&PU_voltage_bus);
-    INA219_readShuntVoltage(&PU_voltage_shunt);
-    INA219_readPower(&PU_power);
-    INA219_readCurrent(&PU_current);
+    INA219_readBusVoltage(&health.voltage.bus_pu_bat);
+    INA219_readShuntVoltage(&health.voltage.shunt_pu);
+    INA219_readPower(&health.power.out_pu);
+    INA219_readCurrent(&health.current.out_pu);
+
+    health.temperature.reg_3V3 = readTemperature(1);
+    health.temperature.battery = readTemperature(2);
+    health.voltage.bus_5V = readVoltage(1) * (10 + 10) / 10;
+    health.voltage.bus_gpa_bat = readVoltage(2) * (10 + 2.2) / 2.2;
+
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
   }
 

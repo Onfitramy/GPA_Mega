@@ -42,7 +42,8 @@
         "math.h": "c",
         "stm32h7xx_hal_conf.h": "c",
         "dts.h": "c",
-        "xbee.h": "c"
+        "xbee.h": "c",
+        "compare": "c"
     },
     "cortex-debug.variableUseNaturalFormat": true
 }

@@ -6,7 +6,7 @@
 extern ADC_HandleTypeDef hadc1;
 extern ADC_HandleTypeDef hadc2;
 
-double readVoltage(int channel);
-double readTemperature(int channel);
+float readVoltage(int channel);
+float readTemperature(int channel);
 
 #endif /*VoltageReader_H_*/

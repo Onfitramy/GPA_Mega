@@ -3,7 +3,7 @@
 #include "math.h"
 
 /*1 => +5V, 2 => +BAT*/
-double readVoltage(int channel) {
+float readVoltage(int channel) {
     ADC_ChannelConfTypeDef sConfig = {0};
     if(channel == 1) {
         sConfig.Channel = ADC_CHANNEL_2;
@@ -30,13 +30,13 @@ double readVoltage(int channel) {
     uint16_t adcValue = HAL_ADC_GetValue(&hadc2);
     HAL_ADC_Stop(&hadc2);
 
-    double V_read = 3.3 * adcValue / 4096;
+    float V_read = 3.3 * adcValue / 4096;
 
     return V_read;
 }
 
 /*1 => NTC_GPA, 2 => NTC_BAT*/
-double readTemperature(int channel) {
+float readTemperature(int channel) {
     ADC_ChannelConfTypeDef sConfig = {0};
     if(channel == 1) {
         sConfig.Channel = ADC_CHANNEL_14;
@@ -63,7 +63,7 @@ double readTemperature(int channel) {
     uint16_t adcValue = HAL_ADC_GetValue(&hadc1);
     HAL_ADC_Stop(&hadc1);
 
-    double Temperature = (double)3380/log((double)adcValue / (4096 - adcValue) * exp((double)3380/298.15)) - 273.15;
+    float Temperature = (double)3380/log((double)adcValue / (4096 - adcValue) * exp((double)3380/298.15)) - 273.15;
 
     return Temperature;
 }

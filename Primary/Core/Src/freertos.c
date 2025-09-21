@@ -118,13 +118,14 @@ uint8_t flight_status = 0; // 0 = awaiting gnss fix | 1 = align guidance | 2 = f
 const float dt = 0.001;
 
 // create new Kalman Filter instance for orientation
-kalman_data_t EKF1;
+ekf_data_t EKF1;
+ekf_corr_data_t EKF1_corr1;
 
 // state and output vectors
 float x1[x_size1] = {0};
-float z1[z_size1] = {0};
-float h1[z_size1] = {0};
-float v1[z_size1] = {0};
+float z1_corr1[z_size1_corr1] = {0};
+float h1_corr1[z_size1_corr1] = {0};
+float v1_corr1[z_size1_corr1] = {0};
 
 float F1_data[x_size1*x_size1] = {0}; // 6x6
 arm_matrix_instance_f32 F1 = {x_size1, x_size1, F1_data};
@@ -134,27 +135,29 @@ float Q1_data[x_size1*x_size1] = {0}; // 6x6
 arm_matrix_instance_f32 Q1 = {x_size1, x_size1, Q1_data};
 float P1_data[x_size1*x_size1] = {0}; // 6x6
 arm_matrix_instance_f32 P1 = {x_size1, x_size1, P1_data};
-float H1_data[z_size1*x_size1] = {0}; // 3x6
-arm_matrix_instance_f32 H1 = {z_size1, x_size1, H1_data};
-float R1_data[z_size1*z_size1] = {0}; // 3x3
-arm_matrix_instance_f32 R1 = {z_size1, z_size1, R1_data};
-float S1_data[z_size1*z_size1] = {0}; // 3x3
-arm_matrix_instance_f32 S1 = {z_size1, z_size1, S1_data};
-float K1_data[x_size1*z_size1];       // 6x3
-arm_matrix_instance_f32 K1 = {x_size1, z_size1, K1_data};
+float H1_corr1_data[z_size1_corr1*x_size1] = {0}; // 3x6
+arm_matrix_instance_f32 H1_corr1 = {z_size1_corr1, x_size1, H1_corr1_data};
+float R1_corr1_data[z_size1_corr1*z_size1_corr1] = {0}; // 3x3
+arm_matrix_instance_f32 R1_corr1 = {z_size1_corr1, z_size1_corr1, R1_corr1_data};
+float S1_corr1_data[z_size1_corr1*z_size1_corr1] = {0}; // 3x3
+arm_matrix_instance_f32 S1_corr1 = {z_size1_corr1, z_size1_corr1, S1_corr1_data};
+float K1_corr1_data[x_size1*z_size1_corr1];       // 6x3
+arm_matrix_instance_f32 K1_corr1 = {x_size1, z_size1_corr1, K1_corr1_data};
 
 float Mdeuler_data[9] = {0};
 arm_matrix_instance_f32 Mdeuler = {3, 3, Mdeuler_data};
 
 
 // create new Kalman Filter instance for velocity and position
-kalman_data_t EKF2;
+ekf_data_t EKF2;
+ekf_corr_data_t EKF2_corr1;
+ekf_corr_data_t EKF2_corr2;
 
 // state and output vectors
 float x2[x_size2] = {0};
-float z2[z_size2] = {0};
-float h2[z_size2] = {0};
-float v2[z_size2] = {0}; // innovation
+float z2_corr1[z_size2_corr1] = {0};
+float h2_corr1[z_size2_corr1] = {0};
+float v2_corr1[z_size2_corr1] = {0}; // innovation
 
 float F2_data[x_size2*x_size2] = {0}; // 6x6
 arm_matrix_instance_f32 F2 = {x_size2, x_size2, F2_data};
@@ -162,24 +165,25 @@ float Q2_data[x_size2*x_size2] = {0}; // 6x6
 arm_matrix_instance_f32 Q2 = {x_size2, x_size2, Q2_data};
 float P2_data[x_size2*x_size2] = {0}; // 6x6
 arm_matrix_instance_f32 P2 = {x_size2, x_size2, P2_data};
-float H2_data[z_size2*x_size2] = {0}; // 3x6
-arm_matrix_instance_f32 H2 = {z_size2, x_size2, H2_data};
-float R2_data[z_size2*z_size2] = {0}; // 3x3
-arm_matrix_instance_f32 R2 = {z_size2, z_size2, R2_data};
-float S2_data[z_size2*z_size2] = {0}; // 6x6
-arm_matrix_instance_f32 S2 = {z_size2, z_size2, S2_data};
-float K2_data[x_size2*z_size2];       // 6x3
-arm_matrix_instance_f32 K2 = {x_size2, z_size2, K2_data};
+float H2_corr1_data[z_size2_corr1*x_size2] = {0}; // 3x6
+arm_matrix_instance_f32 H2_corr1 = {z_size2_corr1, x_size2, H2_corr1_data};
+float R2_corr1_data[z_size2_corr1*z_size2_corr1] = {0}; // 3x3
+arm_matrix_instance_f32 R2_corr1 = {z_size2_corr1, z_size2_corr1, R2_corr1_data};
+float S2_corr1_data[z_size2_corr1*z_size2_corr1] = {0}; // 6x6
+arm_matrix_instance_f32 S2_corr1 = {z_size2_corr1, z_size2_corr1, S2_corr1_data};
+float K2_corr1_data[x_size2*z_size2_corr1];       // 6x3
+arm_matrix_instance_f32 K2_corr1 = {x_size2, z_size2_corr1, K2_corr1_data};
 
 
 // Quaternion EKF variables
-kalman_data_t EKF3;
+ekf_data_t EKF3;
+ekf_corr_data_t EKF3_corr1;
 
 // state and output vectors
 float x3[x_size3] = {0};
-float z3[z_size3] = {0};
-float h3[z_size3] = {0};
-float v3[z_size3] = {0}; // innovation
+float z3_corr1[z_size3_corr1] = {0};
+float h3_corr1[z_size3_corr1] = {0};
+float v3_corr1[z_size3_corr1] = {0}; // innovation
 
 float F3_data[x_size3*x_size3] = {0}; // 7x7
 arm_matrix_instance_f32 F3 = {x_size3, x_size3, F3_data};
@@ -187,14 +191,14 @@ float Q3_data[x_size3*x_size3] = {0}; // 7x7
 arm_matrix_instance_f32 Q3 = {x_size3, x_size3, Q3_data};
 float P3_data[x_size3*x_size3] = {0}; // 7x7
 arm_matrix_instance_f32 P3 = {x_size3, x_size3, P3_data};
-float H3_data[z_size3*x_size3] = {0}; // 6x7
-arm_matrix_instance_f32 H3 = {z_size3, x_size3, H3_data};
-float R3_data[z_size3*z_size3] = {0}; // 6x6
-arm_matrix_instance_f32 R3 = {z_size3, z_size3, R3_data};
-float S3_data[z_size3*z_size3] = {0}; // 6x6
-arm_matrix_instance_f32 S3 = {z_size3, z_size3, S3_data};
-float K3_data[x_size3*z_size3];       // 7x6
-arm_matrix_instance_f32 K3 = {x_size3, z_size3, K3_data};
+float H3_corr1_data[z_size3_corr1*x_size3] = {0}; // 6x7
+arm_matrix_instance_f32 H3_corr1 = {z_size3_corr1, x_size3, H3_corr1_data};
+float R3_corr1_data[z_size3_corr1*z_size3_corr1] = {0}; // 6x6
+arm_matrix_instance_f32 R3_corr1 = {z_size3_corr1, z_size3_corr1, R3_corr1_data};
+float S3_corr1_data[z_size3_corr1*z_size3_corr1] = {0}; // 6x6
+arm_matrix_instance_f32 S3_corr1 = {z_size3_corr1, z_size3_corr1, S3_corr1_data};
+float K3_corr1_data[x_size3*z_size3_corr1];       // 7x6
+arm_matrix_instance_f32 K3_corr1 = {x_size3, z_size3_corr1, K3_corr1_data};
 
 float M_rot_q_data[9];
 arm_matrix_instance_f32 M_rot_q = {3, 3, M_rot_q_data};
@@ -370,14 +374,18 @@ void StartDefaultTask(void *argument)
   uid[1] = HAL_GetUIDw1();
   uid[2] = HAL_GetUIDw2();
 
-  // define Kalman Filter dimensions for orientation
-  EKFInit(&EKF1, EKF1_type, x_size1, z_size1, u_size1, dt, &F1, &H1, &K1, &P1, &Q1, &R1, &S1, &B1, x1, z1, h1, imu1_data.gyro, v1);
+  // define Kalman Filter dimensions and pointers for orientation
+  EKFInit(&EKF1, EKF1_type, x_size1, u_size1, dt, &F1, &P1, &Q1, &B1 , x1, imu1_data.gyro);
+  EKFCorrectionInit(EKF1, &EKF1_corr1, corr1_type, 3, &H1_corr1, &K1_corr1, &R1_corr1, &S1_corr1, z1_corr1, h1_corr1, v1_corr1);
 
-  // define Kalman Filter dimensions for velocity and position
-  EKFInit(&EKF2, EKF2_type, x_size2, z_size2, u_size2, dt, &F2, &H2, &K2, &P2, &Q2, &R2, &S2, NULL, x2, z2, h2, &a_WorldFrame[2], v2);
+  // define Kalman Filter dimensions and pointers for velocity and position
+  EKFInit(&EKF2, EKF2_type, x_size2, u_size2, dt, &F2, &P2, &Q2, NULL, x2, &a_WorldFrame[2]);
+  EKFCorrectionInit(EKF2, &EKF2_corr1, corr1_type, 1, &H2_corr1, &K2_corr1, &R2_corr1, &S2_corr1, z2_corr1, h2_corr1, v2_corr1); // baro
+  //EKFCorrectionInit(EKF2, &EKF2_corr2, corr2_type, 2, &H2_corr2, &K2_corr2, &R2_corr2, &S2_corr2, z2_corr2, h2_corr2, v2_corr2); // GNSS
 
-  // define Kalman Filter dimensions for Quaternion EKF
-  EKFInit(&EKF3, EKF3_type, x_size3, z_size3, u_size3, dt, &F3, &H3, &K3, &P3, &Q3, &R3, &S3, NULL, x3, z3, h3, imu1_data.gyro, v3);
+  // define Kalman Filter dimensions and pointers for Quaternion EKF
+  EKFInit(&EKF3, EKF3_type, x_size3, u_size3, dt, &F3, &P3, &Q3, NULL, x3, imu1_data.gyro);
+  EKFCorrectionInit(EKF3, &EKF3_corr1, corr1_type, 6, &H3_corr1, &K3_corr1, &R3_corr1, &S3_corr1, z3_corr1, h3_corr1, v3_corr1);
 
   // define output signal names
   signalPlotter_init();
@@ -393,11 +401,11 @@ void StartDefaultTask(void *argument)
   arm_vec3_sub_f32(mag_data.field, MAG_offset, mag_data.field);
   arm_vec3_element_product_f32(mag_data.field, MAG_scale, mag_data.field);
 
-  EulerOrientationFix(imu1_data.accel, mag_data.field, z1);
+  EulerOrientationFix(imu1_data.accel, mag_data.field, z1_corr1);
 
-  x1[0] = z1[0];
-  x1[1] = z1[1];
-  x1[2] = z1[2];
+  x1[0] = z1_corr1[0];
+  x1[1] = z1_corr1[1];
+  x1[2] = z1_corr1[2];
 
   // init height EKF
   while(!BMP_GetRawData(&pressure_raw, &temperature_raw))
@@ -409,15 +417,15 @@ void StartDefaultTask(void *argument)
 
   BaroPressureToHeight(pressure, &height_baro);
 
-  EKF3.x[0] = height_baro;
+  EKF2.x[0] = height_baro;
 
 
   radioSet(NRF_24_ACTIVE);
   radioSetMode(RADIO_MODE_TRANSCEIVER);
 
   // Quaternion EKF initialization
-  arm_vecN_concatenate_f32(3, imu1_data.accel, 3, mag_data.field, z3); // put measurements into z vector
-  EKFStateVInit(&EKF3);
+  arm_vecN_concatenate_f32(3, imu1_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
+  EKFStateVInit(&EKF3, &EKF3_corr1);
 
   /* Infinite loop */
   for(;;) {
@@ -485,10 +493,11 @@ void StartDefaultTask(void *argument)
       temperature = bmp390_compensate_temperature(temperature_raw, &bmp_handle);
       pressure = bmp390_compensate_pressure(pressure_raw, &bmp_handle);
 
+      // correction step
       BaroPressureToHeight(pressure, &height_baro);
-      EKF2.z[0] = height_baro;
-
-      EKFCorrectionStep(&EKF2, 1);
+      EKF2_corr1.z[0] = height_baro;
+      arm_mat_set_entry_f32(EKF2_corr1.R, 0, 0, BARO_VAR);
+      EKFCorrectionStep(&EKF2, &EKF2_corr1);
     }
 
 
@@ -549,12 +558,12 @@ void Start100HzTask(void *argument) {
     signalPlotter_sendData(20, x2[3]);
     signalPlotter_sendData(21, x2[4]);
     signalPlotter_sendData(22, x2[5]);
-    signalPlotter_sendData(23, z2[0]);
-    signalPlotter_sendData(24, z2[1]);
-    signalPlotter_sendData(25, z2[2]);
-    signalPlotter_sendData(26, z2[3]);
-    signalPlotter_sendData(27, z2[4]);
-    signalPlotter_sendData(28, z2[5]);
+    signalPlotter_sendData(23, z2_corr1[0]);
+    signalPlotter_sendData(24, z2_corr1[1]);
+    signalPlotter_sendData(25, z2_corr1[2]);
+    signalPlotter_sendData(26, z2_corr1[3]);
+    signalPlotter_sendData(27, z2_corr1[4]);
+    signalPlotter_sendData(28, z2_corr1[5]);
     #endif
 
     #ifdef SIGNAL_PLOTTER_OUT_2 // signal plotter outputs raw sensor data
@@ -590,12 +599,12 @@ void Start100HzTask(void *argument) {
     signalPlotter_sendData(2, euler_from_q[0]);
     signalPlotter_sendData(3, euler_from_q[1]);
     signalPlotter_sendData(4, euler_from_q[2]);
-    signalPlotter_sendData(5, h3[0]);
-    signalPlotter_sendData(6, h3[1]);
-    signalPlotter_sendData(7, h3[2]);
-    signalPlotter_sendData(8, h3[3]);
-    signalPlotter_sendData(9, h3[4]);
-    signalPlotter_sendData(10, h3[5]);
+    signalPlotter_sendData(5, h3_corr1[0]);
+    signalPlotter_sendData(6, h3_corr1[1]);
+    signalPlotter_sendData(7, h3_corr1[2]);
+    signalPlotter_sendData(8, h3_corr1[3]);
+    signalPlotter_sendData(9, h3_corr1[4]);
+    signalPlotter_sendData(10, h3_corr1[5]);
     signalPlotter_sendData(11, imu1_data.accel[0]);
     signalPlotter_sendData(12, imu1_data.accel[1]);
     signalPlotter_sendData(13, imu1_data.accel[2]);
@@ -651,16 +660,16 @@ void Start100HzTask(void *argument) {
     signalPlotter_executeTransmission(HAL_GetTick());
 
     // attitude estimation using magnetometer and accelerometer
-    EulerOrientationFix(imu1_data.accel, mag_data.field, z1);
+    EulerOrientationFix(imu1_data.accel, mag_data.field, z1_corr1);
 
-    normalizeAnglePairVector(x1, z1, 0, 2, PI, -PI, 2*PI);
+    normalizeAnglePairVector(x1, z1_corr1, 0, 2, PI, -PI, 2*PI);
 
-    phi_fix = z1[0];
-    theta_fix = z1[1];
-    psi_fix = z1[2];
+    phi_fix = z1_corr1[0];
+    theta_fix = z1_corr1[1];
+    psi_fix = z1_corr1[2];
 
     // Kalman Filter euler correction step
-    EKFCorrectionStep(&EKF1, 1);
+    EKFCorrectionStep(&EKF1, &EKF1_corr1);
 
     // normalize phi, theta, psi to be within +-180 deg
     normalizeAngleVector(x1, 0, 2, PI, -PI, 2*PI);
@@ -671,8 +680,8 @@ void Start100HzTask(void *argument) {
 
     // KALMAN FILTER, QUATERNION
     // correction step
-    arm_vecN_concatenate_f32(3, imu1_data.accel, 3, mag_data.field, z3); // put measurements into z vector
-    EKFCorrectionStep(&EKF3, 1);
+    arm_vecN_concatenate_f32(3, imu1_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
+    EKFCorrectionStep(&EKF3, &EKF3_corr1);
 
     
     ShowStatus(RGB_PRIMARY, primary_status, 1, 100);
@@ -710,16 +719,16 @@ void Start10HzTask(void *argument) {
       }
       ECEFtoENU(WGS84_ref, ECEF_ref, ECEF, ENU);
 
-      z2[0] = (float)gps_data.velE / 1000.f; // m/s
-      z2[1] = (float)gps_data.velN / 1000.f;
-      z2[2] = (float)gps_data.velD / (-1000.f);
-      z2[3] = (float)ENU[0]; // m
-      z2[4] = (float)ENU[1];
-      z2[5] = (float)ENU[2];
+      //z2_corr1[0] = (float)gps_data.velE / 1000.f; // m/s
+      //z2_corr1[1] = (float)gps_data.velN / 1000.f;
+      //z2_corr1[2] = (float)gps_data.velD / (-1000.f);
+      //z2_corr1[3] = (float)ENU[0]; // m
+      //z2_corr1[4] = (float)ENU[1];
+      //z2_corr1[5] = (float)ENU[2];
 
-      arm_mat_set_diag_f32(&R2, 0, 0, 3, (float)gps_data.sAcc * gps_data.sAcc / 1e6f * 0.001f * (1 + a_abs));
-      arm_mat_set_diag_f32(&R2, 3, 3, 2, (float)gps_data.hAcc * gps_data.hAcc / 1e6f * 100.f);
-      arm_mat_set_entry_f32(&R2, 5, 5, (float)gps_data.vAcc * gps_data.vAcc / 1e6f * 100.f);
+      //arm_mat_set_diag_f32(&R2_corr1, 0, 0, 3, (float)gps_data.sAcc * gps_data.sAcc / 1e6f * 0.001f * (1 + a_abs));
+      //arm_mat_set_diag_f32(&R2_corr1, 3, 3, 2, (float)gps_data.hAcc * gps_data.hAcc / 1e6f * 100.f);
+      //arm_mat_set_entry_f32(&R2_corr1, 5, 5, (float)gps_data.vAcc * gps_data.vAcc / 1e6f * 100.f);
 
       // Kalman Filter correction step
       //EKFCorrectionStep(&EKF2, 2);

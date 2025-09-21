@@ -85,8 +85,13 @@ void INA219_setOperatingMode(uint8_t mode) {
 void INA219_setCurrentCalibration(float max_current, float shunt_resistance) {
     current_LSB = max_current / 32768.f;
     power_LSB = current_LSB * 20.f;
+    
     uint16_t calibration_value = round(0.04096 / current_LSB / shunt_resistance);
-    calibration_value &= 0xFFFE;
+
+    if(calibration_value > 65535) {
+        calibration_value = 65535.f;
+        current_LSB = 0.04096 / calibration_value / shunt_resistance;
+    }
 
     INA219_writeRegister(INA219_CALIBRATION_REG, calibration_value);
 }
