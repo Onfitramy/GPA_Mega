@@ -4,7 +4,7 @@
 #include "stm32h7xx_hal.h"
 #include "main.h"
 
-#define RGB_MAX_BRIGHTNESS 50
+#define RGB_MAX_BRIGHTNESS 255
 
 extern TIM_HandleTypeDef htim8;
 

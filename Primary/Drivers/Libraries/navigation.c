@@ -6,11 +6,98 @@ const double f = 1. / 298.257223563;
 const double e2 = 0.006694379990141317;
 
 // define atmospheric constants
-const double p0 = 101325.;  // Pa
-const double R0 = 287.05;   // J/(kgK)
-const double T0 = 288.15;   // K
-const double L0 = -0.0065;  // K/m
-const double g0 = 9.80665;  // m/s²
+const double p0_const = 101325.;    // Pa
+const double R_const = 287.05;      // J/(kgK)
+const double T0_const = 288.15;     // K
+const double L_const = -0.0065;     // K/m
+const double g0_const = 9.80665;    // m/s²
+
+// EKF vectors and matrices
+// create new Kalman Filter instance for orientation
+ekf_data_t EKF1;
+float x1[x_size1] = {0};
+float F1_data[x_size1*x_size1] = {0}; // 6x6
+arm_matrix_instance_f32 F1 = {x_size1, x_size1, F1_data};
+float B1_data[x_size1*u_size1] = {0}; // 6x3
+arm_matrix_instance_f32 B1 = {x_size1, u_size1, B1_data};
+float Q1_data[x_size1*x_size1] = {0}; // 6x6
+arm_matrix_instance_f32 Q1 = {x_size1, x_size1, Q1_data};
+float P1_data[x_size1*x_size1] = {0}; // 6x6
+arm_matrix_instance_f32 P1 = {x_size1, x_size1, P1_data};
+
+ekf_corr_data_t EKF1_corr1;
+float z1_corr1[z_size1_corr1] = {0};
+float h1_corr1[z_size1_corr1] = {0};
+float v1_corr1[z_size1_corr1] = {0};
+float H1_corr1_data[z_size1_corr1*x_size1] = {0}; // 3x6
+arm_matrix_instance_f32 H1_corr1 = {z_size1_corr1, x_size1, H1_corr1_data};
+float R1_corr1_data[z_size1_corr1*z_size1_corr1] = {0}; // 3x3
+arm_matrix_instance_f32 R1_corr1 = {z_size1_corr1, z_size1_corr1, R1_corr1_data};
+float S1_corr1_data[z_size1_corr1*z_size1_corr1] = {0}; // 3x3
+arm_matrix_instance_f32 S1_corr1 = {z_size1_corr1, z_size1_corr1, S1_corr1_data};
+float K1_corr1_data[x_size1*z_size1_corr1];       // 6x3
+arm_matrix_instance_f32 K1_corr1 = {x_size1, z_size1_corr1, K1_corr1_data};
+
+
+// create new Kalman Filter instance for velocity and height
+ekf_data_t EKF2;
+float x2[x_size2] = {0};
+float F2_data[x_size2*x_size2] = {0};
+arm_matrix_instance_f32 F2 = {x_size2, x_size2, F2_data};
+float Q2_data[x_size2*x_size2] = {0};
+arm_matrix_instance_f32 Q2 = {x_size2, x_size2, Q2_data};
+float P2_data[x_size2*x_size2] = {0};
+arm_matrix_instance_f32 P2 = {x_size2, x_size2, P2_data};
+
+ekf_corr_data_t EKF2_corr1;
+float z2_corr1[z_size2_corr1] = {0};
+float h2_corr1[z_size2_corr1] = {0};
+float v2_corr1[z_size2_corr1] = {0};
+float H2_corr1_data[z_size2_corr1*x_size2] = {0};
+arm_matrix_instance_f32 H2_corr1 = {z_size2_corr1, x_size2, H2_corr1_data};
+float R2_corr1_data[z_size2_corr1*z_size2_corr1] = {0};
+arm_matrix_instance_f32 R2_corr1 = {z_size2_corr1, z_size2_corr1, R2_corr1_data};
+float S2_corr1_data[z_size2_corr1*z_size2_corr1] = {0};
+arm_matrix_instance_f32 S2_corr1 = {z_size2_corr1, z_size2_corr1, S2_corr1_data};
+float K2_corr1_data[x_size2*z_size2_corr1];
+arm_matrix_instance_f32 K2_corr1 = {x_size2, z_size2_corr1, K2_corr1_data};
+
+ekf_corr_data_t EKF2_corr2;
+float z2_corr2[z_size2_corr2] = {0};
+float h2_corr2[z_size2_corr2] = {0};
+float v2_corr2[z_size2_corr2] = {0};
+float H2_corr2_data[z_size2_corr2*x_size2] = {0};
+arm_matrix_instance_f32 H2_corr2 = {z_size2_corr2, x_size2, H2_corr2_data};
+float R2_corr2_data[z_size2_corr2*z_size2_corr2] = {0};
+arm_matrix_instance_f32 R2_corr2 = {z_size2_corr2, z_size2_corr2, R2_corr2_data};
+float S2_corr2_data[z_size2_corr2*z_size2_corr2] = {0};
+arm_matrix_instance_f32 S2_corr2 = {z_size2_corr2, z_size2_corr2, S2_corr2_data};
+float K2_corr2_data[x_size2*z_size2_corr2];
+arm_matrix_instance_f32 K2_corr2 = {x_size2, z_size2_corr2, K2_corr2_data};
+
+// Quaternion EKF variables
+ekf_data_t EKF3;
+float x3[x_size3] = {0};
+float F3_data[x_size3*x_size3] = {0}; // 7x7
+arm_matrix_instance_f32 F3 = {x_size3, x_size3, F3_data};
+float Q3_data[x_size3*x_size3] = {0}; // 7x7
+arm_matrix_instance_f32 Q3 = {x_size3, x_size3, Q3_data};
+float P3_data[x_size3*x_size3] = {0}; // 7x7
+arm_matrix_instance_f32 P3 = {x_size3, x_size3, P3_data};
+
+ekf_corr_data_t EKF3_corr1;
+float z3_corr1[z_size3_corr1] = {0};
+float h3_corr1[z_size3_corr1] = {0};
+float v3_corr1[z_size3_corr1] = {0};
+float H3_corr1_data[z_size3_corr1*x_size3] = {0}; // 6x7
+arm_matrix_instance_f32 H3_corr1 = {z_size3_corr1, x_size3, H3_corr1_data};
+float R3_corr1_data[z_size3_corr1*z_size3_corr1] = {0}; // 6x6
+arm_matrix_instance_f32 R3_corr1 = {z_size3_corr1, z_size3_corr1, R3_corr1_data};
+float S3_corr1_data[z_size3_corr1*z_size3_corr1] = {0}; // 6x6
+arm_matrix_instance_f32 S3_corr1 = {z_size3_corr1, z_size3_corr1, S3_corr1_data};
+float K3_corr1_data[x_size3*z_size3_corr1];       // 7x6
+arm_matrix_instance_f32 K3_corr1 = {x_size3, z_size3_corr1, K3_corr1_data};
+
 
 // set boundaries for angle
 void normalizeAngle(float *angle, float upper_boundary, float lower_boundary, float step_size) {
@@ -238,16 +325,16 @@ void DeulerMatrixFromEuler(float phi, float theta, arm_matrix_instance_f32 *mat)
 }
 
 // calculate barometric height from static pressure measurement
-void BaroPressureToHeight(float pressure, float *height) {
+void BaroPressureToHeight(float pressure, float pressure_reference, float *height) {
     double buffer;
-    buffer = (pow(pressure / p0, -L0 * R0 / g0) - 1.) * T0 / L0;
+    buffer = (pow(pressure / pressure_reference, -L_const * R_const / g0_const) - 1.) * T0_const / L_const;
     *height = (float)buffer;
 }
 
 // calculate barometric pressure from height
-void BaroHeightToPressure(float height, float *pressure) {
+void BaroHeightToPressure(float height, float pressure_reference, float *pressure) {
     double buffer;
-    buffer = pow(L0 / T0 * height + 1., -g0 / L0 / R0) * p0;
+    buffer = pow(L_const / T0_const * height + 1., -g0_const / L_const / R_const) * pressure_reference;
     *pressure = (float)buffer;
 }
 
@@ -277,11 +364,11 @@ void EKFInit(ekf_data_t *ekf, ekf_instance_t kalman_type, uint8_t x_vec_size, ui
         // configure orientation EKF matrices
         arm_mat_fill_diag_f32(ekf->F, 0, 0, 1.);
 
-        arm_mat_set_diag_f32(ekf->P, 0, 0, 3, 0.1);      // initial guess for angle variance
-        arm_mat_set_diag_f32(ekf->P, 3, 3, 3, 0.001);    // initial guess for offset variance
+        arm_mat_set_diag_f32(ekf->P, 0, 0, 3, 0.1);     // initial guess for angle variance
+        arm_mat_set_diag_f32(ekf->P, 3, 3, 3, 0.001);   // initial guess for offset variance
 
-        arm_mat_set_diag_f32(ekf->Q, 0, 0, 3, 1e-8);     // variance of gyroscope data   (noise)
-        arm_mat_set_diag_f32(ekf->Q, 3, 3, 3, 1e-12);    // variance of gyroscope offset (drift)
+        arm_mat_set_diag_f32(ekf->Q, 0, 0, 3, 1e-8);    // variance of gyroscope data   (noise)
+        arm_mat_set_diag_f32(ekf->Q, 3, 3, 3, 1e-12);   // variance of gyroscope offset (drift)
 
     } else if(kalman_type == EKF2_type) {
         // initialize EKF2 matrices
@@ -289,13 +376,15 @@ void EKFInit(ekf_data_t *ekf, ekf_instance_t kalman_type, uint8_t x_vec_size, ui
         arm_mat_fill_diag_f32(ekf->F, 0, 0, 1.);
         arm_mat_set_entry_f32(ekf->F, 0, 1, dt);
 
-        arm_mat_set_entry_f32(ekf->P, 0, 0, 10.);          // initial guess for height variance
-        arm_mat_set_entry_f32(ekf->P, 1, 1, 1.);           // initial guess for vertical velocity variance
+        arm_mat_set_entry_f32(ekf->P, 0, 0, 10.);       // initial guess for height variance
+        arm_mat_set_entry_f32(ekf->P, 1, 1, 1.);        // initial guess for vertical velocity variance
+        arm_mat_set_entry_f32(ekf->P, 2, 2, 100.);      // initial guess for reference pressure variance   
 
         arm_mat_set_entry_f32(ekf->Q, 0, 0, ACCEL_VAR*0.25*dt*dt*dt*dt);  // variance of accelerometer data   (noise)
         arm_mat_set_entry_f32(ekf->Q, 0, 1, ACCEL_VAR*0.5*dt*dt*dt);
         arm_mat_set_entry_f32(ekf->Q, 1, 0, ACCEL_VAR*0.5*dt*dt*dt);
         arm_mat_set_entry_f32(ekf->Q, 1, 1, ACCEL_VAR*dt*dt);
+        arm_mat_set_entry_f32(ekf->Q, 2, 2, REFERENCE_PRESSURE_VAR);
         //arm_mat_set_diag_f32(ekf->Q, 6, 6, 3, 1e-12f);       // variance of accelerometer offset (drift)
 
     } else if(kalman_type == EKF3_type) {
@@ -337,7 +426,6 @@ void EKFCorrectionInit(ekf_data_t ekf, ekf_corr_data_t *ekf_corr, ekf_correction
 
     } else if(ekf.type == EKF2_type) {
         // configure height EKF correction matrices
-        arm_mat_set_entry_f32(ekf_corr->H, 0, 0, 1.);
 
     } else if(ekf.type == EKF3_type) {
         // configure Quaternion EKF correction matrices
@@ -419,7 +507,7 @@ void EKFPredictCovariance(ekf_data_t *ekf) {
         // calculate Process Noise Covariance Matrix Q = gyro_var^2 * W * W'
         arm_mat_mult_f32(&W_mat, &W_trans, &M1); // 4x4
         arm_mat_insert_mult_f32(&M1, ekf->Q, 0, 0, 0.25f*ekf->dt*ekf->dt*GYRO_VAR);
-        arm_mat_set_diag_f32(ekf->Q, 4, 4, 3, BIAS_VAR);
+        arm_mat_set_diag_f32(ekf->Q, 4, 4, 3, GYRO_BIAS_VAR);
 
         EKFGetStateTransitionJacobian(ekf);
     }
@@ -445,9 +533,12 @@ void EKFPredictMeasurement(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
     } else if(ekf->type == EKF2_type) {
         if(ekf_corr->type == corr1_type) {
             // measurement prediction of type 1 correction step
-            ekf_corr->h[0] = ekf->x[0];
+            // expected barometer measurement equivalent to current height estimate
+            BaroHeightToPressure(ekf->x[0], ekf->x[2], ekf_corr->h);
         } else if(ekf_corr->type == corr2_type) {
             // measurement prediction of type 2 correction step
+            ekf_corr->h[0] = ekf->x[0];
+            ekf_corr->h[1] = ekf->x[1];
         }
 
     } else if(ekf->type == EKF3_type) {
@@ -496,7 +587,7 @@ void EKFGetInnovation(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
 
 // update ekf Gain
 void EKFUpdateKalmanGain(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
-    if(ekf->type == EKF3_type) {
+    if(ekf->type == EKF2_type || ekf->type == EKF3_type) {
         EKFGetObservationJacobian(ekf, ekf_corr);
     }
 
@@ -585,35 +676,49 @@ void EKFGetStateTransitionJacobian(ekf_data_t *ekf) {
 }
 
 void EKFGetObservationJacobian(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
-    float *q = ekf->x;
 
-    //float g_vec_enu[3] = {0, 0, 1};
-    float m_vec_enu[3] = {0, cos(magnetic_dip_angle * PI / 180.f), -sin(magnetic_dip_angle * PI / 180.f)};
+    if(ekf->type == EKF1_type) {
 
-    arm_mat_set_entry_f32(ekf_corr->H, 0, 0, -2*q[2]);
-    arm_mat_set_entry_f32(ekf_corr->H, 0, 1,  2*q[3]);
-    arm_mat_set_entry_f32(ekf_corr->H, 0, 2, -2*q[0]);
-    arm_mat_set_entry_f32(ekf_corr->H, 0, 3,  2*q[1]);
-    arm_mat_set_entry_f32(ekf_corr->H, 1, 0,  2*q[1]);
-    arm_mat_set_entry_f32(ekf_corr->H, 1, 1,  2*q[0]);
-    arm_mat_set_entry_f32(ekf_corr->H, 1, 2,  2*q[3]);
-    arm_mat_set_entry_f32(ekf_corr->H, 1, 3,  2*q[2]);
-    arm_mat_set_entry_f32(ekf_corr->H, 2, 0,  2*q[0]);
-    arm_mat_set_entry_f32(ekf_corr->H, 2, 1, -2*q[1]);
-    arm_mat_set_entry_f32(ekf_corr->H, 2, 2, -2*q[2]);
-    arm_mat_set_entry_f32(ekf_corr->H, 2, 3,  2*q[3]);
-    arm_mat_set_entry_f32(ekf_corr->H, 3, 0,  2*(m_vec_enu[1]*q[3]-m_vec_enu[2]*q[2]));
-    arm_mat_set_entry_f32(ekf_corr->H, 3, 1,  2*(m_vec_enu[1]*q[2]+m_vec_enu[2]*q[3]));
-    arm_mat_set_entry_f32(ekf_corr->H, 3, 2,  2*(m_vec_enu[1]*q[1]-m_vec_enu[2]*q[0]));
-    arm_mat_set_entry_f32(ekf_corr->H, 3, 3,  2*(m_vec_enu[1]*q[0]+m_vec_enu[2]*q[1]));
-    arm_mat_set_entry_f32(ekf_corr->H, 4, 0,  2*(m_vec_enu[1]*q[0]+m_vec_enu[2]*q[1]));
-    arm_mat_set_entry_f32(ekf_corr->H, 4, 1, -2*(m_vec_enu[1]*q[1]-m_vec_enu[2]*q[0]));
-    arm_mat_set_entry_f32(ekf_corr->H, 4, 2,  2*(m_vec_enu[1]*q[2]+m_vec_enu[2]*q[3]));
-    arm_mat_set_entry_f32(ekf_corr->H, 4, 3, -2*(m_vec_enu[1]*q[3]-m_vec_enu[2]*q[2]));
-    arm_mat_set_entry_f32(ekf_corr->H, 5, 0, -2*(m_vec_enu[1]*q[1]-m_vec_enu[2]*q[0]));
-    arm_mat_set_entry_f32(ekf_corr->H, 5, 1, -2*(m_vec_enu[1]*q[0]+m_vec_enu[2]*q[1]));
-    arm_mat_set_entry_f32(ekf_corr->H, 5, 2,  2*(m_vec_enu[1]*q[3]-m_vec_enu[2]*q[2]));
-    arm_mat_set_entry_f32(ekf_corr->H, 5, 3,  2*(m_vec_enu[1]*q[2]+m_vec_enu[2]*q[3]));
+    } else if(ekf->type == EKF2_type) {
+        if(ekf_corr->type == corr1_type) {
+            arm_mat_set_entry_f32(ekf_corr->H, 0, 0, (-g0_const * ekf_corr->h[0]) / (R_const * (T0_const + L_const * ekf->x[0])));
+            arm_mat_set_entry_f32(ekf_corr->H, 0, 2, ekf_corr->h[0] / ekf->x[2]);
+
+        } else if(ekf_corr->type == corr2_type) {
+            arm_mat_set_diag_f32(ekf_corr->H, 0, 0, 2, 1);
+        }
+
+    } else if(ekf->type == EKF3_type) {
+        float *q = ekf->x;
+
+        //float g_vec_enu[3] = {0, 0, 1};
+        float m_vec_enu[3] = {0, cos(magnetic_dip_angle * PI / 180.f), -sin(magnetic_dip_angle * PI / 180.f)};
+
+        arm_mat_set_entry_f32(ekf_corr->H, 0, 0, -2*q[2]);
+        arm_mat_set_entry_f32(ekf_corr->H, 0, 1,  2*q[3]);
+        arm_mat_set_entry_f32(ekf_corr->H, 0, 2, -2*q[0]);
+        arm_mat_set_entry_f32(ekf_corr->H, 0, 3,  2*q[1]);
+        arm_mat_set_entry_f32(ekf_corr->H, 1, 0,  2*q[1]);
+        arm_mat_set_entry_f32(ekf_corr->H, 1, 1,  2*q[0]);
+        arm_mat_set_entry_f32(ekf_corr->H, 1, 2,  2*q[3]);
+        arm_mat_set_entry_f32(ekf_corr->H, 1, 3,  2*q[2]);
+        arm_mat_set_entry_f32(ekf_corr->H, 2, 0,  2*q[0]);
+        arm_mat_set_entry_f32(ekf_corr->H, 2, 1, -2*q[1]);
+        arm_mat_set_entry_f32(ekf_corr->H, 2, 2, -2*q[2]);
+        arm_mat_set_entry_f32(ekf_corr->H, 2, 3,  2*q[3]);
+        arm_mat_set_entry_f32(ekf_corr->H, 3, 0,  2*(m_vec_enu[1]*q[3]-m_vec_enu[2]*q[2]));
+        arm_mat_set_entry_f32(ekf_corr->H, 3, 1,  2*(m_vec_enu[1]*q[2]+m_vec_enu[2]*q[3]));
+        arm_mat_set_entry_f32(ekf_corr->H, 3, 2,  2*(m_vec_enu[1]*q[1]-m_vec_enu[2]*q[0]));
+        arm_mat_set_entry_f32(ekf_corr->H, 3, 3,  2*(m_vec_enu[1]*q[0]+m_vec_enu[2]*q[1]));
+        arm_mat_set_entry_f32(ekf_corr->H, 4, 0,  2*(m_vec_enu[1]*q[0]+m_vec_enu[2]*q[1]));
+        arm_mat_set_entry_f32(ekf_corr->H, 4, 1, -2*(m_vec_enu[1]*q[1]-m_vec_enu[2]*q[0]));
+        arm_mat_set_entry_f32(ekf_corr->H, 4, 2,  2*(m_vec_enu[1]*q[2]+m_vec_enu[2]*q[3]));
+        arm_mat_set_entry_f32(ekf_corr->H, 4, 3, -2*(m_vec_enu[1]*q[3]-m_vec_enu[2]*q[2]));
+        arm_mat_set_entry_f32(ekf_corr->H, 5, 0, -2*(m_vec_enu[1]*q[1]-m_vec_enu[2]*q[0]));
+        arm_mat_set_entry_f32(ekf_corr->H, 5, 1, -2*(m_vec_enu[1]*q[0]+m_vec_enu[2]*q[1]));
+        arm_mat_set_entry_f32(ekf_corr->H, 5, 2,  2*(m_vec_enu[1]*q[3]-m_vec_enu[2]*q[2]));
+        arm_mat_set_entry_f32(ekf_corr->H, 5, 3,  2*(m_vec_enu[1]*q[2]+m_vec_enu[2]*q[3]));
+    }
 }
 
 void EKFPredictionStep(ekf_data_t *ekf) {

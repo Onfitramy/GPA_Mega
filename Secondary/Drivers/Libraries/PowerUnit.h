@@ -5,7 +5,7 @@
 #include "math.h"
 
 #define MAX_CURRENT         32.768f // A
-#define SHUNT_RESISTANCE    0.0016f  // Ohm
+#define SHUNT_RESISTANCE    0.00152f  // Ohm
 
 extern I2C_HandleTypeDef hi2c2;
 

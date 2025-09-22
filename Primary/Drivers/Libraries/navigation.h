@@ -9,19 +9,19 @@
 #define magnetic_dip_angle 66.0f
 
 #define GYRO_VAR 0.3*0.3
-#define BIAS_VAR 1e-12
+#define GYRO_BIAS_VAR 1e-12
 
 // Height EKF Settings
 #define ACCEL_VAR   0.5*0.5
-#define BIAS_VAR    1e-12
 #define BARO_VAR    0.2*0.2
+#define REFERENCE_PRESSURE_VAR 1e-3
 
 // EKF sizes
 #define x_size1 6
 #define u_size1 3
 #define z_size1_corr1 3
 
-#define x_size2 2
+#define x_size2 3
 #define u_size2 1
 #define z_size2_corr1 1
 #define z_size2_corr2 2
@@ -80,6 +80,69 @@ typedef struct {
     arm_matrix_instance_f32 *S;
 } ekf_corr_data_t;
 
+/* EKF variables, vectors and matrices */
+extern ekf_data_t EKF1;
+extern float x1[x_size1];
+extern arm_matrix_instance_f32 F1;
+extern arm_matrix_instance_f32 B1;
+extern arm_matrix_instance_f32 Q1;
+extern arm_matrix_instance_f32 P1;
+extern float P1_data[x_size1*x_size1];
+
+extern ekf_corr_data_t EKF1_corr1;
+extern float z1_corr1[z_size1_corr1];
+extern float h1_corr1[z_size1_corr1];
+extern float v1_corr1[z_size1_corr1];
+extern arm_matrix_instance_f32 H1_corr1;
+extern arm_matrix_instance_f32 R1_corr1;
+extern arm_matrix_instance_f32 S1_corr1;
+extern arm_matrix_instance_f32 K1_corr1;
+
+
+extern ekf_data_t EKF2;
+extern float x2[x_size2];
+extern arm_matrix_instance_f32 F2;
+extern arm_matrix_instance_f32 Q2;
+extern arm_matrix_instance_f32 P2;
+extern float P2_data[x_size2*x_size2];
+
+extern ekf_corr_data_t EKF2_corr1;
+extern float z2_corr1[z_size2_corr1];
+extern float h2_corr1[z_size2_corr1];
+extern float v2_corr1[z_size2_corr1];
+extern arm_matrix_instance_f32 H2_corr1;
+extern arm_matrix_instance_f32 R2_corr1;
+extern arm_matrix_instance_f32 S2_corr1;
+extern arm_matrix_instance_f32 K2_corr1;
+
+extern ekf_corr_data_t EKF2_corr2;
+extern float z2_corr2[z_size2_corr2];
+extern float h2_corr2[z_size2_corr2];
+extern float v2_corr2[z_size2_corr2];
+extern arm_matrix_instance_f32 H2_corr2;
+extern arm_matrix_instance_f32 R2_corr2;
+extern arm_matrix_instance_f32 S2_corr2;
+extern arm_matrix_instance_f32 K2_corr2;
+extern float R2_corr2_data[z_size2_corr2*z_size2_corr2];
+
+
+extern ekf_data_t EKF3;
+extern float x3[x_size3];
+extern arm_matrix_instance_f32 F3;
+extern arm_matrix_instance_f32 Q3;
+extern arm_matrix_instance_f32 P3;
+extern float P3_data[x_size3*x_size3];
+
+extern ekf_corr_data_t EKF3_corr1;
+extern float z3_corr1[z_size3_corr1];
+extern float h3_corr1[z_size3_corr1];
+extern float v3_corr1[z_size3_corr1];
+extern arm_matrix_instance_f32 H3_corr1;
+extern arm_matrix_instance_f32 R3_corr1;
+extern arm_matrix_instance_f32 S3_corr1;
+extern arm_matrix_instance_f32 K3_corr1;
+
+
 void normalizeAngle(float* angle, float upper_boundary, float lower_boundary, float step_size);
 void normalizeAngleVector(float* angle_vec, uint8_t pos_top, uint8_t pos_bottom, float upper_boundary, float lower_boundary, float step_size);
 
@@ -99,8 +162,8 @@ void RotationMatrixFromQuaternion(float *q, arm_matrix_instance_f32 *mat, direct
 void QuaternionFromRotationMatrix(arm_matrix_instance_f32 *mat, float *q);
 void DeulerMatrixFromEuler(float phi, float theta, arm_matrix_instance_f32 *mat);
 
-void BaroPressureToHeight(float pressure, float *height);
-void BaroHeightToPressure(float height, float *pressure);
+void BaroPressureToHeight(float pressure, float pressure_reference, float *height);
+void BaroHeightToPressure(float height, float pressure_reference, float *pressure);
 
 void EKFInit(ekf_data_t *ekf, ekf_instance_t kalman_type, uint8_t x_vec_size, uint8_t u_vec_size, const float dt,
              arm_matrix_instance_f32 *F_mat, arm_matrix_instance_f32 *P_mat, arm_matrix_instance_f32 *Q_mat,

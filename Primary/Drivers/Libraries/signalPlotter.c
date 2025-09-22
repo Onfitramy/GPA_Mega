@@ -207,8 +207,10 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(23, "velE");
   signalPlotter_setSignalName(24, "velD");
   signalPlotter_setSignalName(25, "EKF height");
-  signalPlotter_setSignalName(26, "EKF vel Z");
-  signalPlotter_setSignalName(27, "EKF height var");
-  signalPlotter_setSignalName(28, "EKF vel Z var");
+  signalPlotter_setSignalName(26, "EKF vel_Z");
+  signalPlotter_setSignalName(27, "EKF p_ref");
+  signalPlotter_setSignalName(28, "EKF height var");
+  signalPlotter_setSignalName(29, "EKF vel_Z var");
+  signalPlotter_setSignalName(30, "EKF p_ref var");
   #endif
 }

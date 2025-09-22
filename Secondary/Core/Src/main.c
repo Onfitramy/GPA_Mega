@@ -144,9 +144,9 @@ int main(void)
 
   HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 1); // Start UART receive interrupt
 
-  /*
-  PU_enableCamera();
   PU_enableRecovery();
+  PU_enableCamera();
+  /*
 
   HAL_Delay(1000);
 
