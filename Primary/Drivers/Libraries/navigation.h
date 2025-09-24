@@ -5,6 +5,10 @@
 #include "stdbool.h"
 #include "armMathAddon.h"
 
+// GNSS delay compensation settings
+#define GNSS_VELOCITY_DELAY 350 // ms
+#define GNSS_POSITION_DELAY 200 // ms
+
 // Quaternion EKF Settings
 #define magnetic_dip_angle 66.0f
 
@@ -13,8 +17,8 @@
 
 // Height EKF Settings
 #define ACCEL_VAR   0.5*0.5
-#define BARO_VAR    0.2*0.2
-#define REFERENCE_PRESSURE_VAR 1e-3
+#define BARO_VAR    2*2
+#define REFERENCE_PRESSURE_VAR 1e-6
 
 // EKF sizes
 #define x_size1 6

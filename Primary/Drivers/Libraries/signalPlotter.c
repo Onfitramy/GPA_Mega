@@ -181,8 +181,8 @@ void signalPlotter_init(void) {
   #endif
 
   #ifdef SIGNAL_PLOTTER_OUT_4 // raw sensor data
-  signalPlotter_setSignalName(0, "delta Time");
-  signalPlotter_setSignalName(1, "NRF Data");
+  signalPlotter_setSignalName(0, "delta_Time");
+  signalPlotter_setSignalName(1, "NRF_Data");
   signalPlotter_setSignalName(2, "phi");
   signalPlotter_setSignalName(3, "theta");
   signalPlotter_setSignalName(4, "psi");
@@ -196,21 +196,20 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(12, "temperature");
   signalPlotter_setSignalName(13, "height_baro");
   signalPlotter_setSignalName(14, "GPS_fix");
-  signalPlotter_setSignalName(15, "numSV");
-  signalPlotter_setSignalName(16, "hAcc");
-  signalPlotter_setSignalName(17, "vAcc");
-  signalPlotter_setSignalName(18, "sAcc");
-  signalPlotter_setSignalName(19, "lat");
-  signalPlotter_setSignalName(20, "lon");
-  signalPlotter_setSignalName(21, "height");
-  signalPlotter_setSignalName(22, "velN");
-  signalPlotter_setSignalName(23, "velE");
-  signalPlotter_setSignalName(24, "velD");
-  signalPlotter_setSignalName(25, "EKF height");
-  signalPlotter_setSignalName(26, "EKF vel_Z");
-  signalPlotter_setSignalName(27, "EKF p_ref");
-  signalPlotter_setSignalName(28, "EKF height var");
-  signalPlotter_setSignalName(29, "EKF vel_Z var");
-  signalPlotter_setSignalName(30, "EKF p_ref var");
+  signalPlotter_setSignalName(15, "gnss_numSV");
+  signalPlotter_setSignalName(16, "gnss_hAcc");
+  signalPlotter_setSignalName(17, "gnss_vAcc");
+  signalPlotter_setSignalName(18, "gnss_sAcc");
+  signalPlotter_setSignalName(19, "gnss_lat");
+  signalPlotter_setSignalName(20, "gnss_lon");
+  signalPlotter_setSignalName(21, "gnss_height");
+  signalPlotter_setSignalName(22, "gnss_velN");
+  signalPlotter_setSignalName(23, "gnss_velE");
+  signalPlotter_setSignalName(24, "gnss_velD");
+  signalPlotter_setSignalName(25, "EKF_height");
+  signalPlotter_setSignalName(26, "EKF_vel_Z");
+  signalPlotter_setSignalName(27, "EKF_p_ref");
+  signalPlotter_setSignalName(28, "height_comp");
+  signalPlotter_setSignalName(29, "velZ_comp");
   #endif
 }

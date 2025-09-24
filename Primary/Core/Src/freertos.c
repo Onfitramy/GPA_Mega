@@ -125,6 +125,19 @@ arm_matrix_instance_f32 M_rot_q = {3, 3, M_rot_q_data};
 
 float euler_from_q[3] = {0};
 
+// GNSS delay compensation
+float corr_acc_buf[GNSS_VELOCITY_DELAY] = {0};
+float corr_acc_sum = 0;
+float corr_delta_v = 0;
+
+float corr_vel_buf[GNSS_POSITION_DELAY] = {0};
+float corr_vel_sum = 0;
+float corr_delta_h = 0;
+
+float gnss_height_corr;
+float gnss_velZ_corr;
+
+
 // NRF24L01+ packages
 #pragma pack(push, 1)
 typedef struct {
@@ -405,6 +418,38 @@ void StartDefaultTask(void *argument)
     arm_vec3_sub_f32(imu1_data.accel, gravity_body_vec, a_BodyFrame);
     a_abs = arm_vec3_length_f32(a_BodyFrame);
 
+    // GNSS DELAY COMPENSATION TESTING
+
+    // discard oldest measurement
+    corr_acc_sum -= corr_acc_buf[GNSS_VELOCITY_DELAY-1];
+
+    // shift measurements down
+    for(int i = GNSS_VELOCITY_DELAY - 1; i > 0; i--) {
+      corr_acc_buf[i] = corr_acc_buf[i-1];
+    }
+
+    // insert new measurement
+    corr_acc_buf[0] = a_BodyFrame[2];
+    corr_acc_sum += corr_acc_buf[0];
+
+    // calculate velocity difference between gnss delay and present
+    corr_delta_v = corr_acc_sum * dt;
+
+
+    // discard oldest measurement
+    corr_vel_sum -= corr_vel_buf[GNSS_POSITION_DELAY-1];
+
+    // shift measurements down
+    for(int i = GNSS_POSITION_DELAY - 1; i > 0; i--) {
+      corr_vel_buf[i] = corr_vel_buf[i-1];
+    }
+
+    // insert new measurement
+    corr_vel_buf[0] = EKF2.x[1];
+    corr_vel_sum += corr_vel_buf[0] + 0.5 * dt * corr_acc_buf[0];
+
+    // calculate position difference between gnss delay and present
+    corr_delta_h = corr_vel_sum * dt;
 
     // KALMAN FILTER, HEIGHT
     EKFPredictionStep(&EKF2);
@@ -571,13 +616,12 @@ void Start100HzTask(void *argument) {
     signalPlotter_sendData(21, (float)gps_data.height/1000.f);
     signalPlotter_sendData(22, (float)gps_data.velN/1000.f);
     signalPlotter_sendData(23, (float)gps_data.velE/1000.f);
-    signalPlotter_sendData(24, (float)gps_data.velD/1000.f);
+    signalPlotter_sendData(24, (float)-gps_data.velD/1000.f);
     signalPlotter_sendData(25, EKF2.x[0]);
     signalPlotter_sendData(26, EKF2.x[1]);
     signalPlotter_sendData(27, EKF2.x[2]);
-    signalPlotter_sendData(28, arm_mat_get_entry_f32(&P2, 0, 0));
-    signalPlotter_sendData(29, arm_mat_get_entry_f32(&P2, 1, 1));
-    signalPlotter_sendData(30, arm_mat_get_entry_f32(&P2, 2, 2));
+    signalPlotter_sendData(28, gnss_height_corr);
+    signalPlotter_sendData(29, gnss_velZ_corr);
     #endif
 
     signalPlotter_executeTransmission(HAL_GetTick());
@@ -642,8 +686,14 @@ void Start10HzTask(void *argument) {
       }
       ECEFtoENU(WGS84_ref, ECEF_ref, ECEF, ENU);
 
-      z2_corr2[0] = (float)gps_data.height*1e-3;
-      z2_corr2[1] = (float)gps_data.velD*(-1e-3);
+      // add correction velocity to compensate GNSS delay
+      gnss_velZ_corr = gps_data.velD*(-1e-3) + corr_delta_v;
+      
+      // add correction height to compensate GNSS delay
+      gnss_height_corr = gps_data.height*1e-3 + corr_delta_h;
+
+      z2_corr2[0] = gnss_height_corr;
+      z2_corr2[1] = gnss_velZ_corr;
       arm_mat_set_entry_f32(EKF2_corr2.R, 0, 0, (float)gps_data.vAcc*gps_data.vAcc*1e-6);
       arm_mat_set_entry_f32(EKF2_corr2.R, 1, 1, (float)gps_data.sAcc*gps_data.sAcc*1e-6);
       EKFCorrectionStep(&EKF2, &EKF2_corr2);
