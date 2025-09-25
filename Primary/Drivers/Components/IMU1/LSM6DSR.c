@@ -1,6 +1,4 @@
 #include "LSM6DSR.h"
-//#include "calibration_data.h"
-#include "main.h" // ONLY FOR TESTING WITHE LED
 
 HAL_StatusTypeDef IMU1_SPI_status;
 

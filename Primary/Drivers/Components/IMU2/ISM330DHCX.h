@@ -6,6 +6,9 @@
 
 extern SPI_HandleTypeDef hspi3;
 
+extern int16_t IMU2XL_FS_LSB;
+extern int16_t IMU2G_FS_LSB;
+
 typedef struct {
     int16_t accel[3];  // X, Y, Z
     int16_t gyro[3];   // X, Y, Z
