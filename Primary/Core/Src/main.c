@@ -39,6 +39,7 @@
 #include "signalPlotter.h"
 #include "status.h"
 #include "InterBoardCom.h"
+#include <stdint.h>
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 

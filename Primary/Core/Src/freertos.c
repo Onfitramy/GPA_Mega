@@ -363,6 +363,10 @@ void StartDefaultTask(void *argument)
   arm_vecN_concatenate_f32(3, imu1_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
   EKFStateVInit(&EKF3, &EKF3_corr1);
 
+  IMU2_SetAccelerometerFilterMode(FILTER_MODE_LOW_PASS);
+  IMU2_SetAccelerometerFilterStage(FILTER_STAGE_SECOND);
+  IMU2_SetAccelerometerFilterBandwidth(FILTER_BANDWIDTH_1_OVER_10);
+
   /* Infinite loop */
   for(;;) {
     TimeMeasureStart();
@@ -373,12 +377,19 @@ void StartDefaultTask(void *argument)
 
     ReadInternalADC(&ADC_Temperature, &ADC_V_Ref);
 
+    // TODO: Check which IMU to use
     if(IMU1_VerifyDataReady() & 0x03 == 0x03) {
       IMU1_ReadSensorData(&imu1_data);
       arm_vec3_sub_f32(imu1_data.accel, IMU1_offset, imu1_data.accel);
       arm_vec3_element_product_f32(imu1_data.accel, IMU1_scale, imu1_data.accel);
     }
-    
+
+    if(IMU2_VerifyDataReady() & 0x03 == 0x03) {
+     IMU2_ReadSensorData(&imu2_data);
+     // arm_vec3_sub_f32(imu2_data.accel, IMU2_offset, imu2_data.accel);
+     // arm_vec3_element_product_f32(imu2_data.accel, IMU2_scale, imu2_data.accel);
+    }
+
     //IMU2_ReadSensorData(&imu2_data);
 
     if(MAG_VerifyDataReady() & 0b00000001) {
@@ -468,7 +479,6 @@ void StartDefaultTask(void *argument)
       EKFCorrectionStep(&EKF2, &EKF2_corr1);
     }
 
-
     if(flight_status == 0) { // AWAIT GNSS FIX
       if(gps_data.gpsFix == 3) {
         flight_status = 1;
@@ -547,12 +557,12 @@ void Start100HzTask(void *argument) {
     signalPlotter_sendData(2, mag_data.field[0]);
     signalPlotter_sendData(3, mag_data.field[1]);
     signalPlotter_sendData(4, mag_data.field[2]);
-    signalPlotter_sendData(5, imu1_data.accel[0]);
-    signalPlotter_sendData(6, imu1_data.accel[1]);
-    signalPlotter_sendData(7, imu1_data.accel[2]);
-    signalPlotter_sendData(8, imu1_data.gyro[0]);
-    signalPlotter_sendData(9, imu1_data.gyro[1]);
-    signalPlotter_sendData(10, imu1_data.gyro[2]);
+    signalPlotter_sendData(5, imu2_data.accel[0]);
+    signalPlotter_sendData(6, imu2_data.accel[1]);
+    signalPlotter_sendData(7, imu2_data.accel[2]);
+    signalPlotter_sendData(8, imu2_data.gyro[0]);
+    signalPlotter_sendData(9, imu2_data.gyro[1]);
+    signalPlotter_sendData(10, imu2_data.gyro[2]);
     signalPlotter_sendData(11, pressure);
     signalPlotter_sendData(12, temperature);
     signalPlotter_sendData(13, (float)gps_data.gpsFix);

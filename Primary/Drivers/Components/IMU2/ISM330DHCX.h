@@ -10,10 +10,31 @@ extern int16_t IMU2XL_FS_LSB;
 extern int16_t IMU2G_FS_LSB;
 
 typedef struct {
-    int16_t accel[3];  // X, Y, Z
-    int16_t gyro[3];   // X, Y, Z
+    float accel[3];  // X, Y, Z
+    float gyro[3];   // X, Y, Z
     float temp;        // temperature
 } ISM330DHCX_Data_t;
+
+typedef enum {
+    FILTER_MODE_LOW_PASS = 0b0,
+    FILTER_MODE_HIGH_PASS = 0b1,
+} FilterMode;
+
+typedef enum {
+    FILTER_STAGE_FIRST = 0b0,
+    FILTER_STAGE_SECOND = 0b1,
+} FilterStage;
+
+typedef enum {
+    FILTER_BANDWIDTH_1_OVER_4 = 0b000,
+    FILTER_BANDWIDTH_1_OVER_10 = 0b001,
+    FILTER_BANDWIDTH_1_OVER_20 = 0b010,
+    FILTER_BANDWIDTH_1_OVER_45 = 0b011,
+    FILTER_BANDWIDTH_1_OVER_100 = 0b100,
+    FILTER_BANDWIDTH_1_OVER_200 = 0b101,
+    FILTER_BANDWIDTH_1_OVER_400 = 0b110,
+    FILTER_BANDWIDTH_1_OVER_800 = 0b111,
+} FilterBandwidth;
 
 uint8_t IMU2_SelfTest(void);
 uint8_t IMU2_VerifyDataReady(void);
@@ -22,6 +43,9 @@ HAL_StatusTypeDef IMU2_ConfigXL(uint8_t ODR, uint8_t FS, bool LPF2);
 HAL_StatusTypeDef IMU2_ConfigG(uint8_t ODR, uint8_t FS);
 
 HAL_StatusTypeDef IMU2_ReadSensorData(ISM330DHCX_Data_t *data);
+HAL_StatusTypeDef IMU2_SetAccelerometerFilterMode(FilterMode filter_mode);
+HAL_StatusTypeDef IMU2_SetAccelerometerFilterStage(FilterStage filter_stage);
+HAL_StatusTypeDef IMU2_SetAccelerometerFilterBandwidth(FilterBandwidth filter_bandwidth);
 
 #define IMU2_SPI        hspi3
 #define IMU2_CS_PORT    GPIOD
