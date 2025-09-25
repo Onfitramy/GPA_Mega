@@ -134,7 +134,7 @@ HAL_StatusTypeDef IMU2_ReadSensorData(ISM330DHCX_Data_t *data) {
     return HAL_OK;
 }
 
-HAL_StatusTypeDef IMU2_SetAccFilterMode(AccFilterMode filter_mode) {
+HAL_StatusTypeDef IMU2_SetAccFilterMode(const AccFilterMode filter_mode) {
     const uint8_t address = ISM330DHCX_CTRL8_XL;
     uint8_t data = 0;
 
@@ -149,7 +149,7 @@ HAL_StatusTypeDef IMU2_SetAccFilterMode(AccFilterMode filter_mode) {
     return status;
 }
 
-HAL_StatusTypeDef IMU2_SetAccFilterStage(AccFilterStage filter_stage) {
+HAL_StatusTypeDef IMU2_SetAccFilterStage(const AccFilterStage filter_stage) {
     const uint8_t address = ISM330DHCX_CTRL1_XL;
     uint8_t data = 0;
 
@@ -164,7 +164,7 @@ HAL_StatusTypeDef IMU2_SetAccFilterStage(AccFilterStage filter_stage) {
     return status;
 }
 
-HAL_StatusTypeDef IMU2_SetAccFilterBandwidth(AccFilterBandwidth filter_bandwidth) {
+HAL_StatusTypeDef IMU2_SetAccFilterBandwidth(const AccFilterBandwidth filter_bandwidth) {
     const uint8_t address = ISM330DHCX_CTRL8_XL;
     uint8_t data = 0;
 
@@ -179,7 +179,7 @@ HAL_StatusTypeDef IMU2_SetAccFilterBandwidth(AccFilterBandwidth filter_bandwidth
     return status;
 }
 
-HAL_StatusTypeDef IMU2_SetGyroFilterMode(GyroLowPassMode low_pass_mode) {
+HAL_StatusTypeDef IMU2_SetGyroLowPassFilter(const bool low_pass_enabled) {
     const uint8_t address = ISM330DHCX_CTRL4_C;
     uint8_t data = 0;
 
@@ -187,14 +187,14 @@ HAL_StatusTypeDef IMU2_SetGyroFilterMode(GyroLowPassMode low_pass_mode) {
     if (status != HAL_OK) return status;
 
     data &= 0b11111101;
-    data |= (uint8_t) low_pass_mode << 1;
+    data |= (uint8_t) low_pass_enabled << 1;
 
     status = IMU2_write_reg(address, 1, &data);
 
     return status;
 }
 
-HAL_StatusTypeDef IMU2_SetGyroFilterBandwidth(GyroFilterBandwidth filter_bandwidth) {
+HAL_StatusTypeDef IMU2_SetGyroFilterBandwidth(const GyroFilterBandwidth filter_bandwidth) {
     const uint8_t address = ISM330DHCX_CTRL6_C;
     uint8_t data = 0;
 
@@ -203,6 +203,81 @@ HAL_StatusTypeDef IMU2_SetGyroFilterBandwidth(GyroFilterBandwidth filter_bandwid
 
     data &= 0b11111000;
     data |= (uint8_t) filter_bandwidth << 0;
+
+    status = IMU2_write_reg(address, 1, &data);
+
+    return status;
+}
+
+HAL_StatusTypeDef IMU2_SetInterrupt1Gyro(const bool interrupt_enabled) {
+    const uint8_t address = ISM330DHCX_INT1_CTRL;
+    uint8_t data = 0;
+
+    HAL_StatusTypeDef status = IMU2_read_reg(address, 1, &data);
+    if (status != HAL_OK) return status;
+
+    data &= 0b11111101;
+    data |= (uint8_t) interrupt_enabled << 1;
+
+    status = IMU2_write_reg(address, 1, &data);
+
+    return status;
+}
+
+HAL_StatusTypeDef IMU2_SetInterrupt1Acc(const bool interrupt_enabled) {
+    const uint8_t address = ISM330DHCX_INT1_CTRL;
+    uint8_t data = 0;
+
+    HAL_StatusTypeDef status = IMU2_read_reg(address, 1, &data);
+    if (status != HAL_OK) return status;
+
+    data &= 0b11111110;
+    data |= (uint8_t) interrupt_enabled << 0;
+
+    status = IMU2_write_reg(address, 1, &data);
+
+    return status;
+}
+
+HAL_StatusTypeDef IMU2_SetInterrupt2Gyro(const bool interrupt_enabled) {
+    const uint8_t address = ISM330DHCX_INT2_CTRL;
+    uint8_t data = 0;
+
+    HAL_StatusTypeDef status = IMU2_read_reg(address, 1, &data);
+    if (status != HAL_OK) return status;
+
+    data &= 0b11111101;
+    data |= (uint8_t) interrupt_enabled << 1;
+
+    status = IMU2_write_reg(address, 1, &data);
+
+    return status;
+}
+
+HAL_StatusTypeDef IMU2_SetInterrupt2Acc(const bool interrupt_enabled) {
+    const uint8_t address = ISM330DHCX_INT2_CTRL;
+    uint8_t data = 0;
+
+    HAL_StatusTypeDef status = IMU2_read_reg(address, 1, &data);
+    if (status != HAL_OK) return status;
+
+    data &= 0b11111110;
+    data |= (uint8_t) interrupt_enabled << 0;
+
+    status = IMU2_write_reg(address, 1, &data);
+
+    return status;
+}
+
+HAL_StatusTypeDef IMU2_SetInterruptPins(const InterruptPins interrupt_pins) {
+    const uint8_t address = ISM330DHCX_CTRL4_C;
+    uint8_t data = 0;
+
+    HAL_StatusTypeDef status = IMU2_read_reg(address, 1, &data);
+    if (status != HAL_OK) return status;
+
+    data &= 0b11011111;
+    data |= (uint8_t) interrupt_pins << 5;
 
     status = IMU2_write_reg(address, 1, &data);
 

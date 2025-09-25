@@ -37,12 +37,7 @@ typedef enum {
 } AccFilterBandwidth;
 
 typedef enum {
-    GYRO_LOW_PASS_DISABLED = 0b0,
-    GYRO_LOW_PASS_ENABLED = 0b1,
-} GyroLowPassMode;
-
-typedef enum {
-    // See the data sheet for which bandwidth mode corresponds to which cutoff frequency.
+    // See the data sheet (Table 58) for which bandwidth mode corresponds to which cutoff frequency.
     GYRO_FILTER_BANDWIDTH_1 = 0b000,
     GYRO_FILTER_BANDWIDTH_2 = 0b001,
     GYRO_FILTER_BANDWIDTH_3 = 0b010,
@@ -52,6 +47,11 @@ typedef enum {
     GYRO_FILTER_BANDWIDTH_7 = 0b110,
     GYRO_FILTER_BANDWIDTH_8 = 0b111,
 } GyroFilterBandwidth;
+
+typedef enum {
+    INTERRUPT_PINS_1_AND_2 = 0b0,
+    INTERRUPT_PIN_1 = 0b1,
+} InterruptPins;
 
 uint8_t IMU2_SelfTest(void);
 uint8_t IMU2_VerifyDataReady(void);
@@ -63,8 +63,13 @@ HAL_StatusTypeDef IMU2_ReadSensorData(ISM330DHCX_Data_t *data);
 HAL_StatusTypeDef IMU2_SetAccFilterMode(AccFilterMode filter_mode);
 HAL_StatusTypeDef IMU2_SetAccFilterStage(AccFilterStage filter_stage);
 HAL_StatusTypeDef IMU2_SetAccFilterBandwidth(AccFilterBandwidth filter_bandwidth);
-HAL_StatusTypeDef IMU2_SetGyroFilterMode(GyroLowPassMode low_pass_mode);
+HAL_StatusTypeDef IMU2_SetGyroLowPassFilter(bool low_pass_enabled);
 HAL_StatusTypeDef IMU2_SetGyroFilterBandwidth(GyroFilterBandwidth filter_bandwidth);
+HAL_StatusTypeDef IMU2_SetInterrupt1Gyro(bool interrupt_enabled);
+HAL_StatusTypeDef IMU2_SetInterrupt1Acc(bool interrupt_enabled);
+HAL_StatusTypeDef IMU2_SetInterrupt2Gyro(bool interrupt_enabled);
+HAL_StatusTypeDef IMU2_SetInterrupt2Acc(bool interrupt_enabled);
+HAL_StatusTypeDef IMU2_SetInterruptPins(InterruptPins interrupt_pins);
 
 #define IMU2_SPI        hspi3
 #define IMU2_CS_PORT    GPIOD
