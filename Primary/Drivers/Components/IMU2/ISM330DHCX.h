@@ -16,25 +16,42 @@ typedef struct {
 } ISM330DHCX_Data_t;
 
 typedef enum {
-    FILTER_MODE_LOW_PASS = 0b0,
-    FILTER_MODE_HIGH_PASS = 0b1,
-} FilterMode;
+    ACC_FILTER_MODE_LOW_PASS = 0b0,
+    ACC_FILTER_MODE_HIGH_PASS = 0b1,
+} AccFilterMode;
 
 typedef enum {
-    FILTER_STAGE_FIRST = 0b0,
-    FILTER_STAGE_SECOND = 0b1,
-} FilterStage;
+    ACC_FILTER_STAGE_FIRST = 0b0,
+    ACC_FILTER_STAGE_SECOND = 0b1,
+} AccFilterStage;
 
 typedef enum {
-    FILTER_BANDWIDTH_1_OVER_4 = 0b000,
-    FILTER_BANDWIDTH_1_OVER_10 = 0b001,
-    FILTER_BANDWIDTH_1_OVER_20 = 0b010,
-    FILTER_BANDWIDTH_1_OVER_45 = 0b011,
-    FILTER_BANDWIDTH_1_OVER_100 = 0b100,
-    FILTER_BANDWIDTH_1_OVER_200 = 0b101,
-    FILTER_BANDWIDTH_1_OVER_400 = 0b110,
-    FILTER_BANDWIDTH_1_OVER_800 = 0b111,
-} FilterBandwidth;
+    ACC_FILTER_BANDWIDTH_1_OVER_4 = 0b000,
+    ACC_FILTER_BANDWIDTH_1_OVER_10 = 0b001,
+    ACC_FILTER_BANDWIDTH_1_OVER_20 = 0b010,
+    ACC_FILTER_BANDWIDTH_1_OVER_45 = 0b011,
+    ACC_FILTER_BANDWIDTH_1_OVER_100 = 0b100,
+    ACC_FILTER_BANDWIDTH_1_OVER_200 = 0b101,
+    ACC_FILTER_BANDWIDTH_1_OVER_400 = 0b110,
+    ACC_FILTER_BANDWIDTH_1_OVER_800 = 0b111,
+} AccFilterBandwidth;
+
+typedef enum {
+    GYRO_LOW_PASS_DISABLED = 0b0,
+    GYRO_LOW_PASS_ENABLED = 0b1,
+} GyroLowPassMode;
+
+typedef enum {
+    // See the data sheet for which bandwidth mode corresponds to which cutoff frequency.
+    GYRO_FILTER_BANDWIDTH_1 = 0b000,
+    GYRO_FILTER_BANDWIDTH_2 = 0b001,
+    GYRO_FILTER_BANDWIDTH_3 = 0b010,
+    GYRO_FILTER_BANDWIDTH_4 = 0b011,
+    GYRO_FILTER_BANDWIDTH_5 = 0b100,
+    GYRO_FILTER_BANDWIDTH_6 = 0b101,
+    GYRO_FILTER_BANDWIDTH_7 = 0b110,
+    GYRO_FILTER_BANDWIDTH_8 = 0b111,
+} GyroFilterBandwidth;
 
 uint8_t IMU2_SelfTest(void);
 uint8_t IMU2_VerifyDataReady(void);
@@ -43,9 +60,11 @@ HAL_StatusTypeDef IMU2_ConfigXL(uint8_t ODR, uint8_t FS, bool LPF2);
 HAL_StatusTypeDef IMU2_ConfigG(uint8_t ODR, uint8_t FS);
 
 HAL_StatusTypeDef IMU2_ReadSensorData(ISM330DHCX_Data_t *data);
-HAL_StatusTypeDef IMU2_SetAccelerometerFilterMode(FilterMode filter_mode);
-HAL_StatusTypeDef IMU2_SetAccelerometerFilterStage(FilterStage filter_stage);
-HAL_StatusTypeDef IMU2_SetAccelerometerFilterBandwidth(FilterBandwidth filter_bandwidth);
+HAL_StatusTypeDef IMU2_SetAccFilterMode(AccFilterMode filter_mode);
+HAL_StatusTypeDef IMU2_SetAccFilterStage(AccFilterStage filter_stage);
+HAL_StatusTypeDef IMU2_SetAccFilterBandwidth(AccFilterBandwidth filter_bandwidth);
+HAL_StatusTypeDef IMU2_SetGyroFilterMode(GyroLowPassMode low_pass_mode);
+HAL_StatusTypeDef IMU2_SetGyroFilterBandwidth(GyroFilterBandwidth filter_bandwidth);
 
 #define IMU2_SPI        hspi3
 #define IMU2_CS_PORT    GPIOD

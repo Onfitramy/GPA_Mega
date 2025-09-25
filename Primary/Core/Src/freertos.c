@@ -363,9 +363,12 @@ void StartDefaultTask(void *argument)
   arm_vecN_concatenate_f32(3, imu1_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
   EKFStateVInit(&EKF3, &EKF3_corr1);
 
-  IMU2_SetAccelerometerFilterMode(FILTER_MODE_LOW_PASS);
-  IMU2_SetAccelerometerFilterStage(FILTER_STAGE_SECOND);
-  IMU2_SetAccelerometerFilterBandwidth(FILTER_BANDWIDTH_1_OVER_10);
+  IMU2_SetAccFilterMode(ACC_FILTER_MODE_LOW_PASS);
+  IMU2_SetAccFilterStage(ACC_FILTER_STAGE_SECOND);
+  IMU2_SetAccFilterBandwidth(ACC_FILTER_BANDWIDTH_1_OVER_800);
+
+  IMU2_SetGyroFilterMode(GYRO_LOW_PASS_ENABLED);
+  IMU2_SetGyroFilterBandwidth(GYRO_FILTER_BANDWIDTH_8);
 
   /* Infinite loop */
   for(;;) {
