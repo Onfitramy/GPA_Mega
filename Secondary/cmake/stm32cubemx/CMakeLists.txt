@@ -81,7 +81,7 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/Components/XBee/xBee.c
     ../../Drivers/Libraries/InterBoardCom.c
     ../../Drivers/Libraries/VoltageReader.c
-    ../../Drivers/Libraries/Status.c
+    ../../Drivers/Libraries/status.c
     ../../Drivers/Libraries/PowerUnit.c
 )
 

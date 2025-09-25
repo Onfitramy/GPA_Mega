@@ -1,5 +1,6 @@
 #include "Buzzer.h"
 #include "main.h"
+#include <string.h>
 
 #define TIM_FREQ 84000000
 

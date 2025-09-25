@@ -1,4 +1,5 @@
 #include "ws2812.h"
+#include <math.h>
 
 volatile uint8_t datasentflag;
 

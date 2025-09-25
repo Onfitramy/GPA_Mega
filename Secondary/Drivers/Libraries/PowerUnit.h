@@ -2,7 +2,7 @@
 #define PowerUnit_H_
 
 #include "main.h"
-#include "math.h"
+#include <math.h>
 
 #define MAX_CURRENT         32.768f // A
 #define SHUNT_RESISTANCE    0.00152f  // Ohm

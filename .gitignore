@@ -2,7 +2,9 @@ README.md.backup
 Primary/build/*
 Secondary/build/*
 Secondary/vscode/*
-**/.idea
-**/CMakeFiles
-**/CmakeCache.txt
-**/.cmake
+.idea
+CMakeFiles
+CmakeCache.txt
+.cmake
+compile_commands.json
+.cache
