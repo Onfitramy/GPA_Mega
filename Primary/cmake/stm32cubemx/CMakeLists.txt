@@ -28,8 +28,7 @@ target_include_directories(stm32cubemx INTERFACE
     ../../Drivers/CMSIS/Include
 
     ../../Drivers/Components/LED
-    ../../Drivers/Components/IMU1
-    ../../Drivers/Components/IMU2
+	../../Drivers/Components/IMUS
     ../../Drivers/Components/MAG
     ../../Drivers/Components/BARO
     ../../Drivers/Components/GPS
@@ -107,8 +106,7 @@ target_sources(stm32cubemx INTERFACE
     ../../startup_stm32h723xx.s
 
     ../../Drivers/Components/LED/ws2812.c
-    ../../Drivers/Components/IMU1/LSM6DSR.c
-    ../../Drivers/Components/IMU2/ISM330DHCX.c
+    ../../Drivers/Components/IMUS/IMUS.c
     ../../Drivers/Components/MAG/LIS3MDL.c
     ../../Drivers/Components/BARO/bmp390.c
     ../../Drivers/Components/GPS/SAM-M8Q.c

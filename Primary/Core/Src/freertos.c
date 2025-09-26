@@ -33,8 +33,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "ws2812.h"
-#include "LSM6DSR.h"
-#include "ISM330DHCX.h"
+#include "IMUS.h"
 #include "LIS3MDL.h"
 #include "bmp390.h"
 #include "SAM-M8Q.h"
@@ -60,8 +59,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-LSM6DSR_Data_t imu1_data;
-ISM330DHCX_Data_t imu2_data;
+IMU_Data_t imu_data;
 LIS3MDL_Data_t mag_data;
 UBX_NAV_PVT gps_data;
 uint32_t pressure_raw;
@@ -305,12 +303,19 @@ void StartDefaultTask(void *argument)
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 1; //1000 Hz
 
+  // set default IMU
+  imu_data.imu = IMU2;
+  IMU_ReadSensorData(&imu_data);
+  IMU_SwitchSensors(&imu_data);
+  IMU_ReadSensorData(&imu_data);
+  IMU_SwitchSensors(&imu_data);
+
   uid[0] = HAL_GetUIDw0();
   uid[1] = HAL_GetUIDw1();
   uid[2] = HAL_GetUIDw2();
 
   // define Kalman Filter dimensions and pointers for orientation
-  EKFInit(&EKF1, EKF1_type, x_size1, u_size1, dt, &F1, &P1, &Q1, &B1 , x1, imu1_data.gyro);
+  EKFInit(&EKF1, EKF1_type, x_size1, u_size1, dt, &F1, &P1, &Q1, &B1 , x1, imu_data.gyro);
   EKFCorrectionInit(EKF1, &EKF1_corr1, corr1_type, 3, &H1_corr1, &K1_corr1, &R1_corr1, &S1_corr1, z1_corr1, h1_corr1, v1_corr1);
 
   // define Kalman Filter dimensions and pointers for velocity and position
@@ -319,24 +324,25 @@ void StartDefaultTask(void *argument)
   EKFCorrectionInit(EKF2, &EKF2_corr2, corr2_type, 2, &H2_corr2, &K2_corr2, &R2_corr2, &S2_corr2, z2_corr2, h2_corr2, v2_corr2); // GNSS
 
   // define Kalman Filter dimensions and pointers for Quaternion EKF
-  EKFInit(&EKF3, EKF3_type, x_size3, u_size3, dt, &F3, &P3, &Q3, NULL, x3, imu1_data.gyro);
+  EKFInit(&EKF3, EKF3_type, x_size3, u_size3, dt, &F3, &P3, &Q3, NULL, x3, imu_data.gyro);
   EKFCorrectionInit(EKF3, &EKF3_corr1, corr1_type, 6, &H3_corr1, &K3_corr1, &R3_corr1, &S3_corr1, z3_corr1, h3_corr1, v3_corr1);
 
   // define output signal names
   signalPlotter_init();
 
   // starting point for KF
-  while(IMU1_VerifyDataReady() & 0x03 != 0x03); // wait for IMU1 data
-  IMU1_ReadSensorData(&imu1_data);
-  arm_vec3_sub_f32(imu1_data.accel, IMU1_offset, imu1_data.accel);
-  arm_vec3_element_product_f32(imu1_data.accel, IMU1_scale, imu1_data.accel);
+  while(IMU_VerifyDataReady(&imu_data) & 0x03 != 0x03); // wait for IMU1 data
+  IMU_ReadSensorData(&imu_data);
+  // TODO: Automatic calibration detection
+  arm_vec3_sub_f32(imu_data.accel, IMU1_offset, imu_data.accel);
+  arm_vec3_element_product_f32(imu_data.accel, IMU1_scale, imu_data.accel);
 
   while(!(MAG_VerifyDataReady() & 0b00000001)); // wait for MAG data
   MAG_ReadSensorData(&mag_data);
   arm_vec3_sub_f32(mag_data.field, MAG_offset, mag_data.field);
   arm_vec3_element_product_f32(mag_data.field, MAG_scale, mag_data.field);
 
-  EulerOrientationFix(imu1_data.accel, mag_data.field, z1_corr1);
+  EulerOrientationFix(imu_data.accel, mag_data.field, z1_corr1);
 
   x1[0] = z1_corr1[0];
   x1[1] = z1_corr1[1];
@@ -360,15 +366,15 @@ void StartDefaultTask(void *argument)
   radioSetMode(RADIO_MODE_TRANSCEIVER);
 
   // Quaternion EKF initialization
-  arm_vecN_concatenate_f32(3, imu1_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
+  arm_vecN_concatenate_f32(3, imu_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
   EKFStateVInit(&EKF3, &EKF3_corr1);
 
-  IMU2_SetAccFilterMode(ACC_FILTER_MODE_LOW_PASS);
-  IMU2_SetAccFilterStage(ACC_FILTER_STAGE_SECOND);
-  IMU2_SetAccFilterBandwidth(ACC_FILTER_BANDWIDTH_1_OVER_800);
+  IMU_SetAccFilterMode(ACC_FILTER_MODE_LOW_PASS, &imu_data);
+  IMU_SetAccFilterStage(ACC_FILTER_STAGE_SECOND, &imu_data);
+  IMU_SetAccFilterBandwidth(ACC_FILTER_BANDWIDTH_ODR_OVER_800, &imu_data);
 
-  IMU2_SetGyroFilterMode(GYRO_LOW_PASS_ENABLED);
-  IMU2_SetGyroFilterBandwidth(GYRO_FILTER_BANDWIDTH_8);
+  IMU_SetGyroLowPassFilter(true, &imu_data);
+  IMU_SetGyroFilterBandwidth(GYRO_FILTER_BANDWIDTH_8, &imu_data);
 
   /* Infinite loop */
   for(;;) {
@@ -381,19 +387,11 @@ void StartDefaultTask(void *argument)
     ReadInternalADC(&ADC_Temperature, &ADC_V_Ref);
 
     // TODO: Check which IMU to use
-    if(IMU1_VerifyDataReady() & 0x03 == 0x03) {
-      IMU1_ReadSensorData(&imu1_data);
-      arm_vec3_sub_f32(imu1_data.accel, IMU1_offset, imu1_data.accel);
-      arm_vec3_element_product_f32(imu1_data.accel, IMU1_scale, imu1_data.accel);
+    if(IMU_VerifyDataReady(&imu_data) & 0x03 == 0x03) {
+      IMU_ReadSensorData(&imu_data);
+      arm_vec3_sub_f32(imu_data.accel, IMU1_offset, imu_data.accel);
+      arm_vec3_element_product_f32(imu_data.accel, IMU1_scale, imu_data.accel);
     }
-
-    if(IMU2_VerifyDataReady() & 0x03 == 0x03) {
-     IMU2_ReadSensorData(&imu2_data);
-     // arm_vec3_sub_f32(imu2_data.accel, IMU2_offset, imu2_data.accel);
-     // arm_vec3_element_product_f32(imu2_data.accel, IMU2_scale, imu2_data.accel);
-    }
-
-    //IMU2_ReadSensorData(&imu2_data);
 
     if(MAG_VerifyDataReady() & 0b00000001) {
       MAG_ReadSensorData(&mag_data);
@@ -426,12 +424,12 @@ void StartDefaultTask(void *argument)
     // transform measured body acceleration to world-frame acceleration
     RotationMatrixFromQuaternion(x3, &M_rot_bi, DCM_bi_WorldToBody);
     RotationMatrixFromQuaternion(x3, &M_rot_ib, DCM_ib_BodyToWorld);
-    arm_mat_vec_mult_f32(&M_rot_ib, imu1_data.accel, a_WorldFrame);
+    arm_mat_vec_mult_f32(&M_rot_ib, imu_data.accel, a_WorldFrame);
     a_WorldFrame[2] -= gravity_world_vec[2];
 
     // calculate acceleration w/o gravity in body frame
     arm_mat_vec_mult_f32(&M_rot_bi, gravity_world_vec, gravity_body_vec);
-    arm_vec3_sub_f32(imu1_data.accel, gravity_body_vec, a_BodyFrame);
+    arm_vec3_sub_f32(imu_data.accel, gravity_body_vec, a_BodyFrame);
     a_abs = arm_vec3_length_f32(a_BodyFrame);
 
     // GNSS DELAY COMPENSATION TESTING
@@ -560,12 +558,12 @@ void Start100HzTask(void *argument) {
     signalPlotter_sendData(2, mag_data.field[0]);
     signalPlotter_sendData(3, mag_data.field[1]);
     signalPlotter_sendData(4, mag_data.field[2]);
-    signalPlotter_sendData(5, imu2_data.accel[0]);
-    signalPlotter_sendData(6, imu2_data.accel[1]);
-    signalPlotter_sendData(7, imu2_data.accel[2]);
-    signalPlotter_sendData(8, imu2_data.gyro[0]);
-    signalPlotter_sendData(9, imu2_data.gyro[1]);
-    signalPlotter_sendData(10, imu2_data.gyro[2]);
+    signalPlotter_sendData(5, imu_data.accel[0]);
+    signalPlotter_sendData(6, imu_data.accel[1]);
+    signalPlotter_sendData(7, imu_data.accel[2]);
+    signalPlotter_sendData(8, imu_data.gyro[0]);
+    signalPlotter_sendData(9, imu_data.gyro[1]);
+    signalPlotter_sendData(10, imu_data.gyro[2]);
     signalPlotter_sendData(11, pressure);
     signalPlotter_sendData(12, temperature);
     signalPlotter_sendData(13, (float)gps_data.gpsFix);
@@ -593,18 +591,18 @@ void Start100HzTask(void *argument) {
     signalPlotter_sendData(8, h3_corr1[3]);
     signalPlotter_sendData(9, h3_corr1[4]);
     signalPlotter_sendData(10, h3_corr1[5]);
-    signalPlotter_sendData(11, imu1_data.accel[0]);
-    signalPlotter_sendData(12, imu1_data.accel[1]);
-    signalPlotter_sendData(13, imu1_data.accel[2]);
+    signalPlotter_sendData(11, imu_data.accel[0]);
+    signalPlotter_sendData(12, imu_data.accel[1]);
+    signalPlotter_sendData(13, imu_data.accel[2]);
     signalPlotter_sendData(14, mag_data.field[0]);
     signalPlotter_sendData(15, mag_data.field[1]);
     signalPlotter_sendData(16, mag_data.field[2]);
     signalPlotter_sendData(17, phi);
     signalPlotter_sendData(18, theta);
     signalPlotter_sendData(19, psi);
-    signalPlotter_sendData(20, imu1_data.gyro[0]);
-    signalPlotter_sendData(21, imu1_data.gyro[1]);
-    signalPlotter_sendData(22, imu1_data.gyro[2]);
+    signalPlotter_sendData(20, imu_data.gyro[0]);
+    signalPlotter_sendData(21, imu_data.gyro[1]);
+    signalPlotter_sendData(22, imu_data.gyro[2]);
     signalPlotter_sendData(23, x3[4]);
     signalPlotter_sendData(24, x3[5]);
     signalPlotter_sendData(25, x3[6]);
@@ -619,9 +617,9 @@ void Start100HzTask(void *argument) {
     signalPlotter_sendData(2, euler_from_q[0]);
     signalPlotter_sendData(3, euler_from_q[1]);
     signalPlotter_sendData(4, euler_from_q[2]);
-    signalPlotter_sendData(5, imu1_data.accel[0]);
-    signalPlotter_sendData(6, imu1_data.accel[1]);
-    signalPlotter_sendData(7, imu1_data.accel[2]);
+    signalPlotter_sendData(5, imu_data.accel[0]);
+    signalPlotter_sendData(6, imu_data.accel[1]);
+    signalPlotter_sendData(7, imu_data.accel[2]);
     signalPlotter_sendData(8, a_WorldFrame[0]);
     signalPlotter_sendData(9, a_WorldFrame[1]);
     signalPlotter_sendData(10, a_WorldFrame[2]);
@@ -654,7 +652,7 @@ void Start100HzTask(void *argument) {
     signalPlotter_executeTransmission(HAL_GetTick());
 
     // attitude estimation using magnetometer and accelerometer
-    EulerOrientationFix(imu1_data.accel, mag_data.field, z1_corr1);
+    EulerOrientationFix(imu_data.accel, mag_data.field, z1_corr1);
 
     normalizeAnglePairVector(x1, z1_corr1, 0, 2, PI, -PI, 2*PI);
 
@@ -674,7 +672,7 @@ void Start100HzTask(void *argument) {
 
     // KALMAN FILTER, QUATERNION
     // correction step
-    arm_vecN_concatenate_f32(3, imu1_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
+    arm_vecN_concatenate_f32(3, imu_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
     EKFCorrectionStep(&EKF3, &EKF3_corr1);
 
     
@@ -835,8 +833,14 @@ uint8_t SelfTest(void) {
   }
   else if((status_data.sensor_status_flags & 0xff) != 0x9F) { //Run selftest if not all sensors are working or selftest not passed
     selftest_tries += 1;
-    status_data.sensor_status_flags |= IMU1_SelfTest();
-    status_data.sensor_status_flags |= (IMU2_SelfTest()<<1);
+
+    IMU_Data_t tmp_imu1_data;
+    IMU_Data_t tmp_imu2_data;
+    tmp_imu1_data.imu = IMU1;
+    tmp_imu2_data.imu = IMU2;
+
+    status_data.sensor_status_flags |= IMU_SelfTest(&tmp_imu1_data);
+    status_data.sensor_status_flags |= (IMU_SelfTest(&tmp_imu2_data)<<1);
     status_data.sensor_status_flags |= (MAG_SelfTest()<<2);
     status_data.sensor_status_flags |= (BMP_SelfTest()<<3);
     //status_data.sensor_status_flags |= (GPS_VER_CHECK()<<4); //Check if GPS is connected and working

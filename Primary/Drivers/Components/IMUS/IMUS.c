@@ -1,0 +1,336 @@
+#include "IMUS.h"
+//#include "calibration_data.h"
+#include "main.h" // ONLY FOR TESTING WITHE LED
+#include <stdint.h>
+
+HAL_StatusTypeDef IMU_SPI_status;
+
+int16_t IMUXL_FS_LSB = 16384;
+int16_t IMUG_FS_LSB = 35;
+
+static void IMU_WritePin(GPIO_PinState pin, const IMU_Data_t *imu_data) {
+    GPIO_TypeDef *imu_cs_port;
+    uint16_t imu_cs_pin;
+
+    switch (imu_data->imu) {
+        case IMU1:
+            imu_cs_port = IMU1_CS_PORT;
+            imu_cs_pin = IMU1_CS_PIN;
+            break;
+        case IMU2:
+            imu_cs_port = IMU2_CS_PORT;
+            imu_cs_pin = IMU2_CS_PIN;
+            break;
+    }
+
+    HAL_GPIO_WritePin(imu_cs_port, imu_cs_pin, pin);
+}
+
+static void IMU_Select(const IMU_Data_t *imu_data) {
+    IMU_WritePin(GPIO_PIN_RESET, imu_data);
+}
+
+static void IMU_Deselect(const IMU_Data_t *imu_data) {
+    IMU_WritePin(GPIO_PIN_SET, imu_data);
+}
+
+HAL_StatusTypeDef IMU_write_reg(uint8_t address, uint8_t len, uint8_t *data, const IMU_Data_t *imu_data) {
+    SPI_HandleTypeDef imu_spi;
+    switch (imu_data->imu) {
+        case IMU1:
+            imu_spi = IMU1_SPI;
+            break;
+        case IMU2:
+            imu_spi = IMU2_SPI;
+            break;
+    }
+    IMU_Select(imu_data);
+
+    uint8_t tx[len + 1];
+    tx[0] = address;
+    for (int i = 0; i < len; i++) {
+        tx[i + 1] = *(data + i);
+    }
+    IMU_SPI_status = HAL_SPI_Transmit(&imu_spi, tx, len + 1, HAL_MAX_DELAY);
+
+    IMU_Deselect(imu_data);
+    return IMU_SPI_status;
+}
+
+HAL_StatusTypeDef IMU_read_reg(uint8_t address, uint8_t len, uint8_t *data, const IMU_Data_t *imu_data) {
+    SPI_HandleTypeDef imu_spi;
+    switch (imu_data->imu) {
+        case IMU1:
+            imu_spi = IMU1_SPI;
+            break;
+        case IMU2:
+            imu_spi = IMU2_SPI;
+            break;
+    }
+    IMU_Select(imu_data);
+
+    uint8_t tx[len + 1], rx[len + 1];
+    tx[0] = address | IMU_SPI_READ;
+    IMU_SPI_status = HAL_SPI_TransmitReceive(&imu_spi, tx, rx, len + 1, HAL_MAX_DELAY);
+    for (int i = 0; i < len; i++) {
+        *(data + i) = rx[i + 1];
+    }
+
+    IMU_Deselect(imu_data);
+    return IMU_SPI_status;
+}
+
+void IMU_SwitchSensors(IMU_Data_t *imu_data) {
+    switch (imu_data->imu) {
+        case IMU1:
+            imu_data->imu = IMU2;
+            break;
+        case IMU2:
+            imu_data->imu = IMU1;
+            break;
+    }
+}
+
+uint8_t IMU_SelfTest(const IMU_Data_t *imu_data) {
+    uint8_t Who_Am_I_return = 0;
+    IMU_read_reg(IMU_WHO_AM_I, 1, &Who_Am_I_return, imu_data);
+    if (Who_Am_I_return == IMU_WHO_AM_I_VAL) return 1;
+    return 0;
+}
+
+/* returns 0b00000TGA where 1 = data available for T,G,A sensors */
+uint8_t IMU_VerifyDataReady(const IMU_Data_t *imu_data) {
+    uint8_t status_reg_return = 0;
+    IMU_read_reg(IMU_STATUS_REG, 1, &status_reg_return, imu_data);
+    return status_reg_return;
+}
+
+HAL_StatusTypeDef IMU_Init(const IMU_Data_t *imu_data) {
+    uint8_t tx[3] = {0x60, 0x60, 0x04};
+    uint8_t rx[3] = {0};
+    IMU_write_reg(IMU_CTRL1_XL, 3, tx, imu_data);
+    IMU_read_reg(IMU_CTRL1_XL, 3, rx, imu_data);
+
+    if (rx[0] != 0x60 || rx[1] != 0x60 || rx[2] != 0x04) return HAL_ERROR;
+    return HAL_OK;
+
+    // CTRL7_G, CTRL6_C, CTRL1_OIS,
+}
+
+HAL_StatusTypeDef IMU_ConfigXL(uint8_t ODR, uint8_t FS, bool LPF2, const IMU_Data_t *imu_data) {
+    switch(FS) {
+        case IMU_FS_XL_2:    IMUXL_FS_LSB = 16384; break;
+        case IMU_FS_XL_4:    IMUXL_FS_LSB = 8192;  break;
+        case IMU_FS_XL_8:    IMUXL_FS_LSB = 4096;  break;
+        case IMU_FS_XL_16:   IMUXL_FS_LSB = 2048;  break;
+    }
+    uint8_t tx[1] = { ODR << 4 | FS << 2 | LPF2 << 1 };
+    uint8_t rx[1] = { 0 };
+    IMU_write_reg(IMU_CTRL1_XL, 1, tx, imu_data);
+    IMU_read_reg(IMU_CTRL1_XL, 1, rx, imu_data);
+    if (tx[1] == rx[1]) return HAL_OK;
+    return HAL_ERROR;
+}
+
+HAL_StatusTypeDef IMU_ConfigG(uint8_t ODR, uint8_t FS, const IMU_Data_t *imu_data) {
+    switch(FS) {
+        case IMU_FS_G_125:  IMUG_FS_LSB = 35;   break;
+        case IMU_FS_G_250:  IMUG_FS_LSB = 70;   break;
+        case IMU_FS_G_500:  IMUG_FS_LSB = 140;  break;
+        case IMU_FS_G_1000: IMUG_FS_LSB = 280;  break;
+        case IMU_FS_G_2000: IMUG_FS_LSB = 560;  break;
+        case IMU_FS_G_4000: IMUG_FS_LSB = 1120; break;
+    }
+    uint8_t tx[1] = { ODR << 4 | FS };
+    uint8_t rx[1] = { 0 };
+    IMU_write_reg(IMU_CTRL2_G, 1, tx, imu_data);
+    IMU_read_reg(IMU_CTRL2_G, 1, rx, imu_data);
+    if (tx[1] == rx[1]) return HAL_OK;
+    return HAL_ERROR;
+}
+
+HAL_StatusTypeDef IMU_ReadSensorData(IMU_Data_t *imu_data) {
+    int16_t temp_raw;
+    HAL_StatusTypeDef status;
+
+    uint8_t available = IMU_VerifyDataReady(imu_data);
+
+    if (available & 0x01) {
+        uint8_t rx[6] = {0};
+        status = IMU_read_reg(IMU_OUTX_L_A, 6, rx, imu_data); // read accelerometer data
+        if (status != HAL_OK) return status;
+        imu_data->accel[0] = (float)(int16_t)(rx[1] << 8 | rx[0]) * 9.81 / IMUXL_FS_LSB; // accel_X [m/s²]
+        imu_data->accel[1] = (float)(int16_t)(rx[3] << 8 | rx[2]) * 9.81 / IMUXL_FS_LSB; // accel_Y [m/s²]
+        imu_data->accel[2] = (float)(int16_t)(rx[5] << 8 | rx[4]) * 9.81 / IMUXL_FS_LSB; // accel_Z [m/s²]
+    }
+    if (available & 0x02) {
+        uint8_t rx[6] = {0};
+        status = IMU_read_reg(IMU_OUTX_L_G, 6, rx, imu_data); // read gyro data
+        if (status != HAL_OK) return status;
+        imu_data->gyro[0] = (float)(int16_t)(rx[1] << 8 | rx[0]) * IMUG_FS_LSB / 8000 * M_PI / 180; // gyro_X [rad/s]
+        imu_data->gyro[1] = (float)(int16_t)(rx[3] << 8 | rx[2]) * IMUG_FS_LSB / 8000 * M_PI / 180; // gyro_Y [rad/s]
+        imu_data->gyro[2] = (float)(int16_t)(rx[5] << 8 | rx[4]) * IMUG_FS_LSB / 8000 * M_PI / 180; // gyro_Z [rad/s]
+    }
+    if (available & 0x04) {
+        uint8_t rx[2] = {0};
+        status = IMU_read_reg(IMU_OUT_TEMP_L, 2, rx, imu_data); // read temperature data
+        // TODO: Check status for all sensors
+        // TODO: Log HAL_FAIL
+        // TODO: Change detection for sensor switch
+        if (status != HAL_OK) return status;
+        temp_raw = (int16_t) (rx[1] << 8 | rx[0]); // calculate temperature
+        imu_data->temp = temp_raw / 256. + 25; // write temperature data to struct
+    }
+
+    return HAL_OK;
+}
+
+HAL_StatusTypeDef IMU_SetAccFilterMode(const AccFilterMode filter_mode, const IMU_Data_t *imu_data) {
+    const uint8_t address = IMU_CTRL8_XL;
+    uint8_t data = 0;
+
+    HAL_StatusTypeDef status = IMU_read_reg(address, 1, &data, imu_data);
+    if (status != HAL_OK) return status;
+
+    data &= 0b11111011;
+    data |= (uint8_t) filter_mode << 2;
+
+    status = IMU_write_reg(address, 1, &data, imu_data);
+
+    return status;
+}
+
+HAL_StatusTypeDef IMU_SetAccFilterStage(const AccFilterStage filter_stage, const IMU_Data_t *imu_data) {
+    const uint8_t address = IMU_CTRL1_XL;
+    uint8_t data = 0;
+
+    HAL_StatusTypeDef status = IMU_read_reg(address, 1, &data, imu_data);
+    if (status != HAL_OK) return status;
+
+    data &= 0b11111101;
+    data |= (uint8_t) filter_stage << 1;
+
+    status = IMU_write_reg(address, 1, &data, imu_data);
+
+    return status;
+}
+
+HAL_StatusTypeDef IMU_SetAccFilterBandwidth(const AccFilterBandwidth filter_bandwidth, const IMU_Data_t *imu_data) {
+    const uint8_t address = IMU_CTRL8_XL;
+    uint8_t data = 0;
+
+    HAL_StatusTypeDef status = IMU_read_reg(address, 1, &data, imu_data);
+    if (status != HAL_OK) return status;
+
+    data &= 0b00011111;
+    data |= (uint8_t) filter_bandwidth << 5;
+
+    status = IMU_write_reg(address, 1, &data, imu_data);
+
+    return status;
+}
+
+HAL_StatusTypeDef IMU_SetGyroLowPassFilter(const bool low_pass_enabled, const IMU_Data_t *imu_data) {
+    const uint8_t address = IMU_CTRL4_C;
+    uint8_t data = 0;
+
+    HAL_StatusTypeDef status = IMU_read_reg(address, 1, &data, imu_data);
+    if (status != HAL_OK) return status;
+
+    data &= 0b11111101;
+    data |= (uint8_t) low_pass_enabled << 1;
+
+    status = IMU_write_reg(address, 1, &data, imu_data);
+
+    return status;
+}
+
+HAL_StatusTypeDef IMU_SetGyroFilterBandwidth(const GyroFilterBandwidth filter_bandwidth, const IMU_Data_t *imu_data) {
+    const uint8_t address = IMU_CTRL6_C;
+    uint8_t data = 0;
+
+    HAL_StatusTypeDef status = IMU_read_reg(address, 1, &data, imu_data);
+    if (status != HAL_OK) return status;
+
+    data &= 0b11111000;
+    data |= (uint8_t) filter_bandwidth << 0;
+
+    status = IMU_write_reg(address, 1, &data, imu_data);
+
+    return status;
+}
+
+HAL_StatusTypeDef IMU_SetInterrupt1Gyro(const bool interrupt_enabled, const IMU_Data_t *imu_data) {
+    const uint8_t address = IMU_INT1_CTRL;
+    uint8_t data = 0;
+
+    HAL_StatusTypeDef status = IMU_read_reg(address, 1, &data, imu_data);
+    if (status != HAL_OK) return status;
+
+    data &= 0b11111101;
+    data |= (uint8_t) interrupt_enabled << 1;
+
+    status = IMU_write_reg(address, 1, &data, imu_data);
+
+    return status;
+}
+
+HAL_StatusTypeDef IMU_SetInterrupt1Acc(const bool interrupt_enabled, const IMU_Data_t *imu_data) {
+    const uint8_t address = IMU_INT1_CTRL;
+    uint8_t data = 0;
+
+    HAL_StatusTypeDef status = IMU_read_reg(address, 1, &data, imu_data);
+    if (status != HAL_OK) return status;
+
+    data &= 0b11111110;
+    data |= (uint8_t) interrupt_enabled << 0;
+
+    status = IMU_write_reg(address, 1, &data, imu_data);
+
+    return status;
+}
+
+HAL_StatusTypeDef IMU_SetInterrupt2Gyro(const bool interrupt_enabled, const IMU_Data_t *imu_data) {
+    const uint8_t address = IMU_INT2_CTRL;
+    uint8_t data = 0;
+
+    HAL_StatusTypeDef status = IMU_read_reg(address, 1, &data, imu_data);
+    if (status != HAL_OK) return status;
+
+    data &= 0b11111101;
+    data |= (uint8_t) interrupt_enabled << 1;
+
+    status = IMU_write_reg(address, 1, &data, imu_data);
+
+    return status;
+}
+
+HAL_StatusTypeDef IMU_SetInterrupt2Acc(const bool interrupt_enabled, const IMU_Data_t *imu_data) {
+    const uint8_t address = IMU_INT2_CTRL;
+    uint8_t data = 0;
+
+    HAL_StatusTypeDef status = IMU_read_reg(address, 1, &data, imu_data);
+    if (status != HAL_OK) return status;
+
+    data &= 0b11111110;
+    data |= (uint8_t) interrupt_enabled << 0;
+
+    status = IMU_write_reg(address, 1, &data, imu_data);
+
+    return status;
+}
+
+HAL_StatusTypeDef IMU_SetInterruptPins(const InterruptPins interrupt_pins, const IMU_Data_t *imu_data) {
+    const uint8_t address = IMU_CTRL4_C;
+    uint8_t data = 0;
+
+    HAL_StatusTypeDef status = IMU_read_reg(address, 1, &data, imu_data);
+    if (status != HAL_OK) return status;
+
+    data &= 0b11011111;
+    data |= (uint8_t) interrupt_pins << 5;
+
+    status = IMU_write_reg(address, 1, &data, imu_data);
+
+    return status;
+}

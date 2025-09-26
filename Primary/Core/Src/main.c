@@ -30,8 +30,7 @@
 #include "gpio.h"
 #include "SERVO.h"
 #include "Pyro.h"
-#include "LSM6DSR.h"
-#include "ISM330DHCX.h"
+#include "IMUS.h"
 #include "LIS3MDL.h"
 #include "ws2812.h"
 #include "bmp390.h"
@@ -163,26 +162,31 @@ int main(void)
 
   HAL_ADCEx_Calibration_Start(&hadc3, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
 
-  for(counter1 = 0; IMU1_SelfTest() != 1 && counter1 < 100000; counter1++);
-  for(counter2 = 0; IMU2_SelfTest() != 1 && counter2 < 100000; counter2++);
+  IMU_Data_t tmp_imu1_data;
+  IMU_Data_t tmp_imu2_data;
+  tmp_imu1_data.imu = IMU1;
+  tmp_imu2_data.imu = IMU2;
+
+  for(counter1 = 0; IMU_SelfTest(&tmp_imu1_data) != 1 && counter1 < 100000; counter1++);
+  for(counter2 = 0; IMU_SelfTest(&tmp_imu2_data) != 1 && counter2 < 100000; counter2++);
   for(counter3 = 0; MAG_SelfTest() != 1 && counter3 < 100000; counter3++);
 
 
   // !!!
-  if(IMU1_Init() == HAL_OK && IMU2_Init() == HAL_OK && MAG_Init() == HAL_OK) ;
+  if(IMU_Init(&tmp_imu1_data) == HAL_OK && IMU_Init(&tmp_imu2_data) == HAL_OK && MAG_Init() == HAL_OK) ;
   else ;
 
-  IMU1_VerifyDataReady();
-  IMU2_VerifyDataReady();
+  IMU_VerifyDataReady(&tmp_imu1_data);
+  IMU_VerifyDataReady(&tmp_imu2_data);
   MAG_VerifyDataReady();
 
   MAG_ConfigSensor(LIS3MDL_OM_ULTRA, LIS3MDL_ODR_80_Hz, LIS3MDL_FS_4, LIS3MDL_FAST_ODR_ON, LIS3MDL_TEMP_ON);
 
-  IMU1_ConfigXL(LSM6DSR_ODR_1660_Hz, LSM6DSR_FS_XL_8, 0);
-  IMU1_ConfigG(LSM6DSR_ODR_1660_Hz, LSM6DSR_FS_G_2000);
+  IMU_ConfigXL(IMU_ODR_1660_Hz, IMU_FS_XL_8, 0, &tmp_imu1_data);
+  IMU_ConfigG(IMU_ODR_1660_Hz, IMU_FS_G_2000, &tmp_imu1_data);
 
-  IMU2_ConfigXL(ISM330DHCX_ODR_6660_Hz, ISM330DHCX_FS_XL_16, 0);
-  IMU2_ConfigG(ISM330DHCX_ODR_6660_Hz, ISM330DHCX_FS_G_4000);
+  IMU_ConfigXL(IMU_ODR_6660_Hz, IMU_FS_XL_16, 0, &tmp_imu2_data);
+  IMU_ConfigG(IMU_ODR_6660_Hz, IMU_FS_G_4000, &tmp_imu2_data);
 
   /* USER CODE END 2 */
 

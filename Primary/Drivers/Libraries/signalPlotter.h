@@ -21,8 +21,8 @@ void signalPlotter_sendData(uint8_t id, float value);
 // starts a timer for measuring the time between start and stop
 void TimeMeasureStart(void);
 
-void signalPlotter_init(void);
-
 // stops the timer and sends the time to the signal plotter
 uint32_t TimeMeasureStop(void);
+
+void signalPlotter_init(void);
 #endif /* signalPlotter_H_ */
