@@ -76,6 +76,7 @@ uint32_t ADC_Temperature, ADC_V_Ref;
 uint32_t uid[3];
 
 int8_t primary_status = 0;
+int8_t servo_status = 1;
 
 uint32_t dt_1000Hz;
 
@@ -723,20 +724,20 @@ void Start10HzTask(void *argument) {
     radioSend(tx_buf);
 
     // RECOVERY TEST
-    /*if(uwTick > 10000 && primary_status == 5) {
-      primary_status = 6;
+    if(uwTick > 10000 && servo_status == 5) {
+      servo_status = 6;
       SERVO_MoveToAngle(3, 90);
     }
-    if(uwTick > 5500 && primary_status == 4) {
-      primary_status = 5;
+    if(uwTick > 5300 && servo_status == 4) {
+      servo_status = 5;
       SERVO_MoveToAngle(1, 0);
       SERVO_MoveToAngle(2, 0);
     }
-    if(uwTick > 5000 && primary_status == 1) {
-      primary_status = 4;
-      SERVO_MoveToAngle(1, 90);
-      SERVO_MoveToAngle(2, 90);
-    }*/
+    if(uwTick > 5000 && servo_status == 1) {
+      servo_status = 4;
+      SERVO_MoveToAngle(1, 35);
+      SERVO_MoveToAngle(2, 35);
+    }
     InterBoardCom_SendTestPacket();
 
     // KF2 correction steps
