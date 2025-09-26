@@ -174,9 +174,7 @@ HAL_StatusTypeDef IMU_ReadSensorData(IMU_Data_t *imu_data) {
     if (available & 0x04) {
         uint8_t rx[2] = {0};
         status = IMU_read_reg(IMU_OUT_TEMP_L, 2, rx, imu_data); // read temperature data
-        // TODO: Check status for all sensors
         // TODO: Log HAL_FAIL
-        // TODO: Change detection for sensor switch
         if (status != HAL_OK) return status;
         temp_raw = (int16_t) (rx[1] << 8 | rx[0]); // calculate temperature
         imu_data->temp = temp_raw / 256. + 25; // write temperature data to struct

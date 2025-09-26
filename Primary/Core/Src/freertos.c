@@ -60,6 +60,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 IMU_Data_t imu_data;
+float acc_data_history[8][3];
 LIS3MDL_Data_t mag_data;
 UBX_NAV_PVT gps_data;
 uint32_t pressure_raw;
@@ -229,7 +230,7 @@ void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
   uint8_t stackOverflow = 1;
   for(;;)
   {
-    
+
   }
    /* Run time stack overflow checking is performed if
    configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
@@ -303,12 +304,16 @@ void StartDefaultTask(void *argument)
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 1; //1000 Hz
 
-  // set default IMU
-  imu_data.imu = IMU2;
-  IMU_ReadSensorData(&imu_data);
-  IMU_SwitchSensors(&imu_data);
-  IMU_ReadSensorData(&imu_data);
-  IMU_SwitchSensors(&imu_data);
+  // Set default IMU
+  imu_data.imu = IMU1;
+  for (int i = 0; i < 8; ++i) {
+    for (int j = 0; j < 3; ++j) {
+      // Fill the history with dummy data.
+      // Since the IMU error detection code looks at the acc data history and checks if the data isn't all equal,
+      // we need to initialize the different elements with different values.
+      acc_data_history[i][j] = (float) (i + j);
+    }
+  }
 
   uid[0] = HAL_GetUIDw0();
   uid[1] = HAL_GetUIDw1();
@@ -386,11 +391,29 @@ void StartDefaultTask(void *argument)
 
     ReadInternalADC(&ADC_Temperature, &ADC_V_Ref);
 
-    // TODO: Check which IMU to use
-    if(IMU_VerifyDataReady(&imu_data) & 0x03 == 0x03) {
+    bool imu_ready = IMU_VerifyDataReady(&imu_data) & 0x03 == 0x03;
+    if(imu_ready) {
       IMU_ReadSensorData(&imu_data);
       arm_vec3_sub_f32(imu_data.accel, IMU1_offset, imu_data.accel);
       arm_vec3_element_product_f32(imu_data.accel, IMU1_scale, imu_data.accel);
+
+      // Shift all elements to the right and add the measured data to the front.
+      for (int i = 7; i > 0; --i){
+        memcpy(acc_data_history[i], acc_data_history[i-1], sizeof(acc_data_history[0]));
+      }
+      memcpy(acc_data_history[0], imu_data.accel, sizeof(acc_data_history[0]));
+    }
+    float *acc_history_start = acc_data_history[0];
+    float difference_sum = 0;
+
+    for (int i = 1; i < 8; ++i) {
+      for (int j = 0; j < 3; ++j) {
+        difference_sum += fabsf(acc_history_start[j] - acc_data_history[i][j]);
+      }
+    }
+
+    if (!imu_ready || difference_sum < 1e-3) {
+      IMU_SwitchSensors(&imu_data);
     }
 
     if(MAG_VerifyDataReady() & 0b00000001) {
@@ -675,7 +698,7 @@ void Start100HzTask(void *argument) {
     arm_vecN_concatenate_f32(3, imu_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
     EKFCorrectionStep(&EKF3, &EKF3_corr1);
 
-    
+
     ShowStatus(RGB_PRIMARY, primary_status, 1, 100);
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
@@ -700,7 +723,7 @@ void Start10HzTask(void *argument) {
         case 3: primary_status = STATUS_STANDBY; break;
       }
     }
-    
+
     if(gps_data.gpsFix == 3) {
       UBLOXtoWGS84(gps_data.lat, gps_data.lon, gps_data.height, WGS84);
       WGS84toECEF(WGS84, ECEF);
@@ -714,7 +737,7 @@ void Start10HzTask(void *argument) {
 
       // add correction velocity to compensate GNSS delay
       gnss_velZ_corr = gps_data.velD*(-1e-3) + corr_delta_v;
-      
+
       // add correction height to compensate GNSS delay
       gnss_height_corr = gps_data.height*1e-3 + corr_delta_h;
 
@@ -791,7 +814,7 @@ void StartInterruptHandlerTask(void *argument)
   //HAL_NVIC_EnableIRQ(EXTI15_10_IRQn); //Disabled due to always triggering when GPS is not connected
   /* Infinite loop */
   for(;;)
-  { 
+  {
     if (xQueueReceive(InterruptQueue, &receivedData, 10) == pdTRUE) {
       if(receivedData == 0x10) { // Handle GPS interrupt
         ublox_ReadOutput(GPS_Buffer); //Read the GPS output and decode it
