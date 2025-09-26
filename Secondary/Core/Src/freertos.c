@@ -185,6 +185,8 @@ void StartDefaultTask(void *argument)
   for(;;) {
     Counter_100Hz++;
 
+    // show low battery level
+
     ShowStatus(RGB_SECONDARY, secondary_status, 1, 100);
 
     //XBee_Transmit(transmitPayload, 5, 0x00);
@@ -206,13 +208,39 @@ void Start10HzTask(void *argument){
     Counter_10Hz++;
     //InterBoardCom_SendPacket(packet);
 
-    INA219_readBusVoltage(&health.voltage.bus_pu_bat);
-    INA219_readShuntVoltage(&health.voltage.shunt_pu);
-    INA219_readPower(&health.power.out_pu);
-    INA219_readCurrent(&health.current.out_pu);
+    switch(secondary_status) {
+      // critically low battery condition
+      case -5:
+        if(INA219_readBusVoltage(&health.voltage.bus_pu_bat) != HAL_OK) secondary_status = -1;
+        break;
 
+      // low battery condition
+      case -4:
+        if(INA219_readBusVoltage(&health.voltage.bus_pu_bat) != HAL_OK) secondary_status = -1;
+        if(health.voltage.bus_pu_bat < 6) secondary_status = -5;
+        break;
+
+      // PU connection loss fault
+      case -1:
+
+      // init
+      case 0:
+        if(INA219_init() == HAL_OK) secondary_status = 1;
+        break;
+
+      // normal operations
+      case 1:
+        health.temperature.battery = readTemperature(2);
+        if(INA219_readBusVoltage(&health.voltage.bus_pu_bat) != HAL_OK) secondary_status = -1;
+        if(INA219_readShuntVoltage(&health.voltage.shunt_pu) != HAL_OK) secondary_status = -1;
+        if(INA219_readPower(&health.power.out_pu) != HAL_OK) secondary_status = -1;
+        if(INA219_readCurrent(&health.current.out_pu) != HAL_OK) secondary_status = -1;
+        if(health.voltage.bus_pu_bat < 6.6) secondary_status = -4;
+        break;
+
+    }
+    
     health.temperature.reg_3V3 = readTemperature(1);
-    health.temperature.battery = readTemperature(2);
     health.voltage.bus_5V = readVoltage(1) * (10 + 10) / 10;
     health.voltage.bus_gpa_bat = readVoltage(2) * (10 + 2.2) / 2.2;
 

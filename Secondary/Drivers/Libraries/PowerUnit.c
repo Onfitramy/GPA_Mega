@@ -1,6 +1,6 @@
 #include "PowerUnit.h"
 
-HAL_StatusTypeDef AS6500_I2C_status;
+HAL_StatusTypeDef INA219_I2C_status;
 
 float current_LSB;
 float power_LSB;
@@ -12,77 +12,77 @@ HAL_StatusTypeDef INA219_writeRegister(uint8_t reg, uint16_t data) {
     buffer[1] = (data >> 8);    // MSB
     buffer[2] = (data & 0xFF);  // LSB
 
-    return HAL_I2C_Master_Transmit(&hi2c2, INA219_I2C_ADDR, buffer, 3, HAL_MAX_DELAY);
+    INA219_I2C_status = HAL_I2C_Master_Transmit(&hi2c2, INA219_I2C_ADDR, buffer, 3, HAL_MAX_DELAY);
+    return INA219_I2C_status;
 }
 
 // Read 16-bit value from INA219 register
 HAL_StatusTypeDef INA219_readRegister(uint8_t start_reg, uint16_t *data) {
     uint8_t buffer[2] = {0};
-    HAL_StatusTypeDef status;
 
-    status = HAL_I2C_Master_Transmit(&hi2c2, INA219_I2C_ADDR, &start_reg, 1, HAL_MAX_DELAY);
-    if (status != HAL_OK) return status;
+    INA219_I2C_status = HAL_I2C_Master_Transmit(&hi2c2, INA219_I2C_ADDR, &start_reg, 1, HAL_MAX_DELAY);
+    if (INA219_I2C_status != HAL_OK) return INA219_I2C_status;
 
-    status = HAL_I2C_Master_Receive(&hi2c2, INA219_I2C_ADDR, buffer, 2, HAL_MAX_DELAY);
-    if (status != HAL_OK) return status;
+    INA219_I2C_status = HAL_I2C_Master_Receive(&hi2c2, INA219_I2C_ADDR, buffer, 2, HAL_MAX_DELAY);
+    if (INA219_I2C_status != HAL_OK) return INA219_I2C_status;
 
     *data = ((uint16_t)buffer[0] << 8) | buffer[1];
-    return status;
+    return INA219_I2C_status;
 }
 
 HAL_StatusTypeDef INA219_reset() {
     return INA219_writeRegister(INA219_CONFIG_REG, INA219_RESET_CMD);
 }
 
-void INA219_setBusVoltageRange(uint8_t range) {
+HAL_StatusTypeDef INA219_setBusVoltageRange(uint8_t range) {
     uint16_t data = 0;
-    INA219_readRegister(INA219_CONFIG_REG, &data);
+    if(INA219_readRegister(INA219_CONFIG_REG, &data) != HAL_OK) return INA219_I2C_status;
 
     data &= 0x5FFF;
     data |= (uint16_t)range << 13;
-    INA219_writeRegister(INA219_CONFIG_REG, data);
+    return INA219_writeRegister(INA219_CONFIG_REG, data);
 }
 
 // set PGA gain and range; Gain = 2^(-range)
-void INA219_setShuntVoltageRange(uint8_t range) {
+HAL_StatusTypeDef INA219_setShuntVoltageRange(uint8_t range) {
     uint16_t data = 0;
-    INA219_readRegister(INA219_CONFIG_REG, &data);
+    if(INA219_readRegister(INA219_CONFIG_REG, &data) != HAL_OK) return INA219_I2C_status;
 
     data &= 0x67FF;
     data |= (uint16_t)range << 11;
-    INA219_writeRegister(INA219_CONFIG_REG, data);
+    return INA219_writeRegister(INA219_CONFIG_REG, data);
 }
 
 // set Bus ADC resolution or number of samples
-void INA219_setBusADC(uint8_t mode) {
+HAL_StatusTypeDef INA219_setBusADC(uint8_t mode) {
     uint16_t data = 0;
-    INA219_readRegister(INA219_CONFIG_REG, &data);
+    if(INA219_readRegister(INA219_CONFIG_REG, &data) != HAL_OK) return INA219_I2C_status;
 
     data &= 0x787F;
     data |= (uint16_t)mode << 7;
-    INA219_writeRegister(INA219_CONFIG_REG, data);
+    return INA219_writeRegister(INA219_CONFIG_REG, data);
 }
 
 // set Shunt ADC resolution or number of samples
-void INA219_setShuntADC(uint8_t mode) {
+HAL_StatusTypeDef INA219_setShuntADC(uint8_t mode) {
     uint16_t data = 0;
-    INA219_readRegister(INA219_CONFIG_REG, &data);
+    if(INA219_readRegister(INA219_CONFIG_REG, &data) != HAL_OK) return INA219_I2C_status;
 
     data &= 0x7F87;
     data |= (uint16_t)mode << 3;
-    INA219_writeRegister(INA219_CONFIG_REG, data);
+    return INA219_writeRegister(INA219_CONFIG_REG, data);
 }
 
-void INA219_setOperatingMode(uint8_t mode) {
+HAL_StatusTypeDef INA219_setOperatingMode(uint8_t mode) {
     uint16_t data = 0;
-    INA219_readRegister(INA219_CONFIG_REG, &data);
+    if(INA219_readRegister(INA219_CONFIG_REG, &data) != HAL_OK) return INA219_I2C_status;
 
     data &= 0xFFF8;
     data |= (uint16_t)mode;
-    INA219_writeRegister(INA219_CONFIG_REG, data);
+    return INA219_writeRegister(INA219_CONFIG_REG, data);
 }
 
-void INA219_setCurrentCalibration(float max_current, float shunt_resistance) {
+HAL_StatusTypeDef INA219_setCurrentCalibration(float max_current, float shunt_resistance) {
     current_LSB = max_current / 32768.f;
     power_LSB = current_LSB * 20.f;
     
@@ -93,15 +93,15 @@ void INA219_setCurrentCalibration(float max_current, float shunt_resistance) {
         current_LSB = 0.04096 / calibration_value / shunt_resistance;
     }
 
-    INA219_writeRegister(INA219_CALIBRATION_REG, calibration_value);
+    return INA219_writeRegister(INA219_CALIBRATION_REG, calibration_value);
 }
 
-void INA219_readShuntVoltage(float *voltage) {
+HAL_StatusTypeDef INA219_readShuntVoltage(float *voltage) {
     uint16_t data = 0;
-    INA219_readRegister(INA219_CONFIG_REG, &data);
+    if(INA219_readRegister(INA219_CONFIG_REG, &data) != HAL_OK) return INA219_I2C_status;
     uint8_t gain = (data & 0x1800) >> 11;
 
-    INA219_readRegister(INA219_SHUNT_VOLTAGE_REG, &data);
+    if(INA219_readRegister(INA219_SHUNT_VOLTAGE_REG, &data) != HAL_OK) return INA219_I2C_status;
 
     int16_t data_signed = 0;
     switch(gain) {
@@ -122,30 +122,48 @@ void INA219_readShuntVoltage(float *voltage) {
             *voltage = (float)data_signed / 100000.f;
             break;
     }
+
+    return HAL_OK;
 }
 
-void INA219_readBusVoltage(float *voltage) {
+HAL_StatusTypeDef INA219_readBusVoltage(float *voltage) {
     uint16_t data = 0;
-    INA219_readRegister(INA219_BUS_VOLTAGE_REG, &data);
+    if(INA219_readRegister(INA219_BUS_VOLTAGE_REG, &data) != HAL_OK) return INA219_I2C_status;
     data = data >> 3;
 
     *voltage = 0.004f * data;
+
+    return HAL_OK;
 }
 
-void INA219_readPower(float *power) {
+HAL_StatusTypeDef INA219_readPower(float *power) {
     uint16_t data = 0;
-    INA219_readRegister(INA219_POWER_REG, &data);
+    if(INA219_readRegister(INA219_POWER_REG, &data) != HAL_OK) return INA219_I2C_status;
 
     *power = (float)data * power_LSB;
+
+    return HAL_OK;
 }
 
-void INA219_readCurrent(float *current) {
+HAL_StatusTypeDef INA219_readCurrent(float *current) {
     uint16_t data = 0;
     int16_t data_signed;
-    INA219_readRegister(INA219_CURRENT_REG, &data);
+    if(INA219_readRegister(INA219_CURRENT_REG, &data) != HAL_OK) return INA219_I2C_status;
     data_signed = (int16_t)data;
 
     *current = (float)data_signed * current_LSB;
+
+    return HAL_OK;
+}
+
+HAL_StatusTypeDef INA219_init() {
+    if(INA219_setBusADC(INA219_BUS_RANGE_16V) != HAL_OK) return INA219_I2C_status;
+    if(INA219_setShuntADC(INA219_ADC_MODE_12_BIT) != HAL_OK) return INA219_I2C_status;
+    if(INA219_setOperatingMode(INA219_MODE_SHUNT_BUS_CONTINUOUS) != HAL_OK) return INA219_I2C_status;
+    if(INA219_setShuntVoltageRange(INA219_SHUNT_RANGE_40mV) != HAL_OK) return INA219_I2C_status;
+    if(INA219_setCurrentCalibration(MAX_CURRENT, SHUNT_RESISTANCE) != HAL_OK) return INA219_I2C_status;
+
+    return HAL_OK;
 }
 
 void PU_enableRecovery() {

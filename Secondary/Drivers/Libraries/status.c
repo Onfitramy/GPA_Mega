@@ -58,14 +58,20 @@ void ShowStatus(device_handle device, int8_t status, float freq_cycle, float fre
     if(device == RGB_SECONDARY) {
 
         switch(status) {
+            case -5: // Critically low battery condition
+                SetLED_blink(COLOR_ORANGE);
+                break;
+            case -4: // Low battery condition
+                SetLED_pulse(COLOR_ORANGE);
+                break;
             case -3: // Error, other
                 SetLED_blink(COLOR_RED);
                 break;
-            case -2: // MEMS Sensor Error
-                SetLED_pulse(COLOR_RED);
-                break;
-            case -1: // Fatal Error
+            case -2: // Fatal Error
                 SetLED_color(COLOR_RED);
+                break;
+            case -1: // Sensor Error
+                SetLED_pulse(COLOR_RED);
                 break;
             case 0: // Startup
                 SetLED_pulse(COLOR_MAGENTA);

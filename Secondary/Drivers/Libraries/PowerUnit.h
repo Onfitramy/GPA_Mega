@@ -20,17 +20,19 @@ HAL_StatusTypeDef INA219_readRegister(uint8_t reg, uint16_t *data);
 
 HAL_StatusTypeDef INA219_reset();
 
-void INA219_setBusVoltageRange(uint8_t range);
-void INA219_setShuntVoltageRange(uint8_t range);
-void INA219_setBusADC(uint8_t mode);
-void INA219_setShuntADC(uint8_t mode);
-void INA219_setOperatingMode(uint8_t mode);
-void INA219_setCurrentCalibration(float max_current, float shunt_resistance);
+HAL_StatusTypeDef INA219_setBusVoltageRange(uint8_t range);
+HAL_StatusTypeDef INA219_setShuntVoltageRange(uint8_t range);
+HAL_StatusTypeDef INA219_setBusADC(uint8_t mode);
+HAL_StatusTypeDef INA219_setShuntADC(uint8_t mode);
+HAL_StatusTypeDef INA219_setOperatingMode(uint8_t mode);
+HAL_StatusTypeDef INA219_setCurrentCalibration(float max_current, float shunt_resistance);
 
-void INA219_readShuntVoltage(float *voltage);
-void INA219_readBusVoltage(float *voltage);
-void INA219_readPower(float *power);
-void INA219_readCurrent(float *current);
+HAL_StatusTypeDef INA219_readShuntVoltage(float *voltage);
+HAL_StatusTypeDef INA219_readBusVoltage(float *voltage);
+HAL_StatusTypeDef INA219_readPower(float *power);
+HAL_StatusTypeDef INA219_readCurrent(float *current);
+
+HAL_StatusTypeDef INA219_init();
 
 #define INA219_I2C_ADDR (0x40 << 1)
 
