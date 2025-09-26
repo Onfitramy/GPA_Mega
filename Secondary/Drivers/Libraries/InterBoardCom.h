@@ -39,7 +39,8 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet);
 
 void InterBoardCom_ReactivateDMAReceive(void);
 
-void InterBoardCom_SendPacket(InterBoardPacket_t packet);
+void InterBoardCom_SendPacket(InterBoardPacket_t *packet);
+void InterBoardCom_SendTestPacket(void);
 
 InterBoardPacket_t InterBoardCom_CreatePacket(InterBoardPacketID_t ID);
 void InterBoardCom_FillRaw(InterBoardPacket_t *packet, int num, ...);

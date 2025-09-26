@@ -4,18 +4,28 @@
 
 //The H7 send data to the F4 via SPI1. The data is made up of packets which are sent immediatly after completion of the previous packet.
 //The Packets are made up of 1byte of Packet_ID and 32bytes of Data 33 bytes long.
+//Data is sent and received from the H7 via DMA, a CS is used to signal the F4 when data is ready to be read.
+//The CS is controlled by the H7's SPI peripheral, it is manually pulled low when a transmission starts and high when it ends.
 
-#define SPI1_RX_SIZE (sizeof(InterBoardPacket_t) + 1) // +1 for SPI1 detection time(no CS Pin used)
+#define SPI1_RX_SIZE (sizeof(InterBoardPacket_t))
 
 extern SPI_HandleTypeDef hspi1;
 
 extern DMA_HandleTypeDef hdma_spi1_rx;
 
-InterBoardPacket_t receiveBuffer;
-uint8_t SPI1_DMA_Rx_Buffer[SPI1_RX_SIZE]; // +1 for SPI1 detection time(no CS Pin used)
+InterBoardCircularBuffer_t txCircBuffer; // outgoing buffer
 
-uint8_t SPI1_State = 0; //0: Ready, 1: TX busy, 2: RX busy
-volatile uint8_t SPI1_ReceivePending = 0;
+InterBoardPacket_t receiveBuffer;
+uint8_t SPI1_DMA_Rx_Buffer[SPI1_RX_SIZE];
+
+uint8_t SPI1_State = 0; //0: Ready, 1: Busy
+
+void InterBoardCom_Init(void) {
+    // Initialize circular buffers
+    InterBoardBuffer_Init(&txCircBuffer);
+    // Initialize SPI state
+    SPI1_State = 0;
+}
 
 /**
  * @brief Creates and initializes an InterBoardPacket_t structure.
@@ -79,6 +89,41 @@ void InterBoardCom_FillData(InterBoardPacket_t *packet, DataPacket_t *data_packe
 }
 
 /**
+ * @brief Enhanced packet sending with buffering support
+ * @param packet Pointer to the packet to send
+ * @return 1 if queued successfully, 0 if failed
+ */
+uint8_t InterBoardCom_QueuePacket(InterBoardPacket_t *packet) {
+    // Try to queue the packet
+    if (InterBoardBuffer_Push(&txCircBuffer, packet)) {
+        // Try to start transmission if SPI is ready
+        InterBoardCom_ProcessTxBuffer();
+        return 1;
+    }
+    return 0; // Buffer full
+}
+
+/**
+ * @brief Processes the transmission buffer
+ */
+void InterBoardCom_ProcessTxBuffer(void) {
+    InterBoardPacket_t packet;
+    
+    // If SPI is busy or buffer is empty, return
+    if (SPI1_State != 0 || InterBoardBuffer_IsEmpty(&txCircBuffer)) {
+        return;
+    }
+    
+    // Get next packet from buffer
+    if (InterBoardBuffer_Pop(&txCircBuffer, &packet)) {
+        // Send the packet
+        SPI1_State = 1; // Mark SPI as busy
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET); // Pull CS low
+        HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)&packet, SPI1_DMA_Rx_Buffer, sizeof(InterBoardPacket_t));
+    }
+}
+
+/**
  * @brief Sends an inter-board communication packet via SPI using DMA.
  *
  * This function calculates a simple XOR checksum (CRC) over the packet's data,
@@ -94,7 +139,9 @@ void InterBoardCom_SendPacket(InterBoardPacket_t *packet) {
         // SPI is busy, cannot send now
         return;
     }
-    HAL_StatusTypeDef status = HAL_SPI_Transmit_DMA(&hspi1, (uint8_t *)packet, sizeof(InterBoardPacket_t));
+    SPI1_State = 1; // Mark SPI as busy
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET); // Manually pull CS low to start transmission (pulled high in DMA complete callback)
+    HAL_StatusTypeDef status = HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)packet, SPI1_DMA_Rx_Buffer, sizeof(InterBoardPacket_t));
 }
 
 InterBoardPacket_t InterBoardCom_ReceivePacket() {
@@ -103,22 +150,6 @@ InterBoardPacket_t InterBoardCom_ReceivePacket() {
     receivedPacket.InterBoardPacket_ID = SPI1_DMA_Rx_Buffer[0]; // First byte after detection time
     memcpy(receivedPacket.Data, &SPI1_DMA_Rx_Buffer[1], 32);
     return receivedPacket;
-}
-
-void InterBoardCom_ActivateReceive(void) {
-    // Start receiving the packet via SPI
-    if (SPI1_State == 0) { // Ready for RX
-        SPI1_State = 2; // Mark as RX busy
-        HAL_StatusTypeDef status = HAL_SPI_Receive_DMA(&hspi1, SPI1_DMA_Rx_Buffer, SPI1_RX_SIZE);
-        if (status != HAL_OK) {
-            SPI1_State = 0; // Mark as ready again on error
-            status = HAL_ERROR;
-            // Handle error
-        }
-    } else {
-        // SPI is busy, set flag to receive after current operation
-        SPI1_ReceivePending = 1;
-    }
 }
 
 void InterBoardCom_ProcessReceivedPacket(InterBoardPacket_t *packet) {
@@ -137,7 +168,7 @@ InterBoardPacket_t TestPacket;
 void InterBoardCom_SendTestPacket(void) {
     TestPacket = InterBoardCom_CreatePacket(InterBoardPACKET_ID_SELFTEST);
     InterBoardCom_FillRaw(&TestPacket, 32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32);
-    InterBoardCom_SendPacket(&TestPacket);
+    InterBoardCom_QueuePacket(&TestPacket);
 }
 
 /**
@@ -155,3 +186,105 @@ void InterBoardCom_SendDataPacket(InterBoardPacketID_t Inter_ID, PacketType_t Pa
     // Create a new InterBoardPacket_t structure
     //Implement later
 }
+
+/**
+ * @brief Initializes the circular buffer
+ * @param cb Pointer to the circular buffer structure
+ */
+void InterBoardBuffer_Init(InterBoardCircularBuffer_t* cb) {
+    cb->head = 0;
+    cb->tail = 0;
+    cb->count = 0;
+}
+
+/**
+ * @brief Pushes a packet into the circular buffer
+ * @param cb Pointer to the circular buffer structure
+ * @param packet Pointer to the packet to be added
+ * @return 1 if successful, 0 if buffer is full
+ */
+uint8_t InterBoardBuffer_Push(InterBoardCircularBuffer_t* cb, InterBoardPacket_t* packet) {
+    if (cb->count >= INTERBOARD_BUFFER_SIZE) {
+        return 0; // Buffer is full
+    }
+    
+    // Disable interrupts to ensure atomic operation
+    __disable_irq();
+    
+    // Copy packet to buffer
+    memcpy(&cb->buffer[cb->head], packet, sizeof(InterBoardPacket_t));
+    
+    // Update head pointer
+    cb->head = (cb->head + 1) % INTERBOARD_BUFFER_SIZE;
+    cb->count++;
+    
+    __enable_irq();
+    
+    return 1; // Success
+}
+
+/**
+ * @brief Pops a packet from the circular buffer
+ * @param cb Pointer to the circular buffer structure
+ * @param packet Pointer to store the popped packet
+ * @return 1 if successful, 0 if buffer is empty
+ */
+uint8_t InterBoardBuffer_Pop(InterBoardCircularBuffer_t* cb, InterBoardPacket_t* packet) {
+    if (cb->count == 0) {
+        return 0; // Buffer is empty
+    }
+    
+    // Disable interrupts to ensure atomic operation
+    __disable_irq();
+    
+    // Copy packet from buffer
+    memcpy(packet, &cb->buffer[cb->tail], sizeof(InterBoardPacket_t));
+    
+    // Update tail pointer
+    cb->tail = (cb->tail + 1) % INTERBOARD_BUFFER_SIZE;
+    cb->count--;
+    
+    __enable_irq();
+    
+    return 1; // Success
+}
+
+/**
+ * @brief Checks if the circular buffer is empty
+ * @param cb Pointer to the circular buffer structure
+ * @return 1 if empty, 0 if not empty
+ */
+uint8_t InterBoardBuffer_IsEmpty(InterBoardCircularBuffer_t* cb) {
+    return (cb->count == 0);
+}
+
+/**
+ * @brief Checks if the circular buffer is full
+ * @param cb Pointer to the circular buffer structure
+ * @return 1 if full, 0 if not full
+ */
+uint8_t InterBoardBuffer_IsFull(InterBoardCircularBuffer_t* cb) {
+    return (cb->count >= INTERBOARD_BUFFER_SIZE);
+}
+
+/**
+ * @brief Gets the current count of items in the buffer
+ * @param cb Pointer to the circular buffer structure
+ * @return Number of items in buffer
+ */
+uint16_t InterBoardBuffer_Count(InterBoardCircularBuffer_t* cb) {
+    return cb->count;
+}
+
+/**
+ * @brief Clears the circular buffer
+ * @param cb Pointer to the circular buffer structure
+ */
+void InterBoardBuffer_Clear(InterBoardCircularBuffer_t* cb) {
+    __disable_irq();
+    cb->head = 0;
+    cb->tail = 0;
+    cb->count = 0;
+    __enable_irq();
+}
+

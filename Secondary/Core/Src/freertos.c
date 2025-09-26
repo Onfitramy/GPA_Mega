@@ -63,14 +63,14 @@ QueueHandle_t XBeeDataQueue;
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .stack_size = 128 * 24,
+  .stack_size = 128 * 48,
   .priority = (osPriority_t) osPriorityNormal,
 };
 
 osThreadId_t Hz10TaskHandle;
 const osThreadAttr_t Hz10Task_attributes = {
   .name = "10HzTask",
-  .stack_size = 128 * 48,
+  .stack_size = 128 * 84,
   .priority = (osPriority_t) osPriorityNormal,
 };
 
@@ -165,6 +165,7 @@ void MX_FREERTOS_Init(void) {
 
 }
 
+uint32_t StartTime = 0;
 uint8_t temperatureSaved[128];
 /* USER CODE BEGIN Header_StartDefaultTask */
 /**
@@ -184,6 +185,12 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;) {
     Counter_100Hz++;
+    StartTime = HAL_GetTick();
+
+    InterBoardPacket_t packet = InterBoardCom_CreatePacket(InterBoardPACKET_ID_SELFTEST);
+    InterBoardCom_FillRaw(&packet, 32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31);
+    memcpy((uint8_t *)&packet.Data, &health.current.out_pu, sizeof(float));
+    InterBoardCom_SendPacket(&packet);
 
     // show low battery level
 
@@ -191,6 +198,7 @@ void StartDefaultTask(void *argument)
 
     //XBee_Transmit(transmitPayload, 5, 0x00);
 
+    uint32_t RunTime = HAL_GetTick() - StartTime;
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }
 
@@ -201,12 +209,10 @@ void Start10HzTask(void *argument){
   /* USER CODE BEGIN Start10HzTask */
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 100; // 1 Hz
-  InterBoardPacket_t packet = InterBoardCom_CreatePacket(InterBoardPACKET_ID_SELFTEST);
 
   /* Infinite loop */
   for(;;) {
     Counter_10Hz++;
-    //InterBoardCom_SendPacket(packet);
 
     switch(secondary_status) {
       // critically low battery condition
@@ -244,6 +250,8 @@ void Start10HzTask(void *argument){
     health.voltage.bus_5V = readVoltage(1) * (10 + 10) / 10;
     health.voltage.bus_gpa_bat = readVoltage(2) * (10 + 2.2) / 2.2;
 
+    //InterBoardCom_ActivateReceive(); // Reactivate SPI DMA receive in case it was not already active or has been stopped due to an error
+
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
   }
 
@@ -260,7 +268,7 @@ void StartInterBoardComTask(void *argument)
     InterBoardPacket_t packet;
     if (xQueueReceive(InterBoardPacketQueue, &packet, portMAX_DELAY) == pdPASS) {
         HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin); // Toggle M2 LED to indicate packet received
-        InterBoardCom_ParsePacket(packet);
+        //InterBoardCom_ParsePacket(packet);
     }
   }
   /* USER CODE END StartInterBoardComTask */

@@ -6,7 +6,8 @@
 //#define SIGNAL_PLOTTER_OUT_1 // position ekf testing
 //#define SIGNAL_PLOTTER_OUT_2 // raw sensor data
 //#define SIGNAL_PLOTTER_OUT_3 // orientation ekf testing
-#define SIGNAL_PLOTTER_OUT_4 // height ekf testing
+//#define SIGNAL_PLOTTER_OUT_4 // height ekf testing
+#define SIGNAL_PLOTTER_OUT_5 // variable testing data
 
 // actually performs send operation to signal plotter
 // (is done automatically)

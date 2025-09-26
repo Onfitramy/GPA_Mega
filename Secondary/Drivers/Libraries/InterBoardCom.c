@@ -9,13 +9,19 @@ extern SPI_HandleTypeDef hspi1;
 extern DMA_HandleTypeDef hdma_spi1_rx;
 
 InterBoardPacket_t receiveBuffer;
+InterBoardPacket_t transmitBuffer;
 
-uint8_t SPI1_STATUS = 0; // 0= Idle, 1 = Receiving, 2 = Transmitting
+uint8_t SPI1_STATUS = 0; // 0= Idle, 1 = Busy
+
+/* The SPI Slave (F4) is triggered by the main (H7) and automaticaly sends out its data packets while receiving from the master */
 
 void InterBoardCom_ActivateReceive(void) {
     //Called to activate the SPI DMA receive
-    SPI1_STATUS = 1; // Receiving
-    HAL_SPI_Receive_DMA(&hspi1, (uint8_t *)&receiveBuffer, sizeof(InterBoardPacket_t));
+    if (SPI1_STATUS != 0) {
+        return; // Busy
+    }
+    SPI1_STATUS = 1; // Busy
+    HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)&transmitBuffer, (uint8_t *)&receiveBuffer, sizeof(InterBoardPacket_t));
 }
 
 
@@ -54,25 +60,17 @@ void InterBoardCom_FillData(InterBoardPacket_t *packet, DataPacket_t *data_packe
 }
 
 static uint8_t rx_dummy[sizeof(InterBoardPacket_t)];
-static uint8_t tx_dma_buffer[sizeof(InterBoardPacket_t) + 1]; // +1 For SPI quirk
-void InterBoardCom_SendPacket(InterBoardPacket_t packet) {
-    //First interrupt main to signal incomming packet
+void InterBoardCom_SendPacket(InterBoardPacket_t *packet) {
 
-    memcpy(tx_dma_buffer, (uint8_t *)&packet, sizeof(InterBoardPacket_t));
-    tx_dma_buffer[sizeof(InterBoardPacket_t)] = 1; // SPI quirk: Send one extra byte to ensure the last byte of the actual data is sent
-    SPI1_STATUS = 2; // Transmitting
-    HAL_StatusTypeDef status = HAL_SPI_TransmitReceive_DMA(&hspi1, tx_dma_buffer, rx_dummy, sizeof(InterBoardPacket_t) + 1);
-    if (status != HAL_OK) {
-        // Transmission Error
-        uint32_t err = HAL_SPI_GetError(&hspi1);
-        status = HAL_ERROR;
-        // Handle error accordingly (e.g., log it, retry, etc.)
-    }
-    HAL_Delay(1); // Short delay to ensure the slave has time to process the CS line
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-    //InterBoardCom_ReactivateDMAReceive();
-    //Called to send a packet over SPI
+    memcpy((uint8_t *)&transmitBuffer, (uint8_t *)packet, sizeof(InterBoardPacket_t));
+    //Fill the transmit buffer with the packet data, to be sent when the master triggers the SPI communication
+}
+
+InterBoardPacket_t TestPacket;
+void InterBoardCom_SendTestPacket(void) {
+    TestPacket = InterBoardCom_CreatePacket(InterBoardPACKET_ID_SELFTEST);
+    InterBoardCom_FillRaw(&TestPacket, 32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32);
+    InterBoardCom_SendPacket(&TestPacket);
 }
 
 DataPacket_t InterBoardCom_UnpackPacket(InterBoardPacket_t packet) {
@@ -98,7 +96,7 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
             InterBoardCom_FillRaw(&responsePacket, 32, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
                                       16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31);
             //InterBoardCom_ActivateReceive();
-            InterBoardCom_SendPacket(responsePacket);
+            InterBoardCom_SendPacket(&responsePacket);
             break;
         
         case InterBoardPACKET_ID_DataSaveFLASH:

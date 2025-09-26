@@ -212,4 +212,9 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(28, "height_comp");
   signalPlotter_setSignalName(29, "velZ_comp");
   #endif
+
+  #ifdef SIGNAL_PLOTTER_OUT_5 // variable testing data
+  signalPlotter_setSignalName(0, "delta_Time");
+  signalPlotter_setSignalName(1, "Current_Draw");
+  #endif
 }

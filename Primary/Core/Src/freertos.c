@@ -90,6 +90,7 @@ double ENU[3];
 
 //uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO, 4: GPS, 7:All checks passed
 StatusPayload_t status_data = {0};
+float F4_data_float;
 
 // euler angles
 float phi, theta, psi;
@@ -500,7 +501,14 @@ void Start100HzTask(void *argument) {
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 10; //100 Hz
   /* Infinite loop */
+  /*InterBoardPacket_t IMU_Packet = InterBoardCom_CreatePacket(InterBoardPACKET_ID_DataSaveFLASH);
+  DataPacket_t imu1_data_packet;
+  imu1_data_packet.Packet_ID = PACKET_ID_IMU1;
+  InterBoardCom_FillData(&IMU_Packet, &imu1_data);*/
   for(;;) {
+
+    InterBoardCom_SendTestPacket();
+
     #ifdef SIGNAL_PLOTTER_OUT_1 // signal plotter outputs position ekf testing
     signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
     signalPlotter_sendData(1, (float)nrf_timeout);
@@ -625,6 +633,11 @@ void Start100HzTask(void *argument) {
     signalPlotter_sendData(29, gnss_velZ_corr);
     #endif
 
+    #ifdef SIGNAL_PLOTTER_OUT_5 // signal plotter outputs testing data
+    signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
+    signalPlotter_sendData(1, (float)F4_data_float);
+    #endif
+
     signalPlotter_executeTransmission(HAL_GetTick());
 
     // attitude estimation using magnetometer and accelerometer
@@ -663,6 +676,7 @@ void Start10HzTask(void *argument) {
   /* USER CODE BEGIN Start10HzTask */
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 100; //10 Hz
+  InterBoardCom_Init();
   /* Infinite loop */
   for(;;) {
     SelfTest();         // Run self-test on startup
@@ -755,6 +769,7 @@ void Start10HzTask(void *argument) {
 /* USER CODE END InterruptHandlerTask */
 uint8_t rx_recieve_buf[NRF24L01P_PAYLOAD_LENGTH] = {0};
 uint8_t InterBoardPacket_receive_num = 0;
+
 void StartInterruptHandlerTask(void *argument)
 {
   /* init code for USB_DEVICE */
@@ -784,10 +799,11 @@ void StartInterruptHandlerTask(void *argument)
     if (xQueueReceive(InterBoardCom_Queue, &InterBoardCom_Packet, 10) == pdTRUE) {
       uint8_t Packet_ID = InterBoardCom_Packet.InterBoardPacket_ID;
       InterBoardPacket_receive_num += 1;
+      memcpy(&F4_data_float, InterBoardCom_Packet.Data, sizeof(float));
       HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
       // Process received InterBoardCom_Packet
     }
-    osDelay(5);
+    osDelay(1);
   }
 }
 

@@ -4,6 +4,8 @@
 #include "stm32h7xx_hal.h"
 #include "Packets.h"
 
+#define INTERBOARD_BUFFER_SIZE 16
+
 //The Bitfield describe what should be expected and done with the data received
 typedef enum {
     // Status Packets:
@@ -31,6 +33,25 @@ typedef struct {
 } InterBoardPacket_t;
 #pragma pack(pop)
 
+typedef struct {
+    InterBoardPacket_t buffer[INTERBOARD_BUFFER_SIZE];
+    volatile uint16_t head;      // Write index
+    volatile uint16_t tail;      // Read index
+    volatile uint16_t count;     // Number of items in buffer
+} InterBoardCircularBuffer_t;
+
+// Function prototypes
+void InterBoardBuffer_Init(InterBoardCircularBuffer_t* cb);
+uint8_t InterBoardBuffer_Push(InterBoardCircularBuffer_t* cb, InterBoardPacket_t* packet);
+uint8_t InterBoardBuffer_Pop(InterBoardCircularBuffer_t* cb, InterBoardPacket_t* packet);
+uint8_t InterBoardBuffer_IsEmpty(InterBoardCircularBuffer_t* cb);
+uint8_t InterBoardBuffer_IsFull(InterBoardCircularBuffer_t* cb);
+uint16_t InterBoardBuffer_Count(InterBoardCircularBuffer_t* cb);
+void InterBoardBuffer_Clear(InterBoardCircularBuffer_t* cb);
+
+void InterBoardCom_Init(void);
+uint8_t InterBoardCom_QueuePacket(InterBoardPacket_t *packet);
+void InterBoardCom_ProcessTxBuffer(void);
 void InterBoardCom_SendTestPacket(void);
 void InterBoardCom_SendDataPacket(InterBoardPacketID_t Inter_ID, PacketType_t Packet_ID, DataPacket_t *packet);
 InterBoardPacket_t InterBoardCom_ReceivePacket(void);

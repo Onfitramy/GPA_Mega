@@ -89,9 +89,8 @@ uint32_t HAL_GetTickUS(void);
 #define PWM3_GPIO_Port GPIOA
 #define PWM4_Pin GPIO_PIN_3
 #define PWM4_GPIO_Port GPIOA
-#define F4_INT_Pin GPIO_PIN_4
-#define F4_INT_GPIO_Port GPIOA
-#define F4_INT_EXTI_IRQn EXTI4_IRQn
+#define F4_CS_Pin GPIO_PIN_4
+#define F4_CS_GPIO_Port GPIOA
 #define GPIO11_Pin GPIO_PIN_0
 #define GPIO11_GPIO_Port GPIOB
 #define GPIO12_Pin GPIO_PIN_1

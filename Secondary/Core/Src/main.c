@@ -227,28 +227,18 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
   }
 }
 
-void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi){
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
   if (1) {
     // DMA transfer complete callback for SPI1
     // Process the received data in receiveBuffer
     // We wait with reactivating the DMA receive until after the packet has been processed in the task to avoid tx rx conflicts
-    //InterBoardCom_ActivateReceive();
+    SPI1_STATUS = 0; // Idle
+    InterBoardCom_ActivateReceive();
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     InterBoardPacket_t packet = InterBoardCom_ReceivePacket();
-    SPI1_STATUS = 0; // Idle
     xQueueSendFromISR(InterBoardPacketQueue, &packet, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     //Pass the received packet to a que to be processed by the task
-  }
-}
-
-
-void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
-  if (1) {
-    // Activate DMA receive after transmission is complete
-    SPI1_STATUS = 0; // Idle
-
-    InterBoardCom_ActivateReceive();
   }
 }
 
@@ -464,7 +454,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.NSS = SPI_NSS_HARD_INPUT;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -778,9 +768,6 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, FLASH_CS_Pin|SD_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, F4_INT_Pin/*|NRF24_CE_Pin*/, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, ACS_Pin|CAMS_Pin|Recovery_Pin/*|NRF24_CS_Pin*/
                           |M2_LED_Pin, GPIO_PIN_RESET);
 
@@ -796,11 +783,10 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : F4_INT_Pin NRF24_CE_Pin */
-  GPIO_InitStruct.Pin = F4_INT_Pin/*|NRF24_CE_Pin*/;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  /*GPIO_InitStruct.Pin = F4_INT_Pin/*|NRF24_CE_Pin*/;
+  /*GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);*/
 
   /*Configure GPIO pins : ACS_Pin CAMS_Pin Recovery_Pin NRF24_CS_Pin
                            M2_LED_Pin */
@@ -827,6 +813,10 @@ static void MX_GPIO_Init(void)
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI2_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+
+  /* Deactivated due to using hardware nss
+  HAL_NVIC_SetPriority(EXTI4_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI4_IRQn);*/
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
   /* USER CODE END MX_GPIO_Init_2 */

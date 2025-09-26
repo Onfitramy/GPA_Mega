@@ -38,10 +38,10 @@ typedef struct {
 } GPSPayload_t;
 
 typedef struct {
-    int16_t gyroX, gyroY, gyroZ;
-    int16_t accelX, accelY, accelZ;
-    int16_t magX, magY, magZ;
-    uint16_t unused1, unused2, unused3, unused4;
+    int16_t gyroX, gyroY, gyroZ; // 6 bytes
+    int16_t accelX, accelY, accelZ; // 12 bytes
+    int16_t magX, magY, magZ; // 18 bytes
+    uint16_t unused1, unused2, unused3, unused4; // 26 bytes
 } IMUPayload_t;
 
 typedef struct {
@@ -51,12 +51,18 @@ typedef struct {
     uint16_t unused1;
 } PositionPayload_t;
 
+typedef struct {
+    float test1, test2, test3, test4, test5, test6; // 24 bytes
+    uint16_t unused1; // 26 bytes
+} TestPayload_t;
+
 typedef union {
     StatusPayload_t status;
     BatteryPayload_t battery;
     GPSPayload_t gps;
     IMUPayload_t imu;
     PositionPayload_t position;
+    TestPayload_t test;
     uint8_t raw[26];
 } PayloadData_u;
 
