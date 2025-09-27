@@ -7,27 +7,69 @@
 extern SPI_HandleTypeDef hspi1;
 
 extern DMA_HandleTypeDef hdma_spi1_rx;
+extern DMA_HandleTypeDef hdma_spi1_tx;
 
-InterBoardPacket_t receiveBuffer;
-InterBoardPacket_t transmitBuffer;
+volatile InterBoardPacket_t receiveBuffer;
+volatile InterBoardPacket_t transmitBuffer;
 
-uint8_t SPI1_STATUS = 0; // 0= Idle, 1 = Busy
+volatile uint8_t SPI1_STATUS = 0; // 0= Idle, 1 = Busy
+
+void InterBoardCom_ClearSPIErrors(void);
 
 /* The SPI Slave (F4) is triggered by the main (H7) and automaticaly sends out its data packets while receiving from the master */
 
 void InterBoardCom_ActivateReceive(void) {
     //Called to activate the SPI DMA receive
-    if (SPI1_STATUS != 0) {
+    if (hspi1.Instance->SR & (SPI_SR_OVR | SPI_SR_MODF | SPI_SR_UDR)) {
+        // SPI has errors - clear them before reactivating
+        // They are caused by transmitions from the master when not listening
+        //InterBoardCom_ClearSPIErrors();
+    }
+    InterBoardCom_ClearSPIErrors();
+
+    if (SPI1_STATUS != 0 || hspi1.State != HAL_SPI_STATE_READY || hdma_spi1_rx.State != HAL_DMA_STATE_READY || hspi1.hdmatx->State != HAL_DMA_STATE_READY) {
         return; // Busy
     }
     SPI1_STATUS = 1; // Busy
     HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)&transmitBuffer, (uint8_t *)&receiveBuffer, sizeof(InterBoardPacket_t));
 }
 
+// Add this new function
+void InterBoardCom_ClearSPIErrors(void) {
+    // Stop any ongoing DMA
+    HAL_SPI_DMAStop(&hspi1);
+    
+    // Clear DMA flags
+    __HAL_DMA_CLEAR_FLAG(&hdma_spi1_rx, DMA_FLAG_TEIF0_4 | DMA_FLAG_FEIF0_4 | DMA_FLAG_DMEIF0_4 | DMA_FLAG_HTIF0_4 | DMA_FLAG_TCIF0_4);
+    __HAL_DMA_CLEAR_FLAG(&hdma_spi1_tx, DMA_FLAG_TEIF3_7 | DMA_FLAG_FEIF3_7 | DMA_FLAG_DMEIF3_7 | DMA_FLAG_HTIF3_7 | DMA_FLAG_TCIF3_7);
+
+    // Drain any pending RX data
+    while (__HAL_SPI_GET_FLAG(&hspi1, SPI_FLAG_RXNE)) {
+        (void)hspi1.Instance->DR;
+    }
+    
+    // Clear SPI error flags by reading SR and DR
+    __HAL_SPI_CLEAR_OVRFLAG(&hspi1);
+
+    if (__HAL_SPI_GET_FLAG(&hspi1, SPI_FLAG_MODF)) {
+    __HAL_SPI_CLEAR_MODFFLAG(&hspi1); // macro handles SR read + CR1 write
+    }
+    
+    // Reset SPI state
+    hspi1.State = HAL_SPI_STATE_READY;
+    hspi1.ErrorCode = HAL_SPI_ERROR_NONE;
+    
+    SPI1_STATUS = 0; // Idle
+}
+
 
 InterBoardPacket_t InterBoardCom_ReceivePacket(void) {
     //Called when a packet is received inside the SPI_DMA receive complete callback
-    return receiveBuffer;
+    // Create a local copy to avoid race condition
+    __DSB(); // Ensure memory operations complete
+    InterBoardPacket_t packet;
+    memcpy(&packet, (void*)&receiveBuffer, sizeof(InterBoardPacket_t));
+    return packet;
 }
 
 InterBoardPacket_t InterBoardCom_CreatePacket(InterBoardPacketID_t ID) {
@@ -61,8 +103,10 @@ void InterBoardCom_FillData(InterBoardPacket_t *packet, DataPacket_t *data_packe
 
 static uint8_t rx_dummy[sizeof(InterBoardPacket_t)];
 void InterBoardCom_SendPacket(InterBoardPacket_t *packet) {
-
-    memcpy((uint8_t *)&transmitBuffer, (uint8_t *)packet, sizeof(InterBoardPacket_t));
+    // Only update transmit buffer when SPI is idle (to be removed when circular buffer is implemented)
+    if (SPI1_STATUS == 0 && hspi1.State == HAL_SPI_STATE_READY) {
+        memcpy((uint8_t *)&transmitBuffer, (uint8_t *)packet, sizeof(InterBoardPacket_t));
+    }
     //Fill the transmit buffer with the packet data, to be sent when the master triggers the SPI communication
 }
 
@@ -95,7 +139,6 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
             InterBoardPacket_t responsePacket = InterBoardCom_CreatePacket(InterBoardPACKET_ID_DataAck);
             InterBoardCom_FillRaw(&responsePacket, 32, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
                                       16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31);
-            //InterBoardCom_ActivateReceive();
             InterBoardCom_SendPacket(&responsePacket);
             break;
         
@@ -127,5 +170,6 @@ void InterBoardCom_ReactivateDMAReceive(void) {
     tmp = hspi1.Instance->SR;
     tmp = hspi1.Instance->DR;
     (void)tmp;
-    HAL_SPI_Receive_DMA(&hspi1, (uint8_t *)&receiveBuffer, sizeof(InterBoardPacket_t));
+    SPI1_STATUS = 1;
+    HAL_SPI_TransmitReceive_DMA(&hspi1,  (uint8_t *)&transmitBuffer, (uint8_t *)&receiveBuffer, sizeof(InterBoardPacket_t));
 }

@@ -26,6 +26,7 @@
 #include "stream_buffer.h"
 #include "semphr.h"
 #include "queue.h"
+#include "string.h"
 
 #include "ws2812.h"
 #include "W25Q1.h"
@@ -84,8 +85,8 @@ const osThreadAttr_t InterBoardCom_attributes = {
 osThreadId_t InterruptTaskHandle;
 const osThreadAttr_t InterruptTask_attributes = {
   .name = "InterruptTask",
-  .stack_size = 128 * 24,
-  .priority = (osPriority_t) osPriorityRealtime,
+  .stack_size = 128 * 48,
+  .priority = (osPriority_t) osPriorityHigh,
 };
 
 uint8_t XBee_Temp;
@@ -174,6 +175,7 @@ uint8_t temperatureSaved[128];
   * @retval None
   */
 /* USER CODE END Header_StartDefaultTask */
+uint32_t RunTime = 0;
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN StartDefaultTask */
@@ -185,11 +187,9 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;) {
     Counter_100Hz++;
-    StartTime = HAL_GetTick();
-
     InterBoardPacket_t packet = InterBoardCom_CreatePacket(InterBoardPACKET_ID_SELFTEST);
     InterBoardCom_FillRaw(&packet, 32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31);
-    memcpy((uint8_t *)&packet.Data, &health.current.out_pu, sizeof(float));
+    memcpy((uint8_t *)&packet.Data, &health.temperature.reg_3V3, sizeof(float));
     InterBoardCom_SendPacket(&packet);
 
     // show low battery level
@@ -197,8 +197,6 @@ void StartDefaultTask(void *argument)
     ShowStatus(RGB_SECONDARY, secondary_status, 1, 100);
 
     //XBee_Transmit(transmitPayload, 5, 0x00);
-
-    uint32_t RunTime = HAL_GetTick() - StartTime;
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }
 
@@ -213,7 +211,6 @@ void Start10HzTask(void *argument){
   /* Infinite loop */
   for(;;) {
     Counter_10Hz++;
-
     switch(secondary_status) {
       // critically low battery condition
       case -5:
@@ -250,13 +247,13 @@ void Start10HzTask(void *argument){
     health.voltage.bus_5V = readVoltage(1) * (10 + 10) / 10;
     health.voltage.bus_gpa_bat = readVoltage(2) * (10 + 2.2) / 2.2;
 
-    //InterBoardCom_ActivateReceive(); // Reactivate SPI DMA receive in case it was not already active or has been stopped due to an error
-
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
   }
 
   /* USER CODE END Start10HzTask */
 }
+
+uint16_t receivedPackets = 0;
 
 void StartInterBoardComTask(void *argument)
 {
@@ -267,7 +264,14 @@ void StartInterBoardComTask(void *argument)
   for(;;) {
     InterBoardPacket_t packet;
     if (xQueueReceive(InterBoardPacketQueue, &packet, portMAX_DELAY) == pdPASS) {
+        receivedPackets++;
+        StartTime = HAL_GetTick();
+        #ifdef DEBUG
+        vTaskDelay(7); //Wait 7ms. This allows breakpoints to (mostly) not corrupt the DMA(which leads to a crash), Data comes in at 100Hz which makes this viable. One missed transmission also isn't the end of the world.
         HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin); // Toggle M2 LED to indicate packet received
+        #endif
+        RunTime = HAL_GetTick() - StartTime;
+        InterBoardCom_ActivateReceive();
         //InterBoardCom_ParsePacket(packet);
     }
   }

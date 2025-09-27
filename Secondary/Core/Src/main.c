@@ -69,7 +69,7 @@ PCD_HandleTypeDef hpcd_USB_OTG_HS;
 extern QueueHandle_t InterBoardPacketQueue; // Queue for InterBoardPacket_t packets
 extern QueueHandle_t XBeeDataQueue; // Queue for XBee data packets
 
-extern uint8_t SPI1_STATUS; // 0= Idle, 1 = Receiving, 2 = Transmitting
+extern volatile uint8_t SPI1_STATUS; // 0= Idle, 1 = Receiving, 2 = Transmitting
 
 /* USER CODE BEGIN PV */
 
@@ -143,6 +143,9 @@ int main(void)
   uint32_t flashid = W25Q1_ReadID(); //Check if the FLASH works, flashid = 0xEF4017
 
   HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 1); // Start UART receive interrupt
+
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_MON_EN_Msk;
+  NVIC_SetPriority(DebugMonitor_IRQn, 6);
 
   PU_enableRecovery();
   PU_enableCamera();
@@ -228,12 +231,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 }
 
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
-  if (1) {
+  if (hspi->Instance == SPI1) {
+    SPI1_STATUS = 0; // Idle
     // DMA transfer complete callback for SPI1
     // Process the received data in receiveBuffer
-    // We wait with reactivating the DMA receive until after the packet has been processed in the task to avoid tx rx conflicts
-    SPI1_STATUS = 0; // Idle
-    InterBoardCom_ActivateReceive();
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     InterBoardPacket_t packet = InterBoardCom_ReceivePacket();
     xQueueSendFromISR(InterBoardPacketQueue, &packet, &xHigherPriorityTaskWoken);
@@ -245,7 +246,8 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
 void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi) {
     if (hspi->Instance == SPI1) {
         // Reactivate DMA receive on error
-        InterBoardCom_ReactivateDMAReceive();
+        SPI1_STATUS = 0; // Idle
+        //InterBoardCom_ReactivateDMAReceive();
     }
 }
 
@@ -464,7 +466,7 @@ static void MX_SPI1_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN SPI1_Init 2 */
-    HAL_NVIC_SetPriority(SPI1_IRQn, 5, 0);
+    HAL_NVIC_SetPriority(SPI1_IRQn, 10, 0);
     HAL_NVIC_EnableIRQ(SPI1_IRQn);
   /* USER CODE END SPI1_Init 2 */
 
@@ -735,13 +737,13 @@ static void MX_DMA_Init(void)
 
   /* DMA interrupt init */
   /* DMA1_Stream6_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Stream6_IRQn, 5, 0);
+  HAL_NVIC_SetPriority(DMA1_Stream6_IRQn, 10, 0);
   HAL_NVIC_EnableIRQ(DMA1_Stream6_IRQn);
   /* DMA2_Stream0_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 5, 0);
+  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 14, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
   /* DMA2_Stream3_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 5, 0);
+  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 14, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
 
 }

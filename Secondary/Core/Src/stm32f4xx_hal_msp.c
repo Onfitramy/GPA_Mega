@@ -69,7 +69,9 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
   */
 void HAL_MspInit(void)
 {
+  #ifdef DEBUG
 
+  #endif
   /* USER CODE BEGIN MspInit 0 */
 
   /* USER CODE END MspInit 0 */
@@ -299,6 +301,7 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
     hdma_spi1_rx.Init.Mode = DMA_NORMAL;
     hdma_spi1_rx.Init.Priority = DMA_PRIORITY_LOW;
     hdma_spi1_rx.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+
     if (HAL_DMA_Init(&hdma_spi1_rx) != HAL_OK)
     {
       Error_Handler();
@@ -323,6 +326,13 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* hspi)
     }
 
     __HAL_LINKDMA(hspi,hdmatx,hdma_spi1_tx);
+
+    /* ADD THESE INTERRUPT PRIORITY CONFIGURATIONS */
+    HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 14, 0); // Lower priority for debugger
+    HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+    
+    HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 14, 0); // Lower priority for debugger  
+    HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
 
     /* USER CODE BEGIN SPI1_MspInit 1 */
 
@@ -655,7 +665,7 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
     /* USART1 interrupt Init */
-    HAL_NVIC_SetPriority(USART1_IRQn, 5, 0);
+    HAL_NVIC_SetPriority(USART1_IRQn, 9, 0);
     HAL_NVIC_EnableIRQ(USART1_IRQn);
     /* USER CODE BEGIN USART1_MspInit 1 */
 
