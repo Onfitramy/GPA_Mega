@@ -28,7 +28,7 @@ const char * cli_prompt = "\r\ncli> ";
 uint8_t backspace[] = "\b \b";
 uint8_t backspace_tt[] = " \b";
 
-extern IMU_Data_t imu_data;
+extern IMU_Data_t imu1_data;
 
 int _write(int file, char *data, int len)
 {
@@ -103,7 +103,7 @@ BaseType_t cmd_read_IMU1(char *pcWriteBuffer, size_t xWriteBufferLen, const char
     (void)xWriteBufferLen;
 
     /* Write the response to the buffer */
-    snprintf(pcWriteBuffer, 100, "Accelerometer: %d, %d, %d Gyroscope: %d, %d, %d\r\n", imu_data.accel[0], imu_data.accel[1], imu_data.accel[2], imu_data.gyro[0], imu_data.accel[1], imu_data.gyro[3]);
+    snprintf(pcWriteBuffer, 100, "Accelerometer: %d, %d, %d Gyroscope: %d, %d, %d\r\n", imu1_data.accel[0], imu1_data.accel[1], imu1_data.accel[2], imu1_data.gyro[0], imu1_data.accel[1], imu1_data.gyro[3]);
 
     return pdFALSE;
 }

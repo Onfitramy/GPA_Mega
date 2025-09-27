@@ -19,6 +19,10 @@ typedef struct {
     float accel[3];  // X, Y, Z
     float gyro[3];   // X, Y, Z
     float temp;      // temperature
+    float offset[3];
+    float scale[3];
+    float acc_data_history[8][3];
+    bool active;
     IMU imu;
 } IMU_Data_t;
 
@@ -60,6 +64,9 @@ typedef enum {
     INTERRUPT_PIN_1 = 0b1,
 } InterruptPins;
 
+
+void IMU_InitImu(IMU_Data_t *imu_data, IMU imu);
+void IMU_Update(IMU_Data_t *imu_data);
 
 void IMU_SwitchSensors(IMU_Data_t *imu_data);
 uint8_t IMU_SelfTest(const IMU_Data_t *imu_data);

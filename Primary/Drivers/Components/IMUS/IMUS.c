@@ -2,6 +2,10 @@
 //#include "calibration_data.h"
 #include "main.h" // ONLY FOR TESTING WITHE LED
 #include <stdint.h>
+#include <string.h>
+
+#include "armMathAddon.h"
+#include "calibration_data.h"
 
 HAL_StatusTypeDef IMU_SPI_status;
 
@@ -78,6 +82,79 @@ HAL_StatusTypeDef IMU_read_reg(uint8_t address, uint8_t len, uint8_t *data, cons
 
     IMU_Deselect(imu_data);
     return IMU_SPI_status;
+}
+
+void IMU_InitImu(IMU_Data_t *imu_data, IMU imu) {
+    imu_data->imu = imu;
+
+    switch (imu) {
+        case IMU1:
+            memcpy(imu_data->offset, IMU1_offset, sizeof(IMU1_offset));
+            memcpy(imu_data->scale, IMU1_scale, sizeof(IMU1_scale));
+            break;
+        case IMU2:
+            memcpy(imu_data->offset, IMU2_offset, sizeof(IMU2_offset));
+            memcpy(imu_data->scale, IMU2_scale, sizeof(IMU2_scale));
+            break;
+    }
+
+    for (int i = 0; i < 8; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            // Fill the history with dummy data.
+            // Since the IMU error detection code looks at the acc data history and checks if the data isn't all equal,
+            // we need to initialize the different elements with different values.
+            imu_data->acc_data_history[i][j] = (float) (i + j);
+        }
+    }
+}
+
+static void IMU_UpdateHistory(IMU_Data_t *imu_data) {
+    // Shift all elements to the right and add the measured data to the front.
+    for (int i = 7; i > 0; --i){
+        memcpy(
+            imu_data->acc_data_history[i],
+            imu_data->acc_data_history[i-1],
+            sizeof(imu_data->acc_data_history[0])
+        );
+    }
+    memcpy(
+        imu_data->acc_data_history[0],
+        imu_data->accel,
+        sizeof(imu_data->acc_data_history[0])
+    );
+}
+
+static float IMU_CalculateHistoryDifference(const IMU_Data_t *imu_data) {
+    float *acc_history_start = imu_data->acc_data_history[0];
+    float difference_sum = 0;
+
+    for (int i = 1; i < 8; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            difference_sum += fabsf(acc_history_start[j] - imu_data->acc_data_history[i][j]);
+        }
+    }
+
+    return difference_sum;
+}
+
+
+void IMU_Update(IMU_Data_t *imu_data) {
+    bool imu_ready = IMU_VerifyDataReady(imu_data) & 0x03 == 0x03;
+    if(imu_ready) {
+        IMU_ReadSensorData(imu_data);
+        arm_vec3_sub_f32(imu_data->accel, imu_data->offset, imu_data->accel);
+        arm_vec3_element_product_f32(imu_data->accel, imu_data->scale, imu_data->accel);
+
+        IMU_UpdateHistory(imu_data);
+    }
+
+    float imu_difference = IMU_CalculateHistoryDifference(imu_data);
+
+    if (!imu_ready || imu_difference < 1e-3) {
+        imu_data->active = false;
+    } else if (imu_difference >= 1e-3) {
+        imu_data->active = true;
+    }
 }
 
 void IMU_SwitchSensors(IMU_Data_t *imu_data) {
