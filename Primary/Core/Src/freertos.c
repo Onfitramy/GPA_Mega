@@ -337,7 +337,6 @@ void StartDefaultTask(void *argument)
   // starting point for KF
   while(IMU_VerifyDataReady(&imu1_data) & 0x03 != 0x03); // wait for IMU1 data
   IMU_ReadSensorData(&imu1_data);
-  // TODO: Automatic calibration detection
   arm_vec3_sub_f32(imu1_data.accel, imu1_data.calibration.offset, imu1_data.accel);
   arm_vec3_element_product_f32(imu1_data.accel, imu1_data.calibration.scale, imu1_data.accel);
 

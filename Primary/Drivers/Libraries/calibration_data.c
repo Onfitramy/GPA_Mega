@@ -50,21 +50,18 @@ static const uint32_t GPA_MegaUIDs[5][3] = {
 };
 
 static bool UID_matches(uint32_t uid[3], GPA_Mega gpa_mega) {
-    int32_t difference_sum = 0;
+    bool matches = true;
 
     for (int i = 0; i < 3; ++i) {
         uint32_t uid_element = uid[i];
         uint32_t gpa_mega_element = GPA_MegaUIDs[gpa_mega][i];
 
-        // prevent integer overflow
-        if (uid_element >= gpa_mega_element) {
-            difference_sum += uid_element - gpa_mega_element;
-        } else {
-            difference_sum += gpa_mega_element - uid_element;
+        if (uid_element != gpa_mega_element) {
+            matches = false;
         }
     }
 
-    return difference_sum == 0;
+    return matches;
 }
 
 GPA_Mega GPA_MegaFromUID(uint32_t uid[3]) {
