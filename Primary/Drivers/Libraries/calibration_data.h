@@ -1,21 +1,24 @@
 #ifndef CALIBRATION_DATA_H
 #define CALIBRATION_DATA_H
+#include <stdint.h>
 
 /* ### CALIBRATION AND OFFSET DATA FOR BOARDS 1 - 5 ### */
-#define GPA_MEGA_4
 
-//#define calibration_mode // enable raw sensor data
+typedef enum {
+    GPA_MEGA_1 = 0,
+    GPA_MEGA_2 = 1,
+    GPA_MEGA_3 = 2,
+    GPA_MEGA_4 = 3,
+    GPA_MEGA_5 = 4,
+} GPA_Mega;
 
-// IMU1 accelerometer
-extern const float IMU1_offset[3]; 
-extern const float IMU1_scale[3];
+typedef struct {
+    float offset[3];
+    float scale[3];
+} CalibrationData_t;
 
-// IMU2 accelerometer
-extern const float IMU2_offset[3]; 
-extern const float IMU2_scale[3];
+extern const CalibrationData_t CalibrationData[5][3];
 
-// Magnetometer
-extern const float MAG_offset[3];
-extern const float MAG_scale[3];
+GPA_Mega GPA_MegaFromUID(uint32_t uid[3]);
 
 #endif // CALIBRATION_DATA_H

@@ -1,6 +1,7 @@
 #ifndef LIS3MDL_H_
 #define LIS3MDL_H_
 
+#include "calibration_data.h"
 #include "stm32h7xx_hal.h"
 #include "stdbool.h"
 
@@ -11,6 +12,7 @@ extern int16_t MAG_FS_LSB;
 typedef struct {
     float field[3];  // X, Y, Z
     float temp;        // temperature
+    CalibrationData_t calibration;
 } LIS3MDL_Data_t;
 
 uint8_t MAG_SelfTest(void);

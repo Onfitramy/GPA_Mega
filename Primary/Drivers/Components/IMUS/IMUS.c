@@ -84,19 +84,9 @@ HAL_StatusTypeDef IMU_read_reg(uint8_t address, uint8_t len, uint8_t *data, cons
     return IMU_SPI_status;
 }
 
-void IMU_InitImu(IMU_Data_t *imu_data, IMU imu) {
+void IMU_InitImu(IMU_Data_t *imu_data, IMU imu, GPA_Mega gpa_mega) {
     imu_data->imu = imu;
-
-    switch (imu) {
-        case IMU1:
-            memcpy(imu_data->offset, IMU1_offset, sizeof(IMU1_offset));
-            memcpy(imu_data->scale, IMU1_scale, sizeof(IMU1_scale));
-            break;
-        case IMU2:
-            memcpy(imu_data->offset, IMU2_offset, sizeof(IMU2_offset));
-            memcpy(imu_data->scale, IMU2_scale, sizeof(IMU2_scale));
-            break;
-    }
+    memcpy(&imu_data->calibration, &CalibrationData[gpa_mega][imu], sizeof(CalibrationData_t));
 
     for (int i = 0; i < 8; ++i) {
         for (int j = 0; j < 3; ++j) {
@@ -142,8 +132,8 @@ void IMU_Update(IMU_Data_t *imu_data) {
     bool imu_ready = IMU_VerifyDataReady(imu_data) & 0x03 == 0x03;
     if(imu_ready) {
         IMU_ReadSensorData(imu_data);
-        arm_vec3_sub_f32(imu_data->accel, imu_data->offset, imu_data->accel);
-        arm_vec3_element_product_f32(imu_data->accel, imu_data->scale, imu_data->accel);
+        arm_vec3_sub_f32(imu_data->accel, imu_data->calibration.offset, imu_data->accel);
+        arm_vec3_element_product_f32(imu_data->accel, imu_data->calibration.scale, imu_data->accel);
 
         IMU_UpdateHistory(imu_data);
     }

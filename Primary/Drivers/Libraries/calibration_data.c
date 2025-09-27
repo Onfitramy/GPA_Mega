@@ -1,79 +1,82 @@
 #include "calibration_data.h"
 
-#ifdef GPA_MEGA_1 // NOT CALIBRATED YET
-// IMU1 accelerometer
-const float IMU1_offset[3] = {0, 0, 0}; 
-const float IMU1_scale[3] = {1, 1, 1};
+#include <stdbool.h>
 
-// IMU2 accelerometer
-const float IMU2_offset[3] = {0, 0, 0}; 
-const float IMU2_scale[3] = {1, 1, 1};
+const CalibrationData_t CalibrationData[5][3] = {
+    // GPA Mega 1 NOT CALIBRATED YET
+    {
+        {{0, 0, 0}, {1, 1, 1}}, // IMU1
+        {{0, 0, 0}, {1, 1, 1}}, // IMU2
+        {{0, 0, 0}, {1, 1, 1}}, // MAG
+    },
+    // GPA Mega 2 NOT CALIBRATED YET
+    {
+        {{0, 0, 0}, {1, 1, 1}}, // IMU1
+        {{0, 0, 0}, {1, 1, 1}}, // IMU2
+        {{0, 0, 0}, {1, 1, 1}}, // MAG
+    },
+    // GPA Mega 3 IMU2 not calibrated yet
+    {
+        {{0.0475, -0.1725, -0.04}, {1.0059, 0.9932, 0.997}}, // IMU1
+        {{0, 0, 0}, {1, 1, 1}}, // IMU2
+        {{0.6186, -0.1259, -0.1587}, {1.18, 1.14, 1.32}} // MAG
+    },
+    // GPA Mega 4 IMU2 not calibrated yet
+    {
+        {{-0.005, -0.085, 0.17}, {0.9954, 0.9944, 0.9959}}, // IMU1
+        {{0, 0, 0}, {1, 1, 1}}, // IMU2
+        {{0.285, -0.0361, -0.455}, {1.15, 1.1094, 1.28}}, // MAG
 
-// Magnetometer
-const float MAG_offset[3] = {0, 0, 0}; 
-const float MAG_scale[3] = {1, 1, 1};
+    },
+    // GPA Mega 5 NOT CALIBRATED YET
+    {
+        {{0, 0, 0}, {1, 1, 1}}, // IMU1
+        {{0, 0, 0}, {1, 1, 1}}, // IMU2
+        {{0, 0, 0}, {1, 1, 1}}, // MAG
+    }
+};
 
-#endif
+static const uint32_t GPA_MegaUIDs[5][3] = {
+    /// GPA Mega 1
+    {2883642, 892489994, 842609714},
+    // GPA Mega 2 not determined yet
+    {0, 0, 0},
+    // GPA Mega 3 not determined yet
+    {0, 0, 0},
+    /// GPA Mega 4
+    {2949174, 842223877, 825439797},
+    /// GPA Mega 5
+    {2949188, 842223877, 825439797},
+};
 
-#ifdef GPA_MEGA_2 // NOT CALIBRATED YET
-// IMU1 accelerometer
-const float IMU1_offset[3] = {0, 0, 0}; 
-const float IMU1_scale[3] = {1, 1, 1};
+static bool UID_matches(uint32_t uid[3], GPA_Mega gpa_mega) {
+    int32_t difference_sum = 0;
 
-// IMU2 accelerometer
-const float IMU2_offset[3] = {0, 0, 0}; 
-const float IMU2_scale[3] = {1, 1, 1};
+    for (int i = 0; i < 3; ++i) {
+        uint32_t uid_element = uid[i];
+        uint32_t gpa_mega_element = GPA_MegaUIDs[gpa_mega][i];
 
-// Magnetometer
-const float MAG_offset[3] = {0, 0, 0}; 
-const float MAG_scale[3] = {1, 1, 1};
+        // prevent integer overflow
+        if (uid_element >= gpa_mega_element) {
+            difference_sum += uid_element - gpa_mega_element;
+        } else {
+            difference_sum += gpa_mega_element - uid_element;
+        }
+    }
 
-#endif
+    return difference_sum == 0;
+}
 
-#ifdef GPA_MEGA_3 // IMU2 not calibrated yet
-// IMU1 accelerometer
-const float IMU1_offset[3] = {0.0475, -0.1725, -0.04}; 
-const float IMU1_scale[3] = {1.0059, 0.9932, 0.997};
-
-// IMU2 accelerometer
-const float IMU2_offset[3] = {0, 0, 0}; 
-const float IMU2_scale[3] = {1, 1, 1};
-
-// Magnetometer
-const float MAG_offset[3] = {0.6186, -0.1259, -0.1587}; 
-const float MAG_scale[3] = {1.18, 1.14, 1.32};
-
-#endif
-
-#ifdef GPA_MEGA_4 // IMU2 not calibrated yet
-// IMU1 accelerometer
-const float IMU1_offset[3] = {-0.005, -0.085, 0.17}; 
-const float IMU1_scale[3] = {0.9954, 0.9944, 0.9959};
-
-// IMU2 accelerometer
-const float IMU2_offset[3] = {0, 0, 0}; 
-const float IMU2_scale[3] = {1, 1, 1};
-
-// Magnetometer
-const float MAG_offset[3] = {0.285, -0.0361, -0.455};
-const float MAG_scale[3] = {1.15, 1.1094, 1.28};
-
-//const float MAG_offset[3] = {0.3082, -0.0361, -0.48925};
-//const float MAG_scale[3] = {1.1543, 1.1094, 1.2785};
-
-#endif
-
-#ifdef GPA_MEGA_5 // NOT CALIBRATED YET
-// IMU1 accelerometer
-const float IMU1_offset[3] = {0, 0, 0}; 
-const float IMU1_scale[3] = {1, 1, 1};
-
-// IMU2 accelerometer
-const float IMU2_offset[3] = {0, 0, 0}; 
-const float IMU2_scale[3] = {1, 1, 1};
-
-// Magnetometer
-const float MAG_offset[3] = {0, 0, 0}; 
-const float MAG_scale[3] = {1, 1, 1};
-
-#endif
+GPA_Mega GPA_MegaFromUID(uint32_t uid[3]) {
+    if (UID_matches(uid, GPA_MEGA_1))
+        return GPA_MEGA_1;
+    if (UID_matches(uid, GPA_MEGA_2))
+        return GPA_MEGA_2;
+    if (UID_matches(uid, GPA_MEGA_3))
+        return GPA_MEGA_3;
+    if (UID_matches(uid, GPA_MEGA_4))
+        return GPA_MEGA_4;
+    if (UID_matches(uid, GPA_MEGA_5))
+        return GPA_MEGA_5;
+    // TODO: some kind of error handling
+}

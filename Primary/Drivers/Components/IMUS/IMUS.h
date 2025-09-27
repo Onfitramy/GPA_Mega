@@ -1,6 +1,7 @@
 #ifndef IMUS_H_
 #define IMUS_H_
 
+#include "calibration_data.h"
 #include "stm32h7xx_hal.h"
 #include "stdbool.h"
 
@@ -11,16 +12,15 @@ extern int16_t IMUXL_FS_LSB;
 extern int16_t IMUG_FS_LSB;
 
 typedef enum {
-    IMU1 = 1,
-    IMU2 = 2,
+    IMU1 = 0,
+    IMU2 = 1,
 } IMU;
 
 typedef struct {
     float accel[3];  // X, Y, Z
     float gyro[3];   // X, Y, Z
     float temp;      // temperature
-    float offset[3];
-    float scale[3];
+    CalibrationData_t calibration;
     float acc_data_history[8][3];
     bool active;
     IMU imu;
@@ -65,7 +65,7 @@ typedef enum {
 } InterruptPins;
 
 
-void IMU_InitImu(IMU_Data_t *imu_data, IMU imu);
+void IMU_InitImu(IMU_Data_t *imu_data, IMU imu, GPA_Mega gpa_mega);
 void IMU_Update(IMU_Data_t *imu_data);
 
 void IMU_SwitchSensors(IMU_Data_t *imu_data);

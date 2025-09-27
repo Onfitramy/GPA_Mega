@@ -74,6 +74,7 @@ extern ADC_HandleTypeDef hadc3;
 uint32_t ADC_Temperature, ADC_V_Ref;
 
 uint32_t uid[3];
+GPA_Mega gpa_mega;
 
 int8_t primary_status = 0;
 int8_t servo_status = 1;
@@ -305,13 +306,17 @@ void StartDefaultTask(void *argument)
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 1; //1000 Hz
 
-  IMU_InitImu(&imu1_data, IMU1);
-  IMU_InitImu(&imu2_data, IMU2);
-  active_imu_data = &imu1_data;
-
   uid[0] = HAL_GetUIDw0();
   uid[1] = HAL_GetUIDw1();
   uid[2] = HAL_GetUIDw2();
+  gpa_mega = GPA_MegaFromUID(uid);
+
+  IMU_InitImu(&imu1_data, IMU1, gpa_mega);
+  IMU_InitImu(&imu2_data, IMU2, gpa_mega);
+  active_imu_data = &imu1_data;
+
+
+  mag_data.calibration = CalibrationData[gpa_mega][2];
 
   // define Kalman Filter dimensions and pointers for orientation
   EKFInit(&EKF1, EKF1_type, x_size1, u_size1, dt, &F1, &P1, &Q1, &B1 , x1, imu1_data.gyro);
@@ -333,13 +338,13 @@ void StartDefaultTask(void *argument)
   while(IMU_VerifyDataReady(&imu1_data) & 0x03 != 0x03); // wait for IMU1 data
   IMU_ReadSensorData(&imu1_data);
   // TODO: Automatic calibration detection
-  arm_vec3_sub_f32(imu1_data.accel, imu1_data.offset, imu1_data.accel);
-  arm_vec3_element_product_f32(imu1_data.accel, imu1_data.scale, imu1_data.accel);
+  arm_vec3_sub_f32(imu1_data.accel, imu1_data.calibration.offset, imu1_data.accel);
+  arm_vec3_element_product_f32(imu1_data.accel, imu1_data.calibration.scale, imu1_data.accel);
 
   while(!(MAG_VerifyDataReady() & 0b00000001)); // wait for MAG data
   MAG_ReadSensorData(&mag_data);
-  arm_vec3_sub_f32(mag_data.field, MAG_offset, mag_data.field);
-  arm_vec3_element_product_f32(mag_data.field, MAG_scale, mag_data.field);
+  arm_vec3_sub_f32(mag_data.field, mag_data.calibration.offset, mag_data.field);
+  arm_vec3_element_product_f32(mag_data.field, mag_data.calibration.scale, mag_data.field);
 
   EulerOrientationFix(imu1_data.accel, mag_data.field, z1_corr1);
 
@@ -397,8 +402,8 @@ void StartDefaultTask(void *argument)
 
     if(MAG_VerifyDataReady() & 0b00000001) {
       MAG_ReadSensorData(&mag_data);
-      arm_vec3_sub_f32(mag_data.field, MAG_offset, mag_data.field);
-      arm_vec3_element_product_f32(mag_data.field, MAG_scale, mag_data.field);
+      arm_vec3_sub_f32(mag_data.field, mag_data.calibration.offset, mag_data.field);
+      arm_vec3_element_product_f32(mag_data.field, mag_data.calibration.scale, mag_data.field);
     }
 
 
