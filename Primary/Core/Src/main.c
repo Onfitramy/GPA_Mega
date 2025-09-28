@@ -172,21 +172,11 @@ int main(void)
   for(counter3 = 0; MAG_SelfTest() != 1 && counter3 < 100000; counter3++);
 
 
-  // !!!
-  if(IMU_Init(&tmp_imu1_data) == HAL_OK && IMU_Init(&tmp_imu2_data) == HAL_OK && MAG_Init() == HAL_OK) ;
-  else ;
-
   IMU_VerifyDataReady(&tmp_imu1_data);
   IMU_VerifyDataReady(&tmp_imu2_data);
   MAG_VerifyDataReady();
 
   MAG_ConfigSensor(LIS3MDL_OM_ULTRA, LIS3MDL_ODR_80_Hz, LIS3MDL_FS_4, LIS3MDL_FAST_ODR_ON, LIS3MDL_TEMP_ON);
-
-  IMU_ConfigXL(IMU_ODR_1660_Hz, IMU_FS_XL_8, 0, &tmp_imu1_data);
-  IMU_ConfigG(IMU_ODR_1660_Hz, IMU_FS_G_2000, &tmp_imu1_data);
-
-  IMU_ConfigXL(IMU_ODR_6660_Hz, IMU_FS_XL_16, 0, &tmp_imu2_data);
-  IMU_ConfigG(IMU_ODR_6660_Hz, IMU_FS_G_4000, &tmp_imu2_data);
 
   /* USER CODE END 2 */
 

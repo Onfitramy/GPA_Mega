@@ -76,7 +76,20 @@ uint32_t ADC_Temperature, ADC_V_Ref;
 uint32_t uid[3];
 GPA_Mega gpa_mega;
 
-int8_t primary_status = 0;
+typedef struct {
+  HAL_StatusTypeDef hal_status;
+  bool active;
+} SensorStatus;
+
+void SensorStatus_Reset(SensorStatus *sensor_status) {
+  sensor_status->hal_status = HAL_OK;
+  sensor_status->active = true;
+}
+
+int8_t primary_status;
+SensorStatus imu1_status = { HAL_OK, 0 };
+SensorStatus imu2_status = { HAL_OK, 0 };
+SensorStatus mag_status = { HAL_OK, 0 };
 int8_t servo_status = 1;
 
 uint32_t dt_1000Hz;
@@ -311,8 +324,13 @@ void StartDefaultTask(void *argument)
   uid[2] = HAL_GetUIDw2();
   gpa_mega = GPA_MegaFromUID(uid);
 
-  IMU_InitImu(&imu1_data, IMU1, gpa_mega);
-  IMU_InitImu(&imu2_data, IMU2, gpa_mega);
+  imu1_status.hal_status |= IMU_InitImu(&imu1_data, IMU1, gpa_mega);
+  imu2_status.hal_status |= IMU_InitImu(&imu2_data, IMU2, gpa_mega);
+  IMU_ConfigXL(IMU_ODR_1660_Hz, IMU_FS_XL_8, 0, &imu1_data);
+  IMU_ConfigG(IMU_ODR_1660_Hz, IMU_FS_G_2000, &imu1_data);
+
+  IMU_ConfigXL(IMU_ODR_6660_Hz, IMU_FS_XL_16, 0, &imu2_data);
+  IMU_ConfigG(IMU_ODR_6660_Hz, IMU_FS_G_4000, &imu2_data);
 
 
   mag_data.calibration = CalibrationData[gpa_mega][2];
@@ -335,13 +353,13 @@ void StartDefaultTask(void *argument)
 
   // starting point for KF
   while(IMU_VerifyDataReady(&imu1_data) & 0x03 != 0x03); // wait for IMU1 data
-  HAL_StatusTypeDef status = IMU_ReadSensorData(&imu1_data);
+  imu1_status.hal_status |= IMU_ReadSensorData(&imu1_data);
   arm_vec3_sub_f32(imu1_data.accel, imu1_data.calibration.offset, imu1_data.accel);
   arm_vec3_element_product_f32(imu1_data.accel, imu1_data.calibration.scale, imu1_data.accel);
 
   while(!(MAG_VerifyDataReady() & 0b00000001)); // wait for MAG data
-  status |= MAG_ReadSensorData(&mag_data);
-  if (status != HAL_OK) primary_status = STATUS_ERROR_MEMS;
+  mag_status.hal_status |= MAG_ReadSensorData(&mag_data);
+  if (mag_status.hal_status != HAL_OK) primary_status = STATUS_ERROR_MEMS;
   arm_vec3_sub_f32(mag_data.field, mag_data.calibration.offset, mag_data.field);
   arm_vec3_element_product_f32(mag_data.field, mag_data.calibration.scale, mag_data.field);
 
@@ -373,12 +391,12 @@ void StartDefaultTask(void *argument)
   EKFStateVInit(&EKF3, &EKF3_corr1);
 
   // low pass filters
-  status |= IMU_SetAccFilterMode(ACC_FILTER_MODE_LOW_PASS, &imu1_data);
-  status |= IMU_SetAccFilterStage(ACC_FILTER_STAGE_SECOND, &imu1_data);
-  status |= IMU_SetAccFilterBandwidth(ACC_FILTER_BANDWIDTH_ODR_OVER_800, &imu1_data);
+  // imu2_status |= IMU_SetAccFilterMode(ACC_FILTER_MODE_LOW_PASS, &imu2_data);
+  // imu2_status |= IMU_SetAccFilterStage(ACC_FILTER_STAGE_SECOND, &imu2_data);
+  // imu2_status |= IMU_SetAccFilterBandwidth(ACC_FILTER_BANDWIDTH_ODR_OVER_800, &imu2_data);
 
-  status |= IMU_SetGyroLowPassFilter(true, &imu1_data);
-  status |= IMU_SetGyroFilterBandwidth(GYRO_FILTER_BANDWIDTH_8, &imu1_data);
+  // imu2_status |= IMU_SetGyroLowPassFilter(true, &imu2_data);
+  // imu2_status |= IMU_SetGyroFilterBandwidth(GYRO_FILTER_BANDWIDTH_8, &imu2_data);
 
   /* Infinite loop */
   for(;;) {
@@ -386,18 +404,23 @@ void StartDefaultTask(void *argument)
     nrf_timeout++;
     // READ SENSOR DATA
 
-    if (status != HAL_OK) primary_status = STATUS_ERROR_MEMS;
-
     HAL_DTS_GetTemperature(&hdts, &DTS_Temperature);
 
     ReadInternalADC(&ADC_Temperature, &ADC_V_Ref);
 
-    status |= IMU_Update(&imu1_data);
-    status |= IMU_Update(&imu2_data);
+    SensorStatus_Reset(&imu1_status);
+    SensorStatus_Reset(&imu2_status);
+    SensorStatus_Reset(&mag_status);
+
+    imu1_status.hal_status |= IMU_Update(&imu1_data);
+    imu2_status.hal_status |= IMU_Update(&imu2_data);
+    imu1_status.active = imu1_data.active;
+    imu2_status.active = imu2_data.active;
+
     IMU_Average(&imu1_data, &imu2_data, &average_imu_data);
 
     if(MAG_VerifyDataReady() & 0b00000001) {
-      status |= MAG_ReadSensorData(&mag_data);
+      mag_status.hal_status |= MAG_ReadSensorData(&mag_data);
       arm_vec3_sub_f32(mag_data.field, mag_data.calibration.offset, mag_data.field);
       arm_vec3_element_product_f32(mag_data.field, mag_data.calibration.scale, mag_data.field);
     }
@@ -561,12 +584,12 @@ void Start100HzTask(void *argument) {
     signalPlotter_sendData(2, mag_data.field[0]);
     signalPlotter_sendData(3, mag_data.field[1]);
     signalPlotter_sendData(4, mag_data.field[2]);
-    signalPlotter_sendData(5, imu1_data.accel[0]);
-    signalPlotter_sendData(6, imu1_data.accel[1]);
-    signalPlotter_sendData(7, imu1_data.accel[2]);
-    signalPlotter_sendData(8, imu1_data.gyro[0]);
-    signalPlotter_sendData(9, imu1_data.gyro[1]);
-    signalPlotter_sendData(10, imu1_data.gyro[2]);
+    signalPlotter_sendData(5, imu2_data.accel[0]);
+    signalPlotter_sendData(6, imu2_data.accel[1]);
+    signalPlotter_sendData(7, imu2_data.accel[2]);
+    signalPlotter_sendData(8, imu2_data.gyro[0]);
+    signalPlotter_sendData(9, imu2_data.gyro[1]);
+    signalPlotter_sendData(10, imu2_data.gyro[2]);
     signalPlotter_sendData(11, pressure);
     signalPlotter_sendData(12, temperature);
     signalPlotter_sendData(13, (float)gps_data.gpsFix);

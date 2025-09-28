@@ -8,9 +8,6 @@
 extern SPI_HandleTypeDef hspi4;
 extern SPI_HandleTypeDef hspi3;
 
-extern int16_t IMUXL_FS_LSB;
-extern int16_t IMUG_FS_LSB;
-
 typedef enum {
     IMU1 = 0,
     IMU2 = 1,
@@ -20,6 +17,8 @@ typedef struct {
     float accel[3];  // X, Y, Z
     float gyro[3];   // X, Y, Z
     float temp;      // temperature
+    int16_t xl_fs_lsb;
+    int16_t g_fs_lsb;
     CalibrationData_t calibration;
     float acc_data_history[8][3];
     bool active;
@@ -70,16 +69,15 @@ typedef enum {
 } InterruptPins;
 
 
-void IMU_InitImu(IMU_Data_t *imu_data, IMU imu, GPA_Mega gpa_mega);
+HAL_StatusTypeDef IMU_InitImu(IMU_Data_t *imu_data, IMU imu, GPA_Mega gpa_mega);
 HAL_StatusTypeDef IMU_Update(IMU_Data_t *imu_data);
 void IMU_Average(IMU_Data_t *imu_data_1, IMU_Data_t *imu_data_2, IMU_AverageData_t *average_imu_data);
 
 void IMU_SwitchSensors(IMU_Data_t *imu_data);
 uint8_t IMU_SelfTest(const IMU_Data_t *imu_data);
 uint8_t IMU_VerifyDataReady(const IMU_Data_t *imu_data);
-HAL_StatusTypeDef IMU_Init(const IMU_Data_t *imu_data);
-HAL_StatusTypeDef IMU_ConfigXL(uint8_t ODR, uint8_t FS, bool LPF2, const IMU_Data_t *imu_data);
-HAL_StatusTypeDef IMU_ConfigG(uint8_t ODR, uint8_t FS, const IMU_Data_t *imu_data);
+HAL_StatusTypeDef IMU_ConfigXL(uint8_t ODR, uint8_t FS, bool LPF2, IMU_Data_t *imu_data);
+HAL_StatusTypeDef IMU_ConfigG(uint8_t ODR, uint8_t FS, IMU_Data_t *imu_data);
 
 HAL_StatusTypeDef IMU_ReadSensorData(IMU_Data_t *imu_data);
 HAL_StatusTypeDef IMU_SetAccFilterMode(AccFilterMode filter_mode, const IMU_Data_t *imu_data);

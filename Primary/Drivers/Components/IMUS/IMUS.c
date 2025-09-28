@@ -9,9 +9,6 @@
 
 HAL_StatusTypeDef IMU_SPI_status;
 
-int16_t IMUXL_FS_LSB = 16384;
-int16_t IMUG_FS_LSB = 35;
-
 static void IMU_WritePin(GPIO_PinState pin, const IMU_Data_t *imu_data) {
     GPIO_TypeDef *imu_cs_port;
     uint16_t imu_cs_pin;
@@ -84,8 +81,23 @@ HAL_StatusTypeDef IMU_read_reg(uint8_t address, uint8_t len, uint8_t *data, cons
     return IMU_SPI_status;
 }
 
-void IMU_InitImu(IMU_Data_t *imu_data, IMU imu, GPA_Mega gpa_mega) {
+static HAL_StatusTypeDef IMU_Init(const IMU_Data_t *imu_data) {
+    uint8_t tx[3] = {0x60, 0x60, 0x04};
+    uint8_t rx[3] = {0};
+    IMU_write_reg(IMU_CTRL1_XL, 3, tx, imu_data);
+    IMU_read_reg(IMU_CTRL1_XL, 3, rx, imu_data);
+
+    if (rx[0] != 0x60 || rx[1] != 0x60 || rx[2] != 0x04) return HAL_ERROR;
+    return HAL_OK;
+
+    // CTRL7_G, CTRL6_C, CTRL1_OIS,
+}
+
+HAL_StatusTypeDef IMU_InitImu(IMU_Data_t *imu_data, IMU imu, GPA_Mega gpa_mega) {
     imu_data->imu = imu;
+    HAL_StatusTypeDef status = IMU_Init(imu_data);
+    if (status != HAL_OK) return status;
+
     memcpy(&imu_data->calibration, &CalibrationData[gpa_mega][imu], sizeof(CalibrationData_t));
 
     for (int i = 0; i < 8; ++i) {
@@ -96,6 +108,8 @@ void IMU_InitImu(IMU_Data_t *imu_data, IMU imu, GPA_Mega gpa_mega) {
             imu_data->acc_data_history[i][j] = (float) (i + j);
         }
     }
+
+    return HAL_OK;
 }
 
 static void IMU_UpdateHistory(IMU_Data_t *imu_data) {
@@ -129,7 +143,7 @@ static float IMU_CalculateHistoryDifference(const IMU_Data_t *imu_data) {
 
 
 HAL_StatusTypeDef IMU_Update(IMU_Data_t *imu_data) {
-    HAL_StatusTypeDef status;
+    HAL_StatusTypeDef status = HAL_OK;
     bool imu_ready = IMU_VerifyDataReady(imu_data) & 0x03 == 0x03;
 
     if(imu_ready) {
@@ -138,15 +152,13 @@ HAL_StatusTypeDef IMU_Update(IMU_Data_t *imu_data) {
         arm_vec3_element_product_f32(imu_data->accel, imu_data->calibration.scale, imu_data->accel);
 
         IMU_UpdateHistory(imu_data);
-    } else {
-        status = HAL_BUSY;
     }
 
     float imu_difference = IMU_CalculateHistoryDifference(imu_data);
 
-    if (!imu_ready || imu_difference < 1e-3) {
+    if (!imu_ready || imu_difference < 1e-6) {
         imu_data->active = false;
-    } else if (imu_difference >= 1e-3) {
+    } else if (imu_difference >= 1e-6) {
         imu_data->active = true;
     }
 
@@ -193,24 +205,20 @@ uint8_t IMU_VerifyDataReady(const IMU_Data_t *imu_data) {
     return status_reg_return;
 }
 
-HAL_StatusTypeDef IMU_Init(const IMU_Data_t *imu_data) {
-    uint8_t tx[3] = {0x60, 0x60, 0x04};
-    uint8_t rx[3] = {0};
-    IMU_write_reg(IMU_CTRL1_XL, 3, tx, imu_data);
-    IMU_read_reg(IMU_CTRL1_XL, 3, rx, imu_data);
-
-    if (rx[0] != 0x60 || rx[1] != 0x60 || rx[2] != 0x04) return HAL_ERROR;
-    return HAL_OK;
-
-    // CTRL7_G, CTRL6_C, CTRL1_OIS,
-}
-
-HAL_StatusTypeDef IMU_ConfigXL(uint8_t ODR, uint8_t FS, bool LPF2, const IMU_Data_t *imu_data) {
+HAL_StatusTypeDef IMU_ConfigXL(uint8_t ODR, uint8_t FS, bool LPF2, IMU_Data_t *imu_data) {
     switch(FS) {
-        case IMU_FS_XL_2:    IMUXL_FS_LSB = 16384; break;
-        case IMU_FS_XL_4:    IMUXL_FS_LSB = 8192;  break;
-        case IMU_FS_XL_8:    IMUXL_FS_LSB = 4096;  break;
-        case IMU_FS_XL_16:   IMUXL_FS_LSB = 2048;  break;
+        case IMU_FS_XL_2:
+            imu_data->xl_fs_lsb = 16384;
+            break;
+        case IMU_FS_XL_4:
+            imu_data->xl_fs_lsb = 8192;
+            break;
+        case IMU_FS_XL_8:
+            imu_data->xl_fs_lsb = 4096;
+            break;
+        case IMU_FS_XL_16:
+            imu_data->xl_fs_lsb = 2048;
+            break;
     }
     uint8_t tx[1] = { ODR << 4 | FS << 2 | LPF2 << 1 };
     uint8_t rx[1] = { 0 };
@@ -220,14 +228,26 @@ HAL_StatusTypeDef IMU_ConfigXL(uint8_t ODR, uint8_t FS, bool LPF2, const IMU_Dat
     return HAL_ERROR;
 }
 
-HAL_StatusTypeDef IMU_ConfigG(uint8_t ODR, uint8_t FS, const IMU_Data_t *imu_data) {
+HAL_StatusTypeDef IMU_ConfigG(uint8_t ODR, uint8_t FS, IMU_Data_t *imu_data) {
     switch(FS) {
-        case IMU_FS_G_125:  IMUG_FS_LSB = 35;   break;
-        case IMU_FS_G_250:  IMUG_FS_LSB = 70;   break;
-        case IMU_FS_G_500:  IMUG_FS_LSB = 140;  break;
-        case IMU_FS_G_1000: IMUG_FS_LSB = 280;  break;
-        case IMU_FS_G_2000: IMUG_FS_LSB = 560;  break;
-        case IMU_FS_G_4000: IMUG_FS_LSB = 1120; break;
+        case IMU_FS_G_125:
+            imu_data->g_fs_lsb = 35;
+            break;
+        case IMU_FS_G_250:
+            imu_data->g_fs_lsb = 70;
+            break;
+        case IMU_FS_G_500:
+            imu_data->g_fs_lsb = 140;
+            break;
+        case IMU_FS_G_1000:
+            imu_data->g_fs_lsb = 280;
+            break;
+        case IMU_FS_G_2000:
+            imu_data->g_fs_lsb = 560;
+            break;
+        case IMU_FS_G_4000:
+            imu_data->g_fs_lsb = 1120;
+            break;
     }
     uint8_t tx[1] = { ODR << 4 | FS };
     uint8_t rx[1] = { 0 };
@@ -247,25 +267,32 @@ HAL_StatusTypeDef IMU_ReadSensorData(IMU_Data_t *imu_data) {
         uint8_t rx[6] = {0};
         status = IMU_read_reg(IMU_OUTX_L_A, 6, rx, imu_data); // read accelerometer data
         if (status != HAL_OK) return status;
-        imu_data->accel[0] = (float)(int16_t)(rx[1] << 8 | rx[0]) * 9.81 / IMUXL_FS_LSB; // accel_X [m/s²]
-        imu_data->accel[1] = (float)(int16_t)(rx[3] << 8 | rx[2]) * 9.81 / IMUXL_FS_LSB; // accel_Y [m/s²]
-        imu_data->accel[2] = (float)(int16_t)(rx[5] << 8 | rx[4]) * 9.81 / IMUXL_FS_LSB; // accel_Z [m/s²]
+        imu_data->accel[0] = (float)(int16_t)(rx[1] << 8 | rx[0]) * 9.81 / imu_data->xl_fs_lsb; // accel_X [m/s²]
+        imu_data->accel[1] = (float)(int16_t)(rx[3] << 8 | rx[2]) * 9.81 / imu_data->xl_fs_lsb; // accel_Y [m/s²]
+        imu_data->accel[2] = (float)(int16_t)(rx[5] << 8 | rx[4]) * 9.81 / imu_data->xl_fs_lsb; // accel_Z [m/s²]
     }
     if (available & 0x02) {
         uint8_t rx[6] = {0};
         status = IMU_read_reg(IMU_OUTX_L_G, 6, rx, imu_data); // read gyro data
         if (status != HAL_OK) return status;
-        imu_data->gyro[0] = (float)(int16_t)(rx[1] << 8 | rx[0]) * IMUG_FS_LSB / 8000 * M_PI / 180; // gyro_X [rad/s]
-        imu_data->gyro[1] = (float)(int16_t)(rx[3] << 8 | rx[2]) * IMUG_FS_LSB / 8000 * M_PI / 180; // gyro_Y [rad/s]
-        imu_data->gyro[2] = (float)(int16_t)(rx[5] << 8 | rx[4]) * IMUG_FS_LSB / 8000 * M_PI / 180; // gyro_Z [rad/s]
+        imu_data->gyro[0] = (float)(int16_t)(rx[1] << 8 | rx[0]) * imu_data->g_fs_lsb / 8000 * M_PI / 180; // gyro_X [rad/s]
+        imu_data->gyro[1] = (float)(int16_t)(rx[3] << 8 | rx[2]) * imu_data->g_fs_lsb / 8000 * M_PI / 180; // gyro_Y [rad/s]
+        imu_data->gyro[2] = (float)(int16_t)(rx[5] << 8 | rx[4]) * imu_data->g_fs_lsb / 8000 * M_PI / 180; // gyro_Z [rad/s]
     }
     if (available & 0x04) {
         uint8_t rx[2] = {0};
         status = IMU_read_reg(IMU_OUT_TEMP_L, 2, rx, imu_data); // read temperature data
-        // TODO: Log HAL_FAIL
         if (status != HAL_OK) return status;
         temp_raw = (int16_t) (rx[1] << 8 | rx[0]); // calculate temperature
         imu_data->temp = temp_raw / 256. + 25; // write temperature data to struct
+    }
+
+    // IMU 2 is rotated 180° relative to IMU 1
+    if (imu_data->imu == IMU2) {
+        imu_data->accel[0] *= -1;
+        imu_data->accel[1] *= -1;
+        imu_data->gyro[0] *= -1;
+        imu_data->gyro[1] *= -1;
     }
 
     return HAL_OK;
