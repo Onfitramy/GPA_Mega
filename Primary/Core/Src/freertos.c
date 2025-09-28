@@ -45,11 +45,12 @@
 #include "InterBoardCom.h"
 #include "Packets.h"
 #include "status.h"
+#include "radio.h"
 
 #include "guidance.h"
 #include "navigation.h"
 #include "control.h"
-#include "radio.h"
+#include "statemachine.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -153,6 +154,8 @@ float corr_delta_h = 0;
 float gnss_height_corr;
 float gnss_velZ_corr;
 
+// state machine
+StateMachine_t flight_sm;
 
 // NRF24L01+ packages
 #pragma pack(push, 1)
@@ -334,6 +337,9 @@ void StartDefaultTask(void *argument)
 
 
   mag_data.calibration = CalibrationData[gpa_mega][2];
+
+  // state machine
+  StateMachine_Init(&flight_sm, STATE_FLIGHT_INIT);
 
   // define Kalman Filter dimensions and pointers for orientation
   EKFInit(&EKF1, EKF1_type, x_size1, u_size1, dt, &F1, &P1, &Q1, &B1 , x1, imu1_data.gyro);
@@ -749,21 +755,6 @@ void Start10HzTask(void *argument) {
       arm_mat_set_entry_f32(EKF2_corr2.R, 0, 0, (float)gps_data.vAcc*gps_data.vAcc*1e-6);
       arm_mat_set_entry_f32(EKF2_corr2.R, 1, 1, (float)gps_data.sAcc*gps_data.sAcc*1e-6);
       EKFCorrectionStep(&EKF2, &EKF2_corr2);
-
-      //z2_corr1[0] = (float)gps_data.velE / 1000.f; // m/s
-      //z2_corr1[1] = (float)gps_data.velN / 1000.f;
-      //z2_corr1[2] = (float)gps_data.velD / (-1000.f);
-      //z2_corr1[3] = (float)ENU[0]; // m
-      //z2_corr1[4] = (float)ENU[1];
-      //z2_corr1[5] = (float)ENU[2];
-
-      //arm_mat_set_diag_f32(&R2_corr1, 0, 0, 3, (float)gps_data.sAcc * gps_data.sAcc / 1e6f * 0.001f * (1 + a_abs));
-      //arm_mat_set_diag_f32(&R2_corr1, 3, 3, 2, (float)gps_data.hAcc * gps_data.hAcc / 1e6f * 100.f);
-      //arm_mat_set_entry_f32(&R2_corr1, 5, 5, (float)gps_data.vAcc * gps_data.vAcc / 1e6f * 100.f);
-
-      // Kalman Filter correction step
-      //EKFCorrectionStep(&EKF2, 2);
-
 
       SERVO_MoveToAngle(1, 0);
       SERVO_MoveToAngle(2, 0);

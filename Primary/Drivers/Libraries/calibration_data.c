@@ -39,9 +39,9 @@ const CalibrationData_t CalibrationData[5][3] = {
 static const uint32_t GPA_MegaUIDs[5][3] = {
     /// GPA Mega 1
     {2883642, 892489994, 842609714},
-    // GPA Mega 2 not determined yet
+    /// GPA Mega 2
     {3014719, 842223877, 825439797},
-    // GPA Mega 3 not determined yet
+    /// GPA Mega 3
     {2949147, 842223877, 825439797},
     /// GPA Mega 4
     {2949174, 842223877, 825439797},

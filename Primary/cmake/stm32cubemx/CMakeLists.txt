@@ -121,11 +121,12 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/Libraries/status.c
     ../../Drivers/Libraries/calibration_data.c
     ../../Drivers/Libraries/InterBoardCom.c
+    ../../Drivers/Libraries/radio.c
 
     ../../Drivers/Libraries/guidance.c
     ../../Drivers/Libraries/navigation.c
     ../../Drivers/Libraries/control.c
-    ../../Drivers/Libraries/radio.c
+    ../../Drivers/Libraries/statemachine.c
 )
 
 target_link_directories(stm32cubemx INTERFACE
