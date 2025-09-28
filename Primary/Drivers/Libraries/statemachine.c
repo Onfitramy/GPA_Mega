@@ -28,12 +28,39 @@ static StateHandler_t stateTable[STATE_FLIGHT_MAX] = {
     LandedHandler
 };
 
+uint32_t stateMinEntryDelayTable[STATE_FLIGHT_MAX] = {
+    0,      // Abort
+    0,      // Init
+    50,     // AlignGNC
+    5000,   // Checkouts
+    60000,  // Armed
+    60000,  // Burn
+    3000,   // Coast
+    10000,  // UnbrakedDescend
+    500,    // DrogueDescend
+    60000,  // MainDescend
+    500     // Landed
+};
+
 /* --- Entry actions --- */
-static void AbortEntry() {}
-static void InitEntry() {}
-static void AlignGNCEntry() {}
-static void CheckoutsEntry() {}
-static void ArmedEntry() {}
+static void AbortEntry() {
+    // disable recovery, acs and cams
+}
+static void InitEntry() {
+    // initialize sensors
+    // check communications
+}
+static void AlignGNCEntry() {
+    // initialize EKF state vector
+}
+static void CheckoutsEntry() {
+    // notify ground station that it now needs to command the checkouts
+    // enable recovery, acs and cams
+}
+static void ArmedEntry() {
+    // move to neutral position
+    // start recording
+}
 static void BurnEntry() {}
 static void CoastEntry() {}
 static void UnbrakedDescendEntry() {}
@@ -68,7 +95,11 @@ static void MainDescendExit() {}
 static void LandedExit() {}
 
 /* --- Action handler functions --- */
-static void StateEntryHandler(flight_state_t state) {
+static void StateEntryHandler(StateMachine_t *sm, flight_state_t state) {
+    // set entry timestamp
+    sm->timestamp_us = uwTick;
+
+    // handle entry for each state
     switch (state) {
         case STATE_FLIGHT_ABORT:            AbortEntry(); break;
         case STATE_FLIGHT_INIT:             InitEntry(); break;
@@ -124,7 +155,7 @@ void StateMachine_Init(StateMachine_t *sm, flight_state_t initialState) {
     sm->currentFlightState = initialState;
 
     // call entry action for initial state
-    StateEntryHandler(sm->currentFlightState);
+    StateEntryHandler(sm, sm->currentFlightState);
 }
 
 void StateMachine_Dispatch(StateMachine_t *sm, flight_event_t event) {
@@ -136,7 +167,11 @@ void StateMachine_Dispatch(StateMachine_t *sm, flight_event_t event) {
     // handle event and retrieve new flight state
     flight_state_t newState = stateTable[oldState](event);
 
+    // prevent exit and entry actions if no state change
     if (newState == oldState || newState >= STATE_FLIGHT_MAX) return;
+
+    // don't update state if minimum entry time delay hasn't elapsed yet
+    if (stateMinEntryDelayTable[newState] > (uwTick - sm->timestamp_us)) return;
     
     // exit old state
     StateExitHandler(oldState);
@@ -145,7 +180,7 @@ void StateMachine_Dispatch(StateMachine_t *sm, flight_event_t event) {
     sm->currentFlightState = newState;
 
     // enter new state
-    StateEntryHandler(newState);
+    StateEntryHandler(sm, newState);
 }
 
 void StateMachine_DoActions(StateMachine_t *sm) {
