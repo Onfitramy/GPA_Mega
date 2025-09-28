@@ -12,24 +12,51 @@ extern DMA_HandleTypeDef hdma_spi1_tx;
 volatile InterBoardPacket_t receiveBuffer;
 volatile InterBoardPacket_t transmitBuffer;
 
+InterBoardCircularBuffer_t txCircBuffer; // outgoing buffer
+
 volatile uint8_t SPI1_STATUS = 0; // 0= Idle, 1 = Busy
 
 void InterBoardCom_ClearSPIErrors(void);
+void InterBoardBuffer_Init(InterBoardCircularBuffer_t* cb);
+uint8_t InterBoardBuffer_Push(InterBoardCircularBuffer_t* cb, InterBoardPacket_t* packet);
+uint8_t InterBoardBuffer_Pop(InterBoardCircularBuffer_t* cb, InterBoardPacket_t* packet);
+uint8_t InterBoardBuffer_IsEmpty(InterBoardCircularBuffer_t* cb);
+uint8_t InterBoardBuffer_IsFull(InterBoardCircularBuffer_t* cb);
+uint16_t InterBoardBuffer_Count(InterBoardCircularBuffer_t* cb);
+void InterBoardBuffer_Clear(InterBoardCircularBuffer_t* cb);
+
+void InterBoardCom_Init(void) {
+    // Initialize circular buffers
+    InterBoardBuffer_Init(&txCircBuffer);
+    // Initialize SPI state
+}
+
 
 /* The SPI Slave (F4) is triggered by the main (H7) and automaticaly sends out its data packets while receiving from the master */
 
 void InterBoardCom_ActivateReceive(void) {
     //Called to activate the SPI DMA receive
-    if (hspi1.Instance->SR & (SPI_SR_OVR | SPI_SR_MODF | SPI_SR_UDR)) {
-        // SPI has errors - clear them before reactivating
-        // They are caused by transmitions from the master when not listening
-        //InterBoardCom_ClearSPIErrors();
-    }
-    InterBoardCom_ClearSPIErrors();
 
     if (SPI1_STATUS != 0 || hspi1.State != HAL_SPI_STATE_READY || hdma_spi1_rx.State != HAL_DMA_STATE_READY || hspi1.hdmatx->State != HAL_DMA_STATE_READY) {
         return; // Busy
     }
+
+    if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == GPIO_PIN_RESET) {
+        // Master is currently transmitting - don't start DMA
+        return;
+    }
+
+    if (hspi1.Instance->SR & (SPI_SR_OVR | SPI_SR_MODF | SPI_SR_UDR)) {
+        // SPI has errors - clear them before reactivating
+        // They are caused by transmitions from the master when not listening
+        InterBoardCom_ClearSPIErrors();
+    }
+    //InterBoardCom_ClearSPIErrors();
+
+    if(InterBoardBuffer_Pop(&txCircBuffer, &transmitBuffer) == 0) { // Get next packet to transmit, if none available a packet with ID 0 will be sent
+        transmitBuffer.InterBoardPacket_ID = 0; //The data will be ignored by the master
+    }
+
     SPI1_STATUS = 1; // Busy
     HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)&transmitBuffer, (uint8_t *)&receiveBuffer, sizeof(InterBoardPacket_t));
 }
@@ -66,9 +93,10 @@ void InterBoardCom_ClearSPIErrors(void) {
 InterBoardPacket_t InterBoardCom_ReceivePacket(void) {
     //Called when a packet is received inside the SPI_DMA receive complete callback
     // Create a local copy to avoid race condition
-    __DSB(); // Ensure memory operations complete
+    //__DSB(); // Ensure memory operations complete
     InterBoardPacket_t packet;
     memcpy(&packet, (void*)&receiveBuffer, sizeof(InterBoardPacket_t));
+    memset((void*)&receiveBuffer, 0, sizeof(InterBoardPacket_t)); // Clear the receive buffer for next reception
     return packet;
 }
 
@@ -103,11 +131,8 @@ void InterBoardCom_FillData(InterBoardPacket_t *packet, DataPacket_t *data_packe
 
 static uint8_t rx_dummy[sizeof(InterBoardPacket_t)];
 void InterBoardCom_SendPacket(InterBoardPacket_t *packet) {
-    // Only update transmit buffer when SPI is idle (to be removed when circular buffer is implemented)
-    if (SPI1_STATUS == 0 && hspi1.State == HAL_SPI_STATE_READY) {
-        memcpy((uint8_t *)&transmitBuffer, (uint8_t *)packet, sizeof(InterBoardPacket_t));
-    }
-    //Fill the transmit buffer with the packet data, to be sent when the master triggers the SPI communication
+    //Push the packet to the transmit buffer
+    InterBoardBuffer_Push(&txCircBuffer, packet);
 }
 
 InterBoardPacket_t TestPacket;
@@ -120,28 +145,35 @@ void InterBoardCom_SendTestPacket(void) {
 DataPacket_t InterBoardCom_UnpackPacket(InterBoardPacket_t packet) {
     //This function is used to move a InterBoardPacket_t to a DataPacket_t
     DataPacket_t dataPacket;
-    memcpy(dataPacket.Header, &packet.Data[0], 2);
-    memcpy(&dataPacket.Packet_ID, &packet.Data[2], 1);
-    memcpy(&dataPacket.Data, &packet.Data[3], 28);
+    memcpy(&dataPacket.Packet_ID, &packet.Data[0], 1);
+    memcpy(&dataPacket.timestamp, &packet.Data[1], 4);
+    memcpy(&dataPacket.Data, &packet.Data[5], 26);
     memcpy(&dataPacket.crc, &packet.Data[31], 1);
-    
+
     return dataPacket;
 }
 
-uint8_t selftestPacketsReceived = 0;
 void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
     //This function is used to parse the received packet
-    //If no response is needed SPI DMA receive is reactivated here, else it is reactivated after the response has been sent in the coresponding DMA interrupt
+
+    //Remove the top bit on the ID to ignore the more data incoming bit(already handled by the DMA)
+    packet.InterBoardPacket_ID &= 0x7F;
+
     switch (packet.InterBoardPacket_ID) {
         case InterBoardPACKET_ID_SELFTEST:
             //Handle self-test packet
-            selftestPacketsReceived += 1;
-            InterBoardPacket_t responsePacket = InterBoardCom_CreatePacket(InterBoardPACKET_ID_DataAck);
-            InterBoardCom_FillRaw(&responsePacket, 32, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-                                      16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31);
-            InterBoardCom_SendPacket(&responsePacket);
             break;
         
+        case InterBoardPACKET_ID_Echo:
+            //Handle echo packet
+            packet.InterBoardPacket_ID = InterBoardPACKET_ID_DataAck; // Change ID to acknowledge
+            if (packet.Data[0] == 3) {
+                DataPacket_t dataPacket = InterBoardCom_UnpackPacket(packet);
+                packet.InterBoardPacket_ID = InterBoardPACKET_ID_Echo; // If the data is correct, echo back the same packet
+            }
+            InterBoardCom_SendPacket(&packet); // Echo back the received packet
+            break;
+
         case InterBoardPACKET_ID_DataSaveFLASH:
         {
             //Handle data save to flash packet
@@ -172,4 +204,105 @@ void InterBoardCom_ReactivateDMAReceive(void) {
     (void)tmp;
     SPI1_STATUS = 1;
     HAL_SPI_TransmitReceive_DMA(&hspi1,  (uint8_t *)&transmitBuffer, (uint8_t *)&receiveBuffer, sizeof(InterBoardPacket_t));
+}
+
+/**
+ * @brief Initializes the circular buffer
+ * @param cb Pointer to the circular buffer structure
+ */
+void InterBoardBuffer_Init(InterBoardCircularBuffer_t* cb) {
+    cb->head = 0;
+    cb->tail = 0;
+    cb->count = 0;
+}
+
+/**
+ * @brief Pushes a packet into the circular buffer
+ * @param cb Pointer to the circular buffer structure
+ * @param packet Pointer to the packet to be added
+ * @return 1 if successful, 0 if buffer is full
+ */
+uint8_t InterBoardBuffer_Push(InterBoardCircularBuffer_t* cb, InterBoardPacket_t* packet) {
+    if (cb->count >= INTERBOARD_BUFFER_SIZE) {
+        return 0; // Buffer is full
+    }
+    
+    // Disable interrupts to ensure atomic operation
+    __disable_irq();
+    
+    // Copy packet to buffer
+    memcpy(&cb->buffer[cb->head], packet, sizeof(InterBoardPacket_t));
+    
+    // Update head pointer
+    cb->head = (cb->head + 1) % INTERBOARD_BUFFER_SIZE;
+    cb->count++;
+    
+    __enable_irq();
+    
+    return 1; // Success
+}
+
+/**
+ * @brief Pops a packet from the circular buffer
+ * @param cb Pointer to the circular buffer structure
+ * @param packet Pointer to store the popped packet
+ * @return 1 if successful, 0 if buffer is empty
+ */
+uint8_t InterBoardBuffer_Pop(InterBoardCircularBuffer_t* cb, InterBoardPacket_t* packet) {
+    if (cb->count == 0) {
+        return 0; // Buffer is empty
+    }
+    
+    // Disable interrupts to ensure atomic operation
+    __disable_irq();
+    
+    // Copy packet from buffer
+    memcpy(packet, &cb->buffer[cb->tail], sizeof(InterBoardPacket_t));
+    
+    // Update tail pointer
+    cb->tail = (cb->tail + 1) % INTERBOARD_BUFFER_SIZE;
+    cb->count--;
+    
+    __enable_irq();
+    
+    return 1; // Success
+}
+
+/**
+ * @brief Checks if the circular buffer is empty
+ * @param cb Pointer to the circular buffer structure
+ * @return 1 if empty, 0 if not empty
+ */
+uint8_t InterBoardBuffer_IsEmpty(InterBoardCircularBuffer_t* cb) {
+    return (cb->count == 0);
+}
+
+/**
+ * @brief Checks if the circular buffer is full
+ * @param cb Pointer to the circular buffer structure
+ * @return 1 if full, 0 if not full
+ */
+uint8_t InterBoardBuffer_IsFull(InterBoardCircularBuffer_t* cb) {
+    return (cb->count >= INTERBOARD_BUFFER_SIZE);
+}
+
+/**
+ * @brief Gets the current count of items in the buffer
+ * @param cb Pointer to the circular buffer structure
+ * @return Number of items in buffer
+ */
+uint16_t InterBoardBuffer_Count(InterBoardCircularBuffer_t* cb) {
+    return cb->count;
+}
+
+/**
+ * @brief Clears the circular buffer
+ * @param cb Pointer to the circular buffer structure
+ */
+void InterBoardBuffer_Clear(InterBoardCircularBuffer_t* cb) {
+    __disable_irq();
+    cb->head = 0;
+    cb->tail = 0;
+    cb->count = 0;
+    __enable_irq();
 }

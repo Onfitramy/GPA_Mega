@@ -16,6 +16,7 @@ extern DMA_HandleTypeDef hdma_spi1_rx;
 InterBoardCircularBuffer_t txCircBuffer; // outgoing buffer
 
 InterBoardPacket_t receiveBuffer;
+InterBoardPacket_t transmitBuffer;
 uint8_t SPI1_DMA_Rx_Buffer[SPI1_RX_SIZE];
 
 uint8_t SPI1_State = 0; //0: Ready, 1: Busy
@@ -96,18 +97,16 @@ void InterBoardCom_FillData(InterBoardPacket_t *packet, DataPacket_t *data_packe
 uint8_t InterBoardCom_QueuePacket(InterBoardPacket_t *packet) {
     // Try to queue the packet
     if (InterBoardBuffer_Push(&txCircBuffer, packet)) {
-        // Try to start transmission if SPI is ready
-        InterBoardCom_ProcessTxBuffer();
+        //Transmission is requested in the main loop
         return 1;
     }
     return 0; // Buffer full
 }
 
 /**
- * @brief Processes the transmission buffer
+ * @brief Processes the transmission buffer, called once from 100hz loop, then from SPI DMA complete callback till empty
  */
 void InterBoardCom_ProcessTxBuffer(void) {
-    InterBoardPacket_t packet;
     
     // If SPI is busy or buffer is empty, return
     if (SPI1_State != 0 || InterBoardBuffer_IsEmpty(&txCircBuffer)) {
@@ -115,11 +114,21 @@ void InterBoardCom_ProcessTxBuffer(void) {
     }
     
     // Get next packet from buffer
-    if (InterBoardBuffer_Pop(&txCircBuffer, &packet)) {
+    if (InterBoardBuffer_Pop(&txCircBuffer, &transmitBuffer)) {
         // Send the packet
+        if (InterBoardBuffer_Count(&txCircBuffer) != 0) {
+            // Packets to follow, set top bit InterBoardPACKET_ID to 1
+            transmitBuffer.InterBoardPacket_ID |= 0x80;
+        }
+
+        // Add small delay (10-100 microseconds) to let slave prepare
+        for(volatile uint32_t delay = 0; delay < 1000; delay++) {
+            __NOP(); // No operation - creates small delay
+        }
+
         SPI1_State = 1; // Mark SPI as busy
         HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET); // Pull CS low
-        HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)&packet, SPI1_DMA_Rx_Buffer, sizeof(InterBoardPacket_t));
+        HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)&transmitBuffer, SPI1_DMA_Rx_Buffer, sizeof(InterBoardPacket_t));
     }
 }
 
@@ -149,6 +158,7 @@ InterBoardPacket_t InterBoardCom_ReceivePacket() {
     InterBoardPacket_t receivedPacket;
     receivedPacket.InterBoardPacket_ID = SPI1_DMA_Rx_Buffer[0]; // First byte after detection time
     memcpy(receivedPacket.Data, &SPI1_DMA_Rx_Buffer[1], 32);
+    memset(SPI1_DMA_Rx_Buffer, 0, SPI1_RX_SIZE); // Clear buffer after reading
     return receivedPacket;
 }
 
@@ -166,7 +176,7 @@ void InterBoardCom_ProcessReceivedPacket(InterBoardPacket_t *packet) {
 
 InterBoardPacket_t TestPacket;
 void InterBoardCom_SendTestPacket(void) {
-    TestPacket = InterBoardCom_CreatePacket(InterBoardPACKET_ID_SELFTEST);
+    TestPacket = InterBoardCom_CreatePacket(InterBoardPACKET_ID_Echo);
     InterBoardCom_FillRaw(&TestPacket, 32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32);
     InterBoardCom_QueuePacket(&TestPacket);
 }
@@ -182,9 +192,13 @@ void InterBoardCom_SendTestPacket(void) {
  * @param Packet_ID  The type identifier for the packet being sent.
  * @param packet     Pointer to the data packet to be sent.
  */
-void InterBoardCom_SendDataPacket(InterBoardPacketID_t Inter_ID, PacketType_t Packet_ID, DataPacket_t *packet){
+void InterBoardCom_SendDataPacket(InterBoardPacketID_t Inter_ID, DataPacket_t *packet) {
     // Create a new InterBoardPacket_t structure
-    //Implement later
+    InterBoardPacket_t newPacket = InterBoardCom_CreatePacket(Inter_ID);
+    InterBoardCom_FillData(&newPacket, packet);
+
+    // Send the packet
+    InterBoardCom_QueuePacket(&newPacket);
 }
 
 /**

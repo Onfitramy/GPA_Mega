@@ -544,13 +544,19 @@ void Start100HzTask(void *argument) {
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 10; //100 Hz
   /* Infinite loop */
-  /*InterBoardPacket_t IMU_Packet = InterBoardCom_CreatePacket(InterBoardPACKET_ID_DataSaveFLASH);
-  DataPacket_t imu1_data_packet;
-  imu1_data_packet.Packet_ID = PACKET_ID_IMU1;
-  InterBoardCom_FillData(&IMU_Packet, &imu1_data);*/
+  DataPacket_t IMU_DataPacket = CreateDataPacket(PACKET_ID_IMU);
+  DataPacket_t GPS_DataPacket = CreateDataPacket(PACKET_ID_GPS);
   for(;;) {
 
+    UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &imu1_data, &mag_data);
+    InterBoardCom_SendDataPacket(InterBoardPACKET_ID_Echo, &IMU_DataPacket);
+
+    UpdateGPSDataPacket(&GPS_DataPacket, HAL_GetTick(), &gps_data);
+    InterBoardCom_SendDataPacket(InterBoardPACKET_ID_Echo, &GPS_DataPacket);
+
     InterBoardCom_SendTestPacket();
+
+    InterBoardCom_ProcessTxBuffer();
 
     #ifdef SIGNAL_PLOTTER_OUT_1 // signal plotter outputs position ekf testing
     signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
@@ -719,7 +725,7 @@ void Start10HzTask(void *argument) {
   /* USER CODE BEGIN Start10HzTask */
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 100; //10 Hz
-  InterBoardCom_Init();
+
   /* Infinite loop */
   for(;;) {
     SelfTest();         // Run self-test on startup
@@ -780,7 +786,6 @@ void Start10HzTask(void *argument) {
       SERVO_MoveToAngle(1, 35);
       SERVO_MoveToAngle(2, 35);
     }
-    InterBoardCom_SendTestPacket();
 
     // KF2 correction steps
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
@@ -797,6 +802,7 @@ void Start10HzTask(void *argument) {
 /* USER CODE END InterruptHandlerTask */
 uint8_t rx_recieve_buf[NRF24L01P_PAYLOAD_LENGTH] = {0};
 uint8_t InterBoardPacket_receive_num = 0;
+uint32_t test_time = 0;
 
 void StartInterruptHandlerTask(void *argument)
 {
@@ -805,33 +811,51 @@ void StartInterruptHandlerTask(void *argument)
   uint8_t receivedData;
   InterBoardPacket_t InterBoardCom_Packet;
   char GPS_Buffer[100]; // Buffer for GPS data
+  InterBoardCom_Init();
+
+  // Create queue set that can hold items from both queues
+  QueueSetHandle_t xQueueSet = xQueueCreateSet(20); // Total items from both queues
+
+  // Add both queues to the set
+  xQueueAddToSet(InterruptQueue, xQueueSet);
+  xQueueAddToSet(InterBoardCom_Queue, xQueueSet);
   //HAL_NVIC_EnableIRQ(EXTI15_10_IRQn); //Disabled due to always triggering when GPS is not connected
   /* Infinite loop */
   for(;;)
   {
-    if (xQueueReceive(InterruptQueue, &receivedData, 10) == pdTRUE) {
-      if(receivedData == 0x10) { // Handle GPS interrupt
-        ublox_ReadOutput(GPS_Buffer); //Read the GPS output and decode it
+    // Wait on the queue set with timeout (blocks efficiently)
+    QueueSetMemberHandle_t xActivatedMember = xQueueSelectFromSet(xQueueSet, portMAX_DELAY);
 
-      } else if (receivedData == 0x11) { //Handle NRF interrupt
-        if(nrf_mode) {
-          nrf24l01p_tx_irq();
-        } else {
-          //HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
-          memset(rx_recieve_buf, 0, NRF24L01P_PAYLOAD_LENGTH);
-          nrf24l01p_rx_receive(rx_recieve_buf);
+    if (xActivatedMember == InterruptQueue) {
+      if (xQueueReceive(InterruptQueue, &receivedData, 0) == pdTRUE) {
+        if(receivedData == 0x10) { // Handle GPS interrupt
+          ublox_ReadOutput(GPS_Buffer); //Read the GPS output and decode it
+
+        } else if (receivedData == 0x11) { //Handle NRF interrupt
+          if(nrf_mode) {
+            nrf24l01p_tx_irq();
+          } else {
+            //HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
+            memset(rx_recieve_buf, 0, NRF24L01P_PAYLOAD_LENGTH);
+            nrf24l01p_rx_receive(rx_recieve_buf);
+          }
         }
-
       }
     }
-    if (xQueueReceive(InterBoardCom_Queue, &InterBoardCom_Packet, 10) == pdTRUE) {
-      uint8_t Packet_ID = InterBoardCom_Packet.InterBoardPacket_ID;
-      InterBoardPacket_receive_num += 1;
-      memcpy(&F4_data_float, InterBoardCom_Packet.Data, sizeof(float));
-      HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
-      // Process received InterBoardCom_Packet
+    else if (xActivatedMember == InterBoardCom_Queue) {
+      if (xQueueReceive(InterBoardCom_Queue, &InterBoardCom_Packet, 0) == pdTRUE) {
+        uint8_t Packet_ID = InterBoardCom_Packet.InterBoardPacket_ID;
+        InterBoardPacket_receive_num += 1;
+        DataPacket_t receivedPacket;
+        memcpy(&receivedPacket, InterBoardCom_Packet.Data, sizeof(DataPacket_t));
+
+        // Delay to allow Slave to catch up (10 us)
+
+        InterBoardCom_ProcessTxBuffer(); // Check if more packets to send and send them
+        HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
+        // Process received InterBoardCom_Packet
+      }
     }
-    osDelay(1);
   }
 }
 

@@ -2,6 +2,9 @@
 #define Packets_H_
 
 #include "stm32h7xx_hal.h"
+#include "IMUS.h"
+#include "LIS3MDL.h"
+#include "SAM-M8Q.h"
 /*This file includes all public Packets for the differten devices and sending modes*/
 /*They are used for radio transmittion, flash/SD saving and interBoardCommunication*/
 
@@ -39,9 +42,9 @@ typedef struct {
 
 typedef struct {
     int16_t gyroX, gyroY, gyroZ; // 6 bytes
-    int16_t accelX, accelY, accelZ; // 12 bytes
-    int16_t magX, magY, magZ; // 18 bytes
-    uint16_t unused1, unused2, unused3, unused4; // 26 bytes
+    int32_t accelX, accelY, accelZ; // 18 bytes
+    int16_t magX, magY, magZ; // 24 bytes
+    uint16_t unused1; // 26 bytes
 } IMUPayload_t;
 
 typedef struct {
@@ -75,6 +78,8 @@ typedef struct {
 #pragma pack(pop)
 
 
-
+DataPacket_t CreateDataPacket(PacketType_t Packet_ID);
+void UpdateIMUDataPacket(DataPacket_t *imu_packet, uint32_t timestamp, IMU_Data_t *imu_data, LIS3MDL_Data_t *mag_data);
+void UpdateGPSDataPacket(DataPacket_t *gps_packet, uint32_t timestamp, UBX_NAV_PVT *gps_data);
 
 #endif /* Packets_H_ */

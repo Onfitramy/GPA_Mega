@@ -86,7 +86,7 @@ osThreadId_t InterruptTaskHandle;
 const osThreadAttr_t InterruptTask_attributes = {
   .name = "InterruptTask",
   .stack_size = 128 * 48,
-  .priority = (osPriority_t) osPriorityHigh,
+  .priority = (osPriority_t) osPriorityAboveNormal,
 };
 
 uint8_t XBee_Temp;
@@ -187,10 +187,11 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;) {
     Counter_100Hz++;
+    //InterBoardCom_ActivateReceive(); // Activate SPI receive (will send data when the master triggers it)
     InterBoardPacket_t packet = InterBoardCom_CreatePacket(InterBoardPACKET_ID_SELFTEST);
     InterBoardCom_FillRaw(&packet, 32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31);
     memcpy((uint8_t *)&packet.Data, &health.temperature.reg_3V3, sizeof(float));
-    InterBoardCom_SendPacket(&packet);
+    //InterBoardCom_SendPacket(&packet);
 
     // show low battery level
 
@@ -258,21 +259,29 @@ uint16_t receivedPackets = 0;
 void StartInterBoardComTask(void *argument)
 {
   /* USER CODE BEGIN StartInterBoardComTask */
+  uint32_t DMA_ReRun_time = HAL_GetTick() + 6; // Timestamp of the next time the DMA should be reactivated, nominaly every 6ms after the last packet was received
+
   W25Q_GetConfig();
+  InterBoardCom_Init();
   InterBoardCom_ActivateReceive();
   /* Infinite loop */
   for(;;) {
     InterBoardPacket_t packet;
-    if (xQueueReceive(InterBoardPacketQueue, &packet, portMAX_DELAY) == pdPASS) {
-        receivedPackets++;
-        StartTime = HAL_GetTick();
-        #ifdef DEBUG
-        vTaskDelay(7); //Wait 7ms. This allows breakpoints to (mostly) not corrupt the DMA(which leads to a crash), Data comes in at 100Hz which makes this viable. One missed transmission also isn't the end of the world.
-        HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin); // Toggle M2 LED to indicate packet received
-        #endif
-        RunTime = HAL_GetTick() - StartTime;
-        InterBoardCom_ActivateReceive();
-        //InterBoardCom_ParsePacket(packet);
+    // Calculate 0.1ms in ticks based on configTICK_RATE_HZ
+    if (xQueueReceive(InterBoardPacketQueue, &packet, 1) == pdPASS) { // 1ms delay
+      receivedPackets++;
+      InterBoardCom_ParsePacket(packet);
+      #ifdef DEBUG
+      DMA_ReRun_time = HAL_GetTick() + 6; //Set the next reactivation time to 6ms in the future
+      //InterBoardCom_ActivateReceive(); //Reactivate the DMA immediately to be ready for the next packet
+      HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin); // Toggle M2 LED to indicate packet received
+      #endif
+    }
+
+    if (HAL_GetTick() > DMA_ReRun_time) {
+      //Re-activate the DMA every 6ms to ensure it is always active
+      InterBoardCom_ActivateReceive();
+      DMA_ReRun_time = HAL_GetTick() + 6;
     }
   }
   /* USER CODE END StartInterBoardComTask */

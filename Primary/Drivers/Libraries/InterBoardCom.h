@@ -6,11 +6,14 @@
 
 #define INTERBOARD_BUFFER_SIZE 16
 
-//The Bitfield describe what should be expected and done with the data received
+//The ID describe what should be expected and done with the data received
+//The top bit of the ID describes if there are more packets to follow or if it is the last packet (for 10ms till next scheduled packets)
 typedef enum {
     // Status Packets:
+    InterBoardPACKET_ID_EMPTY = 0x00,           // No valid packet
     InterBoardPACKET_ID_SELFTEST = 0x01,        // Used to check if the communication is working
     InterBoardPACKET_ID_DataAck = 0x02,         // Acknowledge data reception
+    InterBoardPACKET_ID_Echo = 0x03,            // Echo back received data for testing
 
     // Command Packets:
     InterBoardPACKET_ID_DataLoadFLASH = 0x11,   // Load data from the flash memory
@@ -53,7 +56,7 @@ void InterBoardCom_Init(void);
 uint8_t InterBoardCom_QueuePacket(InterBoardPacket_t *packet);
 void InterBoardCom_ProcessTxBuffer(void);
 void InterBoardCom_SendTestPacket(void);
-void InterBoardCom_SendDataPacket(InterBoardPacketID_t Inter_ID, PacketType_t Packet_ID, DataPacket_t *packet);
+void InterBoardCom_SendDataPacket(InterBoardPacketID_t Inter_ID, DataPacket_t *packet);
 InterBoardPacket_t InterBoardCom_ReceivePacket(void);
 void InterBoardCom_ProcessReceivedPacket(InterBoardPacket_t *packet);
 void InterBoardCom_ActivateReceive(void);

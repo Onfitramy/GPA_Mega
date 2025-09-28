@@ -43,7 +43,10 @@
         "stm32h7xx_hal_conf.h": "c",
         "dts.h": "c",
         "xbee.h": "c",
-        "compare": "c"
+        "compare": "c",
+        "imus.h": "c",
+        "packets.h": "c",
+        "lis3mdl.h": "c"
     },
     "cortex-debug.variableUseNaturalFormat": true
 }

@@ -4,11 +4,15 @@
 #include "stm32f4xx_hal.h"
 #include "Packets.h"
 
+#define INTERBOARD_BUFFER_SIZE 16
+
 //The Bitfield describe what should be expected and done with the data received
 typedef enum {
     // Status Packets:
+    InterBoardPACKET_ID_EMPTY = 0x00,          // No packet
     InterBoardPACKET_ID_SELFTEST = 0x01,        // Used to check if the communication is working
     InterBoardPACKET_ID_DataAck = 0x02,         // Acknowledge data reception
+    InterBoardPACKET_ID_Echo = 0x03,            // Echo back received data for testing
 
     // Command Packets:
     InterBoardPACKET_ID_DataLoadFLASH = 0x11,   // Load data from the flash memory
@@ -31,6 +35,14 @@ typedef struct {
 } InterBoardPacket_t;
 #pragma pack(pop)
 
+typedef struct {
+    InterBoardPacket_t buffer[INTERBOARD_BUFFER_SIZE];
+    volatile uint16_t head;      // Write index
+    volatile uint16_t tail;      // Read index
+    volatile uint16_t count;     // Number of items in buffer
+} InterBoardCircularBuffer_t;
+
+
 void InterBoardCom_ActivateReceive(void);
 
 InterBoardPacket_t InterBoardCom_ReceivePacket(void);
@@ -42,6 +54,7 @@ void InterBoardCom_ReactivateDMAReceive(void);
 void InterBoardCom_SendPacket(InterBoardPacket_t *packet);
 void InterBoardCom_SendTestPacket(void);
 
+void InterBoardCom_Init(void);
 InterBoardPacket_t InterBoardCom_CreatePacket(InterBoardPacketID_t ID);
 void InterBoardCom_FillRaw(InterBoardPacket_t *packet, int num, ...);
 void InterBoardCom_FillData(InterBoardPacket_t *packet, DataPacket_t *data_packet);
