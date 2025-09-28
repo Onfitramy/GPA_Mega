@@ -61,7 +61,7 @@
 /* USER CODE BEGIN PD */
 IMU_Data_t imu1_data;
 IMU_Data_t imu2_data;
-IMU_Data_t *active_imu_data;
+IMU_AverageData_t average_imu_data;
 LIS3MDL_Data_t mag_data;
 UBX_NAV_PVT gps_data;
 uint32_t pressure_raw;
@@ -313,7 +313,6 @@ void StartDefaultTask(void *argument)
 
   IMU_InitImu(&imu1_data, IMU1, gpa_mega);
   IMU_InitImu(&imu2_data, IMU2, gpa_mega);
-  active_imu_data = &imu1_data;
 
 
   mag_data.calibration = CalibrationData[gpa_mega][2];
@@ -395,12 +394,7 @@ void StartDefaultTask(void *argument)
 
     status |= IMU_Update(&imu1_data);
     status |= IMU_Update(&imu2_data);
-
-    if (imu1_data.active) {
-      active_imu_data = &imu1_data;
-    } else {
-      active_imu_data = &imu2_data;
-    }
+    IMU_Average(&imu1_data, &imu2_data, &average_imu_data);
 
     if(MAG_VerifyDataReady() & 0b00000001) {
       status |= MAG_ReadSensorData(&mag_data);
@@ -433,12 +427,12 @@ void StartDefaultTask(void *argument)
     // transform measured body acceleration to world-frame acceleration
     RotationMatrixFromQuaternion(x3, &M_rot_bi, DCM_bi_WorldToBody);
     RotationMatrixFromQuaternion(x3, &M_rot_ib, DCM_ib_BodyToWorld);
-    arm_mat_vec_mult_f32(&M_rot_ib, active_imu_data->accel, a_WorldFrame);
+    arm_mat_vec_mult_f32(&M_rot_ib, average_imu_data.accel, a_WorldFrame);
     a_WorldFrame[2] -= gravity_world_vec[2];
 
     // calculate acceleration w/o gravity in body frame
     arm_mat_vec_mult_f32(&M_rot_bi, gravity_world_vec, gravity_body_vec);
-    arm_vec3_sub_f32(active_imu_data->accel, gravity_body_vec, a_BodyFrame);
+    arm_vec3_sub_f32(average_imu_data.accel, gravity_body_vec, a_BodyFrame);
     a_abs = arm_vec3_length_f32(a_BodyFrame);
 
     // GNSS DELAY COMPENSATION TESTING

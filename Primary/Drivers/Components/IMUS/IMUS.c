@@ -153,6 +153,32 @@ HAL_StatusTypeDef IMU_Update(IMU_Data_t *imu_data) {
     return status;
 }
 
+static void average_arrays(float array_1[3], float array_2[3], float average_array[3]) {
+    for (int i = 0; i < 3; ++i) {
+        float average = 0.5 * (array_1[i] + array_2[i]);
+        memcpy(&average_array[i], &average, sizeof(average));
+    }
+}
+
+void IMU_Average(IMU_Data_t *imu_data_1, IMU_Data_t *imu_data_2, IMU_AverageData_t *average_imu_data) {
+    if (imu_data_1->active && imu_data_2->active) {
+        float accel_average[3];
+        float gyro_average[3];
+        average_arrays(imu_data_1->accel, imu_data_2->accel, accel_average);
+        average_arrays(imu_data_1->gyro, imu_data_2->gyro, gyro_average);
+
+        memcpy(average_imu_data->accel, accel_average, sizeof(accel_average));
+        memcpy(average_imu_data->gyro, gyro_average, sizeof(gyro_average));
+    } else if (imu_data_1->active) {
+        memcpy(average_imu_data->accel, imu_data_1->accel, sizeof(imu_data_1->accel));
+        memcpy(average_imu_data->gyro, imu_data_1->gyro, sizeof(imu_data_1->gyro));
+    } else {
+        memcpy(average_imu_data->accel, imu_data_2->accel, sizeof(imu_data_2->accel));
+        memcpy(average_imu_data->gyro, imu_data_2->gyro, sizeof(imu_data_2->gyro));
+    }
+}
+
+
 uint8_t IMU_SelfTest(const IMU_Data_t *imu_data) {
     uint8_t Who_Am_I_return = 0;
     IMU_read_reg(IMU_WHO_AM_I, 1, &Who_Am_I_return, imu_data);

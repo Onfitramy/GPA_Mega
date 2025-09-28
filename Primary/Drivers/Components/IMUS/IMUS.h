@@ -26,6 +26,11 @@ typedef struct {
     IMU imu;
 } IMU_Data_t;
 
+typedef struct {
+    float accel[3];
+    float gyro[3];
+} IMU_AverageData_t;
+
 typedef enum {
     ACC_FILTER_MODE_LOW_PASS = 0b0,
     ACC_FILTER_MODE_HIGH_PASS = 0b1,
@@ -67,6 +72,7 @@ typedef enum {
 
 void IMU_InitImu(IMU_Data_t *imu_data, IMU imu, GPA_Mega gpa_mega);
 HAL_StatusTypeDef IMU_Update(IMU_Data_t *imu_data);
+void IMU_Average(IMU_Data_t *imu_data_1, IMU_Data_t *imu_data_2, IMU_AverageData_t *average_imu_data);
 
 void IMU_SwitchSensors(IMU_Data_t *imu_data);
 uint8_t IMU_SelfTest(const IMU_Data_t *imu_data);
