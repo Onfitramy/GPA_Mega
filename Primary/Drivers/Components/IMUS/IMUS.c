@@ -128,14 +128,18 @@ static float IMU_CalculateHistoryDifference(const IMU_Data_t *imu_data) {
 }
 
 
-void IMU_Update(IMU_Data_t *imu_data) {
+HAL_StatusTypeDef IMU_Update(IMU_Data_t *imu_data) {
+    HAL_StatusTypeDef status;
     bool imu_ready = IMU_VerifyDataReady(imu_data) & 0x03 == 0x03;
+
     if(imu_ready) {
-        IMU_ReadSensorData(imu_data);
+        status = IMU_ReadSensorData(imu_data);
         arm_vec3_sub_f32(imu_data->accel, imu_data->calibration.offset, imu_data->accel);
         arm_vec3_element_product_f32(imu_data->accel, imu_data->calibration.scale, imu_data->accel);
 
         IMU_UpdateHistory(imu_data);
+    } else {
+        status = HAL_BUSY;
     }
 
     float imu_difference = IMU_CalculateHistoryDifference(imu_data);
@@ -145,17 +149,8 @@ void IMU_Update(IMU_Data_t *imu_data) {
     } else if (imu_difference >= 1e-3) {
         imu_data->active = true;
     }
-}
 
-void IMU_SwitchSensors(IMU_Data_t *imu_data) {
-    switch (imu_data->imu) {
-        case IMU1:
-            imu_data->imu = IMU2;
-            break;
-        case IMU2:
-            imu_data->imu = IMU1;
-            break;
-    }
+    return status;
 }
 
 uint8_t IMU_SelfTest(const IMU_Data_t *imu_data) {

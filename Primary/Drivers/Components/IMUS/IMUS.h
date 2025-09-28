@@ -66,7 +66,7 @@ typedef enum {
 
 
 void IMU_InitImu(IMU_Data_t *imu_data, IMU imu, GPA_Mega gpa_mega);
-void IMU_Update(IMU_Data_t *imu_data);
+HAL_StatusTypeDef IMU_Update(IMU_Data_t *imu_data);
 
 void IMU_SwitchSensors(IMU_Data_t *imu_data);
 uint8_t IMU_SelfTest(const IMU_Data_t *imu_data);

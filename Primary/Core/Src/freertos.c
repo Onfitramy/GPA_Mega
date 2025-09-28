@@ -336,12 +336,13 @@ void StartDefaultTask(void *argument)
 
   // starting point for KF
   while(IMU_VerifyDataReady(&imu1_data) & 0x03 != 0x03); // wait for IMU1 data
-  IMU_ReadSensorData(&imu1_data);
+  HAL_StatusTypeDef status = IMU_ReadSensorData(&imu1_data);
   arm_vec3_sub_f32(imu1_data.accel, imu1_data.calibration.offset, imu1_data.accel);
   arm_vec3_element_product_f32(imu1_data.accel, imu1_data.calibration.scale, imu1_data.accel);
 
   while(!(MAG_VerifyDataReady() & 0b00000001)); // wait for MAG data
-  MAG_ReadSensorData(&mag_data);
+  status |= MAG_ReadSensorData(&mag_data);
+  if (status != HAL_OK) primary_status = STATUS_ERROR_MEMS;
   arm_vec3_sub_f32(mag_data.field, mag_data.calibration.offset, mag_data.field);
   arm_vec3_element_product_f32(mag_data.field, mag_data.calibration.scale, mag_data.field);
 
@@ -373,12 +374,12 @@ void StartDefaultTask(void *argument)
   EKFStateVInit(&EKF3, &EKF3_corr1);
 
   // low pass filters
-  IMU_SetAccFilterMode(ACC_FILTER_MODE_LOW_PASS, &imu1_data);
-  IMU_SetAccFilterStage(ACC_FILTER_STAGE_SECOND, &imu1_data);
-  IMU_SetAccFilterBandwidth(ACC_FILTER_BANDWIDTH_ODR_OVER_800, &imu1_data);
+  status |= IMU_SetAccFilterMode(ACC_FILTER_MODE_LOW_PASS, &imu1_data);
+  status |= IMU_SetAccFilterStage(ACC_FILTER_STAGE_SECOND, &imu1_data);
+  status |= IMU_SetAccFilterBandwidth(ACC_FILTER_BANDWIDTH_ODR_OVER_800, &imu1_data);
 
-  IMU_SetGyroLowPassFilter(true, &imu1_data);
-  IMU_SetGyroFilterBandwidth(GYRO_FILTER_BANDWIDTH_8, &imu1_data);
+  status |= IMU_SetGyroLowPassFilter(true, &imu1_data);
+  status |= IMU_SetGyroFilterBandwidth(GYRO_FILTER_BANDWIDTH_8, &imu1_data);
 
   /* Infinite loop */
   for(;;) {
@@ -386,12 +387,14 @@ void StartDefaultTask(void *argument)
     nrf_timeout++;
     // READ SENSOR DATA
 
+    if (status != HAL_OK) primary_status = STATUS_ERROR_MEMS;
+
     HAL_DTS_GetTemperature(&hdts, &DTS_Temperature);
 
     ReadInternalADC(&ADC_Temperature, &ADC_V_Ref);
 
-    IMU_Update(&imu1_data);
-    IMU_Update(&imu2_data);
+    status |= IMU_Update(&imu1_data);
+    status |= IMU_Update(&imu2_data);
 
     if (imu1_data.active) {
       active_imu_data = &imu1_data;
@@ -400,7 +403,7 @@ void StartDefaultTask(void *argument)
     }
 
     if(MAG_VerifyDataReady() & 0b00000001) {
-      MAG_ReadSensorData(&mag_data);
+      status |= MAG_ReadSensorData(&mag_data);
       arm_vec3_sub_f32(mag_data.field, mag_data.calibration.offset, mag_data.field);
       arm_vec3_element_product_f32(mag_data.field, mag_data.calibration.scale, mag_data.field);
     }
