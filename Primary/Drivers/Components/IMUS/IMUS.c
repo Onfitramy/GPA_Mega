@@ -128,17 +128,26 @@ static void IMU_UpdateHistory(IMU_Data_t *imu_data) {
     );
 }
 
-static float IMU_CalculateHistoryDifference(const IMU_Data_t *imu_data) {
-    float *acc_history_start = imu_data->acc_data_history[0];
-    float difference_sum = 0;
+static bool IMU_IsActive(const IMU_Data_t *imu_data) {
+    for (int i = 0; i < 8; ++i) {
+        int equal_count = 0;
+        const float(*history)[3] = imu_data->acc_data_history;
+        const float *reference = history[i];
 
-    for (int i = 1; i < 8; ++i) {
-        for (int j = 0; j < 3; ++j) {
-            difference_sum += fabsf(acc_history_start[j] - imu_data->acc_data_history[i][j]);
+        for (int j = 0; j < 8; ++j) {
+            if (j == i) {
+                continue;
+            }
+
+            equal_count += reference[0] == history[j][0] && reference[1] == history[j][1] && reference[2] == history[j][2];
+        }
+
+        if (equal_count >= IMU_INACTIVE_EQUAL_COUNT) {
+            return false;
         }
     }
 
-    return difference_sum;
+    return true;
 }
 
 
@@ -154,12 +163,11 @@ HAL_StatusTypeDef IMU_Update(IMU_Data_t *imu_data) {
         IMU_UpdateHistory(imu_data);
     }
 
-    float imu_difference = IMU_CalculateHistoryDifference(imu_data);
+    bool active = IMU_IsActive(imu_data);
 
-    if (!imu_ready || imu_difference < 1e-6) {
+    imu_data->active = active;
+    if (!imu_ready) {
         imu_data->active = false;
-    } else if (imu_difference >= 1e-6) {
-        imu_data->active = true;
     }
 
     return status;

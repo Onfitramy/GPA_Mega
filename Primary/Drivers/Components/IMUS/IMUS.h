@@ -91,6 +91,8 @@ HAL_StatusTypeDef IMU_SetInterrupt2Gyro(bool interrupt_enabled, const IMU_Data_t
 HAL_StatusTypeDef IMU_SetInterrupt2Acc(bool interrupt_enabled, const IMU_Data_t *imu_data);
 HAL_StatusTypeDef IMU_SetInterruptPins(InterruptPins interrupt_pins, const IMU_Data_t *imu_data);
 
+#define IMU_INACTIVE_EQUAL_COUNT 4
+
 #define IMU1_SPI        hspi4
 #define IMU1_CS_PORT    GPIOE
 #define IMU1_CS_PIN     GPIO_PIN_4
