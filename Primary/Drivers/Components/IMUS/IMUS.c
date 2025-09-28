@@ -155,13 +155,14 @@ HAL_StatusTypeDef IMU_Update(IMU_Data_t *imu_data) {
     HAL_StatusTypeDef status = HAL_OK;
     bool imu_ready = IMU_VerifyDataReady(imu_data) & 0x03 == 0x03;
 
-    if(imu_ready) {
+    if (imu_ready) {
         status = IMU_ReadSensorData(imu_data);
         arm_vec3_sub_f32(imu_data->accel, imu_data->calibration.offset, imu_data->accel);
         arm_vec3_element_product_f32(imu_data->accel, imu_data->calibration.scale, imu_data->accel);
-
-        IMU_UpdateHistory(imu_data);
     }
+
+    // if imu_ready is false, this will copy the same value to the front and therefore trigger the inactive detection
+    IMU_UpdateHistory(imu_data);
 
     bool active = IMU_IsActive(imu_data);
 
