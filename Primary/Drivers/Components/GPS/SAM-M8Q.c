@@ -95,24 +95,45 @@ UBX_MessageType ublox_ReadOutput(char* UBX_MessageReturn) {
 }
 
 void GPS_Init(void){
-  uint8_t UBX_MessageSend[32];
-  char UBX_MessageReturn[32];
-  char MessageBody[1] = {0x00};
+  uint8_t UBX_MessageSend[32] = {0};
+  char UBX_MessageReturn[32] = {0};
+  char MessageBody[1] = {0x01};
   
   /*First Set Port Messages to UBX and deactive NMEA Messages, to do that set bit 14 to 1*/
   if(GPSnotConfig == true){
-    int len = uUbxProtocolEncode(0x06, 0x00, MessageBody, 1, UBX_MessageSend);
+    //int len = uUbxProtocolEncode(0x06, 0x00, MessageBody, 1, UBX_MessageSend);
+    //ublox_Write(len, UBX_MessageSend);
+
+    UBX_MessageType UBX_CFG_PRT = {0x06, 0x00, UBX_MessageReturn, 0};
+    UBX_CFG_PRT.messageBody[0] = 0x01; //Set to UART1
+    UBX_CFG_PRT.messageBody[2] = 0x00; //Set to 0
+    UBX_CFG_PRT.messageBody[3] = 0x00; //Set to 0
+    UBX_CFG_PRT.messageBody[4] = 0x80; //Set to 0
+
+    UBX_CFG_PRT.messageBody[12] = 0x00; //Disable all Input/Output
+    UBX_CFG_PRT.messageBody[13] = 0x00;
+    UBX_CFG_PRT.messageBody[14] = 0x00;
+    UBX_CFG_PRT.messageBody[15] = 0x00;
+
+    int len = uUbxProtocolEncode(0x06, 0x00, UBX_CFG_PRT.messageBody, 20, UBX_MessageSend);
+
     ublox_Write(len, UBX_MessageSend);
 
-    UBX_MessageType UBX_CFG_PRT = ublox_ReadOutput(UBX_MessageReturn);
-    if (UBX_CFG_PRT.messageClass == 6) {
-      UBX_CFG_PRT.messageBody[14] = 0x01; //Set bit 14 to 1 to disable NMEA messages
-      int len = uUbxProtocolEncode(0x06, 0x00, UBX_CFG_PRT.messageBody, 19, UBX_MessageSend);
+    UBX_CFG_PRT.messageBody[0] = 0x00; //Set to I2C
+    UBX_CFG_PRT.messageBody[2] |= 0x01; //Aktivate TX_Ready feature
+    UBX_CFG_PRT.messageBody[2] &= 0xFD;
+    UBX_CFG_PRT.messageBody[2] |= 0x18; //Set PIO to 6 (TXD Pin)
+    UBX_CFG_PRT.messageBody[3] = 0x01; //Set threshhold to 1 * 8 bytes
+    UBX_CFG_PRT.messageBody[4] = 0x84;
 
-      ublox_Write(len, UBX_MessageSend);
+    UBX_CFG_PRT.messageBody[12] = 0x07; //Set bit 12 to 7 to enable all Input Protocols
+    UBX_CFG_PRT.messageBody[14] = 0x01; //Set bit 14 to 1 to disable NMEA messages
 
-      GPSnotConfig = false; //Set to false to not configure again
-    }
+    len = uUbxProtocolEncode(0x06, 0x00, UBX_CFG_PRT.messageBody, 20, UBX_MessageSend);
+
+    ublox_Write(len, UBX_MessageSend);
+    GPSnotConfig == false;
+
 
     /*Then set naviation rate to 10Hz*/
     uint8_t MessageBody2[6] = {100, 0, 1, 0, 0};
@@ -154,4 +175,22 @@ uint8_t GPS_VER_CHECK(void) {
         return 1; //Read Success
     }
     return 0; 
+}
+
+uint8_t GPS_RequestSensorData(void) {
+    uint8_t UBX_MessageSend[8];
+    char UBX_MessageReturn[200];
+    int len = uUbxProtocolEncode(0x01, 0x07, NULL, 0, UBX_MessageSend);
+    ublox_Write(len, UBX_MessageSend);
+}
+
+uint8_t GPS_ReadNavPVT(UBX_NAV_PVT *posllh) {
+  char UBX_MessageReturn[200];
+  UBX_MessageType UBX_NAV_POSLLH  = ublox_ReadOutput(UBX_MessageReturn);
+  if(UBX_NAV_POSLLH.messageId == 0x07){
+    memcpy(posllh, UBX_NAV_POSLLH.messageBody, sizeof(UBX_NAV_PVT));
+    return 1; //Return 1 on success
+  }else{
+    return 0; //Return 0 on failure
+  }
 }

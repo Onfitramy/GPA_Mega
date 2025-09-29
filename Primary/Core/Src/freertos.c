@@ -317,7 +317,6 @@ void StartDefaultTask(void *argument)
 {
   /* init code for USB_DEVICE */
   HAL_Delay(200); // Wait for USB and other Peripherals to initialize
-  GPS_Init(); //Initialize the GPS module
   /* USER CODE BEGIN StartDefaultTask */
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 1; //1000 Hz
@@ -725,12 +724,14 @@ void Start10HzTask(void *argument) {
   /* USER CODE BEGIN Start10HzTask */
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 100; //10 Hz
+  GPS_Init(); //Initialize the GPS module
 
   /* Infinite loop */
   for(;;) {
     SelfTest();         // Run self-test on startup
 
     GPS_ReadSensorData(&gps_data);
+    //GPS_RequestSensorData(); // Request GPS data
     if(primary_status > 0) {
       switch(gps_data.gpsFix) {
         case 0: primary_status = STATUS_GNSS_ALIGN; break;
@@ -819,7 +820,7 @@ void StartInterruptHandlerTask(void *argument)
   // Add both queues to the set
   xQueueAddToSet(InterruptQueue, xQueueSet);
   xQueueAddToSet(InterBoardCom_Queue, xQueueSet);
-  //HAL_NVIC_EnableIRQ(EXTI15_10_IRQn); //Disabled due to always triggering when GPS is not connected
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
   /* Infinite loop */
   for(;;)
   {
@@ -829,8 +830,7 @@ void StartInterruptHandlerTask(void *argument)
     if (xActivatedMember == InterruptQueue) {
       if (xQueueReceive(InterruptQueue, &receivedData, 0) == pdTRUE) {
         if(receivedData == 0x10) { // Handle GPS interrupt
-          ublox_ReadOutput(GPS_Buffer); //Read the GPS output and decode it
-
+          //GPS_ReadNavPVT(&gps_data);
         } else if (receivedData == 0x11) { //Handle NRF interrupt
           if(nrf_mode) {
             nrf24l01p_tx_irq();
