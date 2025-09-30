@@ -26,7 +26,11 @@ target_include_directories(stm32cubemx INTERFACE
     ../../Drivers/Components/LED
     ../../Drivers/Components/FLASH
     ../../Drivers/Components/XBee
+    ../../Drivers/Components/SD
     ../../Drivers/Libraries
+    ../../FATFS/Target
+    ../../FATFS/App
+    ../../Middlewares/Third_Party/FatFs/src
 )
 
 target_sources(stm32cubemx INTERFACE
@@ -75,10 +79,19 @@ target_sources(stm32cubemx INTERFACE
     ../../Core/Src/syscalls.c
     ../../startup_stm32f405xx.s
 
+    ../../Middlewares/Third_Party/FatFs/src/diskio.c
+    ../../Middlewares/Third_Party/FatFs/src/ff.c
+    ../../Middlewares/Third_Party/FatFs/src/ff_gen_drv.c
+    ../../Middlewares/Third_Party/FatFs/src/option/syscall.c
+    ../../FATFS/App/fatfs.c
+    ../../FATFS/Target/user_diskio.c
+    ../../FATFS/Target/user_diskio_spi.c
+
     ../../Drivers/Components/LED/ws2812.c
     ../../Drivers/Components/Buzzer/Buzzer.c
     ../../Drivers/Components/FLASH/W25Q1.c
     ../../Drivers/Components/XBee/xBee.c
+    ../../Drivers/Components/SD/SD.c
     ../../Drivers/Libraries/InterBoardCom.c
     ../../Drivers/Libraries/VoltageReader.c
     ../../Drivers/Libraries/status.c

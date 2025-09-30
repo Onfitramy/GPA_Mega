@@ -21,6 +21,8 @@
 #include "cmsis_os.h"
 #include "queue.h"
 
+#include "fatfs.h"
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "Buzzer.h"
@@ -29,6 +31,7 @@
 #include "InterBoardCom.h"
 #include "W25Q1.h"
 #include "PowerUnit.h"
+#include "SD.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -139,13 +142,13 @@ int main(void)
   MX_USART1_UART_Init();
   MX_ADC2_Init();
   MX_I2C2_Init();
+  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
   uint32_t flashid = W25Q1_ReadID(); //Check if the FLASH works, flashid = 0xEF4017
 
   HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 1); // Start UART receive interrupt
 
-  CoreDebug->DEMCR |= CoreDebug_DEMCR_MON_EN_Msk;
-  NVIC_SetPriority(DebugMonitor_IRQn, 6);
+  SD_Mount();
 
   PU_enableRecovery();
   PU_enableCamera();
@@ -500,7 +503,7 @@ static void MX_SPI2_Init(void)
   hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_4;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_128; //SD Card starts slow, switch to fast later
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;

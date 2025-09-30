@@ -730,7 +730,7 @@ void Start10HzTask(void *argument) {
   for(;;) {
     SelfTest();         // Run self-test on startup
 
-    //GPS_ReadSensorData(&gps_data);
+    GPS_ReadSensorData(&gps_data);
     //GPS_RequestSensorData(); // Request GPS data
     if(primary_status > 0) {
       switch(gps_data.gpsFix) {
@@ -763,8 +763,7 @@ void Start10HzTask(void *argument) {
       arm_mat_set_entry_f32(EKF2_corr2.R, 1, 1, (float)gps_data.sAcc*gps_data.sAcc*1e-6);
       EKFCorrectionStep(&EKF2, &EKF2_corr2);
 
-      SERVO_MoveToAngle(1, 0);
-      SERVO_MoveToAngle(2, 0);
+
     }
 
     // transmit data
@@ -773,7 +772,7 @@ void Start10HzTask(void *argument) {
     radioSend(tx_buf);
 
     // RECOVERY TEST
-    if(uwTick > 10000 && servo_status == 5) {
+    if(uwTick  > 10000 && servo_status == 5) {
       servo_status = 6;
       SERVO_MoveToAngle(3, 90);
     }
@@ -829,7 +828,7 @@ void StartInterruptHandlerTask(void *argument)
     if (xActivatedMember == InterruptQueue) {
       if (xQueueReceive(InterruptQueue, &receivedData, 0) == pdTRUE) {
         if(receivedData == 0x10) { // Handle GPS interrupt
-          GPS_ReadNavPVT(&gps_data);
+          //GPS_ReadNavPVT(&gps_data);
         } else if (receivedData == 0x11) { //Handle NRF interrupt
           if(nrf_mode) {
             nrf24l01p_tx_irq();

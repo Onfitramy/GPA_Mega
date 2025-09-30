@@ -27,6 +27,7 @@
 #include "semphr.h"
 #include "queue.h"
 #include "string.h"
+#include "fatfs.h"
 
 #include "ws2812.h"
 #include "W25Q1.h"
@@ -35,6 +36,7 @@
 #include "InterBoardCom.h"
 #include "status.h"
 #include "PowerUnit.h"
+#include "SD.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -262,6 +264,11 @@ void StartInterBoardComTask(void *argument)
   uint32_t DMA_ReRun_time = HAL_GetTick() + 6; // Timestamp of the next time the DMA should be reactivated, nominaly every 6ms after the last packet was received
 
   W25Q_GetConfig();
+
+  SD_Open("LOG.txt", FA_WRITE | FA_CREATE_ALWAYS);
+  SD_Write("InterBoard Communication Log\r\n", 30);
+  SD_Close();
+
   InterBoardCom_Init();
   InterBoardCom_ActivateReceive();
   /* Infinite loop */

@@ -1,8 +1,11 @@
 #include "InterBoardCom.h"
+#include "stdio.h"
 #include "string.h"
 #include <stdarg.h>
 #include "Packets.h"
 #include "W25Q1.h"
+#include "fatfs.h"
+#include "SD.h"
 
 extern SPI_HandleTypeDef hspi1;
 
@@ -177,8 +180,17 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
         case InterBoardPACKET_ID_DataSaveFLASH:
         {
             //Handle data save to flash packet
+            char LogMessage[100];
             DataPacket_t dataPacket = InterBoardCom_UnpackPacket(packet);
-            W25Q_SaveToLog((uint8_t *)&dataPacket, sizeof(dataPacket)); // Save the data to flash memory
+            /*SD_Open("LOG.txt", FA_WRITE | FA_OPEN_APPEND);
+            char dataHex[2 * sizeof(dataPacket.Data) + 1] = {0};
+            for (size_t i = 0; i < sizeof(dataPacket.Data); i++) {
+                sprintf(&dataHex[2 * i], "%02X", ((uint8_t*)&dataPacket.Data)[i]);
+            }
+            sprintf(LogMessage, "\nPacket ID: %d, Timestamp: %lu, Data: %s", dataPacket.Packet_ID, (unsigned long)dataPacket.timestamp, dataHex);
+            SD_Write((uint8_t *)LogMessage, strlen(LogMessage));
+            SD_Close();*/ //SD Card Tests, will be removed
+            //W25Q_SaveToLog((uint8_t *)&dataPacket, sizeof(dataPacket)); // Save the data to flash memory
             break;
         }
 
