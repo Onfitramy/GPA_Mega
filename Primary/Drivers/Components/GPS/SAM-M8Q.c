@@ -134,10 +134,16 @@ void GPS_Init(void){
     ublox_Write(len, UBX_MessageSend);
     GPSnotConfig == false;
 
+    /* Set automatic navigation data output*/
+    uint8_t MessageBody2[8] = {0x01, 0x07, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00}; //Set NAV-PVT to 10Hz
+    len = uUbxProtocolEncode(0x06, 0x01, MessageBody2, 8, UBX_MessageSend);
+    ublox_Write(len, UBX_MessageSend);
+    ublox_ReadOutput(UBX_MessageReturn); //Read ACK
+    uUbxProtocolDecode((char*)UBX_MessageReturn, sizeof(UBX_MessageReturn), NULL, NULL, NULL, 0, NULL);
 
     /*Then set naviation rate to 10Hz*/
-    uint8_t MessageBody2[6] = {100, 0, 1, 0, 0};
-    len = uUbxProtocolEncode(0x06, 0x08, MessageBody2, 6, UBX_MessageSend);
+    uint8_t MessageBody3[6] = {100, 0, 1, 0, 0};
+    len = uUbxProtocolEncode(0x06, 0x08, MessageBody3, 6, UBX_MessageSend);
     ublox_Write(len, UBX_MessageSend);
   }
 }
@@ -178,8 +184,7 @@ uint8_t GPS_VER_CHECK(void) {
 }
 
 uint8_t GPS_RequestSensorData(void) {
-    uint8_t UBX_MessageSend[8];
-    char UBX_MessageReturn[200];
+    uint8_t UBX_MessageSend[16];
     int len = uUbxProtocolEncode(0x01, 0x07, NULL, 0, UBX_MessageSend);
     ublox_Write(len, UBX_MessageSend);
 }
@@ -187,7 +192,7 @@ uint8_t GPS_RequestSensorData(void) {
 uint8_t GPS_ReadNavPVT(UBX_NAV_PVT *posllh) {
   char UBX_MessageReturn[200];
   UBX_MessageType UBX_NAV_POSLLH  = ublox_ReadOutput(UBX_MessageReturn);
-  if(UBX_NAV_POSLLH.messageId == 0x07){
+  if(UBX_NAV_POSLLH.messageId == 0x07 && UBX_NAV_POSLLH.messageClass == 0x01){
     memcpy(posllh, UBX_NAV_POSLLH.messageBody, sizeof(UBX_NAV_PVT));
     return 1; //Return 1 on success
   }else{

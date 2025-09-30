@@ -548,10 +548,10 @@ void Start100HzTask(void *argument) {
   for(;;) {
 
     UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &imu1_data, &mag_data);
-    InterBoardCom_SendDataPacket(InterBoardPACKET_ID_Echo, &IMU_DataPacket);
+    InterBoardCom_SendDataPacket(InterBoardPACKET_ID_DataSaveFLASH, &IMU_DataPacket);
 
     UpdateGPSDataPacket(&GPS_DataPacket, HAL_GetTick(), &gps_data);
-    InterBoardCom_SendDataPacket(InterBoardPACKET_ID_Echo, &GPS_DataPacket);
+    InterBoardCom_SendDataPacket(InterBoardPACKET_ID_DataSaveFLASH, &GPS_DataPacket);
 
     InterBoardCom_SendTestPacket();
 
@@ -730,7 +730,7 @@ void Start10HzTask(void *argument) {
   for(;;) {
     SelfTest();         // Run self-test on startup
 
-    GPS_ReadSensorData(&gps_data);
+    //GPS_ReadSensorData(&gps_data);
     //GPS_RequestSensorData(); // Request GPS data
     if(primary_status > 0) {
       switch(gps_data.gpsFix) {
@@ -820,8 +820,7 @@ void StartInterruptHandlerTask(void *argument)
   // Add both queues to the set
   xQueueAddToSet(InterruptQueue, xQueueSet);
   xQueueAddToSet(InterBoardCom_Queue, xQueueSet);
-  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
-  /* Infinite loop */
+  
   for(;;)
   {
     // Wait on the queue set with timeout (blocks efficiently)
@@ -830,7 +829,7 @@ void StartInterruptHandlerTask(void *argument)
     if (xActivatedMember == InterruptQueue) {
       if (xQueueReceive(InterruptQueue, &receivedData, 0) == pdTRUE) {
         if(receivedData == 0x10) { // Handle GPS interrupt
-          //GPS_ReadNavPVT(&gps_data);
+          GPS_ReadNavPVT(&gps_data);
         } else if (receivedData == 0x11) { //Handle NRF interrupt
           if(nrf_mode) {
             nrf24l01p_tx_irq();
