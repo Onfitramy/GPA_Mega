@@ -808,6 +808,7 @@ void StartInterruptHandlerTask(void *argument)
 {
   /* init code for USB_DEVICE */
   /* USER CODE BEGIN StartDefaultTask */
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn); //Aktivate Interrupt for GPS and NRF
   uint8_t receivedData;
   InterBoardPacket_t InterBoardCom_Packet;
   char GPS_Buffer[100]; // Buffer for GPS data
