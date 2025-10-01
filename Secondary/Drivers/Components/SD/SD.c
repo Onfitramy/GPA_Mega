@@ -9,9 +9,9 @@ FRESULT fres; //Result after operations
 
 DWORD free_clusters, free_sectors, total_sectors;
 
-#define BUFFER_SIZE 2048
+#define BUFFER_SIZE 3072 // 3*1024 bytes,
 
-uint8_t sd_buffer1[BUFFER_SIZE]; // Buffer for SD operations, maximum of 2048 bytes
+uint8_t sd_buffer1[BUFFER_SIZE]; // Buffer for SD operations
 uint8_t sd_buffer2[BUFFER_SIZE]; // Using double buffering
 uint8_t* sd_buffer = sd_buffer1; // Pointer to current buffer
 uint32_t sd_buffer_index = 0; // Current index in the buffer
@@ -36,51 +36,76 @@ uint8_t SD_AppendDataPacketToBuffer(DataPacket_t* packet) {
     uint32_t text_size = 0;
 
     if (packet == NULL) {
-        return 1; // Error: Null pointer
+      return 1; // Error: Null pointer
     }
 
     switch(packet->Packet_ID) {
-        case PACKET_ID_Status:
-          sprintf(text_buffer, "\nID:%d, TS:%lu, StatFl:%lu, SensFl:%lu, ErrFl:%lu",
-                  packet->Packet_ID, packet->timestamp,
-                  packet->Data.status.status_flags, packet->Data.status.sensor_status_flags, packet->Data.status.error_flags);
-          text_size = strlen(text_buffer);
-          break;
-        case PACKET_ID_BATTERY:
-          sprintf(text_buffer, "\nID:%d, TS:%lu, V5V:%lu, VBAT:%lu",
-                  packet->Packet_ID, packet->timestamp,
-                  packet->Data.battery.voltage5V0bus, packet->Data.battery.voltageBATbus);
-          text_size = strlen(text_buffer);
-          break;
-        case PACKET_ID_GPS:
-          sprintf(text_buffer, "\nID:%d, TS:%lu, Lat:%ld, Lon:%ld, Alt:%ld, Spd:%d, Crs:%d",
-                  packet->Packet_ID, packet->timestamp,
-                  packet->Data.gps.latitude, packet->Data.gps.longitude, packet->Data.gps.altitude,
-                  packet->Data.gps.speed, packet->Data.gps.course);
-          text_size = strlen(text_buffer);
-          break;
-        case PACKET_ID_IMU:
-          sprintf(text_buffer, "\nID:%d, TS:%lu, GyrX:%d, GyrY:%d, GyrZ:%d, AccX:%ld, AccY:%ld, AccZ:%ld, MagX:%d, MagY:%d, MagZ:%d",
-                  packet->Packet_ID, packet->timestamp,
-                  packet->Data.imu.gyroX, packet->Data.imu.gyroY, packet->Data.imu.gyroZ,
-                  packet->Data.imu.accelX, packet->Data.imu.accelY, packet->Data.imu.accelZ,
-                  packet->Data.imu.magX, packet->Data.imu.magY, packet->Data.imu.magZ);
-          text_size = strlen(text_buffer);
-          break;
-        default:
-            return 2; // Error: Invalid Packet ID
+      case PACKET_ID_STATUS:
+        sprintf(text_buffer, "\nID:%d, TS:%lu, StatFl:%lu, SensFl:%lu, ErrFl:%lu, STATE:%d",
+                packet->Packet_ID, packet->timestamp,
+                packet->Data.status.status_flags, packet->Data.status.sensor_status_flags, packet->Data.status.error_flags, packet->Data.status.State);
+        text_size = strlen(text_buffer);
+        break;
+      case PACKET_ID_POWER:
+        sprintf(text_buffer, "\nID:%d, TS:%lu, M25VBUS:%u, M2BATV:%u, PUPOW:%u, PUCURR:%u, PUBATV:%u",
+                packet->Packet_ID, packet->timestamp,
+                packet->Data.power.M2_bus_5V, packet->Data.power.M2_bus_GPA_bat_volt,
+                packet->Data.power.PU_pow, packet->Data.power.PU_curr, packet->Data.power.PU_bat_bus_volt);
+        text_size = strlen(text_buffer);
+        break;
+      case PACKET_ID_GPS:
+        sprintf(text_buffer, "\nID:%d, TS:%lu, Lat:%ld, Lon:%ld, Alt:%ld, Spd:%d, Crs:%d",
+                packet->Packet_ID, packet->timestamp,
+                packet->Data.gps.latitude, packet->Data.gps.longitude, packet->Data.gps.altitude,
+                packet->Data.gps.speed, packet->Data.gps.course);
+        text_size = strlen(text_buffer);
+        break;
+      case PACKET_ID_IMU:
+        sprintf(text_buffer, "\nID:%d, TS:%lu, GyrX:%d, GyrY:%d, GyrZ:%d, AccX:%ld, AccY:%ld, AccZ:%ld, MagX:%d, MagY:%d, MagZ:%d",
+                packet->Packet_ID, packet->timestamp,
+                packet->Data.imu.gyroX, packet->Data.imu.gyroY, packet->Data.imu.gyroZ,
+                packet->Data.imu.accelX, packet->Data.imu.accelY, packet->Data.imu.accelZ,
+                packet->Data.imu.magX, packet->Data.imu.magY, packet->Data.imu.magZ);
+        text_size = strlen(text_buffer);
+        break;
+      case PACKET_ID_TEMPERATURE:
+        sprintf(text_buffer, "\nID:%d, TS:%lu, M1DTS:%d, M1ADC:%d, M1BMP:%d, M1IMU1:%d, M1IMU2:%d, M1MAG:%d, M23V3:%d, M2XBee:%d, PUBAT:%d, Pressure:%f",
+                packet->Packet_ID, packet->timestamp,
+                packet->Data.temperature.M1_DTS, packet->Data.temperature.M1_ADC,
+                packet->Data.temperature.M1_BMP, packet->Data.temperature.M1_IMU1,
+                packet->Data.temperature.M1_IMU2, packet->Data.temperature.M1_MAG,
+                packet->Data.temperature.M2_3V3, packet->Data.temperature.M2_XBee,
+                packet->Data.temperature.PU_bat, packet->Data.temperature.pressure);
+        text_size = strlen(text_buffer);
+        break;
+      
+      case PACKET_ID_ATTITUDE:
+        sprintf(text_buffer, "\nID:%d, TS:%lu, phi:%f, theta:%f, psi:%f",
+                packet->Packet_ID, packet->timestamp,
+                packet->Data.attitude.phi, packet->Data.attitude.theta, packet->Data.attitude.psi);
+        text_size = strlen(text_buffer);
+        break;
+      case PACKET_ID_KALMANMATRIX:
+        sprintf(text_buffer, "\nID:%d, TS:%lu, P11:%f, P22:%f, P33:%f, EKF2_Height:%f, EKF2_Vel:%f, EKF2_RefPres:%f",
+                packet->Packet_ID, packet->timestamp,
+                packet->Data.kalman.P11, packet->Data.kalman.P22, packet->Data.kalman.P33,
+                packet->Data.kalman.EKF2_Heigth, packet->Data.kalman.EKF2_vel, packet->Data.kalman.EKF2_refPres);
+        text_size = strlen(text_buffer);
+        break;
+      default:
+        return 2; // Error: Invalid Packet ID
     }
 
     // Check if there is enough space in the buffer
     if (text_size > BUFFER_SIZE - sd_buffer_index) {
-        text_size = 13; // Length of "\nBuffer full"
-        sprintf(text_buffer, "\nBuffer full");
-        if(text_size <= BUFFER_SIZE - sd_buffer_index){
-          memcpy(&sd_buffer[sd_buffer_index], text_buffer, text_size);
-          sd_buffer_index += text_size;
-          return 3; // Error: Not enough space in buffer
-        }
-        return 4; // Error: Not enough space in buffer even for "Buffer full"
+      text_size = 13; // Length of "\nBuffer full"
+      sprintf(text_buffer, "\nBuffer full");
+      if(text_size <= BUFFER_SIZE - sd_buffer_index){
+        memcpy(&sd_buffer[sd_buffer_index], text_buffer, text_size);
+        sd_buffer_index += text_size;
+        return 3; // Error: Not enough space in buffer
+      }
+      return 4; // Error: Not enough space in buffer even for "Buffer full"
     }
 
     // Copy the DataPacket_t into the buffer

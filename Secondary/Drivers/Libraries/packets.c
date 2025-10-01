@@ -24,15 +24,9 @@ void calcCRC(DataPacket_t *packet) {
     packet->crc = crc;
 }
 
-void UpdateStatusPacket(DataPacket_t *status_packet, uint32_t timestamp, int32_t status_flags, int32_t sensor_flags, int32_t error_flags, uint32_t flight_state) {
+void UpdateStatusPayload(StatusPayload_t *status_payload) {
     // Update the status payload with the latest status information
-    status_packet->timestamp = timestamp;
-    status_packet->Data.status.status_flags = status_flags;
-    status_packet->Data.status.sensor_status_flags = sensor_flags;
-    status_packet->Data.status.error_flags = error_flags;
-    status_packet->Data.status.State = flight_state;
-    
-    calcCRC(status_packet);
+    // Implement the logic to fill the status_payload structure
 }
 
 void UpdatePowerPacket(DataPacket_t *power_packet, uint32_t timestamp, float PU_bat_volt, float PU_out_pow, float PU_out_curr, float M2_bus_5V, float M2_bus_GPA_bat_volt) {
@@ -46,7 +40,7 @@ void UpdatePowerPacket(DataPacket_t *power_packet, uint32_t timestamp, float PU_
     calcCRC(power_packet);
 }
 
-void UpdateIMUDataPacket(DataPacket_t *imu_packet, uint32_t timestamp, IMU_Data_t *imu_data, LIS3MDL_Data_t *mag_data) {
+/*void UpdateIMUDataPacket(DataPacket_t *imu_packet, uint32_t timestamp, IMU_Data_t *imu_data, LIS3MDL_Data_t *mag_data) {
     imu_packet->timestamp = timestamp;
 
     // Update the IMU packet with the latest IMU data
@@ -62,9 +56,9 @@ void UpdateIMUDataPacket(DataPacket_t *imu_packet, uint32_t timestamp, IMU_Data_
     imu_packet->Data.imu.magZ = float_to_int16_scaled(mag_data->field[2], 1e-4f);
 
     calcCRC(imu_packet);
-}
+}*/
 
-void UpdateGPSDataPacket(DataPacket_t *gps_packet, uint32_t timestamp, UBX_NAV_PVT *gps_data) {
+/*void UpdateGPSDataPacket(DataPacket_t *gps_packet, uint32_t timestamp, UBX_NAV_PVT *gps_data) {
     gps_packet->timestamp = timestamp;
 
     // Update the GPS packet with the latest GPS data
@@ -75,7 +69,7 @@ void UpdateGPSDataPacket(DataPacket_t *gps_packet, uint32_t timestamp, UBX_NAV_P
     gps_packet->Data.gps.course =  (int16_t)gps_data->headMot; // Course over ground °*1e-5
 
     calcCRC(gps_packet);
-}
+}*/
 
 void UpdateTemperaturePacket(DataPacket_t *temp_packet, uint32_t timestamp, int32_t M1_DTS, int32_t M1_ADC, float M1_BMP, float M1_IMU1, float M1_IMU2, float M1_MAG, float M2_3V3, uint16_t M2_XBee, float PU_bat, float pressure) {
     temp_packet->timestamp = timestamp;
@@ -107,31 +101,6 @@ void UpdateKalmanMatrixPacket(DataPacket_t *kalman_packet, uint32_t timestamp, f
     kalman_packet->Data.kalman.EKF2_refPres = EKF2_refPres;
 
     calcCRC(kalman_packet);
-}
-
-void UpdatePositionPacket(DataPacket_t *position_packet, uint32_t timestamp, float posX, float posY, float posZ, float velX, float velY, float velZ) {
-    position_packet->timestamp = timestamp;
-
-    // Update the Position packet with the latest position information
-    position_packet->Data.position.posX = float_to_int32_scaled(posX, 0.01f);
-    position_packet->Data.position.posY = float_to_int32_scaled(posY, 0.01f);
-    position_packet->Data.position.posZ = float_to_int32_scaled(posZ, 0.01f);
-    position_packet->Data.position.velX = float_to_int32_scaled(velX, 0.01f);
-    position_packet->Data.position.velY = float_to_int32_scaled(velY, 0.01f);
-    position_packet->Data.position.velZ = float_to_int32_scaled(velZ, 0.01f);
-
-    calcCRC(position_packet);
-}
-
-void UpdateAttitudePacket(DataPacket_t *attitude_packet, uint32_t timestamp, float phi, float theta, float psi) {
-    attitude_packet->timestamp = timestamp;
-
-    // Update the Attitude packet with the latest attitude information
-    attitude_packet->Data.attitude.phi = phi;
-    attitude_packet->Data.attitude.theta = theta;
-    attitude_packet->Data.attitude.psi = psi;
-
-    calcCRC(attitude_packet);
 }
 
 // Convert float to int16 with conversion factor

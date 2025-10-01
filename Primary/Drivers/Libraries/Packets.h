@@ -8,16 +8,17 @@
 /*This file includes all public Packets for the differten devices and sending modes*/
 /*They are used for radio transmittion, flash/SD saving and interBoardCommunication*/
 
+#define INVALID_FLOAT -999.0f 
+
 typedef enum {
-    PACKET_ID_Status = 0x01, // VR data packet
-    PACKET_ID_BATTERY = 0x02, // Battery data packet
+    PACKET_ID_STATUS = 0x01, // VR data packet
+    PACKET_ID_POWER = 0x02, // Power data packet
     PACKET_ID_GPS = 0x03, // GPS data packet
     PACKET_ID_IMU = 0x04, // IMU data packet
     PACKET_ID_TEMPERATURE = 0x05, // Temperature data packet
-    PACKET_ID_PRESSURE = 0x06, // Pressure data packet
-    PACKET_ID_HUMIDITY = 0x07, // Humidity data packet
-    PACKET_ID_POSITION = 0x08, // Position data packet
-    PACEKT_ID_ATTITUDE = 0x09, // Attitude data packet
+    PACKET_ID_POSITION = 0x06, // Position data packet
+    PACKET_ID_ATTITUDE = 0x07, // Attitude data packet
+    PACKET_ID_KALMANMATRIX = 0x08, // Kalman Matrix data packet
 } PacketType_t;
 
 /* Packet and Payload structure definitions */
@@ -25,15 +26,16 @@ typedef enum {
 #pragma pack(push, 1)
 typedef struct {
     int32_t status_flags, sensor_status_flags, error_flags;
+    int16_t State;
     int32_t  Unused1, Unused2, Unused3;
-    int16_t Unused4;
 } StatusPayload_t;
 
 typedef struct {
-    uint32_t voltage5V0bus, voltageBATbus, unused1;
-    uint32_t unused2, unused3, unused4;
-    int16_t Unused4;
-} BatteryPayload_t;
+    uint32_t M1_5V_bus, M1_BAT_bus_volt, unused1; // 12 bytes
+    uint16_t M2_bus_5V, M2_bus_GPA_bat_volt, unused2; // 18 bytes
+    uint16_t PU_pow, PU_curr, PU_bat_bus_volt; //24
+    uint16_t Unused3;  // 26 bytes
+} PowerPayload_t;
 
 typedef struct {
     int32_t latitude, longitude, altitude;
@@ -48,11 +50,30 @@ typedef struct {
 } IMUPayload_t;
 
 typedef struct {
+    int16_t M1_DTS, M1_ADC, M1_BMP, M1_IMU1, M1_IMU2, M1_MAG; // 12 bytes
+    int16_t M2_3V3, M2_XBee; // 16 bytes
+    uint16_t PU_bat; // 18 bytes
+    float pressure; // 22 bytes
+    uint16_t unused1, unused2; // 26 bytes
+} TemperaturePayload_t;
+
+typedef struct {
     int32_t posX, posY, posZ;
-    int16_t velX, velY, velZ;
-    int16_t accX, accY, accZ;
+    int32_t velX, velY, velZ;
     uint16_t unused1;
 } PositionPayload_t;
+
+typedef struct {
+    float phi, theta, psi;
+    uint32_t unused1, unused2, unused3;
+    uint16_t unused4;
+} AttitudePayload_t;
+
+typedef struct {
+    float P11, P22, P33;
+    float EKF2_Heigth, EKF2_vel, EKF2_refPres;
+    uint16_t unused1;
+}KalmanMatrixPayload_t;
 
 typedef struct {
     float test1, test2, test3, test4, test5, test6; // 24 bytes
@@ -61,10 +82,13 @@ typedef struct {
 
 typedef union {
     StatusPayload_t status;
-    BatteryPayload_t battery;
+    PowerPayload_t power;
     GPSPayload_t gps;
     IMUPayload_t imu;
+    TemperaturePayload_t temperature;
     PositionPayload_t position;
+    AttitudePayload_t attitude;
+    KalmanMatrixPayload_t kalman;
     TestPayload_t test;
     uint8_t raw[26];
 } PayloadData_u;
@@ -79,7 +103,12 @@ typedef struct {
 
 
 DataPacket_t CreateDataPacket(PacketType_t Packet_ID);
+void UpdateStatusPacket(DataPacket_t *status_packet, uint32_t timestamp, int32_t status_flags, int32_t sensor_flags, int32_t error_flags, uint32_t flight_state);
 void UpdateIMUDataPacket(DataPacket_t *imu_packet, uint32_t timestamp, IMU_Data_t *imu_data, LIS3MDL_Data_t *mag_data);
 void UpdateGPSDataPacket(DataPacket_t *gps_packet, uint32_t timestamp, UBX_NAV_PVT *gps_data);
-
+void UpdateTemperaturePacket(DataPacket_t *temp_packet, uint32_t timestamp, int32_t M1_DTS, int32_t M1_ADC, float M1_BMP, float M1_IMU1, float M1_IMU2, float M1_MAG, float M2_3V3, uint16_t M2_XBee, float PU_bat, float pressure);
+void UpdatePowerPacket(DataPacket_t *power_packet, uint32_t timestamp, float PU_bat_volt, float PU_out_pow, float PU_out_curr, float M2_bus_5V, float M2_bus_GPA_bat_volt);
+void UpdateKalmanMatrixPacket(DataPacket_t *kalman_packet, uint32_t timestamp, float P11, float P22, float P33, float EKF2_Heigth, float EKF2_vel, float EKF2_refPres);
+void UpdatePositionPacket(DataPacket_t *position_packet, uint32_t timestamp, float posX, float posY, float posZ, float velX, float velY, float velZ);
+void UpdateAttitudePacket(DataPacket_t *attitude_packet, uint32_t timestamp, float phi, float theta, float psi);
 #endif /* Packets_H_ */
