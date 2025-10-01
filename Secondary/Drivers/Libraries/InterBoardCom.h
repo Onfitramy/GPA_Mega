@@ -4,7 +4,7 @@
 #include "stm32f4xx_hal.h"
 #include "Packets.h"
 
-#define INTERBOARD_BUFFER_SIZE 16
+#define INTERBOARD_BUFFER_SIZE 32
 
 //The Bitfield describe what should be expected and done with the data received
 typedef enum {
@@ -40,7 +40,7 @@ typedef struct {
     volatile uint16_t head;      // Write index
     volatile uint16_t tail;      // Read index
     volatile uint16_t count;     // Number of items in buffer
-} InterBoardCircularBuffer_t;
+} CircularBuffer_t;
 
 
 void InterBoardCom_ActivateReceive(void);
@@ -58,5 +58,13 @@ void InterBoardCom_Init(void);
 InterBoardPacket_t InterBoardCom_CreatePacket(InterBoardPacketID_t ID);
 void InterBoardCom_FillRaw(InterBoardPacket_t *packet, int num, ...);
 void InterBoardCom_FillData(InterBoardPacket_t *packet, DataPacket_t *data_packet);
+
+void CircBuffer_Init(CircularBuffer_t* cb);
+uint8_t CircBuffer_Push(CircularBuffer_t* cb, InterBoardPacket_t* packet);
+uint8_t CircBuffer_Pop(CircularBuffer_t* cb, InterBoardPacket_t* packet);
+uint8_t CircBuffer_IsEmpty(CircularBuffer_t* cb);
+uint8_t CircBuffer_IsFull(CircularBuffer_t* cb);
+uint16_t CircBuffer_Count(CircularBuffer_t* cb);
+void CircBuffer_Clear(CircularBuffer_t* cb);
 
 #endif /* InterBoardCom_H_ */

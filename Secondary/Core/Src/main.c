@@ -148,8 +148,6 @@ int main(void)
 
   HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 1); // Start UART receive interrupt
 
-  SD_Mount();
-
   PU_enableRecovery();
   PU_enableCamera();
   /*
@@ -241,10 +239,10 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     InterBoardPacket_t packet = InterBoardCom_ReceivePacket();
     //Check if more data is incoming bit is set
-      if (packet.InterBoardPacket_ID & 0x80) {
-        //More data is incoming, reactivate DMA receive immediately
-        InterBoardCom_ActivateReceive();
-      }
+    if (packet.InterBoardPacket_ID & 0x80) {
+      //More data is incoming, reactivate DMA receive immediately
+      InterBoardCom_ActivateReceive();
+    }
     xQueueSendFromISR(InterBoardPacketQueue, &packet, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     //Pass the received packet to a que to be processed by the task

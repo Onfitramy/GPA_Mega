@@ -91,6 +91,13 @@ const osThreadAttr_t InterruptTask_attributes = {
   .priority = (osPriority_t) osPriorityAboveNormal,
 };
 
+osThreadId_t SDTaskHandle;
+const osThreadAttr_t SDTask_attributes = {
+  .name = "SDTask",
+  .stack_size = 128 * 48,
+  .priority = (osPriority_t) osPriorityBelowNormal,
+};
+
 uint8_t XBee_Temp;
 int8_t secondary_status = 0;
 
@@ -127,6 +134,7 @@ void StartDefaultTask(void *argument);
 void Start10HzTask(void *argument);
 void StartInterBoardComTask(void *argument);
 void StartInterruptTask(void *argument);
+void StartSDTask(void *argument);
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
@@ -155,8 +163,9 @@ void MX_FREERTOS_Init(void) {
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
   Hz10TaskHandle = osThreadNew(Start10HzTask, NULL, &Hz10Task_attributes);
-  InterBoardComHandle = osThreadNew(StartInterBoardComTask, NULL, &InterBoardCom_attributes);
+  SDTaskHandle = osThreadNew(StartSDTask, NULL, &SDTask_attributes);
   InterruptTaskHandle = osThreadNew(StartInterruptTask, NULL, &InterruptTask_attributes);
+  InterBoardComHandle = osThreadNew(StartInterBoardComTask, NULL, &InterBoardCom_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -209,7 +218,7 @@ void StartDefaultTask(void *argument)
 void Start10HzTask(void *argument){
   /* USER CODE BEGIN Start10HzTask */
   TickType_t xLastWakeTime = xTaskGetTickCount();
-  const TickType_t xFrequency = 100; // 1 Hz
+  const TickType_t xFrequency = 100; // 10 Hz
 
   /* Infinite loop */
   for(;;) {
@@ -265,10 +274,6 @@ void StartInterBoardComTask(void *argument)
 
   W25Q_GetConfig();
 
-  SD_Open("LOG.txt", FA_WRITE | FA_CREATE_ALWAYS);
-  SD_Write("InterBoard Communication Log\r\n", 30);
-  SD_Close();
-
   InterBoardCom_Init();
   InterBoardCom_ActivateReceive();
   /* Infinite loop */
@@ -276,11 +281,9 @@ void StartInterBoardComTask(void *argument)
     InterBoardPacket_t packet;
     // Calculate 0.1ms in ticks based on configTICK_RATE_HZ
     if (xQueueReceive(InterBoardPacketQueue, &packet, 1) == pdPASS) { // 1ms delay
-      receivedPackets++;
       InterBoardCom_ParsePacket(packet);
       #ifdef DEBUG
       DMA_ReRun_time = HAL_GetTick() + 6; //Set the next reactivation time to 6ms in the future
-      //InterBoardCom_ActivateReceive(); //Reactivate the DMA immediately to be ready for the next packet
       HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin); // Toggle M2 LED to indicate packet received
       #endif
     }
@@ -340,6 +343,21 @@ void StartInterruptTask(void *argument)
     }
   }
   /* USER CODE END StartInterruptTask */
+}
+
+void StartSDTask(void *argument)
+{
+  /* USER CODE BEGIN StartSDTask */
+  SD_Mount();
+
+  TickType_t xLastWakeTime = xTaskGetTickCount();
+  const TickType_t xFrequency = 100; // 10 Hz
+  /* Infinite loop */
+  for(;;) {
+    SD_SaveBuffer();
+    vTaskDelayUntil( &xLastWakeTime, xFrequency);
+  }
+  /* USER CODE END StartSDTask */
 }
 
 /* USER CODE END Application */

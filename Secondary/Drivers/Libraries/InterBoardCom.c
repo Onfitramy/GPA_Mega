@@ -15,22 +15,15 @@ extern DMA_HandleTypeDef hdma_spi1_tx;
 volatile InterBoardPacket_t receiveBuffer;
 volatile InterBoardPacket_t transmitBuffer;
 
-InterBoardCircularBuffer_t txCircBuffer; // outgoing buffer
+CircularBuffer_t txCircBuffer; // outgoing buffer
 
 volatile uint8_t SPI1_STATUS = 0; // 0= Idle, 1 = Busy
 
 void InterBoardCom_ClearSPIErrors(void);
-void InterBoardBuffer_Init(InterBoardCircularBuffer_t* cb);
-uint8_t InterBoardBuffer_Push(InterBoardCircularBuffer_t* cb, InterBoardPacket_t* packet);
-uint8_t InterBoardBuffer_Pop(InterBoardCircularBuffer_t* cb, InterBoardPacket_t* packet);
-uint8_t InterBoardBuffer_IsEmpty(InterBoardCircularBuffer_t* cb);
-uint8_t InterBoardBuffer_IsFull(InterBoardCircularBuffer_t* cb);
-uint16_t InterBoardBuffer_Count(InterBoardCircularBuffer_t* cb);
-void InterBoardBuffer_Clear(InterBoardCircularBuffer_t* cb);
 
 void InterBoardCom_Init(void) {
     // Initialize circular buffers
-    InterBoardBuffer_Init(&txCircBuffer);
+    CircBuffer_Init(&txCircBuffer);
     // Initialize SPI state
 }
 
@@ -54,9 +47,8 @@ void InterBoardCom_ActivateReceive(void) {
         // They are caused by transmitions from the master when not listening
         InterBoardCom_ClearSPIErrors();
     }
-    //InterBoardCom_ClearSPIErrors();
 
-    if(InterBoardBuffer_Pop(&txCircBuffer, &transmitBuffer) == 0) { // Get next packet to transmit, if none available a packet with ID 0 will be sent
+    if(CircBuffer_Pop(&txCircBuffer, &transmitBuffer) == 0) { // Get next packet to transmit, if none available a packet with ID 0 will be sent
         transmitBuffer.InterBoardPacket_ID = 0; //The data will be ignored by the master
     }
 
@@ -96,7 +88,7 @@ void InterBoardCom_ClearSPIErrors(void) {
 InterBoardPacket_t InterBoardCom_ReceivePacket(void) {
     //Called when a packet is received inside the SPI_DMA receive complete callback
     // Create a local copy to avoid race condition
-    //__DSB(); // Ensure memory operations complete
+    __DSB(); // Ensure memory operations complete
     InterBoardPacket_t packet;
     memcpy(&packet, (void*)&receiveBuffer, sizeof(InterBoardPacket_t));
     memset((void*)&receiveBuffer, 0, sizeof(InterBoardPacket_t)); // Clear the receive buffer for next reception
@@ -132,10 +124,19 @@ void InterBoardCom_FillData(InterBoardPacket_t *packet, DataPacket_t *data_packe
     memcpy(packet->Data, data_packet, 32);
 }
 
+uint8_t InterBoard_CheckCRC(DataPacket_t *packet) {
+    // Calculate CRC (XOR checksum)
+    uint8_t crc = 0;
+    for (int i = 0; i < sizeof(packet->Data.raw); i++) {
+        crc ^= packet->Data.raw[i];
+    }
+    return (crc == packet->crc);
+}
+
 static uint8_t rx_dummy[sizeof(InterBoardPacket_t)];
 void InterBoardCom_SendPacket(InterBoardPacket_t *packet) {
     //Push the packet to the transmit buffer
-    InterBoardBuffer_Push(&txCircBuffer, packet);
+    CircBuffer_Push(&txCircBuffer, packet);
 }
 
 InterBoardPacket_t TestPacket;
@@ -156,11 +157,25 @@ DataPacket_t InterBoardCom_UnpackPacket(InterBoardPacket_t packet) {
     return dataPacket;
 }
 
+uint32_t valid_packets;
+uint32_t invalid_packets;
+
 void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
     //This function is used to parse the received packet
 
     //Remove the top bit on the ID to ignore the more data incoming bit(already handled by the DMA)
     packet.InterBoardPacket_ID &= 0x7F;
+
+    DataPacket_t dataPacket = InterBoardCom_UnpackPacket(packet);
+
+    uint8_t valid_crc = InterBoard_CheckCRC(&dataPacket); //Check CRC
+
+    if (valid_crc || packet.InterBoardPacket_ID == InterBoardPACKET_ID_Echo || packet.InterBoardPacket_ID == InterBoardPACKET_ID_SELFTEST) {
+        valid_packets++;
+    } else {
+        invalid_packets++;
+        return; // Invalid packet, ignore
+    }
 
     switch (packet.InterBoardPacket_ID) {
         case InterBoardPACKET_ID_SELFTEST:
@@ -170,10 +185,6 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
         case InterBoardPACKET_ID_Echo:
             //Handle echo packet
             packet.InterBoardPacket_ID = InterBoardPACKET_ID_DataAck; // Change ID to acknowledge
-            if (packet.Data[0] == 3) {
-                DataPacket_t dataPacket = InterBoardCom_UnpackPacket(packet);
-                packet.InterBoardPacket_ID = InterBoardPACKET_ID_Echo; // If the data is correct, echo back the same packet
-            }
             InterBoardCom_SendPacket(&packet); // Echo back the received packet
             break;
 
@@ -182,14 +193,7 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
             //Handle data save to flash packet
             char LogMessage[100];
             DataPacket_t dataPacket = InterBoardCom_UnpackPacket(packet);
-            /*SD_Open("LOG.txt", FA_WRITE | FA_OPEN_APPEND);
-            char dataHex[2 * sizeof(dataPacket.Data) + 1] = {0};
-            for (size_t i = 0; i < sizeof(dataPacket.Data); i++) {
-                sprintf(&dataHex[2 * i], "%02X", ((uint8_t*)&dataPacket.Data)[i]);
-            }
-            sprintf(LogMessage, "\nPacket ID: %d, Timestamp: %lu, Data: %s", dataPacket.Packet_ID, (unsigned long)dataPacket.timestamp, dataHex);
-            SD_Write((uint8_t *)LogMessage, strlen(LogMessage));
-            SD_Close();*/ //SD Card Tests, will be removed
+            SD_AppendDataPacketToBuffer(&dataPacket); // Save the data to SD card buffer
             //W25Q_SaveToLog((uint8_t *)&dataPacket, sizeof(dataPacket)); // Save the data to flash memory
             break;
         }
@@ -222,7 +226,7 @@ void InterBoardCom_ReactivateDMAReceive(void) {
  * @brief Initializes the circular buffer
  * @param cb Pointer to the circular buffer structure
  */
-void InterBoardBuffer_Init(InterBoardCircularBuffer_t* cb) {
+void CircBuffer_Init(CircularBuffer_t* cb) {
     cb->head = 0;
     cb->tail = 0;
     cb->count = 0;
@@ -234,7 +238,7 @@ void InterBoardBuffer_Init(InterBoardCircularBuffer_t* cb) {
  * @param packet Pointer to the packet to be added
  * @return 1 if successful, 0 if buffer is full
  */
-uint8_t InterBoardBuffer_Push(InterBoardCircularBuffer_t* cb, InterBoardPacket_t* packet) {
+uint8_t CircBuffer_Push(CircularBuffer_t* cb, InterBoardPacket_t* packet) {
     if (cb->count >= INTERBOARD_BUFFER_SIZE) {
         return 0; // Buffer is full
     }
@@ -260,7 +264,7 @@ uint8_t InterBoardBuffer_Push(InterBoardCircularBuffer_t* cb, InterBoardPacket_t
  * @param packet Pointer to store the popped packet
  * @return 1 if successful, 0 if buffer is empty
  */
-uint8_t InterBoardBuffer_Pop(InterBoardCircularBuffer_t* cb, InterBoardPacket_t* packet) {
+uint8_t CircBuffer_Pop(CircularBuffer_t* cb, InterBoardPacket_t* packet) {
     if (cb->count == 0) {
         return 0; // Buffer is empty
     }
@@ -285,7 +289,7 @@ uint8_t InterBoardBuffer_Pop(InterBoardCircularBuffer_t* cb, InterBoardPacket_t*
  * @param cb Pointer to the circular buffer structure
  * @return 1 if empty, 0 if not empty
  */
-uint8_t InterBoardBuffer_IsEmpty(InterBoardCircularBuffer_t* cb) {
+uint8_t CircBuffer_IsEmpty(CircularBuffer_t* cb) {
     return (cb->count == 0);
 }
 
@@ -294,7 +298,7 @@ uint8_t InterBoardBuffer_IsEmpty(InterBoardCircularBuffer_t* cb) {
  * @param cb Pointer to the circular buffer structure
  * @return 1 if full, 0 if not full
  */
-uint8_t InterBoardBuffer_IsFull(InterBoardCircularBuffer_t* cb) {
+uint8_t CircBuffer_IsFull(CircularBuffer_t* cb) {
     return (cb->count >= INTERBOARD_BUFFER_SIZE);
 }
 
@@ -303,7 +307,7 @@ uint8_t InterBoardBuffer_IsFull(InterBoardCircularBuffer_t* cb) {
  * @param cb Pointer to the circular buffer structure
  * @return Number of items in buffer
  */
-uint16_t InterBoardBuffer_Count(InterBoardCircularBuffer_t* cb) {
+uint16_t CircBuffer_Count(CircularBuffer_t* cb) {
     return cb->count;
 }
 
@@ -311,7 +315,7 @@ uint16_t InterBoardBuffer_Count(InterBoardCircularBuffer_t* cb) {
  * @brief Clears the circular buffer
  * @param cb Pointer to the circular buffer structure
  */
-void InterBoardBuffer_Clear(InterBoardCircularBuffer_t* cb) {
+void CircBuffer_Clear(CircularBuffer_t* cb) {
     __disable_irq();
     cb->head = 0;
     cb->tail = 0;

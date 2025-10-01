@@ -9,7 +9,9 @@
         "stream_buffer.h": "c",
         "string.h": "c",
         "cmath": "c",
-        "voltagereader.h": "c"
+        "voltagereader.h": "c",
+        "cmsis_os.h": "c",
+        "freertos.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }
