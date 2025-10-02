@@ -2,7 +2,7 @@
 #define InterBoardCom_H_
 
 #include "stm32f4xx_hal.h"
-#include "Packets.h"
+#include "packets.h"
 
 #define INTERBOARD_BUFFER_SIZE 32
 

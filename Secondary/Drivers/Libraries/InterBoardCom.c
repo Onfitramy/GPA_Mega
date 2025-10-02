@@ -2,7 +2,7 @@
 #include "stdio.h"
 #include "string.h"
 #include <stdarg.h>
-#include "Packets.h"
+#include "packets.h"
 #include "W25Q1.h"
 #include "fatfs.h"
 #include "SD.h"

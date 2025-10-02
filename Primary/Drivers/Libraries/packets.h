@@ -1,12 +1,14 @@
 #ifndef Packets_H_
 #define Packets_H_
 
-#include "stm32f4xx_hal.h"
+#include "stm32h7xx_hal.h"
+#include "IMUS.h"
+#include "LIS3MDL.h"
+#include "SAM-M8Q.h"
 /*This file includes all public Packets for the differten devices and sending modes*/
 /*They are used for radio transmittion, flash/SD saving and interBoardCommunication*/
-/*---------------------*/
 
-#define INVALID_FLOAT -999.0f 
+#define INVALID_FLOAT -999.0f
 
 typedef enum {
     PACKET_ID_STATUS = 0x01, // VR data packet
@@ -17,9 +19,9 @@ typedef enum {
     PACKET_ID_POSITION = 0x06, // Position data packet
     PACKET_ID_ATTITUDE = 0x07, // Attitude data packet
     PACKET_ID_KALMANMATRIX = 0x08, // Kalman Matrix data packet
-
     PACKET_ID_COMMAND = 0x10, // Command packet
 } PacketType_t;
+
 
 typedef enum {
     COMMAND_TARGET_NONE = 0x00,
@@ -89,15 +91,15 @@ typedef struct {
 }KalmanMatrixPayload_t;
 
 typedef struct {
+    float test1, test2, test3, test4, test5, test6; // 24 bytes
+    uint16_t unused1; // 26 bytes
+} TestPayload_t;
+
+typedef struct {
     CommandTarget_t command_target;
     uint8_t command_id;
     uint8_t params[24];
 } CommandPayload_t;
-
-typedef struct {
-    float test1, test2, test3, test4, test5, test6; // 24 bytes
-    uint16_t unused1; // 26 bytes
-} TestPayload_t;
 
 typedef union {
     StatusPayload_t status;
@@ -108,8 +110,8 @@ typedef union {
     PositionPayload_t position;
     AttitudePayload_t attitude;
     KalmanMatrixPayload_t kalman;
-    CommandPayload_t command;
     TestPayload_t test;
+    CommandPayload_t command;
     uint8_t raw[26];
 } PayloadData_u;
 
@@ -121,24 +123,16 @@ typedef struct {
 } DataPacket_t;
 #pragma pack(pop)
 
-#define DATA_BUFFER_SIZE  32  // Size of the data circular buffer
-typedef struct {
-    DataPacket_t buffer[DATA_BUFFER_SIZE];
-    volatile uint16_t head;      // Write index
-    volatile uint16_t tail;      // Read index
-    volatile uint16_t count;     // Number of items in buffer
-} DataCircularBuffer_t;
 
 DataPacket_t CreateDataPacket(PacketType_t Packet_ID);
-
-void DataCircBuffer_Init(DataCircularBuffer_t* cb);
-uint8_t DataCircBuffer_Push(DataCircularBuffer_t* cb, DataPacket_t* packet);
-uint8_t DataCircBuffer_Pop(DataCircularBuffer_t* cb, DataPacket_t* packet);
-uint8_t DataCircBuffer_IsEmpty(DataCircularBuffer_t* cb);
-uint8_t DataCircBuffer_IsFull(DataCircularBuffer_t* cb);
-uint16_t DataCircBuffer_Count(DataCircularBuffer_t* cb);
-void DataCircBuffer_Clear(DataCircularBuffer_t* cb);
+void UpdateStatusPacket(DataPacket_t *status_packet, uint32_t timestamp, int32_t status_flags, int32_t sensor_flags, int32_t error_flags, uint32_t flight_state);
+void UpdateIMUDataPacket(DataPacket_t *imu_packet, uint32_t timestamp, IMU_Data_t *imu_data, LIS3MDL_Data_t *mag_data);
+void UpdateGPSDataPacket(DataPacket_t *gps_packet, uint32_t timestamp, UBX_NAV_PVT *gps_data);
+void UpdateTemperaturePacket(DataPacket_t *temp_packet, uint32_t timestamp, int32_t M1_DTS, int32_t M1_ADC, float M1_BMP, float M1_IMU1, float M1_IMU2, float M1_MAG, float M2_3V3, uint16_t M2_XBee, float PU_bat, float pressure);
+void UpdatePowerPacket(DataPacket_t *power_packet, uint32_t timestamp, float PU_bat_volt, float PU_out_pow, float PU_out_curr, float M2_bus_5V, float M2_bus_GPA_bat_volt);
+void UpdateKalmanMatrixPacket(DataPacket_t *kalman_packet, uint32_t timestamp, float P11, float P22, float P33, float EKF2_Heigth, float EKF2_vel, float EKF2_refPres);
+void UpdatePositionPacket(DataPacket_t *position_packet, uint32_t timestamp, float posX, float posY, float posZ, float velX, float velY, float velZ);
+void UpdateAttitudePacket(DataPacket_t *attitude_packet, uint32_t timestamp, float phi, float theta, float psi);
+void PlotDataPacket(DataPacket_t *packet);
 void CreateCommandPacket(DataPacket_t *command_packet, uint32_t timestamp, CommandTarget_t command_target, uint8_t command_id, uint8_t *params, size_t params_length);
-
-
 #endif /* Packets_H_ */
