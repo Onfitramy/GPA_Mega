@@ -18,57 +18,43 @@ W25QPage0_config_t W25Q_FLASH_CONFIG = {
 	.curr_logOffset = 0 // Start at the beginning of the log page
 };
 
-// CIRC_BBUF_DEF(event_circ_buf, 8192);
-
-// int circ_bbuf_push(circ_bbuf_t *c, uint8_t data)
-// {
-//     int next;
-
-//     next = c->head + 1;  // next is where head will point to after this write.
-//     if (next >= c->maxlen)
-//         next = 0;
-
-//     if (next == c->tail)  // if the head + 1 == tail, circular buffer is full
-//         return -1;
-
-//     c->buffer[c->head] = data;  // Load data and then move
-//     c->head = next;             // head to next data offset.
-//     return 0;  // return success to indicate successful push.
-// }
-
-// int circ_bbuf_pop(circ_bbuf_t *c, uint8_t *data)
-// {
-//     int next;
-
-//     if (c->head == c->tail)  // if the head == tail, we don't have any data
-//         return -1;
-
-//     next = c->tail + 1;  // next is where tail will point to after this read.
-//     if(next >= c->maxlen)
-//         next = 0;
-
-//     *data = c->buffer[c->tail];  // Read data and then move
-//     c->tail = next;              // tail to next offset.
-//     return 0;  // return success to indicate successful push.
-// }
-
 //Saves the data to the log page
 void W25Q_SaveToLog(uint8_t *data, uint32_t size)
 {
 	if (size == 0) return; // nothing to save
 
 	// Check if we have enough space in the current log page
-	if (W25Q_FLASH_CONFIG.curr_logOffset + size >= 256) {
+	if (W25Q_FLASH_CONFIG.curr_logOffset + size > 256) {
 		W25Q_FLASH_CONFIG.curr_logPage += 1; // Move to next page
 		W25Q_FLASH_CONFIG.curr_logOffset = 0; // Reset offset
 	}
 
 	W25Q_Write_Cleared(W25Q_FLASH_CONFIG.curr_logPage, W25Q_FLASH_CONFIG.curr_logOffset, size, data);
 
-	W25Q_FLASH_CONFIG.curr_logOffset += size;
+	W25Q_FLASH_CONFIG.curr_logOffset += size % 256;
 
 	uint32_t tData32[2] = {W25Q_FLASH_CONFIG.curr_logPage, W25Q_FLASH_CONFIG.curr_logOffset};
 	W25Q_Write_32B(0, 0, 2, tData32); // Save current log page and offset at 0
+}
+
+
+uint8_t flash_buffer_index = 0;
+DataPacket_t flash_packet_buffer[8];
+
+void W25Q_AddFlashBufferPacket(const DataPacket_t *data_packet) {
+	if (flash_buffer_index < 8) {
+		flash_packet_buffer[flash_buffer_index++] = *data_packet;
+	}
+
+	// TODO: Add logic to determine if sector should be cleared.
+	if (flash_buffer_index == 8) {
+		W25Q_Erase_Sector(W25Q_FLASH_CONFIG.curr_logPage / 16);
+		W25Q_SaveToLog((uint8_t*)flash_packet_buffer, 256);
+		flash_buffer_index = 0;
+
+		DataPacket_t data[8];
+		W25Q_LoadFromLog((uint8_t *)data, 256, LOG_PAGE, 0);
+	}
 }
 
 void W25Q_LoadFromLog(uint8_t *data, uint32_t size, uint32_t log_page, uint32_t log_offset)
@@ -76,7 +62,7 @@ void W25Q_LoadFromLog(uint8_t *data, uint32_t size, uint32_t log_page, uint32_t 
 	// Load data from the log page
 	if (size == 0) return; // nothing to load
 
-	W25Q_Read(LOG_PAGE+log_page, log_offset, size, data);
+	W25Q_Read(log_page, log_offset, size, data);
 }
 
 void csLOW(void) 
@@ -145,10 +131,7 @@ void W25Q_Read (uint32_t startPage, uint8_t offset, uint32_t size, uint8_t *rDat
         HAL_SPI_Transmit(&W25Q1_SPI , tData, 4, 100);
     }
     
-    uint8_t tempRx[3000];
-    memset(tempRx, 0, 3000);
-    HAL_SPI_TransmitReceive(&W25Q1_SPI, tempRx, rData, size, 100);
-    //HAL_SPI_Receive(&W25Q1_SPI, rData, size, 100); 
+    HAL_SPI_Receive(&W25Q1_SPI, rData, size, 100);
     csHIGH();
 }
 
@@ -568,94 +551,3 @@ void W25Q_Write_Cleared(uint32_t page, uint16_t offset, uint32_t size, uint8_t *
 		disable_write();
     }
 }
-
-// void W25Q_SaveLog(void)
-// {
-// 	uint8_t tData[4096];
-// 	uint8_t out_data;
-// 	uint32_t size = 0;
-// 	for(int i=0 ;circ_bbuf_pop(&event_circ_buf, &out_data)!=-1; i++){
-// 		size += 1;
-// 		tData[i] = out_data;
-// 	}
-
-// 	W25Q_Write_Cleared(curr_logPage, curr_logOffset, size, tData);
-
-// 	if (curr_logOffset + size >= 256){
-// 		curr_logPage += 1;
-// 		size -= 256;
-// 		while (curr_logOffset + size >= 256){
-// 			curr_logPage += 1;
-// 			size -= 256;
-// 		}
-// 	}
-// 	curr_logOffset += size;
-
-// 	//uint32_t tData32[2] = {curr_logPage, curr_logOffset};
-
-// 	//W25Q_Write_32B(0, 0, 2, tData32); //Save current log page and offset at 0
-
-// }
-
-// /**
-//   * @brief Append the LOG with a event , eventsize is alway wscode shown - 1
-//   * @param None
-//   * @retval None
-//   */
-// uint8_t W25Q_AppendLog(uint8_t *event, uint32_t eventSize, float data1, float data2, float data3)
-// {
-// 	uint32_t timestamp = HAL_GetTick();
-// 	uint8_t tData[37];
-// 	uint32_t size = 6; //initial size only \n and  timestamp 
-// 	tData[0] = 0x5C; 
-// 	tData[1] = 0x6E;	// backslash n
-// 	tData[2] = (timestamp>>24)&0xFF;   // add timestamp
-// 	tData[3] = (timestamp>>16)&0xFF;
-// 	tData[4] = (timestamp>>8)&0xFF;
-// 	tData[5] = timestamp&0xFF;
-	
-// 	if (eventSize>16){
-// 		return 0; //to long event description
-// 	}else{
-// 		size += eventSize + 1;
-// 		tData[6] = 0x3A; //":"
-// 		for (int i=0; i<eventSize; i++)
-// 		{
-// 			tData[7+i] = event[i];   //add event
-// 		}
-// 	}
-
-// 	if (data1 != 0){
-// 		tData[size] = 0x3A; //":"
-// 		float2Bytes(tempBytes, data1);
-// 		tData[size+1] = tempBytes[0];
-// 		tData[size+2] = tempBytes[1];
-// 		tData[size+3] = tempBytes[2];
-// 		tData[size+4] = tempBytes[3];
-// 		size += 5;
-// 	}
-
-// 	if (data2 != 0){
-// 		tData[size] = 0x3A; //":"
-// 		float2Bytes(tempBytes, data2);
-// 		tData[size+1] = tempBytes[0];
-// 		tData[size+2] = tempBytes[1];
-// 		tData[size+3] = tempBytes[2];
-// 		tData[size+4] = tempBytes[3];
-// 		size += 5;
-// 	}
-
-// 	if (data3 != 0){
-// 		tData[size] = 0x3A; //":"
-// 		float2Bytes(tempBytes, data3);
-// 		tData[size+1] = tempBytes[0];
-// 		tData[size+2] = tempBytes[1];
-// 		tData[size+3] = tempBytes[2];
-// 		tData[size+4] = tempBytes[3];
-// 		size += 5;
-// 	}
-
-// 	for (int i=0; i<size; i++){
-// 		circ_bbuf_push(&event_circ_buf, tData[i]);
-// 	}
-// }

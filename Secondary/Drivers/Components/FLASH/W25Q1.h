@@ -1,3 +1,4 @@
+#include "packets.h"
 extern SPI_HandleTypeDef hspi2;
 #define W25Q1_SPI hspi2
 
@@ -49,7 +50,6 @@ void W25Q_Chip_Erase (void);
 void W25Q_updateLogPosition(void);
 void W25Q_Write_Cleared(uint32_t page, uint16_t offset, uint32_t size, uint8_t *data);
 void W25Q_SaveToLog(uint8_t *data, uint32_t size);
+void W25Q_AddFlashBufferPacket(const DataPacket_t *data_packet);
 void W25Q_LoadFromLog(uint8_t *data, uint32_t size, uint32_t log_page, uint32_t log_offset);
 void W25Q_GetConfig();
-//void W25Q_SaveLog(void);
-//uint8_t W25Q_AppendLog(uint8_t *event, uint32_t eventSize, float data1, float data2, float data3);

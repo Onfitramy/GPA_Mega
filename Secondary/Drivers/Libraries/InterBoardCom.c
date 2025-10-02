@@ -2,6 +2,8 @@
 #include "stdio.h"
 #include "string.h"
 #include <stdarg.h>
+#include <stdbool.h>
+
 #include "packets.h"
 #include "W25Q1.h"
 #include "fatfs.h"
@@ -125,7 +127,7 @@ void InterBoardCom_FillData(InterBoardPacket_t *packet, DataPacket_t *data_packe
     memcpy(packet->Data, data_packet, 32);
 }
 
-uint8_t InterBoard_CheckCRC(DataPacket_t *packet) {
+bool InterBoard_CheckCRC(const DataPacket_t *packet) {
     // Calculate CRC (XOR checksum)
     uint8_t crc = 0;
     for (int i = 0; i < sizeof(packet->Data.raw); i++) {
@@ -187,7 +189,7 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
 
     DataPacket_t dataPacket = InterBoardCom_UnpackPacket(packet);
 
-    uint8_t valid_crc = InterBoard_CheckCRC(&dataPacket); //Check CRC
+    bool valid_crc = InterBoard_CheckCRC(&dataPacket); //Check CRC
 
     if (valid_crc) {
         valid_packets++;
@@ -210,7 +212,7 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
             }
 
             if ((Interboard_Target & INTERBOARD_TARGET_FLASH) == INTERBOARD_TARGET_FLASH) {
-                //W25Q_SaveToLog((uint8_t *)&dataPacket, sizeof(dataPacket)); // Save the data to flash memory
+                W25Q_AddFlashBufferPacket(&dataPacket);
             }
 
             if ((Interboard_Target & INTERBOARD_TARGET_RADIO) == INTERBOARD_TARGET_RADIO) {
@@ -315,7 +317,7 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
                     InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
                 } else if (dataPacket->Data.command.params[0] == 0x00) {
                     Camera_StopRecording();
-                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0); 
+                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
                 }
             } else if (dataPacket->Data.command.command_id == 0x02) {
                 // Camera command 0x02: Skip Date
@@ -339,7 +341,7 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
             // Logging commands are on the main board, forward command
             InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_MCU, dataPacket);
             break;
-        
+
         case COMMAND_TARGET_ACK:
             // ACK commands are on the main board, forward command
             InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_MCU, dataPacket);
