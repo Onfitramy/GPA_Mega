@@ -150,6 +150,7 @@ int main(void)
 
   PU_enableRecovery();
   PU_enableCamera();
+  PU_enableACS();
   /*
 
   HAL_Delay(1000);

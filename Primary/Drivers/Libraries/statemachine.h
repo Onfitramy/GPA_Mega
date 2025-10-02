@@ -40,6 +40,12 @@ typedef struct {
     uint32_t timestamp_us;              // Holds time of entering current state
 } StateMachine_t;
 
+extern double WGS84[3];
+extern double WGS84_ref[3];
+
+extern double ECEF[3];
+extern double ECEF_ref[3];
+
 void StateMachine_Init(StateMachine_t *sm, flight_state_t initialState);
 void StateMachine_Dispatch(StateMachine_t *sm, flight_event_t event);
 void StateMachine_DoActions(StateMachine_t *sm);

@@ -132,8 +132,6 @@ float gravity_body_vec[3];
 
 float height_baro;
 
-uint8_t flight_status = 0; // 0 = awaiting gnss fix | 1 = align guidance | 2 = flight | 3 = abort
-
 // time step
 const float dt = 0.001;
 
@@ -424,12 +422,11 @@ void StartDefaultTask(void *argument)
 
     IMU_Average(&imu1_data, &imu2_data, &average_imu_data);
 
-    if(MAG_VerifyDataReady() & 0b00000001) {
+    if (MAG_VerifyDataReady() & 0b00000001) {
       mag_status.hal_status |= MAG_ReadSensorData(&mag_data);
       arm_vec3_sub_f32(mag_data.field, mag_data.calibration.offset, mag_data.field);
       arm_vec3_element_product_f32(mag_data.field, mag_data.calibration.scale, mag_data.field);
     }
-
 
     // KALMAN FILTER, ORIENTATION
     // initialize A and B matrix
@@ -469,7 +466,7 @@ void StartDefaultTask(void *argument)
     corr_acc_sum -= corr_acc_buf[GNSS_VELOCITY_DELAY-1];
 
     // shift measurements down
-    for(int i = GNSS_VELOCITY_DELAY - 1; i > 0; i--) {
+    for (int i = GNSS_VELOCITY_DELAY - 1; i > 0; i--) {
       corr_acc_buf[i] = corr_acc_buf[i-1];
     }
 
@@ -485,7 +482,7 @@ void StartDefaultTask(void *argument)
     corr_vel_sum -= corr_vel_buf[GNSS_POSITION_DELAY-1];
 
     // shift measurements down
-    for(int i = GNSS_POSITION_DELAY - 1; i > 0; i--) {
+    for (int i = GNSS_POSITION_DELAY - 1; i > 0; i--) {
       corr_vel_buf[i] = corr_vel_buf[i-1];
     }
 
@@ -499,7 +496,7 @@ void StartDefaultTask(void *argument)
     // KALMAN FILTER, HEIGHT
     EKFPredictionStep(&EKF2);
 
-    if(BMP_GetRawData(&pressure_raw, &temperature_raw)) {
+    if (BMP_GetRawData(&pressure_raw, &temperature_raw)) {
       // Calculate compensated BMP390 pressure & temperature
       temperature = bmp390_compensate_temperature(temperature_raw, &bmp_handle);
       pressure = bmp390_compensate_pressure(pressure_raw, &bmp_handle);
@@ -511,18 +508,6 @@ void StartDefaultTask(void *argument)
       EKFCorrectionStep(&EKF2, &EKF2_corr1);
     }
 
-    if(flight_status == 0) { // AWAIT GNSS FIX
-      if(gps_data.gpsFix == 3) {
-        flight_status = 1;
-      }
-    }
-    else if(flight_status == 1) { // ALIGN GUIDANCE
-      for(int i = 0; i <= 2; i++) {
-        WGS84_ref[i] = WGS84[i];
-      }
-      WGS84toECEF(WGS84_ref, ECEF_ref);
-    }
-
     // KALMAN FILTER, QUATERNION
     // prediction step
     EKFPredictionStep(&EKF3);
@@ -530,6 +515,9 @@ void StartDefaultTask(void *argument)
     // Conversion to Euler
     RotationMatrixFromQuaternion(x3, &M_rot_q, DCM_bi_WorldToBody);
     EulerFromRotationMatrix(&M_rot_q, euler_from_q);
+
+    // EVENTS
+    
 
     dt_1000Hz = TimeMeasureStop();
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz) Always at the end of the loop
@@ -684,7 +672,9 @@ void Start100HzTask(void *argument) {
 
     #ifdef SIGNAL_PLOTTER_OUT_5 // signal plotter outputs testing data
     signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
-    signalPlotter_sendData(1, (float)F4_data_float);
+    signalPlotter_sendData(1, (float)nrf_timeout);
+    signalPlotter_sendData(2, (float)flight_sm.currentFlightState);
+    signalPlotter_sendData(3, (float)flight_sm.timestamp_us);
     #endif
 
     signalPlotter_executeTransmission(HAL_GetTick());
@@ -714,7 +704,7 @@ void Start100HzTask(void *argument) {
     EKFCorrectionStep(&EKF3, &EKF3_corr1);
 
 
-    ShowStatus(RGB_PRIMARY, primary_status, 1, 100);
+    ShowStatus(RGB_PRIMARY, flight_sm.currentFlightState, 1, 100);
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }
@@ -749,15 +739,10 @@ void Start10HzTask(void *argument) {
       }
     }
 
-    if(gps_data.gpsFix == 3) {
+    if(gps_data.gpsFix == 3) { // FLIGHT STATE!!!
       UBLOXtoWGS84(gps_data.lat, gps_data.lon, gps_data.height, WGS84);
       WGS84toECEF(WGS84, ECEF);
-      if(flight_status == 0) {
-        for(int i = 0; i <= 2; i++) {
-          WGS84_ref[i] = WGS84[i];
-        }
-        WGS84toECEF(WGS84_ref, ECEF_ref);
-      }
+
       ECEFtoENU(WGS84_ref, ECEF_ref, ECEF, ENU);
 
       // add correction velocity to compensate GNSS delay
@@ -771,8 +756,6 @@ void Start10HzTask(void *argument) {
       arm_mat_set_entry_f32(EKF2_corr2.R, 0, 0, (float)gps_data.vAcc*gps_data.vAcc*1e-6);
       arm_mat_set_entry_f32(EKF2_corr2.R, 1, 1, (float)gps_data.sAcc*gps_data.sAcc*1e-6);
       EKFCorrectionStep(&EKF2, &EKF2_corr2);
-
-
     }
 
     // transmit data
@@ -794,6 +777,11 @@ void Start10HzTask(void *argument) {
       servo_status = 4;
       SERVO_MoveToAngle(1, 35);
       SERVO_MoveToAngle(2, 35);
+    }
+
+    // EVENTS
+    if ((gps_data.gpsFix == 3)) {
+      StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_GNSS_FIX);
     }
 
     // KF2 correction steps

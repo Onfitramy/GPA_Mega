@@ -3,6 +3,7 @@
 
 #include "main.h"
 #include "ws2812.h"
+#include "statemachine.h"
 
 typedef uint8_t device_handle;
 typedef uint32_t color_handle;

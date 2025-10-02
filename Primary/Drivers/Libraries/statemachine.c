@@ -44,29 +44,49 @@ uint32_t stateMinEntryDelayTable[STATE_FLIGHT_MAX] = {
 
 /* --- Entry actions --- */
 static void AbortEntry() {
-    // disable recovery, acs and cams
+    // disable recovery, ACS and cams
 }
 static void InitEntry() {
     // initialize sensors
     // check communications
 }
 static void AlignGNCEntry() {
+    // initialize GNSS reference point
+    for (int i = 0; i <= 2; i++) {
+        WGS84_ref[i] = WGS84[i];
+      }
+    WGS84toECEF(WGS84_ref, ECEF_ref);
+
     // initialize EKF state vector
+    // begin xBee comms
 }
 static void CheckoutsEntry() {
     // notify ground station that it now needs to command the checkouts
-    // enable recovery, acs and cams
+    // enable recovery, ACS and cams
 }
 static void ArmedEntry() {
-    // move to neutral position
-    // start recording
+    // move acs to neutral position
+    // lock ACS
+    // start video recording
+    // start data logging
 }
 static void BurnEntry() {}
-static void CoastEntry() {}
-static void UnbrakedDescendEntry() {}
+static void CoastEntry() {
+    // unlock ACS
+    // extend ACS to pre-defined position
+    // enable MPC
+}
+static void UnbrakedDescendEntry() {
+    // deplody drogue
+}
 static void DrogueDescendEntry() {}
 static void MainDescendEntry() {}
-static void LandedEntry() {}
+static void LandedEntry() {
+    // stop video recording
+    // disable recovery, ACS and cams
+    // stop data logging
+    // slow xBee and NRF data rate down to save power
+}
 
 /* --- Do actions --- */
 static void AbortDo() {}
@@ -160,6 +180,8 @@ void StateMachine_Init(StateMachine_t *sm, flight_state_t initialState) {
 
 void StateMachine_Dispatch(StateMachine_t *sm, flight_event_t event) {
     if (sm->currentFlightState >= STATE_FLIGHT_MAX) return;
+
+    // TODO: store event on Flash & SD
     
     // store old flight state
     flight_state_t oldState = sm->currentFlightState;

@@ -215,6 +215,8 @@ void signalPlotter_init(void) {
 
   #ifdef SIGNAL_PLOTTER_OUT_5 // variable testing data
   signalPlotter_setSignalName(0, "delta_Time");
-  signalPlotter_setSignalName(1, "Current_Draw");
+  signalPlotter_setSignalName(1, "NRF_Data");
+  signalPlotter_setSignalName(2, "FlightState");
+  signalPlotter_setSignalName(3, "Entry_Timestamp");
   #endif
 }
