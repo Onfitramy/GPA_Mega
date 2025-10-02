@@ -31,7 +31,11 @@ void W25Q_SaveToLog(uint8_t *data, uint32_t size)
 
 	W25Q_Write_Cleared(W25Q_FLASH_CONFIG.curr_logPage, W25Q_FLASH_CONFIG.curr_logOffset, size, data);
 
-	W25Q_FLASH_CONFIG.curr_logOffset += size % 256;
+	W25Q_FLASH_CONFIG.curr_logOffset += size;
+	if (W25Q_FLASH_CONFIG.curr_logOffset >= 256) {
+		W25Q_FLASH_CONFIG.curr_logOffset %= 256;
+		W25Q_FLASH_CONFIG.curr_logPage += 1;
+	}
 
 	uint32_t tData32[2] = {W25Q_FLASH_CONFIG.curr_logPage, W25Q_FLASH_CONFIG.curr_logOffset};
 	W25Q_Write_32B(0, 0, 2, tData32); // Save current log page and offset at 0
