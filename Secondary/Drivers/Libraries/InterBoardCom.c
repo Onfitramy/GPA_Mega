@@ -6,6 +6,7 @@
 #include "W25Q1.h"
 #include "fatfs.h"
 #include "SD.h"
+#include "xBee.h"
 
 extern SPI_HandleTypeDef hspi1;
 
@@ -141,7 +142,7 @@ void InterBoardCom_SendPacket(InterBoardPacket_t *packet) {
 
 InterBoardPacket_t TestPacket;
 void InterBoardCom_SendTestPacket(void) {
-    TestPacket = InterBoardCom_CreatePacket(InterBoardPACKET_ID_SELFTEST);
+    TestPacket = InterBoardCom_CreatePacket(INTERBOARD_OP_NONE);
     InterBoardCom_FillRaw(&TestPacket, 32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32);
     InterBoardCom_SendPacket(&TestPacket);
 }
@@ -170,37 +171,49 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
 
     uint8_t valid_crc = InterBoard_CheckCRC(&dataPacket); //Check CRC
 
-    if (valid_crc || packet.InterBoardPacket_ID == InterBoardPACKET_ID_Echo || packet.InterBoardPacket_ID == InterBoardPACKET_ID_SELFTEST) {
+    if (valid_crc || packet.InterBoardPacket_ID == INTERBOARD_OP_ECHO || (packet.InterBoardPacket_ID & INTERBOARD_OP_CMD) == INTERBOARD_OP_CMD) {
         valid_packets++;
     } else {
         invalid_packets++;
         return; // Invalid packet, ignore
     }
 
-    switch (packet.InterBoardPacket_ID) {
-        case InterBoardPACKET_ID_SELFTEST:
-            //Handle self-test packet
-            break;
-        
-        case InterBoardPACKET_ID_Echo:
-            //Handle echo packet
-            packet.InterBoardPacket_ID = InterBoardPACKET_ID_DataAck; // Change ID to acknowledge
-            InterBoardCom_SendPacket(&packet); // Echo back the received packet
+    uint8_t Interboard_OP = packet.InterBoardPacket_ID & 0x07; //Extract operation type
+    uint8_t Interboard_Target = packet.InterBoardPacket_ID & 0xF8; //Extract Target type
+    switch (Interboard_OP) {
+        case INTERBOARD_OP_CMD:
+            //Handle command packet
+            if (packet.InterBoardPacket_ID == INTERBOARD_OP_NONE) {
+                packet.InterBoardPacket_ID = INTERBOARD_OP_NONE; // Change ID to NONE to make the MCU ignore it
+                InterBoardCom_SendPacket(&packet); // Echo back the received packet
+                break;
+            }
             break;
 
-        case InterBoardPACKET_ID_DataSaveFLASH:
+        case INTERBOARD_OP_SAVE_SEND:
         {
             //Handle data save to flash packet
             char LogMessage[100];
             DataPacket_t dataPacket = InterBoardCom_UnpackPacket(packet);
-            SD_AppendDataPacketToBuffer(&dataPacket); // Save the data to SD card buffer
-            //W25Q_SaveToLog((uint8_t *)&dataPacket, sizeof(dataPacket)); // Save the data to flash memory
+
+            if ((Interboard_Target & INTERBOARD_TARGET_SD) == INTERBOARD_TARGET_SD) {
+                SD_AppendDataPacketToBuffer(&dataPacket); // Save the data to SD card buffer
+            }
+
+            if ((Interboard_Target & INTERBOARD_TARGET_FLASH) == INTERBOARD_TARGET_FLASH) {
+                //W25Q_SaveToLog((uint8_t *)&dataPacket, sizeof(dataPacket)); // Save the data to flash memory
+            }
+
+            if ((Interboard_Target & INTERBOARD_TARGET_RADIO) == INTERBOARD_TARGET_RADIO) {
+                XBee_Transmit((uint8_t *)&dataPacket, sizeof(dataPacket), 0); // Send the data via XBee to the specified address (0 = broadcast)
+            }
             break;
         }
 
-        case InterBoardPACKET_ID_ResetFLASH:
+        case INTERBOARD_OP_CMD | INTERBOARD_TARGET_FLASH:
             // This is a command packet, so we might want to send an acknowledgment back
-            W25Q1_Reset(); // Reset the flash memory
+            // TODO: Implement command handling logic here and define command packet structure
+            //W25Q1_Reset(); // Reset the flash memory
             break;
 
         default:

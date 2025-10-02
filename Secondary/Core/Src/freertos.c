@@ -198,8 +198,7 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;) {
     Counter_100Hz++;
-    //InterBoardCom_ActivateReceive(); // Activate SPI receive (will send data when the master triggers it)
-    InterBoardPacket_t packet = InterBoardCom_CreatePacket(InterBoardPACKET_ID_SELFTEST);
+    InterBoardPacket_t packet = InterBoardCom_CreatePacket(INTERBOARD_OP_NONE);
     InterBoardCom_FillRaw(&packet, 32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31);
     memcpy((uint8_t *)&packet.Data, &health.temperature.reg_3V3, sizeof(float));
     //InterBoardCom_SendPacket(&packet);

@@ -69,7 +69,7 @@ uint8_t SD_AppendDataPacketToBuffer(DataPacket_t* packet) {
         text_size = strlen(text_buffer);
         break;
       case PACKET_ID_TEMPERATURE:
-        sprintf(text_buffer, "\nID:%d, TS:%lu, M1DTS:%d, M1ADC:%d, M1BMP:%d, M1IMU1:%d, M1IMU2:%d, M1MAG:%d, M23V3:%d, M2XBee:%d, PUBAT:%d, Pressure:%f",
+        sprintf(text_buffer, "\nID:%d, TS:%lu, M1DTS:%d, M1ADC:%d, M1BMP:%d, M1IMU1:%d, M1IMU2:%d, M1MAG:%d, M23V3:%d, M2XBee:%d, PUBAT:%d, Pressure:%.6f",
                 packet->Packet_ID, packet->timestamp,
                 packet->Data.temperature.M1_DTS, packet->Data.temperature.M1_ADC,
                 packet->Data.temperature.M1_BMP, packet->Data.temperature.M1_IMU1,

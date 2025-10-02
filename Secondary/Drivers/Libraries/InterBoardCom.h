@@ -6,25 +6,26 @@
 
 #define INTERBOARD_BUFFER_SIZE 32
 
-//The Bitfield describe what should be expected and done with the data received
+//The Bitfield describe what should be expected and done with the data received.
 typedef enum {
     // Status Packets:
-    InterBoardPACKET_ID_EMPTY = 0x00,          // No packet
-    InterBoardPACKET_ID_SELFTEST = 0x01,        // Used to check if the communication is working
-    InterBoardPACKET_ID_DataAck = 0x02,         // Acknowledge data reception
-    InterBoardPACKET_ID_Echo = 0x03,            // Echo back received data for testing
+    // Operation Types (bits 0-2, lower nibble)
+    INTERBOARD_OP_NONE         = 0x00,
+    INTERBOARD_OP_SAVE_SEND     = 0x01,  // Save data or send it via radio
+    INTERBOARD_OP_LOAD_REQUEST  = 0x02,  // Load data  or request it from another board
+    INTERBOARD_OP_CMD           = 0x04,  // Command operation
 
-    // Command Packets:
-    InterBoardPACKET_ID_DataLoadFLASH = 0x11,   // Load data from the flash memory
-    InterBoardPACKET_ID_ResetFLASH = 0x12,      // Reset the flash memory ~40s
-    InterBoardPACKET_ID_DataLoadSD = 0x13,      // Load data from the SD card
-    InterBoardPACKET_ID_DataRequest = 0x14,     // Request data from the Groundstation
+    // Target Types (bits 3-6, upper nibble)
+    INTERBOARD_TARGET_NONE = 0x00,
+    INTERBOARD_TARGET_FLASH = 0x08,
+    INTERBOARD_TARGET_SD    = 0x10,
+    INTERBOARD_TARGET_RADIO = 0x20,
+    INTERBOARD_TARGET_MCU   = 0x40,
+    INTERBOARD_TARGET_FOLLOWING = 0x80, // Indicates more packets to follow
 
-    // Data Packets:
-    InterBoardPACKET_ID_DataSaveFLASH = 0x21,   // Save data to the flash memory
-    InterBoardPACKET_ID_DataSaveSD = 0x22,      // Save data to the SD card
-    InterBoardPACKET_ID_DataSend = 0x23,        // Send data to the Groundstation via NRF/XBee
-    InterBoardPACKET_ID_DataSaveFLASHSend = 0x24,    // Save data to the flash memory and send it to the Groundstation via NRF/XBee
+    // Unusual combined types
+    INTERBOARD_OP_ECHO = INTERBOARD_OP_CMD | INTERBOARD_TARGET_NONE, // Echo command
+
 } InterBoardPacketID_t;
 
 //Wrapper for the DataPacket to be used to send via SPI1

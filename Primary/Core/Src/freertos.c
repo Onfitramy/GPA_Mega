@@ -536,13 +536,13 @@ void Start100HzTask(void *argument) {
   DataPacket_t Status_DataPacket = CreateDataPacket(PACKET_ID_STATUS);
   for(;;) {
     UpdateStatusPacket(&Status_DataPacket, HAL_GetTick(), status_data.status_flags, status_data.sensor_status_flags, status_data.error_flags, flight_sm.currentFlightState);
-    InterBoardCom_SendDataPacket(InterBoardPACKET_ID_DataSaveFLASH, &Status_DataPacket);
+    InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, &Status_DataPacket);
 
     UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &imu1_data, &mag_data);
-    InterBoardCom_SendDataPacket(InterBoardPACKET_ID_DataSaveFLASH, &IMU_DataPacket);
+    InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);
 
     UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), phi, theta, psi);
-    InterBoardCom_SendDataPacket(InterBoardPACKET_ID_DataSaveFLASH, &Attitude_DataPacket);
+    InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH | INTERBOARD_TARGET_RADIO, &Attitude_DataPacket);
 
     InterBoardCom_ProcessTxBuffer();
 
@@ -726,10 +726,10 @@ void Start10HzTask(void *argument) {
     //GPS_RequestSensorData(); // Request GPS data
 
     UpdateTemperaturePacket(&Temp_DataPacket, HAL_GetTick(), DTS_Temperature, ADC_Temperature, temperature, imu1_data.temp, imu2_data.temp, mag_data.temp, INVALID_FLOAT, NULL, INVALID_FLOAT, pressure);
-    InterBoardCom_SendDataPacket(InterBoardPACKET_ID_DataSaveFLASH, &Temp_DataPacket);
+    InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, &Temp_DataPacket);
 
     UpdateGPSDataPacket(&GPS_DataPacket, HAL_GetTick(), &gps_data);
-    InterBoardCom_SendDataPacket(InterBoardPACKET_ID_DataSaveFLASH, &GPS_DataPacket);
+    InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, &GPS_DataPacket);
 
     if(primary_status > 0) {
       switch(gps_data.gpsFix) {

@@ -165,8 +165,8 @@ InterBoardPacket_t InterBoardCom_ReceivePacket() {
 void InterBoardCom_ProcessReceivedPacket(InterBoardPacket_t *packet) {
     // Process the received packet based on its ID
     switch (packet->InterBoardPacket_ID) {
-        case InterBoardPACKET_ID_SELFTEST:
-            // Handle self-test packet
+        case INTERBOARD_OP_ECHO:
+            // Handle echo packet
             break;
         // Add cases for other packet IDs as needed
         default:
@@ -176,7 +176,7 @@ void InterBoardCom_ProcessReceivedPacket(InterBoardPacket_t *packet) {
 
 InterBoardPacket_t TestPacket;
 void InterBoardCom_SendTestPacket(void) {
-    TestPacket = InterBoardCom_CreatePacket(InterBoardPACKET_ID_Echo);
+    TestPacket = InterBoardCom_CreatePacket(INTERBOARD_OP_ECHO);
     InterBoardCom_FillRaw(&TestPacket, 32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32);
     InterBoardCom_QueuePacket(&TestPacket);
 }
