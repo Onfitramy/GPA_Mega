@@ -26,6 +26,7 @@ typedef enum {
 
     // Unusual combined types
     INTERBOARD_OP_ECHO = INTERBOARD_OP_CMD | INTERBOARD_TARGET_NONE, // Echo command
+    INTERBOARD_OP_DEBUG_VIEW = INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_NONE, // Send for debugging to PC
 } InterBoardPacketID_t;
 
 //Wrapper for the DataPacket to be used to send via SPI1

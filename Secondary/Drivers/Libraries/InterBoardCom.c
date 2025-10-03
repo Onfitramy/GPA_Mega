@@ -52,7 +52,6 @@ void InterBoardCom_ActivateReceive(void) {
     if(CircBuffer_Pop(&txCircBuffer, &transmitBuffer) == 0) { // Get next packet to transmit, if none available a packet with ID 0 will be sent
         transmitBuffer.InterBoardPacket_ID = 0; //The data will be ignored by the master
     }
-
     SPI1_STATUS = 1; // Busy
     HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)&transmitBuffer, (uint8_t *)&receiveBuffer, sizeof(InterBoardPacket_t));
 }
@@ -147,6 +146,26 @@ void InterBoardCom_SendTestPacket(void) {
     InterBoardCom_SendPacket(&TestPacket);
 }
 
+/**
+ * @brief Sends a data packet to another board via SPI communication.
+ *
+ * This function creates an inter-board packet, fills it with the provided data,
+ * and sends it using the SPI interface. It abstracts the process of packet creation,
+ * data population, and transmission.
+ *
+ * @param Inter_ID   The identifier for the target inter-board communication channel.
+ * @param Packet_ID  The type identifier for the packet being sent.
+ * @param packet     Pointer to the data packet to be sent.
+ */
+void InterBoardCom_SendDataPacket(InterBoardPacketID_t Inter_ID, DataPacket_t *packet) {
+    // Create a new InterBoardPacket_t structure
+    InterBoardPacket_t newPacket = InterBoardCom_CreatePacket(Inter_ID);
+    InterBoardCom_FillData(&newPacket, packet);
+
+    // Send the packet
+    InterBoardCom_SendPacket(&newPacket);
+}
+
 DataPacket_t InterBoardCom_UnpackPacket(InterBoardPacket_t packet) {
     //This function is used to move a InterBoardPacket_t to a DataPacket_t
     DataPacket_t dataPacket;
@@ -164,13 +183,6 @@ uint8_t raw_array[26] = {2, 119, 11, 80, 188, 201, 104, 122, 60, 213, 248, 111, 
 DataPacket_t attitudeTransmitPacket;
 void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
     //This function is used to parse the received packet
-
-    //Remove the top bit on the ID to ignore the more data incoming bit(already handled by the DMA)
-    attitudeTransmitPacket.Packet_ID = 7;
-    attitudeTransmitPacket.timestamp = 2;
-    memcpy(attitudeTransmitPacket.Data.raw, raw_array, 26);
-    attitudeTransmitPacket.crc = 11;
-
     packet.InterBoardPacket_ID &= 0x7F;
 
     DataPacket_t dataPacket = InterBoardCom_UnpackPacket(packet);
@@ -212,11 +224,7 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
 
             if ((Interboard_Target & INTERBOARD_TARGET_RADIO) == INTERBOARD_TARGET_RADIO) {
                 if (dataPacket.Packet_ID == PACKET_ID_ATTITUDE){
-                    attitudeTransmitPacket.Packet_ID = PACKET_ID_ATTITUDE;
-                    //attitudeTransmitPacket.timestamp = dataPacket.timestamp;
-                    //memcpy(attitudeTransmitPacket.Data.raw, dataPacket.Data.raw, 26);
-                    //attitudeTransmitPacket.crc = 0;
-                    XBee_Transmit((uint8_t*)&attitudeTransmitPacket, 32, 0); // Broadcast to all XBees
+                    XBee_Transmit((uint8_t*)&dataPacket, 32, 0); // Broadcast to all XBees
                 }
             }
             break;

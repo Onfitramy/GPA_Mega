@@ -31,9 +31,9 @@ void PlotDataPacket(DataPacket_t *packet) {
         switch(packet->Packet_ID) {
             case PACKET_ID_ATTITUDE:
                 signalPlotter_sendData(0, packet->timestamp);
-                signalPlotter_sendData(1, packet->Data.attitude.phi / 10000.0f);
-                signalPlotter_sendData(2, packet->Data.attitude.theta / 10000.0f);
-                signalPlotter_sendData(3, packet->Data.attitude.psi / 10000.0f);
+                signalPlotter_sendData(1, packet->Data.attitude.phi);
+                signalPlotter_sendData(2, packet->Data.attitude.theta);
+                signalPlotter_sendData(3, packet->Data.attitude.psi);
                 break;
             
             case PACKET_ID_IMU:

@@ -256,7 +256,7 @@ void Start10HzTask(void *argument){
     health.voltage.bus_5V = readVoltage(1) * (10 + 10) / 10;
     health.voltage.bus_gpa_bat = readVoltage(2) * (10 + 2.2) / 2.2;
 
-    XBee_GetTemperature();
+    //XBee_GetTemperature();
     //XBee_Transmit(XBEEtransmitBuffer, 32, 0); // Transmit 32 bytes of test data
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
@@ -334,6 +334,12 @@ void StartInterruptTask(void *argument)
           // Process received RF data
           uint8_t* rfData = &packet.frame_data[12]; // RF data starts at byte 12
           uint16_t rfDataLength = (packet.frame_length[0] << 8 | packet.frame_length[1]) - 12; // Length of RF data
+
+          DataPacket_t receivedData = CreateDataPacket(packet.frame_data[12]);
+          memcpy(&receivedData.timestamp, &packet.frame_data[13], sizeof(uint32_t));
+          memcpy(&receivedData.Data, &packet.frame_data[17], sizeof(receivedData.Data));
+          receivedData.crc = packet.frame_data[43];
+          InterBoardCom_SendDataPacket(INTERBOARD_OP_DEBUG_VIEW, &receivedData);
 
           XBEE_TransmittedReceived += 1;
           // Handle rfData as needed

@@ -177,7 +177,7 @@ void InterBoardCom_ProcessReceivedPacket(InterBoardPacket_t *packet) {
 void InterBoardCom_GroundstationParsePacket(InterBoardPacket_t *packet) {
     // Process the received packet based on its ID
     switch (packet->InterBoardPacket_ID) {
-        case INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_NONE: //Send for debugging
+        case INTERBOARD_OP_DEBUG_VIEW: //Send for debugging
             PlotDataPacket((DataPacket_t *)packet->Data);
             break;
         // Add cases for other packet IDs as needed

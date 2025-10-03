@@ -110,11 +110,6 @@ uint8_t UART_LOCK = 0;
 uint8_t UART_LOCK_ERROR = 0;
 void sendAPIFrame(uint8_t* frame, uint16_t frame_length)
 {
-    if (UART_LOCK) {
-        UART_LOCK_ERROR += 1;
-        return; // UART is busy
-    }
-    UART_LOCK = 1;
     HAL_StatusTypeDef res = HAL_UART_Transmit_IT(&huart1, frame, frame_length + 4); //Convert frame_length to bytes
     res = 0;
 }
@@ -168,6 +163,11 @@ void XBee_GetTemperature()
 uint8_t xbee_frame_buffer[XBEE_MAX_FRAME_SIZE+4];
 void XBee_Transmit(uint8_t* data, uint16_t length, uint64_t destinationAddress)
 {
+    if (UART_LOCK) {
+        UART_LOCK_ERROR += 1;
+        return; // UART is busy
+    }
+    UART_LOCK = 1;
     constructTransmitFrame(xbee_frame_buffer, 0x01, destinationAddress, data, length);
     sendAPIFrame(xbee_frame_buffer, xbee_frame_buffer[1] << 8 | xbee_frame_buffer[2]);
 }
