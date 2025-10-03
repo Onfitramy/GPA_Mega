@@ -223,8 +223,9 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
             }
 
             if ((Interboard_Target & INTERBOARD_TARGET_RADIO) == INTERBOARD_TARGET_RADIO) {
-                if (dataPacket.Packet_ID == PACKET_ID_ATTITUDE){
-                    XBee_Transmit((uint8_t*)&dataPacket, 32, 0); // Broadcast to all XBees
+                uint64_t addr = 0x0013a200426e530e; // XBee broadcast address
+                if (dataPacket.Packet_ID == PACKET_ID_ATTITUDE) {
+                    XBee_Transmit((uint8_t*)&dataPacket, 32, addr); // Broadcast to all XBees
                 }
             }
             break;

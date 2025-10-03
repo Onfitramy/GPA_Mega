@@ -11,6 +11,11 @@ void XBee_Transmit(uint8_t* data, uint16_t length, uint64_t destinationAddress);
 void XBee_Receive(uint8_t* response_buffer);
 void XBee_ReceivedErrorCount();
 uint8_t XBee_calcCRC(uint8_t* data, uint16_t length);
+void XBee_changeBaudRate(uint32_t baudrate);
+void XBee_TransmitErrorCount(void);
+void XBee_ReadChannelMask(void);
+void XBee_ReadDataRate(void);
+void XBee_changeDataRate(uint8_t dataRate);
 
 #define XBEE_MAX_FRAME_SIZE 64
 

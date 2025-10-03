@@ -196,10 +196,6 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;) {
     Counter_100Hz++;
-    InterBoardPacket_t packet = InterBoardCom_CreatePacket(INTERBOARD_OP_NONE);
-    InterBoardCom_FillRaw(&packet, 32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31);
-    memcpy((uint8_t *)&packet.Data, &health.temperature.reg_3V3, sizeof(float));
-    //InterBoardCom_SendPacket(&packet);
 
     // show low battery level
 
@@ -216,7 +212,6 @@ void Start10HzTask(void *argument){
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 100; // 10 Hz
 
-  uint8_t XBEEtransmitBuffer[32] = {7, 222, 241, 33, 0, 81, 100, 65, 188, 82, 195, 93, 59, 65, 83, 112, 63, 0}; // Test data
   /* Infinite loop */
   for(;;) {
     Counter_10Hz++;
@@ -255,9 +250,6 @@ void Start10HzTask(void *argument){
     health.temperature.reg_3V3 = readTemperature(1);
     health.voltage.bus_5V = readVoltage(1) * (10 + 10) / 10;
     health.voltage.bus_gpa_bat = readVoltage(2) * (10 + 2.2) / 2.2;
-
-    //XBee_GetTemperature();
-    //XBee_Transmit(XBEEtransmitBuffer, 32, 0); // Transmit 32 bytes of test data
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
   }
@@ -298,7 +290,8 @@ void StartInterBoardComTask(void *argument)
 }
 
 uint8_t transmitStatus;
-uint8_t XBEE_TransmittedReceived = 0;
+uint32_t XBEE_TransmittedReceived = 0;
+uint32_t TransmissionErrors = 0;
 void StartInterruptTask(void *argument)
 {
   /* USER CODE BEGIN StartInterruptTask */
@@ -327,8 +320,8 @@ void StartInterruptTask(void *argument)
           } else {
             // Handle error
           }
-        } else if (packet.frame_data[2] == 'E' && packet.frame_data[3] == 'R'){ //Received Error Count
-          // Error Response
+        } else if (packet.frame_data[2] == 'B' && packet.frame_data[3] == 'R'){ //Received Channel Mask (Change this to whatever Packet you are interested in)
+          // Check if command was successful
         }
       }  else if (packet.frame_data[0] == 0x90) { // RX Packet
           // Process received RF data
@@ -345,9 +338,14 @@ void StartInterruptTask(void *argument)
           // Handle rfData as needed
       } else if (packet.frame_data[0] == 0x8B) { // Transmit Status
           // Process transmit status
-          XBEE_TransmittedReceived += 1;
           uint8_t frameID = packet.frame_data[1];
           transmitStatus = packet.frame_data[5];
+          if (transmitStatus != 0x00) {
+            TransmissionErrors += 1;
+          } else {
+            // Transmission successful
+            XBEE_TransmittedReceived += 1;
+          }
           // Handle transmit status as needed
       }
     }
@@ -358,7 +356,12 @@ void StartInterruptTask(void *argument)
 void StartSDTask(void *argument)
 {
   /* USER CODE BEGIN StartSDTask */
-  SD_Mount();
+  if (SD_Mount() == FR_OK) {
+    // Successfully mounted SD card
+  } else {
+    // Failed to mount SD card
+    vTaskDelete(NULL); // Delete this task if SD card cannot be mounted
+  }
 
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 100; // 10 Hz

@@ -32,6 +32,7 @@
 #include "W25Q1.h"
 #include "PowerUnit.h"
 #include "SD.h"
+#include "XBee.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -148,6 +149,9 @@ int main(void)
   uint32_t flashid = W25Q1_ReadID(); //Check if the FLASH works, flashid = 0xEF4017
 
   HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 3); // Start UART receive interrupt
+  XBee_changeBaudRate(115200); // Change XBee baudrate to 115200
+  HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 3); // Start UART receive interrupt
+  XBee_changeDataRate(1);
 
   PU_enableRecovery();
   PU_enableCamera();
@@ -214,7 +218,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 
     }else if (UART_PacketProgress == 1) {
       UART_PacketProgress = 0;
-      UART_LOCK = 0;
       // Process the complete packet in UART_RX_Buffer
       BaseType_t xHigherPriorityTaskWoken = pdFALSE;
       xQueueSendFromISR(XBeeDataQueue, UART_RX_Buffer, &xHigherPriorityTaskWoken);
@@ -226,6 +229,12 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
       HAL_UART_Receive_IT(&huart1, &UART_RX_Buffer[0], 3);
       UART_PacketProgress = 0;
     }
+  }
+}
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
+  if(huart->Instance == USART1) {
+    UART_LOCK = 0; // Release UART lock
   }
 }
 

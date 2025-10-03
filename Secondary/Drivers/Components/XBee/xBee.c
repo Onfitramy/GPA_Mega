@@ -38,7 +38,7 @@ void constructTransmitFrame(uint8_t* frame, uint8_t frame_id, uint64_t dest_addr
     frame[13] = 0xFF;
     frame[14] = 0xFE;
     frame[15] = 0x00; // Maximum hops
-    frame[16] = 0x00; // No special options
+    frame[16] = 0x40; // Deleivery method point to multipoint
     for (uint16_t i = 0; i < payload_length; i++) {
         frame[17 + i] = frame_payload[i];
     }
@@ -110,6 +110,7 @@ uint8_t UART_LOCK = 0;
 uint8_t UART_LOCK_ERROR = 0;
 void sendAPIFrame(uint8_t* frame, uint16_t frame_length)
 {
+
     HAL_StatusTypeDef res = HAL_UART_Transmit_IT(&huart1, frame, frame_length + 4); //Convert frame_length to bytes
     res = 0;
 }
@@ -175,6 +176,86 @@ void XBee_Transmit(uint8_t* data, uint16_t length, uint64_t destinationAddress)
 void XBee_ReceivedErrorCount()
 {
     constructATFrame(&at_frame, 0x01, ('E' << 8) | 'R', NULL, 0);
+    sendAPIFrame((uint8_t*)&at_frame, at_frame.frame_length[0] << 8 | at_frame.frame_length[1]);
+}
+
+void XBee_TransmitErrorCount()
+{
+    constructATFrame(&at_frame, 0x01, ('T' << 8) | 'R', NULL, 0);
+    sendAPIFrame((uint8_t*)&at_frame, at_frame.frame_length[0] << 8 | at_frame.frame_length[1]);
+}
+
+void XBee_changeBaudRate(uint32_t baudrate)
+{
+    uint8_t baud_payload[1];
+    switch(baudrate) {
+        case 9600:
+            baud_payload[0] = 0x03;
+            break;
+        case 19200:
+            baud_payload[0] = 0x04;
+            break;
+        case 38400: 
+            baud_payload[0] = 0x05;
+            break;
+        case 57600:
+            baud_payload[0] = 0x06;
+            break;
+        case 115200:
+            baud_payload[0] = 0x07;
+            break;
+        case 230400:
+            baud_payload[0] = 0x08;
+    }
+    constructATFrame(&at_frame, 0x01, ('B' << 8) | 'D', baud_payload, 1);
+    sendAPIFrame((uint8_t*)&at_frame, at_frame.frame_length[0] << 8 | at_frame.frame_length[1]);
+    HAL_Delay(100);
+    HAL_UART_Abort(&huart1);
+    huart1.Init.BaudRate = baudrate;
+    HAL_UART_Init(&huart1);
+}
+
+void XBee_ReadChannelMask()
+{
+    constructATFrame(&at_frame, 0x01, ('C' << 8) | 'M', NULL, 0);
+    sendAPIFrame((uint8_t*)&at_frame, at_frame.frame_length[0] << 8 | at_frame.frame_length[1]);
+}
+
+void XBee_ReadDataRate()
+{
+    constructATFrame(&at_frame, 0x01, ('B' << 8) | 'R', NULL, 0);
+    sendAPIFrame((uint8_t*)&at_frame, at_frame.frame_length[0] << 8 | at_frame.frame_length[1]);
+}
+
+// Data Rate: 0 = 10kb/s, 1 = 80kb/s
+void XBee_changeDataRate(uint8_t dataRate)
+{
+    uint8_t dataRate_payload[1];
+    dataRate_payload[0] = dataRate;
+    constructATFrame(&at_frame, 0x01, ('B' << 8) | 'R', dataRate_payload, 1);
+    sendAPIFrame((uint8_t*)&at_frame, at_frame.frame_length[0] << 8 | at_frame.frame_length[1]);
+}
+
+void XBee_changePowerLevel(uint8_t powerLevel)
+{
+    uint8_t powerLevel_payload[1];
+    powerLevel_payload[0] = powerLevel;
+    constructATFrame(&at_frame, 0x01, ('B' << 8) | 'P', powerLevel_payload, 1);
+    sendAPIFrame((uint8_t*)&at_frame, at_frame.frame_length[0] << 8 | at_frame.frame_length[1]);
+}
+
+void XBee_SaveSettings()
+{
+    constructATFrame(&at_frame, 0x01, ('W' << 8) | 'R', NULL, 0);
+    sendAPIFrame((uint8_t*)&at_frame, at_frame.frame_length[0] << 8 | at_frame.frame_length[1]);
+}
+
+void XBee_ReadHardwareAddress()
+{
+    constructATFrame(&at_frame, 0x01, ('S' << 8) | 'H', NULL, 0);
+    sendAPIFrame((uint8_t*)&at_frame, at_frame.frame_length[0] << 8 | at_frame.frame_length[1]);
+    HAL_Delay(100);
+    constructATFrame(&at_frame, 0x01, ('S' << 8) | 'L', NULL, 0);
     sendAPIFrame((uint8_t*)&at_frame, at_frame.frame_length[0] << 8 | at_frame.frame_length[1]);
 }
 
