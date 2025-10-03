@@ -1,3 +1,5 @@
+#include <stdbool.h>
+
 #include "packets.h"
 extern SPI_HandleTypeDef hspi2;
 #define W25Q1_SPI hspi2
@@ -31,6 +33,7 @@ typedef struct {
     uint32_t curr_configOffset; // Current configuration offset
     uint32_t curr_logPage; // Current log page
     uint32_t curr_logOffset; // Current log offset
+    bool write_logs;
 } W25QPage0_config_t;
 #pragma pack(pop)
 

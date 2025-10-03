@@ -15,13 +15,14 @@ W25QPage0_config_t W25Q_FLASH_CONFIG = {
 	.curr_configPage = CONFIG_PAGE, // Start at the configuration page
 	.curr_configOffset = 0, // Start at the beginning of the configuration page
 	.curr_logPage = LOG_PAGE, // Start at the log page
-	.curr_logOffset = 0 // Start at the beginning of the log page
+	.curr_logOffset = 0, // Start at the beginning of the log page
+	.write_logs = true,
 };
 
 //Saves the data to the log page
 void W25Q_SaveToLog(uint8_t *data, uint32_t size)
 {
-	if (size == 0) return; // nothing to save
+	if (size == 0 || !W25Q_FLASH_CONFIG.write_logs) return; // nothing to save
 
 	// Check if we have enough space in the current log page
 	if (W25Q_FLASH_CONFIG.curr_logOffset + size > 256) {
