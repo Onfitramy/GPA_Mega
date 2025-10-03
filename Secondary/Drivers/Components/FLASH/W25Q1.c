@@ -37,8 +37,7 @@ void W25Q_SaveToLog(uint8_t *data, uint32_t size)
 		W25Q_FLASH_CONFIG.curr_logPage += 1;
 	}
 
-	uint32_t tData32[2] = {W25Q_FLASH_CONFIG.curr_logPage, W25Q_FLASH_CONFIG.curr_logOffset};
-	W25Q_Write_32B(0, 0, 2, tData32); // Save current log page and offset at 0
+	W25Q_Write_Page(0, 0, sizeof(W25QPage0_config_t), (uint8_t *)&W25Q_FLASH_CONFIG);
 }
 
 
@@ -55,9 +54,6 @@ void W25Q_AddFlashBufferPacket(const DataPacket_t *data_packet) {
 		W25Q_Erase_Sector(W25Q_FLASH_CONFIG.curr_logPage / 16);
 		W25Q_SaveToLog((uint8_t*)flash_packet_buffer, 256);
 		flash_buffer_index = 0;
-
-		DataPacket_t data[8];
-		W25Q_LoadFromLog((uint8_t *)data, 256, LOG_PAGE, 0);
 	}
 }
 
@@ -453,34 +449,9 @@ void W25Q_Chip_Erase (void)
     vTaskDelay(40000); //should be 40s - 200s
 	disable_write();
 
-	uint32_t tData32[2] = {W25Q_FLASH_CONFIG.curr_logPage, W25Q_FLASH_CONFIG.curr_logOffset};
-
-	W25Q_Write_32B(0, 0, 2, tData32); //Save current log page and offset at 0
-
+	W25Q_Write_Page(0, 0, sizeof(W25QPage0_config_t), (uint8_t *)&W25Q_FLASH_CONFIG);
 }
 
-/**
-  * @brief Reads the current log Position from Page 0, offset 0 in memory
-  * @param None
-  * @retval None
-  */
-void W25Q_updateLogPosition(void){
-	uint32_t LogPos[2];
-
-	W25Q_Read_32B(0, 0, 2, LogPos);
-
-	if (LogPos[0] >= 1024 && LogPos[0] <= 65536) { // Check if the log page is valid
-		W25Q_FLASH_CONFIG.curr_logPage = LogPos[0];
-		W25Q_FLASH_CONFIG.curr_logOffset = LogPos[1];
-	}else {
-		W25Q_FLASH_CONFIG.curr_logPage = LOG_PAGE; // Reset to default log page
-		W25Q_FLASH_CONFIG.curr_logOffset = 0; // Reset offset
-		uint32_t tData32[2] = {W25Q_FLASH_CONFIG.curr_logPage, W25Q_FLASH_CONFIG.curr_logOffset};
-
-		W25Q_Write_32B(0, 0, 2, tData32); //Save current log page and offset at 0
-	}
-
-}
 
 void W25Q_GetConfig()
 {
