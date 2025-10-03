@@ -30,6 +30,11 @@ void W25Q_SaveToLog(uint8_t *data, uint32_t size)
 		W25Q_FLASH_CONFIG.curr_logOffset = 0; // Reset offset
 	}
 
+	// wrap around if the end of the flash memory is reached
+	if (W25Q_FLASH_CONFIG.curr_logPage >= 65536) {
+		W25Q_FLASH_CONFIG.curr_logPage = LOG_PAGE;
+	}
+
 	W25Q_Write_Cleared(W25Q_FLASH_CONFIG.curr_logPage, W25Q_FLASH_CONFIG.curr_logOffset, size, data);
 
 	W25Q_FLASH_CONFIG.curr_logOffset += size;
