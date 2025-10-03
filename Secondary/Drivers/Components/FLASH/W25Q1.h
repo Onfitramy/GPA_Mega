@@ -5,10 +5,16 @@ extern SPI_HandleTypeDef hspi2;
 #define W25Q1_SPI hspi2
 
 #define numBLOCK 256 //256 Blocks in the 128Mbit FLASH
+#define PAGE_SIZE 256
+#define SECTOR_SIZE 4096
+#define PAGES_PER_SECTOR 16
 
 #define CONFIG_PAGE 16 //Start of the configuration page, ends at 127->32KB
 #define GPS_ASSIST_PAGE 256 //Start of the GPS assist data page, ends at 767->128KB
 #define LOG_PAGE 1024 //Start of the log page, runs till the end of the flash memory ~16MB
+
+#define FLASH_BUFFER_SIZE (SECTOR_SIZE / sizeof(DataPacket_t))
+#define PACKETS_PER_PAGE (PAGE_SIZE / sizeof(DataPacket_t))
 
 typedef struct {
     uint8_t * const buffer;

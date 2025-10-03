@@ -48,17 +48,22 @@ void W25Q_SaveToLog(uint8_t *data, uint32_t size)
 
 
 uint8_t flash_buffer_index = 0;
-DataPacket_t flash_packet_buffer[8];
+DataPacket_t flash_packet_buffer[FLASH_BUFFER_SIZE];
 
 void W25Q_AddFlashBufferPacket(const DataPacket_t *data_packet) {
-	if (flash_buffer_index < 8) {
+	if (flash_buffer_index < FLASH_BUFFER_SIZE) {
 		flash_packet_buffer[flash_buffer_index++] = *data_packet;
 	}
 
-	if (flash_buffer_index == 8) {
-		// TODO: only clear sector if it is new
-		W25Q_Erase_Sector(W25Q_FLASH_CONFIG.curr_logPage / 16);
-		W25Q_SaveToLog((uint8_t*)flash_packet_buffer, 256);
+	if (flash_buffer_index == FLASH_BUFFER_SIZE) {
+		W25Q_Erase_Sector(W25Q_FLASH_CONFIG.curr_logPage / PAGES_PER_SECTOR);
+		DataPacket_t result[8];
+		uint32_t start = HAL_GetTick();
+		for (int i = 0; i < PAGES_PER_SECTOR; ++i) {
+			W25Q_SaveToLog((uint8_t*)(flash_packet_buffer + i * PACKETS_PER_PAGE), PACKETS_PER_PAGE * sizeof(DataPacket_t));
+			W25Q_LoadFromLog((uint8_t*)result, PACKETS_PER_PAGE * sizeof(DataPacket_t), W25Q_FLASH_CONFIG.curr_logPage - 1, 0);
+		}
+		uint32_t deltaT = HAL_GetTick() - start;
 		flash_buffer_index = 0;
 	}
 }
@@ -468,6 +473,21 @@ void W25Q_Chip_Erase (void)
 	W25Q_Write_Page(0, 0, sizeof(W25QPage0_config_t), (uint8_t *)&W25Q_FLASH_CONFIG);
 }
 
+static void W25Q_AlignPageOffset() {
+	uint32_t sectorOffset = W25Q_FLASH_CONFIG.curr_logPage % 16;
+	if (sectorOffset == 0) return;
+
+	uint8_t tempLogs[SECTOR_SIZE];
+	uint32_t startPage = W25Q_FLASH_CONFIG.curr_logPage - sectorOffset;
+	uint32_t emptyStart = sectorOffset * PACKETS_PER_PAGE * sizeof(DataPacket_t);
+
+	W25Q_Read(startPage, 0, emptyStart, tempLogs);
+	W25Q_Erase_Sector(W25Q_FLASH_CONFIG.curr_logPage / PAGES_PER_SECTOR);
+
+	memset(tempLogs + emptyStart, 0, sizeof(tempLogs) - emptyStart);
+	W25Q_Write_Cleared(startPage / PAGES_PER_SECTOR, 0, sizeof(tempLogs), tempLogs);
+	W25Q_FLASH_CONFIG.curr_logPage += PAGES_PER_SECTOR - sectorOffset;
+}
 
 void W25Q_GetConfig()
 {
@@ -478,6 +498,7 @@ void W25Q_GetConfig()
 	if (tempConfig[0] == W25Q_FLASH_CONFIG.ID[0] && tempConfig[1] == W25Q_FLASH_CONFIG.ID[1])
 	{
 		memcpy(&W25Q_FLASH_CONFIG, tempConfig, sizeof(W25QPage0_config_t));
+		W25Q_AlignPageOffset();
 	}
 	else
 	{
@@ -497,10 +518,6 @@ void W25Q_Write_Cleared(uint32_t page, uint16_t offset, uint32_t size, uint8_t *
 	uint32_t startPage = page;
 	uint32_t endPage  = startPage + ((size+offset-1)/256);
 	uint32_t numPages = endPage-startPage+1;
-
-    uint16_t startSector  = startPage/16;
-	uint16_t endSector  = endPage/16;
-	uint16_t numSectors = endSector-startSector+1;
 
     uint32_t dataPosition = 0;
 
