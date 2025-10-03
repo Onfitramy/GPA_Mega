@@ -55,8 +55,8 @@ void W25Q_AddFlashBufferPacket(const DataPacket_t *data_packet) {
 		flash_packet_buffer[flash_buffer_index++] = *data_packet;
 	}
 
-	// TODO: Add logic to determine if sector should be cleared.
 	if (flash_buffer_index == 8) {
+		// TODO: only clear sector if it is new
 		W25Q_Erase_Sector(W25Q_FLASH_CONFIG.curr_logPage / 16);
 		W25Q_SaveToLog((uint8_t*)flash_packet_buffer, 256);
 		flash_buffer_index = 0;
@@ -161,10 +161,7 @@ void W25Q_FastRead (uint32_t startPage, uint8_t offset, uint32_t size, uint8_t *
 		HAL_SPI_Transmit(&W25Q1_SPI, tData, 5, 100);  // send read instruction along with the 24 bit memory address
 	}
 
-    uint8_t tempRx[3000];
-    memset(tempRx, 0, 3000);
-    HAL_SPI_TransmitReceive(&W25Q1_SPI, tempRx, rData, size, 100);
-	//HAL_SPI_Receive(&W25Q1_SPI, rData, size, 100);  // Read the data
+	HAL_SPI_Receive(&W25Q1_SPI, rData, size, 100);  // Read the data
 	csHIGH();  // pull the CS High
 }
 
@@ -242,10 +239,23 @@ void W25Q_Erase_Sector (uint16_t numsector)
 	  csHIGH();
 	}
 
-	vTaskDelay(450);  // 450ms delay for sector erase
-
 	disable_write();
 
+	uint8_t tDataStatus = 0x05;
+	csLOW();
+	HAL_SPI_Transmit(&W25Q1_SPI, &tDataStatus, 1, 100);
+
+	uint8_t rDataStatus[2] = {255};
+	// wait until erase is finished
+	while (true) {
+		HAL_SPI_Receive(&W25Q1_SPI, rDataStatus, 12, 100);
+		// I don't know why the first byte is sometimes not altered, but the second is
+		if ((rDataStatus[1] & 0b00000001) == 0) {
+			break;
+		}
+	}
+
+	csHIGH();
 }
 
 void W25Q_Write_Page (uint32_t page, uint16_t offset, uint32_t size, uint8_t *data)
