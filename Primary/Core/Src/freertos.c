@@ -82,6 +82,8 @@ typedef struct {
   bool active;
 } SensorStatus;
 
+bool is_groundstation = false;
+
 void SensorStatus_Reset(SensorStatus *sensor_status) {
   sensor_status->hal_status = HAL_OK;
   sensor_status->active = true;
@@ -324,6 +326,10 @@ void StartDefaultTask(void *argument)
   uid[2] = HAL_GetUIDw2();
   gpa_mega = GPA_MegaFromUID(uid);
 
+  if (gpa_mega == GPA_MEGA_2) {
+    is_groundstation = true;
+  }
+
   imu1_status.hal_status |= IMU_InitImu(&imu1_data, IMU1, gpa_mega);
   imu2_status.hal_status |= IMU_InitImu(&imu2_data, IMU2, gpa_mega);
   IMU_ConfigXL(IMU_ODR_1660_Hz, IMU_FS_XL_8, 0, &imu1_data);
@@ -531,19 +537,17 @@ void Start100HzTask(void *argument) {
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 10; //100 Hz
   /* Infinite loop */
+  //Groundstation has empty IMU and Attitude Packets which are requested from secondary board
   DataPacket_t IMU_DataPacket = CreateDataPacket(PACKET_ID_IMU);
   DataPacket_t Attitude_DataPacket = CreateDataPacket(PACKET_ID_ATTITUDE);
-  DataPacket_t Status_DataPacket = CreateDataPacket(PACKET_ID_STATUS);
   for(;;) {
-    UpdateStatusPacket(&Status_DataPacket, HAL_GetTick(), status_data.status_flags, status_data.sensor_status_flags, status_data.error_flags, flight_sm.currentFlightState);
-    InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, &Status_DataPacket);
+    if (is_groundstation){
+      UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &imu1_data, &mag_data);
+      InterBoardCom_SendDataPacket(INTERBOARD_OP_LOAD_REQUEST | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);
 
-    UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &imu1_data, &mag_data);
-    InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);
-
-    UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), phi, theta, psi);
-    InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH | INTERBOARD_TARGET_RADIO, &Attitude_DataPacket);
-
+      UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), phi, theta, psi);
+      InterBoardCom_SendDataPacket(INTERBOARD_OP_LOAD_REQUEST | INTERBOARD_TARGET_RADIO, &Attitude_DataPacket);
+    }
     InterBoardCom_ProcessTxBuffer();
 
     #ifdef SIGNAL_PLOTTER_OUT_1 // signal plotter outputs position ekf testing
@@ -725,12 +729,6 @@ void Start10HzTask(void *argument) {
     GPS_ReadSensorData(&gps_data);
     //GPS_RequestSensorData(); // Request GPS data
 
-    UpdateTemperaturePacket(&Temp_DataPacket, HAL_GetTick(), DTS_Temperature, ADC_Temperature, temperature, imu1_data.temp, imu2_data.temp, mag_data.temp, INVALID_FLOAT, NULL, INVALID_FLOAT, pressure);
-    InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, &Temp_DataPacket);
-
-    UpdateGPSDataPacket(&GPS_DataPacket, HAL_GetTick(), &gps_data);
-    InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, &GPS_DataPacket);
-
     if(primary_status > 0) {
       switch(gps_data.gpsFix) {
         case 0: primary_status = STATUS_GNSS_ALIGN; break;
@@ -845,11 +843,10 @@ void StartInterruptHandlerTask(void *argument)
         DataPacket_t receivedPacket;
         memcpy(&receivedPacket, InterBoardCom_Packet.Data, sizeof(DataPacket_t));
 
-        // Delay to allow Slave to catch up (10 us)
-
         InterBoardCom_ProcessTxBuffer(); // Check if more packets to send and send them
         HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
         // Process received InterBoardCom_Packet
+        InterBoardCom_GroundstationParsePacket(&InterBoardCom_Packet);
       }
     }
   }

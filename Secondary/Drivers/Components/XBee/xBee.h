@@ -9,6 +9,8 @@ void XBee_GetTemperature();
 void XBee_Broadcast(uint8_t* data, uint16_t length);
 void XBee_Transmit(uint8_t* data, uint16_t length, uint64_t destinationAddress);
 void XBee_Receive(uint8_t* response_buffer);
+void XBee_ReceivedErrorCount();
+uint8_t XBee_calcCRC(uint8_t* data, uint16_t length);
 
 #define XBEE_MAX_FRAME_SIZE 64
 

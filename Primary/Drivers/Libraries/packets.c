@@ -1,5 +1,6 @@
 #include "packets.h"
 #include "InterBoardCom.h"
+#include "signalPlotter.h"
 
 int16_t float_to_int16_scaled(float value, float scale_factor);
 int32_t float_to_int32_scaled(float value, float scale_factor);
@@ -24,6 +25,28 @@ void calcCRC(DataPacket_t *packet) {
     packet->crc = crc;
 }
 
+void PlotDataPacket(DataPacket_t *packet) {
+    // Send the packet data to the signal plotter for visualization
+    #ifdef SIGNAL_PLOTTER_OUT_GROUND
+        switch(packet->Packet_ID) {
+            case PACKET_ID_ATTITUDE:
+                signalPlotter_sendData(0, packet->timestamp);
+                signalPlotter_sendData(1, packet->Data.attitude.phi / 10000.0f);
+                signalPlotter_sendData(2, packet->Data.attitude.theta / 10000.0f);
+                signalPlotter_sendData(3, packet->Data.attitude.psi / 10000.0f);
+                break;
+            
+            case PACKET_ID_IMU:
+                signalPlotter_sendData(0, packet->timestamp);
+                signalPlotter_sendData(4, packet->Data.imu.accelX / 1000.0f);
+                signalPlotter_sendData(5, packet->Data.imu.accelY / 1000.0f);
+                signalPlotter_sendData(6, packet->Data.imu.accelZ / 1000.0f);
+            default:
+                break;
+        }
+    #endif
+}
+
 void UpdateStatusPacket(DataPacket_t *status_packet, uint32_t timestamp, int32_t status_flags, int32_t sensor_flags, int32_t error_flags, uint32_t flight_state) {
     // Update the status payload with the latest status information
     status_packet->timestamp = timestamp;
@@ -31,7 +54,7 @@ void UpdateStatusPacket(DataPacket_t *status_packet, uint32_t timestamp, int32_t
     status_packet->Data.status.sensor_status_flags = sensor_flags;
     status_packet->Data.status.error_flags = error_flags;
     status_packet->Data.status.State = flight_state;
-    
+
     calcCRC(status_packet);
 }
 

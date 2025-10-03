@@ -99,5 +99,7 @@ typedef struct {
 } DataPacket_t;
 #pragma pack(pop)
 
+DataPacket_t CreateDataPacket(PacketType_t Packet_ID);
+
 
 #endif /* Packets_H_ */

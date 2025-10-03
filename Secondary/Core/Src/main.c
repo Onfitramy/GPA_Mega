@@ -73,6 +73,7 @@ extern QueueHandle_t InterBoardPacketQueue; // Queue for InterBoardPacket_t pack
 extern QueueHandle_t XBeeDataQueue; // Queue for XBee data packets
 
 extern volatile uint8_t SPI1_STATUS; // 0= Idle, 1 = Receiving, 2 = Transmitting
+extern uint8_t UART_LOCK;
 
 /* USER CODE BEGIN PV */
 
@@ -146,7 +147,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   uint32_t flashid = W25Q1_ReadID(); //Check if the FLASH works, flashid = 0xEF4017
 
-  HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 1); // Start UART receive interrupt
+  HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 3); // Start UART receive interrupt
 
   PU_enableRecovery();
   PU_enableCamera();
@@ -201,32 +202,28 @@ int main(void)
   }
 }
 
-uint8_t UART_PacketProgress = 0; // Packet reception in progress flag (0 = No Packet, 1 = Receiving Length, 2 = Receiving Data)
+uint8_t UART_PacketProgress = 0; // Packet reception in progress flag (0 = No Packet, 1 = Receiving Data)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
   if(huart->Instance == USART1) {
     // Check if data is 0x7e (start byte)
     if (UART_RX_Buffer[0] == 0x7E && UART_PacketProgress == 0) {
       // If start byte, read the next 2 bytes to get the length
-      UART_PacketProgress = 1;
-      HAL_UART_Receive_IT(&huart1, &UART_RX_Buffer[1], 2);
-
-    }else if (UART_PacketProgress == 1) {
-      // If receiving length, calculate total packet length and read the rest of the packet
       uint16_t length = (UART_RX_Buffer[1] << 8) | UART_RX_Buffer[2];
-      UART_PacketProgress = 2;
+      UART_PacketProgress = 1;
       HAL_UART_Receive_IT(&huart1, &UART_RX_Buffer[3], length + 1); // +1 for checksum
 
-    }else if (UART_PacketProgress == 2) {
+    }else if (UART_PacketProgress == 1) {
       UART_PacketProgress = 0;
+      UART_LOCK = 0;
       // Process the complete packet in UART_RX_Buffer
       BaseType_t xHigherPriorityTaskWoken = pdFALSE;
       xQueueSendFromISR(XBeeDataQueue, UART_RX_Buffer, &xHigherPriorityTaskWoken);
       portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 
-      HAL_UART_Receive_IT(&huart1, &UART_RX_Buffer[0], 1);
       UART_PacketProgress = 0;
+      HAL_UART_Receive_IT(&huart1, &UART_RX_Buffer[0], 3);
     }else{
-      HAL_UART_Receive_IT(&huart1, &UART_RX_Buffer[0], 1);
+      HAL_UART_Receive_IT(&huart1, &UART_RX_Buffer[0], 3);
       UART_PacketProgress = 0;
     }
   }

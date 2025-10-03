@@ -111,4 +111,5 @@ void UpdatePowerPacket(DataPacket_t *power_packet, uint32_t timestamp, float PU_
 void UpdateKalmanMatrixPacket(DataPacket_t *kalman_packet, uint32_t timestamp, float P11, float P22, float P33, float EKF2_Heigth, float EKF2_vel, float EKF2_refPres);
 void UpdatePositionPacket(DataPacket_t *position_packet, uint32_t timestamp, float posX, float posY, float posZ, float velX, float velY, float velZ);
 void UpdateAttitudePacket(DataPacket_t *attitude_packet, uint32_t timestamp, float phi, float theta, float psi);
+void PlotDataPacket(DataPacket_t *packet);
 #endif /* Packets_H_ */

@@ -219,4 +219,14 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(2, "FlightState");
   signalPlotter_setSignalName(3, "Entry_Timestamp");
   #endif
+
+  #ifdef SIGNAL_PLOTTER_OUT_GROUND // ground station data
+  signalPlotter_setSignalName(0, "delta_Time");
+  signalPlotter_setSignalName(1, "phi");
+  signalPlotter_setSignalName(2, "theta");
+  signalPlotter_setSignalName(3, "psi");
+  signalPlotter_setSignalName(4, "x_Accel");
+  signalPlotter_setSignalName(5, "y_Accel");
+  signalPlotter_setSignalName(6, "z_Accel");
+  #endif
 }

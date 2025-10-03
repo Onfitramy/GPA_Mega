@@ -160,11 +160,17 @@ DataPacket_t InterBoardCom_UnpackPacket(InterBoardPacket_t packet) {
 
 uint32_t valid_packets;
 uint32_t invalid_packets;
-
+uint8_t raw_array[26] = {2, 119, 11, 80, 188, 201, 104, 122, 60, 213, 248, 111, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11};
+DataPacket_t attitudeTransmitPacket;
 void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
     //This function is used to parse the received packet
 
     //Remove the top bit on the ID to ignore the more data incoming bit(already handled by the DMA)
+    attitudeTransmitPacket.Packet_ID = 7;
+    attitudeTransmitPacket.timestamp = 2;
+    memcpy(attitudeTransmitPacket.Data.raw, raw_array, 26);
+    attitudeTransmitPacket.crc = 11;
+
     packet.InterBoardPacket_ID &= 0x7F;
 
     DataPacket_t dataPacket = InterBoardCom_UnpackPacket(packet);
@@ -205,7 +211,13 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
             }
 
             if ((Interboard_Target & INTERBOARD_TARGET_RADIO) == INTERBOARD_TARGET_RADIO) {
-                XBee_Transmit((uint8_t *)&dataPacket, sizeof(dataPacket), 0); // Send the data via XBee to the specified address (0 = broadcast)
+                if (dataPacket.Packet_ID == PACKET_ID_ATTITUDE){
+                    attitudeTransmitPacket.Packet_ID = PACKET_ID_ATTITUDE;
+                    //attitudeTransmitPacket.timestamp = dataPacket.timestamp;
+                    //memcpy(attitudeTransmitPacket.Data.raw, dataPacket.Data.raw, 26);
+                    //attitudeTransmitPacket.crc = 0;
+                    XBee_Transmit((uint8_t*)&attitudeTransmitPacket, 32, 0); // Broadcast to all XBees
+                }
             }
             break;
         }

@@ -11,7 +11,8 @@
         "cmath": "c",
         "voltagereader.h": "c",
         "cmsis_os.h": "c",
-        "freertos.h": "c"
+        "freertos.h": "c",
+        "xbee.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

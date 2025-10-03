@@ -193,8 +193,6 @@ void StartDefaultTask(void *argument)
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 10; //100 Hz
 
-  uint8_t transmitPayload[32] = {1, 2, 3, 4, 5};
-
   /* Infinite loop */
   for(;;) {
     Counter_100Hz++;
@@ -207,7 +205,6 @@ void StartDefaultTask(void *argument)
 
     ShowStatus(RGB_SECONDARY, secondary_status, 1, 100);
 
-    //XBee_Transmit(transmitPayload, 5, 0x00);
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }
 
@@ -219,6 +216,7 @@ void Start10HzTask(void *argument){
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 100; // 10 Hz
 
+  uint8_t XBEEtransmitBuffer[32] = {7, 222, 241, 33, 0, 81, 100, 65, 188, 82, 195, 93, 59, 65, 83, 112, 63, 0}; // Test data
   /* Infinite loop */
   for(;;) {
     Counter_10Hz++;
@@ -253,10 +251,13 @@ void Start10HzTask(void *argument){
         break;
 
     }
-    
+
     health.temperature.reg_3V3 = readTemperature(1);
     health.voltage.bus_5V = readVoltage(1) * (10 + 10) / 10;
     health.voltage.bus_gpa_bat = readVoltage(2) * (10 + 2.2) / 2.2;
+
+    XBee_GetTemperature();
+    //XBee_Transmit(XBEEtransmitBuffer, 32, 0); // Transmit 32 bytes of test data
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
   }
@@ -297,7 +298,7 @@ void StartInterBoardComTask(void *argument)
 }
 
 uint8_t transmitStatus;
-uint8_t test = 0;
+uint8_t XBEE_TransmittedReceived = 0;
 void StartInterruptTask(void *argument)
 {
   /* USER CODE BEGIN StartInterruptTask */
@@ -326,15 +327,19 @@ void StartInterruptTask(void *argument)
           } else {
             // Handle error
           }
-        } 
+        } else if (packet.frame_data[2] == 'E' && packet.frame_data[3] == 'R'){ //Received Error Count
+          // Error Response
+        }
       }  else if (packet.frame_data[0] == 0x90) { // RX Packet
           // Process received RF data
           uint8_t* rfData = &packet.frame_data[12]; // RF data starts at byte 12
           uint16_t rfDataLength = (packet.frame_length[0] << 8 | packet.frame_length[1]) - 12; // Length of RF data
-          test += 1;
+
+          XBEE_TransmittedReceived += 1;
           // Handle rfData as needed
       } else if (packet.frame_data[0] == 0x8B) { // Transmit Status
           // Process transmit status
+          XBEE_TransmittedReceived += 1;
           uint8_t frameID = packet.frame_data[1];
           transmitStatus = packet.frame_data[5];
           // Handle transmit status as needed

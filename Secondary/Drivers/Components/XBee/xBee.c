@@ -5,6 +5,7 @@
 
 extern UART_HandleTypeDef huart1;
 
+uint8_t XBee_checkCRC(uint8_t* data, uint16_t length, uint8_t crc);
 
 /**
  * @brief Constructs an XBee Transmit Request frame.
@@ -44,11 +45,35 @@ void constructTransmitFrame(uint8_t* frame, uint8_t frame_id, uint64_t dest_addr
     // Calculate and append checksum
     uint64_t checksum = 0;
     // Add all bytes of the packet, except the start delimiter 0x7E and the length (the second and third bytes).
-    for (uint16_t i = 3; i < payload_length + 18; i++) {
+    for (uint16_t i = 3; i < 17 + payload_length; i++) {
         checksum += frame[i];
     }
     //Keep only the lowest 8 bits from the result and subtract this from 0xFF.
     frame[17 + payload_length] = 0xFF - (checksum & 0xFF);
+
+    XBee_checkCRC(&frame[3], 14 + payload_length , frame[17 + payload_length]);
+}
+
+uint8_t XBee_calcCRC(uint8_t* data, uint16_t length)
+{
+    uint64_t checksum = 0;
+    for (uint16_t i = 0; i < length; i++) {
+        checksum += data[i];
+    }
+    return 0xFF - (checksum & 0xFF);
+}
+
+uint8_t XBee_checkCRC(uint8_t* data, uint16_t length, uint8_t crc)
+{
+    uint64_t checksum = 0;
+    for (uint16_t i = 0; i < length; i++) {
+        checksum += data[i];
+    }
+    if (((checksum + crc) & 0xFF) == 0xFF) {
+        return 1; // Valid CRC
+    }
+    uint8_t corr_checksum = 0xFF - (checksum & 0xFF);
+    return 0; // Invalid CRC
 }
 
 void constructATFrame(xbee_at_cmd_t* frame, uint8_t frame_id, uint16_t ATCommand, uint8_t *payload, uint16_t payload_length)
@@ -81,8 +106,15 @@ void constructATFrame(xbee_at_cmd_t* frame, uint8_t frame_id, uint16_t ATCommand
 }
 
 uint8_t debug_temp;
+uint8_t UART_LOCK = 0;
+uint8_t UART_LOCK_ERROR = 0;
 void sendAPIFrame(uint8_t* frame, uint16_t frame_length)
 {
+    if (UART_LOCK) {
+        UART_LOCK_ERROR += 1;
+        return; // UART is busy
+    }
+    UART_LOCK = 1;
     HAL_StatusTypeDef res = HAL_UART_Transmit_IT(&huart1, frame, frame_length + 4); //Convert frame_length to bytes
     res = 0;
 }
@@ -139,3 +171,11 @@ void XBee_Transmit(uint8_t* data, uint16_t length, uint64_t destinationAddress)
     constructTransmitFrame(xbee_frame_buffer, 0x01, destinationAddress, data, length);
     sendAPIFrame(xbee_frame_buffer, xbee_frame_buffer[1] << 8 | xbee_frame_buffer[2]);
 }
+
+void XBee_ReceivedErrorCount()
+{
+    constructATFrame(&at_frame, 0x01, ('E' << 8) | 'R', NULL, 0);
+    sendAPIFrame((uint8_t*)&at_frame, at_frame.frame_length[0] << 8 | at_frame.frame_length[1]);
+}
+
+//void XBee_BufferT
