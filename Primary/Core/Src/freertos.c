@@ -421,9 +421,9 @@ void Start100HzTask(void *argument) {
     signalPlotter_sendData(2, euler_from_q[0]);
     signalPlotter_sendData(3, euler_from_q[1]);
     signalPlotter_sendData(4, euler_from_q[2]);
-    signalPlotter_sendData(5, imu1_data.accel[0]);
-    signalPlotter_sendData(6, imu1_data.accel[1]);
-    signalPlotter_sendData(7, imu1_data.accel[2]);
+    signalPlotter_sendData(5, average_imu_data.accel[0]);
+    signalPlotter_sendData(6, average_imu_data.accel[1]);
+    signalPlotter_sendData(7, average_imu_data.accel[2]);
     signalPlotter_sendData(8, a_WorldFrame[0]);
     signalPlotter_sendData(9, a_WorldFrame[1]);
     signalPlotter_sendData(10, a_WorldFrame[2]);
@@ -460,7 +460,7 @@ void Start100HzTask(void *argument) {
     // KALMAN FILTER, QUATERNION
     // correction step
     if (flight_sm.currentFlightState != STATE_FLIGHT_STARTUP) {
-      arm_vecN_concatenate_f32(3, imu1_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
+      arm_vecN_concatenate_f32(3, average_imu_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
       EKFCorrectionStep(&EKF3, &EKF3_corr1);
     }
 
@@ -490,7 +490,7 @@ void Start10HzTask(void *argument) {
     if (is_groundstation){ //Groundstation requests data from secondary board
 
     } else { //Secondary board sends data to groundstation
-      UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &imu1_data, &mag_data);
+      UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &average_imu_data, &mag_data);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);
 
       UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler_from_q[0], euler_from_q[1], euler_from_q[2]);
@@ -539,11 +539,7 @@ void Start10HzTask(void *argument) {
     }
 
     // EVENTS
-    if ((gps_data.gpsFix == 3)) {
-      StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_GNSS_FIX);
-    }
 
-    // KF2 correction steps
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
   }
   /* USER CODE END Start10HzTask */

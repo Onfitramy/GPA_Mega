@@ -3,6 +3,8 @@
 
 #include "main.h"
 
+#define MAX_SELFTEST_TRIES 10
+
 /* --- Define all possible flight states --- */
 typedef enum {
     STATE_FLIGHT_ABORT,             // abort encountered

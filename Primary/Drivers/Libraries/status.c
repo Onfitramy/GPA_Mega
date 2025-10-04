@@ -58,7 +58,7 @@ void ShowStatus(int8_t status, float freq_cycle, float freq_call) {
             SetLED_pulse(COLOR_RED);
             break;
         case STATE_FLIGHT_STARTUP:
-            SetLED_blink(COLOR_BLUE);
+            SetLED_pulse(COLOR_PINK);
             break;
         case STATE_FLIGHT_INIT:
             SetLED_pulse(COLOR_BLUE);

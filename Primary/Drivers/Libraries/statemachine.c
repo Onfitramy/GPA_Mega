@@ -106,9 +106,12 @@ static void StartupEntry(StateMachine_t *sm) {
 }
 static void InitEntry(StateMachine_t *sm) {
     /* --- Read sensor data for EKF initialization --- */
-    imu1_status.hal_status |= IMU_ReadSensorData(&imu1_data);
-    arm_vec3_sub_f32(imu1_data.accel, imu1_data.calibration.offset, imu1_data.accel);
-    arm_vec3_element_product_f32(imu1_data.accel, imu1_data.calibration.scale, imu1_data.accel);
+    imu1_status.hal_status |= IMU_Update(&imu1_data);
+    imu2_status.hal_status |= IMU_Update(&imu2_data);
+    imu1_status.active = imu1_data.active;
+    imu2_status.active = imu2_data.active;
+    
+    IMU_Average(&imu1_data, &imu2_data, &average_imu_data);
 
     mag_status.hal_status |= MAG_ReadSensorData(&mag_data);
     arm_vec3_sub_f32(mag_data.field, mag_data.calibration.offset, mag_data.field);
@@ -128,7 +131,7 @@ static void InitEntry(StateMachine_t *sm) {
     EKF2.x[2] = 101325;
 
     // Quaternion EKF initialization
-    arm_vecN_concatenate_f32(3, imu1_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
+    arm_vecN_concatenate_f32(3, average_imu_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
     EKFStateVInit(&EKF3, &EKF3_corr1);
     RotationMatrixFromQuaternion(x3, &M_rot_bi, DCM_bi_WorldToBody);
     RotationMatrixFromQuaternion(x3, &M_rot_ib, DCM_ib_BodyToWorld);
@@ -184,13 +187,13 @@ static void StartupDo(StateMachine_t *sm) {
         StateMachine_Dispatch(sm, EVENT_FLIGHT_STARTUP_COMPLETE);
     }
     // All sensors but IMU1 working
-    else if (((selftest_tries > 100) && (status_data.sensor_status_flags & 0x1E) == 0x1E)) {
+    else if (((selftest_tries > MAX_SELFTEST_TRIES) && (status_data.sensor_status_flags & 0x1E) == 0x1E)) {
         // TODO: Notify user of defect IMU1 and disable IMU1 permanently
         status_data.sensor_status_flags |= (1<<7);  //All checks passed
         StateMachine_Dispatch(sm, EVENT_FLIGHT_STARTUP_COMPLETE);
     }
     // All sensors but IMU2 working
-    else if (((selftest_tries > 100) && (status_data.sensor_status_flags & 0x1D) == 0x1D)) {
+    else if (((selftest_tries > MAX_SELFTEST_TRIES) && (status_data.sensor_status_flags & 0x1D) == 0x1D)) {
         // TODO: Notify user of defect IMU2 and disable IMU2 permanently
         status_data.sensor_status_flags |= (1<<7);  //All checks passed
         StateMachine_Dispatch(sm, EVENT_FLIGHT_STARTUP_COMPLETE);
