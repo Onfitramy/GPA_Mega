@@ -21,10 +21,6 @@
 #define REFERENCE_PRESSURE_VAR 1e-6
 
 // EKF sizes
-#define x_size1 6
-#define u_size1 3
-#define z_size1_corr1 3
-
 #define x_size2 3
 #define u_size2 1
 #define z_size2_corr1 1
@@ -85,23 +81,7 @@ typedef struct {
 } ekf_corr_data_t;
 
 /* EKF variables, vectors and matrices */
-extern ekf_data_t EKF1;
-extern float x1[x_size1];
-extern arm_matrix_instance_f32 F1;
-extern arm_matrix_instance_f32 B1;
-extern arm_matrix_instance_f32 Q1;
-extern arm_matrix_instance_f32 P1;
-extern float P1_data[x_size1*x_size1];
-
-extern ekf_corr_data_t EKF1_corr1;
-extern float z1_corr1[z_size1_corr1];
-extern float h1_corr1[z_size1_corr1];
-extern float v1_corr1[z_size1_corr1];
-extern arm_matrix_instance_f32 H1_corr1;
-extern arm_matrix_instance_f32 R1_corr1;
-extern arm_matrix_instance_f32 S1_corr1;
-extern arm_matrix_instance_f32 K1_corr1;
-
+extern const float dt;
 
 extern ekf_data_t EKF2;
 extern float x2[x_size2];
@@ -146,7 +126,36 @@ extern arm_matrix_instance_f32 R3_corr1;
 extern arm_matrix_instance_f32 S3_corr1;
 extern arm_matrix_instance_f32 K3_corr1;
 
+extern double WGS84[3];
+extern double WGS84_ref[3];
+extern double ECEF[3];
+extern double ECEF_ref[3];
+extern double ENU[3];
 
+extern arm_matrix_instance_f32 M_rot_bi;
+extern arm_matrix_instance_f32 M_rot_ib;
+extern arm_matrix_instance_f32 M_rot_q;
+
+extern float euler_from_q[3];
+
+extern float a_WorldFrame[3];
+extern float a_BodyFrame[3];
+extern float a_abs;
+extern float gravity_world_vec[3];
+extern float gravity_body_vec[3];
+
+extern float corr_acc_buf[GNSS_VELOCITY_DELAY];
+extern float corr_acc_sum;
+extern float corr_delta_v;
+
+extern float corr_vel_buf[GNSS_POSITION_DELAY];
+extern float corr_vel_sum;
+extern float corr_delta_h;
+
+extern float gnss_height_corr;
+extern float gnss_velZ_corr;
+
+/* --- Function declarations --- */
 void normalizeAngle(float* angle, float upper_boundary, float lower_boundary, float step_size);
 void normalizeAngleVector(float* angle_vec, uint8_t pos_top, uint8_t pos_bottom, float upper_boundary, float lower_boundary, float step_size);
 

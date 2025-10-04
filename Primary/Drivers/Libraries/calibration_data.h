@@ -1,6 +1,8 @@
 #ifndef CALIBRATION_DATA_H
 #define CALIBRATION_DATA_H
 #include <stdint.h>
+#include "stm32h7xx_hal.h"
+#include "stdbool.h"
 
 /* ### CALIBRATION AND OFFSET DATA FOR BOARDS 1 - 5 ### */
 
@@ -16,6 +18,11 @@ typedef struct {
     float offset[3];
     float scale[3];
 } CalibrationData_t;
+
+typedef struct {
+  HAL_StatusTypeDef hal_status;
+  bool active;
+} SensorStatus;
 
 extern const CalibrationData_t CalibrationData[5][3];
 

@@ -89,38 +89,6 @@ uint32_t TimeMeasureStop(void) {
 }
 
 void signalPlotter_init(void) {
-  #ifdef SIGNAL_PLOTTER_OUT_1 // position ekf testing
-  signalPlotter_setSignalName(0, "delta Time");
-  signalPlotter_setSignalName(1, "NRF Data");
-  signalPlotter_setSignalName(2, "a_x world");
-  signalPlotter_setSignalName(3, "a_y world");
-  signalPlotter_setSignalName(4, "a_z world");
-  signalPlotter_setSignalName(5, "a_x offset");
-  signalPlotter_setSignalName(6, "a_y offset");
-  signalPlotter_setSignalName(7, "a_z offset");
-  signalPlotter_setSignalName(8, "velocity var");
-  signalPlotter_setSignalName(9, "horizontal var");
-  signalPlotter_setSignalName(10, "pressure");
-  signalPlotter_setSignalName(11, "phi");
-  signalPlotter_setSignalName(12, "theta");
-  signalPlotter_setSignalName(13, "psi");
-  signalPlotter_setSignalName(14, "phi fix");
-  signalPlotter_setSignalName(15, "theta fix");
-  signalPlotter_setSignalName(16, "psi fix");
-  signalPlotter_setSignalName(17, "vel x");
-  signalPlotter_setSignalName(18, "vel y");
-  signalPlotter_setSignalName(19, "vel z");
-  signalPlotter_setSignalName(20, "pos x");
-  signalPlotter_setSignalName(21, "pos y");
-  signalPlotter_setSignalName(22, "pos z");
-  signalPlotter_setSignalName(23, "vel x fix");
-  signalPlotter_setSignalName(24, "vel y fix");
-  signalPlotter_setSignalName(25, "vel z fix");
-  signalPlotter_setSignalName(26, "pos x fix");
-  signalPlotter_setSignalName(27, "pos y fix");
-  signalPlotter_setSignalName(28, "pos z fix");
-  #endif
-
   #ifdef SIGNAL_PLOTTER_OUT_2 // raw sensor data
   signalPlotter_setSignalName(0, "delta Time");
   signalPlotter_setSignalName(1, "NRF Data");
@@ -151,9 +119,9 @@ void signalPlotter_init(void) {
   #ifdef SIGNAL_PLOTTER_OUT_3 // orientation ekf testing
   signalPlotter_setSignalName(0, "delta Time");
   signalPlotter_setSignalName(1, "NRF Data");
-  signalPlotter_setSignalName(2, "quat phi");
-  signalPlotter_setSignalName(3, "quat theta");
-  signalPlotter_setSignalName(4, "quat psi");
+  signalPlotter_setSignalName(2, "phi");
+  signalPlotter_setSignalName(3, "theta");
+  signalPlotter_setSignalName(4, "psi");
   signalPlotter_setSignalName(5, "gx exp");
   signalPlotter_setSignalName(6, "gy exp");
   signalPlotter_setSignalName(7, "gz exp");
@@ -166,18 +134,12 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(14, "mx meas");
   signalPlotter_setSignalName(15, "my meas");
   signalPlotter_setSignalName(16, "mz meas");
-  signalPlotter_setSignalName(17, "euler phi");
-  signalPlotter_setSignalName(18, "euler theta");
-  signalPlotter_setSignalName(19, "euler psi");
-  signalPlotter_setSignalName(20, "gyro x");
-  signalPlotter_setSignalName(21, "gyro y");
-  signalPlotter_setSignalName(22, "gyro z");
-  signalPlotter_setSignalName(23, "gyro x bias");
-  signalPlotter_setSignalName(24, "gyro y bias");
-  signalPlotter_setSignalName(25, "gyro z bias");
-  signalPlotter_setSignalName(26, "egyro x bias");
-  signalPlotter_setSignalName(27, "egyro y bias");
-  signalPlotter_setSignalName(28, "egyro z bias");
+  signalPlotter_setSignalName(17, "gyro x");
+  signalPlotter_setSignalName(18, "gyro y");
+  signalPlotter_setSignalName(19, "gyro z");
+  signalPlotter_setSignalName(20, "gyro x bias");
+  signalPlotter_setSignalName(21, "gyro y bias");
+  signalPlotter_setSignalName(22, "gyro z bias");
   #endif
 
   #ifdef SIGNAL_PLOTTER_OUT_4 // raw sensor data

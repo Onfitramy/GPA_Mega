@@ -1,7 +1,6 @@
 #ifndef BMP390_H_
 #define BMP390_H_
 
-#include "stm32h7xx_hal.h"
 #include "stdbool.h"
 
 #include "main.h"  // Falls du Debugging per LED machst
@@ -35,8 +34,13 @@ typedef struct {
 extern I2C_HandleTypeDef hi2c3;  // Falls du I²C1 benutzt, sonst anpassen
 #define BMP_I2C        hi2c3      // Das richtige I²C-Interface setzen
 #define BMP390_I2C_ADDR  (0x76 << 1)  // BMP390 I²C-Adresse (STM32 nutzt 8-Bit-Adresse)
+
+extern uint32_t pressure_raw;
+extern uint32_t temperature_raw;
 extern bmp390_handle_t bmp_handle;
 
+extern float temperature, pressure;
+extern float height_baro;
 
 // Register-Adressen
 #define BMP390_CHIP_ID_REG  0x00  // WHO_AM_I Register (sollte 0x60 zurückgeben)

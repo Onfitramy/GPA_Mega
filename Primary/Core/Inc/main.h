@@ -31,9 +31,23 @@ extern "C" {
 #include "FreeRTOS.h"
 #include "queue.h"
 
-#include "signalPlotter.h"
 #include "ws2812.h"
+#include "SERVO.h"
+#include "IMUS.h"
+#include "LIS3MDL.h"
+#include "bmp390.h"
+#include "NRF24L01P.h"
+#include "SAM-M8Q.h"
+#include "radio.h"
+
+#include "signalPlotter.h"
 #include "status.h"
+#include "Packets.h"
+
+#include "guidance.h"
+#include "navigation.h"
+#include "control.h"
+#include "statemachine.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 /* USER CODE END Includes */
@@ -158,11 +172,6 @@ uint32_t HAL_GetTickUS(void);
 #define AVG_SLOPE (4.3F)
 #define V_AT_25C  (1.43F)
 #define V_REF_INT (1.2F)
-
-typedef struct {
-  double accel[3];  // X, Y, Z
-  double gyro[3];   // X, Y, Z
-} StateVector;
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

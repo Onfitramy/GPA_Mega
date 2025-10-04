@@ -153,9 +153,9 @@ int main(void)
   HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 3); // Start UART receive interrupt
   XBee_changeDataRate(1);
 
-  PU_enableRecovery();
-  PU_enableCamera();
-  PU_enableACS();
+  //PU_enableRecovery();
+  //PU_enableCamera();
+  //PU_enableACS();
   /*
 
   HAL_Delay(1000);

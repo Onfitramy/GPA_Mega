@@ -4,6 +4,8 @@
 
 HAL_StatusTypeDef GPS_I2C_status;
 
+UBX_NAV_PVT gps_data;
+
 static uint8_t buffer[1000]; //Main Buffer used for many different things. Never use it for longer than inside a single function!! Try to clear/reset it after use
 
 bool GPSnotConfig = true;

@@ -46,7 +46,12 @@
         "compare": "c",
         "imus.h": "c",
         "packets.h": "c",
-        "lis3mdl.h": "c"
+        "lis3mdl.h": "c",
+        "status.h": "c",
+        "guidance.h": "c",
+        "statemachine.h": "c",
+        "control.h": "c",
+        "sam-m8q.h": "c"
     },
     "cortex-debug.variableUseNaturalFormat": true
 }

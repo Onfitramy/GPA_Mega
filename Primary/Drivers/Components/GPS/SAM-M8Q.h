@@ -1,10 +1,6 @@
 #ifndef SAM_M8Q_H_
 #define SAM_M8Q_H_
 
-#include "stm32h7xx_hal.h"
-
-#include "main.h" //Für LED_Debuggen
-
 extern I2C_HandleTypeDef hi2c2;
 
 #define GPS_I2C        hi2c2 
@@ -86,6 +82,7 @@ typedef struct {
 } UBX_CFG_RATE;
 #pragma pack(pop)
 
+extern UBX_NAV_PVT gps_data;
 
 uint8_t GPS_VER_CHECK(void);
 

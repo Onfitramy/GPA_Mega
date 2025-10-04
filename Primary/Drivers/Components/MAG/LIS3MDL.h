@@ -9,11 +9,15 @@ extern SPI_HandleTypeDef hspi4;
 
 extern int16_t MAG_FS_LSB;
 
+extern SensorStatus mag_status;
+
 typedef struct {
     float field[3];  // X, Y, Z
     float temp;        // temperature
     CalibrationData_t calibration;
 } LIS3MDL_Data_t;
+
+extern LIS3MDL_Data_t mag_data;
 
 uint8_t MAG_SelfTest(void);
 uint8_t MAG_VerifyDataReady(void);

@@ -1,13 +1,19 @@
 #include "IMUS.h"
-//#include "calibration_data.h"
-#include "main.h" // ONLY FOR TESTING WITHE LED
+
 #include <stdint.h>
 #include <string.h>
 
 #include "armMathAddon.h"
-#include "calibration_data.h"
 
 HAL_StatusTypeDef IMU_SPI_status;
+
+SensorStatus imu1_status = { HAL_OK, 0 };
+SensorStatus imu2_status = { HAL_OK, 0 };
+
+IMU_Data_t imu1_data;
+IMU_Data_t imu2_data;
+IMU_AverageData_t average_imu_data;
+
 
 static void IMU_WritePin(GPIO_PinState pin, const IMU_Data_t *imu_data) {
     GPIO_TypeDef *imu_cs_port;

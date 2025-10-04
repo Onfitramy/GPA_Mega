@@ -1,5 +1,7 @@
 #include "navigation.h"
 
+/* ------------------------------------------- CONSTANTS ------------------------------------------- */
+
 // define constants of WGS84
 const double a = 6378137.;
 const double f = 1. / 298.257223563;
@@ -12,32 +14,12 @@ const double T0_const = 288.15;     // K
 const double L_const = -0.0065;     // K/m
 const double g0_const = 9.80665;    // m/s²
 
-// EKF vectors and matrices
-// create new Kalman Filter instance for orientation
-ekf_data_t EKF1;
-float x1[x_size1] = {0};
-float F1_data[x_size1*x_size1] = {0}; // 6x6
-arm_matrix_instance_f32 F1 = {x_size1, x_size1, F1_data};
-float B1_data[x_size1*u_size1] = {0}; // 6x3
-arm_matrix_instance_f32 B1 = {x_size1, u_size1, B1_data};
-float Q1_data[x_size1*x_size1] = {0}; // 6x6
-arm_matrix_instance_f32 Q1 = {x_size1, x_size1, Q1_data};
-float P1_data[x_size1*x_size1] = {0}; // 6x6
-arm_matrix_instance_f32 P1 = {x_size1, x_size1, P1_data};
+// time step
+const float dt = 0.001;
 
-ekf_corr_data_t EKF1_corr1;
-float z1_corr1[z_size1_corr1] = {0};
-float h1_corr1[z_size1_corr1] = {0};
-float v1_corr1[z_size1_corr1] = {0};
-float H1_corr1_data[z_size1_corr1*x_size1] = {0}; // 3x6
-arm_matrix_instance_f32 H1_corr1 = {z_size1_corr1, x_size1, H1_corr1_data};
-float R1_corr1_data[z_size1_corr1*z_size1_corr1] = {0}; // 3x3
-arm_matrix_instance_f32 R1_corr1 = {z_size1_corr1, z_size1_corr1, R1_corr1_data};
-float S1_corr1_data[z_size1_corr1*z_size1_corr1] = {0}; // 3x3
-arm_matrix_instance_f32 S1_corr1 = {z_size1_corr1, z_size1_corr1, S1_corr1_data};
-float K1_corr1_data[x_size1*z_size1_corr1];       // 6x3
-arm_matrix_instance_f32 K1_corr1 = {x_size1, z_size1_corr1, K1_corr1_data};
+/* ------------------------------------------- VARIABLES ------------------------------------------- */
 
+/* --- EKF vectors and matrices --- */
 
 // create new Kalman Filter instance for velocity and height
 ekf_data_t EKF2;
@@ -98,6 +80,46 @@ arm_matrix_instance_f32 S3_corr1 = {z_size3_corr1, z_size3_corr1, S3_corr1_data}
 float K3_corr1_data[x_size3*z_size3_corr1];       // 7x6
 arm_matrix_instance_f32 K3_corr1 = {x_size3, z_size3_corr1, K3_corr1_data};
 
+
+/* --- Coordinate system variables --- */
+
+// reference frames
+double WGS84[3];
+double WGS84_ref[3];
+double ECEF[3];
+double ECEF_ref[3];
+double ENU[3];
+
+// rotation matrix
+float M_rot_bi_data[9];
+arm_matrix_instance_f32 M_rot_bi = {3, 3, M_rot_bi_data};
+float M_rot_ib_data[9];
+arm_matrix_instance_f32 M_rot_ib = {3, 3, M_rot_ib_data};
+float M_rot_q_data[9];
+arm_matrix_instance_f32 M_rot_q = {3, 3, M_rot_q_data};
+
+float euler_from_q[3] = {0};
+
+// vectors
+float a_WorldFrame[3] = {0}; // Acceleration
+float a_BodyFrame[3] = {0};
+float a_abs;
+float gravity_world_vec[3] = {0, 0, 9.8};
+float gravity_body_vec[3];
+
+// GNSS delay compensation
+float corr_acc_buf[GNSS_VELOCITY_DELAY] = {0};
+float corr_acc_sum = 0;
+float corr_delta_v = 0;
+
+float corr_vel_buf[GNSS_POSITION_DELAY] = {0};
+float corr_vel_sum = 0;
+float corr_delta_h = 0;
+
+float gnss_height_corr;
+float gnss_velZ_corr;
+
+/* ------------------------------------------- FUNCTIONS ------------------------------------------- */
 
 // set boundaries for angle
 void normalizeAngle(float *angle, float upper_boundary, float lower_boundary, float step_size) {

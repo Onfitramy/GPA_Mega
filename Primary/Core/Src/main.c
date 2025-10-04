@@ -28,15 +28,8 @@
 #include "tim.h"
 #include "usb_device.h"
 #include "gpio.h"
-#include "SERVO.h"
 #include "Pyro.h"
-#include "IMUS.h"
-#include "LIS3MDL.h"
-#include "ws2812.h"
-#include "bmp390.h"
-#include "NRF24L01P.h"
-#include "signalPlotter.h"
-#include "status.h"
+
 #include "InterBoardCom.h"
 #include <stdint.h>
 /* Private includes ----------------------------------------------------------*/
@@ -53,10 +46,14 @@
 /* USER CODE BEGIN PD */
 volatile uint8_t dma_waiting_ws2812;
 uint16_t adc3_buf[3];
+uint32_t uid[3];
 
 extern float ADC_Temperature, ADC_V_Sense, ADC_V_Ref;
 extern uint8_t SPI1_State; // 0: Ready, 1: TX busy, 2: RX busy
 extern volatile uint8_t SPI1_ReceivePending; // Flag to indicate a pending receive request
+
+extern StateMachine_t flight_sm;
+extern bool is_groundstation;
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -143,41 +140,26 @@ int main(void)
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
 
-  SERVO_Init(1, 1500, 2500, 135);
-  SERVO_Init(2, 1500, 2500, 135);
-  SERVO_Init(3, 1500, 2500, 135);
-  SERVO_MoveToAngle(1, 0);
-  SERVO_MoveToAngle(2, 0);
-  SERVO_MoveToAngle(3, 0);
-
-  int counter1, counter2, counter3;
-
   HAL_DTS_Start(&hdts);
-
-  BMP_SelfTest();
-  BMP_enable();
-  BMP_Read_Calibration_Params(&bmp_handle);
-
-  nrf24l01p_init(2462, _1Mbps);
 
   HAL_ADCEx_Calibration_Start(&hadc3, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
 
-  IMU_Data_t tmp_imu1_data;
-  IMU_Data_t tmp_imu2_data;
-  tmp_imu1_data.imu = IMU1;
-  tmp_imu2_data.imu = IMU2;
+  // find out board no.
+  uid[0] = HAL_GetUIDw0();
+  uid[1] = HAL_GetUIDw1();
+  uid[2] = HAL_GetUIDw2();
+  gpa_mega = GPA_MegaFromUID(uid);
 
-  for(counter1 = 0; IMU_SelfTest(&tmp_imu1_data) != 1 && counter1 < 100000; counter1++);
-  for(counter2 = 0; IMU_SelfTest(&tmp_imu2_data) != 1 && counter2 < 100000; counter2++);
-  for(counter3 = 0; MAG_SelfTest() != 1 && counter3 < 100000; counter3++);
+  // if board is a ground station, set flag
+  if (gpa_mega == GPA_MEGA_2) {
+    is_groundstation = true;
+  }
 
+  // define output signal names
+  signalPlotter_init();
 
-  IMU_VerifyDataReady(&tmp_imu1_data);
-  IMU_VerifyDataReady(&tmp_imu2_data);
-  MAG_VerifyDataReady();
-
-  MAG_ConfigSensor(LIS3MDL_OM_ULTRA, LIS3MDL_ODR_80_Hz, LIS3MDL_FS_4, LIS3MDL_FAST_ODR_ON, LIS3MDL_TEMP_ON);
-
+  // state machine init
+  StateMachine_Init(&flight_sm, STATE_FLIGHT_STARTUP);
   /* USER CODE END 2 */
 
   /* Init scheduler */

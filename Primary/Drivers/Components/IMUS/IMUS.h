@@ -8,6 +8,9 @@
 extern SPI_HandleTypeDef hspi4;
 extern SPI_HandleTypeDef hspi3;
 
+extern SensorStatus imu1_status;
+extern SensorStatus imu2_status;
+
 typedef enum {
     IMU1 = 0,
     IMU2 = 1,
@@ -68,6 +71,9 @@ typedef enum {
     INTERRUPT_PIN_1 = 0b1,
 } InterruptPins;
 
+extern IMU_Data_t imu1_data;
+extern IMU_Data_t imu2_data;
+extern IMU_AverageData_t average_imu_data;
 
 HAL_StatusTypeDef IMU_InitImu(IMU_Data_t *imu_data, IMU imu, GPA_Mega gpa_mega);
 HAL_StatusTypeDef IMU_Update(IMU_Data_t *imu_data);

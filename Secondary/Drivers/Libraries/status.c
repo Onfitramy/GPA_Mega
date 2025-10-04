@@ -46,55 +46,33 @@ void SetLED_pulse(color_handle color) {
     WS2812_Send();
 }
 
-void ShowStatus(device_handle device, int8_t status, float freq_cycle, float freq_call) {
+void ShowStatus(int8_t status, float freq_cycle, float freq_call) {
     float freq_ratio = freq_cycle / freq_call * 510.f;
     if((LED_blink == 0) && (LED_pulse + freq_ratio <= 255)) LED_pulse += freq_ratio;
     else if((LED_blink == 1) && (LED_pulse - freq_ratio >= 0)) LED_pulse -= freq_ratio;
     else LED_blink = !LED_blink;
 
-    if(device == RGB_PRIMARY) {
-
+    switch(status) {
+        case -5: // Critically low battery condition
+            SetLED_blink(COLOR_ORANGE);
+            break;
+        case -4: // Low battery condition
+            SetLED_pulse(COLOR_ORANGE);
+            break;
+        case -3: // Error, other
+            SetLED_blink(COLOR_RED);
+            break;
+        case -2: // Fatal Error
+            SetLED_color(COLOR_RED);
+            break;
+        case -1: // Sensor Error
+            SetLED_pulse(COLOR_RED);
+            break;
+        case 0: // Init
+            SetLED_pulse(COLOR_MAGENTA);
+            break;
+        case 1: // Normal operations
+            SetLED_pulse(COLOR_BLUE);
+            break;
     }
-    if(device == RGB_SECONDARY) {
-
-        switch(status) {
-            case -5: // Critically low battery condition
-                SetLED_blink(COLOR_ORANGE);
-                break;
-            case -4: // Low battery condition
-                SetLED_pulse(COLOR_ORANGE);
-                break;
-            case -3: // Error, other
-                SetLED_blink(COLOR_RED);
-                break;
-            case -2: // Fatal Error
-                SetLED_color(COLOR_RED);
-                break;
-            case -1: // Sensor Error
-                SetLED_pulse(COLOR_RED);
-                break;
-            case 0: // Startup
-                SetLED_pulse(COLOR_MAGENTA);
-                break;
-            case 1: // GNSS Alignment
-                SetLED_pulse(COLOR_BLUE);
-                break;
-            case 2: // Standby
-                SetLED_color(COLOR_GREEN);
-                break;
-            case 3: // GNSS 2D Fix
-                SetLED_slide(COLOR_BLUE, COLOR_GREEN);
-                break;
-        }
-    }
-    if(device == LED_PRIMARY) { 
-    
-    }
-    if(device == LED_SECONDARY) {
-        HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin);
-    }
-    if(device == BUZZER) {
-        
-    }
-
 }

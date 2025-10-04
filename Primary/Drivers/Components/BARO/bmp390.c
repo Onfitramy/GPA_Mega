@@ -2,6 +2,13 @@
 
 HAL_StatusTypeDef BMP_I2C_status;
 
+uint32_t pressure_raw;
+uint32_t temperature_raw;
+bmp390_handle_t bmp_handle;
+
+float temperature, pressure;
+float height_baro;
+
 HAL_StatusTypeDef BMP_write_reg(uint8_t reg, uint8_t data)
 {
     HAL_StatusTypeDef status;

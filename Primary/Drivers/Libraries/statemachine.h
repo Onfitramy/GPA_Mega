@@ -6,6 +6,7 @@
 /* --- Define all possible flight states --- */
 typedef enum {
     STATE_FLIGHT_ABORT,             // abort encountered
+    STATE_FLIGHT_STARTUP,           // startup
     STATE_FLIGHT_INIT,              // initialization
     STATE_FLIGHT_GNC_ALIGN,         // ekf filters converging
     STATE_FLIGHT_CHECKOUTS,         // checkouts running
@@ -22,6 +23,8 @@ typedef enum {
 
 /* --- Define all possible flight events --- */
 typedef enum {
+    EVENT_FLIGHT_ABORT,
+    EVENT_FLIGHT_STARTUP_COMPLETE,
     EVENT_FLIGHT_GNSS_FIX,
     EVENT_FLIGHT_FILTER_CONVERGED,
     EVENT_FLIGHT_CHECKOUTS_COMPLETE,
@@ -40,12 +43,12 @@ typedef struct {
     uint32_t timestamp_us;              // Holds time of entering current state
 } StateMachine_t;
 
-extern double WGS84[3];
-extern double WGS84_ref[3];
+/* --- Extern variables used in the state machine Entry, Do and Exit functions --- */
+extern GPA_Mega gpa_mega;
+extern StatusPayload_t status_data;
+extern uint8_t selftest_tries;
 
-extern double ECEF[3];
-extern double ECEF_ref[3];
-
+/* --- Function declarations --- */
 void StateMachine_Init(StateMachine_t *sm, flight_state_t initialState);
 void StateMachine_Dispatch(StateMachine_t *sm, flight_event_t event);
 void StateMachine_DoActions(StateMachine_t *sm);

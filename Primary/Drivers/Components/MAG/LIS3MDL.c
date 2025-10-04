@@ -1,8 +1,11 @@
 #include "LIS3MDL.h"
 #include "calibration_data.h"
-#include "main.h" // ONLY FOR TESTING WITHE LED
 
 HAL_StatusTypeDef MAG_SPI_status;
+
+LIS3MDL_Data_t mag_data;
+
+SensorStatus mag_status = { HAL_OK, 0 };
 
 int16_t MAG_FS_LSB = 6842;
 

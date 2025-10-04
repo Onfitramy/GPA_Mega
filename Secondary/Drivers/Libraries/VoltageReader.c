@@ -67,3 +67,14 @@ float readTemperature(int channel) {
 
     return Temperature;
 }
+
+void FilterLP(health_t *health_raw, health_t *health_filt) {
+    health_filt->temperature.reg_3V3  = 0.99 * health_filt->temperature.reg_3V3 + 0.01 * health_raw->temperature.reg_3V3;
+    health_filt->voltage.bus_5V       = 0.99 * health_filt->voltage.bus_5V      + 0.01 * health_raw->voltage.bus_5V;
+    health_filt->voltage.bus_gpa_bat  = 0.99 * health_filt->voltage.bus_gpa_bat + 0.01 * health_raw->voltage.bus_gpa_bat;
+    health_filt->temperature.battery  = 0.99 * health_filt->temperature.battery + 0.01 * health_raw->temperature.battery;
+    health_filt->voltage.bus_pu_bat   = 0.99 * health_filt->voltage.bus_pu_bat  + 0.01 * health_raw->voltage.bus_pu_bat;
+    health_filt->voltage.shunt_pu     = 0.99 * health_filt->voltage.shunt_pu    + 0.01 * health_raw->voltage.shunt_pu;
+    health_filt->power.out_pu         = 0.99 * health_filt->power.out_pu        + 0.01 * health_raw->power.out_pu;
+    health_filt->current.out_pu       = 0.99 * health_filt->current.out_pu      + 0.01 * health_raw->current.out_pu;
+}

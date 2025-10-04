@@ -32,25 +32,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "ws2812.h"
-#include "IMUS.h"
-#include "LIS3MDL.h"
-#include "bmp390.h"
-#include "SAM-M8Q.h"
-#include "SERVO.h"
-#include "NRF24L01P.h"
-
-#include "signalPlotter.h"
 #include "calibration_data.h"
 #include "InterBoardCom.h"
-#include "Packets.h"
-#include "status.h"
-#include "radio.h"
-
-#include "guidance.h"
-#include "navigation.h"
-#include "control.h"
-#include "statemachine.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -60,102 +43,32 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-IMU_Data_t imu1_data;
-IMU_Data_t imu2_data;
-IMU_AverageData_t average_imu_data;
-LIS3MDL_Data_t mag_data;
-UBX_NAV_PVT gps_data;
-uint32_t pressure_raw;
-uint32_t temperature_raw;
-bmp390_handle_t bmp_handle;
-float temperature, pressure;
 static int32_t DTS_Temperature;
 
 extern ADC_HandleTypeDef hadc3;
 uint32_t ADC_Temperature, ADC_V_Ref;
 
-uint32_t uid[3];
 GPA_Mega gpa_mega;
-
-typedef struct {
-  HAL_StatusTypeDef hal_status;
-  bool active;
-} SensorStatus;
 
 bool is_groundstation = false;
 
 void SensorStatus_Reset(SensorStatus *sensor_status) {
   sensor_status->hal_status = HAL_OK;
   sensor_status->active = true;
-}
+} // why is this here?
 
-int8_t primary_status;
-SensorStatus imu1_status = { HAL_OK, 0 };
-SensorStatus imu2_status = { HAL_OK, 0 };
-SensorStatus mag_status = { HAL_OK, 0 };
 int8_t servo_status = 1;
 
 uint32_t dt_1000Hz;
-
-double WGS84[3];
-double WGS84_ref[3];
-
-double ECEF[3];
-double ECEF_ref[3];
-
-double ENU[3];
 
 //uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO, 4: GPS, 7:All checks passed
 StatusPayload_t status_data = {0};
 float F4_data_float;
 
-// euler angles
-float phi, theta, psi;
-float euler_deg[3];
-
-float Mdeuler_data[9] = {0};
-arm_matrix_instance_f32 Mdeuler = {3, 3, Mdeuler_data};
-
-// rotation matrix
-float M_rot_data[9];
-arm_matrix_instance_f32 M_rot_bi = {3, 3, M_rot_data};
-float M_rot_inv_data[9];
-arm_matrix_instance_f32 M_rot_ib = {3, 3, M_rot_inv_data};
-
-// euler angles from accelerations and magnetic field
-float phi_fix, theta_fix, psi_fix;
-
-
-float a_WorldFrame[3] = {0}; // Acceleration
-float a_BodyFrame[3] = {0};
-float a_abs;
-float gravity_world_vec[3] = {0, 0, 9.8};
-float gravity_body_vec[3];
-
-float height_baro;
-
-// time step
-const float dt = 0.001;
-
-float M_rot_q_data[9];
-arm_matrix_instance_f32 M_rot_q = {3, 3, M_rot_q_data};
-
-float euler_from_q[3] = {0};
-
-// GNSS delay compensation
-float corr_acc_buf[GNSS_VELOCITY_DELAY] = {0};
-float corr_acc_sum = 0;
-float corr_delta_v = 0;
-
-float corr_vel_buf[GNSS_POSITION_DELAY] = {0};
-float corr_vel_sum = 0;
-float corr_delta_h = 0;
-
-float gnss_height_corr;
-float gnss_velZ_corr;
-
 // state machine
 StateMachine_t flight_sm;
+
+uint8_t selftest_tries = 0;
 
 // NRF24L01+ packages
 #pragma pack(push, 1)
@@ -321,97 +234,10 @@ void StartDefaultTask(void *argument)
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 1; //1000 Hz
 
-  uid[0] = HAL_GetUIDw0();
-  uid[1] = HAL_GetUIDw1();
-  uid[2] = HAL_GetUIDw2();
-  gpa_mega = GPA_MegaFromUID(uid);
-
-  if (gpa_mega == GPA_MEGA_2) {
-    is_groundstation = true;
-  }
-
-  imu1_status.hal_status |= IMU_InitImu(&imu1_data, IMU1, gpa_mega);
-  imu2_status.hal_status |= IMU_InitImu(&imu2_data, IMU2, gpa_mega);
-  IMU_ConfigXL(IMU_ODR_1660_Hz, IMU_FS_XL_8, 0, &imu1_data);
-  IMU_ConfigG(IMU_ODR_1660_Hz, IMU_FS_G_2000, &imu1_data);
-
-  IMU_ConfigXL(IMU_ODR_6660_Hz, IMU_FS_XL_16, 0, &imu2_data);
-  IMU_ConfigG(IMU_ODR_6660_Hz, IMU_FS_G_4000, &imu2_data);
-
-
-  mag_data.calibration = CalibrationData[gpa_mega][2];
-
-  // state machine
-  StateMachine_Init(&flight_sm, STATE_FLIGHT_INIT);
-
-  // define Kalman Filter dimensions and pointers for orientation
-  EKFInit(&EKF1, EKF1_type, x_size1, u_size1, dt, &F1, &P1, &Q1, &B1 , x1, imu1_data.gyro);
-  EKFCorrectionInit(EKF1, &EKF1_corr1, corr1_type, 3, &H1_corr1, &K1_corr1, &R1_corr1, &S1_corr1, z1_corr1, h1_corr1, v1_corr1);
-
-  // define Kalman Filter dimensions and pointers for velocity and position
-  EKFInit(&EKF2, EKF2_type, x_size2, u_size2, dt, &F2, &P2, &Q2, NULL, x2, &a_WorldFrame[2]);
-  EKFCorrectionInit(EKF2, &EKF2_corr1, corr1_type, 1, &H2_corr1, &K2_corr1, &R2_corr1, &S2_corr1, z2_corr1, h2_corr1, v2_corr1); // baro
-  EKFCorrectionInit(EKF2, &EKF2_corr2, corr2_type, 2, &H2_corr2, &K2_corr2, &R2_corr2, &S2_corr2, z2_corr2, h2_corr2, v2_corr2); // GNSS
-
-  // define Kalman Filter dimensions and pointers for Quaternion EKF
-  EKFInit(&EKF3, EKF3_type, x_size3, u_size3, dt, &F3, &P3, &Q3, NULL, x3, imu1_data.gyro);
-  EKFCorrectionInit(EKF3, &EKF3_corr1, corr1_type, 6, &H3_corr1, &K3_corr1, &R3_corr1, &S3_corr1, z3_corr1, h3_corr1, v3_corr1);
-
-  // define output signal names
-  signalPlotter_init();
-
-  // starting point for KF
-  while(IMU_VerifyDataReady(&imu1_data) & 0x03 != 0x03); // wait for IMU1 data
-  imu1_status.hal_status |= IMU_ReadSensorData(&imu1_data);
-  arm_vec3_sub_f32(imu1_data.accel, imu1_data.calibration.offset, imu1_data.accel);
-  arm_vec3_element_product_f32(imu1_data.accel, imu1_data.calibration.scale, imu1_data.accel);
-
-  while(!(MAG_VerifyDataReady() & 0b00000001)); // wait for MAG data
-  mag_status.hal_status |= MAG_ReadSensorData(&mag_data);
-  if (mag_status.hal_status != HAL_OK) primary_status = STATUS_ERROR_MEMS;
-  arm_vec3_sub_f32(mag_data.field, mag_data.calibration.offset, mag_data.field);
-  arm_vec3_element_product_f32(mag_data.field, mag_data.calibration.scale, mag_data.field);
-
-  EulerOrientationFix(imu1_data.accel, mag_data.field, z1_corr1);
-
-  x1[0] = z1_corr1[0];
-  x1[1] = z1_corr1[1];
-  x1[2] = z1_corr1[2];
-
-  // init height EKF
-  while(!BMP_GetRawData(&pressure_raw, &temperature_raw))
-    HAL_Delay(1);
-
-  // Calculate compensated BMP390 pressure & temperature
-  temperature = bmp390_compensate_temperature(temperature_raw, &bmp_handle);
-  pressure = bmp390_compensate_pressure(pressure_raw, &bmp_handle);
-
-  BaroPressureToHeight(pressure, 101325, &height_baro);
-
-  EKF2.x[0] = height_baro;
-  EKF2.x[1] = 0;
-  EKF2.x[2] = 101325;
-
-  radioSet(NRF_24_ACTIVE);
-  radioSetMode(RADIO_MODE_TRANSCEIVER);
-
-  // Quaternion EKF initialization
-  arm_vecN_concatenate_f32(3, imu1_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
-  EKFStateVInit(&EKF3, &EKF3_corr1);
-
-  // low pass filters
-  // imu2_status |= IMU_SetAccFilterMode(ACC_FILTER_MODE_LOW_PASS, &imu2_data);
-  // imu2_status |= IMU_SetAccFilterStage(ACC_FILTER_STAGE_SECOND, &imu2_data);
-  // imu2_status |= IMU_SetAccFilterBandwidth(ACC_FILTER_BANDWIDTH_ODR_OVER_800, &imu2_data);
-
-  // imu2_status |= IMU_SetGyroLowPassFilter(true, &imu2_data);
-  // imu2_status |= IMU_SetGyroFilterBandwidth(GYRO_FILTER_BANDWIDTH_8, &imu2_data);
-
   /* Infinite loop */
   for(;;) {
     TimeMeasureStart();
     nrf_timeout++;
-    // READ SENSOR DATA
 
     HAL_DTS_GetTemperature(&hdts, &DTS_Temperature);
 
@@ -421,109 +247,89 @@ void StartDefaultTask(void *argument)
     SensorStatus_Reset(&imu2_status);
     SensorStatus_Reset(&mag_status);
 
-    imu1_status.hal_status |= IMU_Update(&imu1_data);
-    imu2_status.hal_status |= IMU_Update(&imu2_data);
-    imu1_status.active = imu1_data.active;
-    imu2_status.active = imu2_data.active;
+    // after startup
+    if (flight_sm.currentFlightState != STATE_FLIGHT_STARTUP) {
+      imu1_status.hal_status |= IMU_Update(&imu1_data);
+      imu2_status.hal_status |= IMU_Update(&imu2_data);
+      imu1_status.active = imu1_data.active;
+      imu2_status.active = imu2_data.active;
 
-    IMU_Average(&imu1_data, &imu2_data, &average_imu_data);
+      IMU_Average(&imu1_data, &imu2_data, &average_imu_data);
 
-    if (MAG_VerifyDataReady() & 0b00000001) {
-      mag_status.hal_status |= MAG_ReadSensorData(&mag_data);
-      arm_vec3_sub_f32(mag_data.field, mag_data.calibration.offset, mag_data.field);
-      arm_vec3_element_product_f32(mag_data.field, mag_data.calibration.scale, mag_data.field);
+      if (MAG_VerifyDataReady() & 0b00000001) {
+        mag_status.hal_status |= MAG_ReadSensorData(&mag_data);
+        arm_vec3_sub_f32(mag_data.field, mag_data.calibration.offset, mag_data.field);
+        arm_vec3_element_product_f32(mag_data.field, mag_data.calibration.scale, mag_data.field);
+      }
+
+      // transform measured body acceleration to world-frame acceleration
+      arm_mat_vec_mult_f32(&M_rot_ib, average_imu_data.accel, a_WorldFrame);
+      a_WorldFrame[2] -= gravity_world_vec[2];
+
+      // calculate acceleration w/o gravity in body frame
+      arm_mat_vec_mult_f32(&M_rot_bi, gravity_world_vec, gravity_body_vec);
+      arm_vec3_sub_f32(average_imu_data.accel, gravity_body_vec, a_BodyFrame);
+      a_abs = arm_vec3_length_f32(a_BodyFrame);
+
+      /* --- GNSS DELAY COMPENSATION TESTING --- */
+      // discard oldest measurement
+      corr_acc_sum -= corr_acc_buf[GNSS_VELOCITY_DELAY-1];
+
+      // shift measurements down
+      for (int i = GNSS_VELOCITY_DELAY - 1; i > 0; i--) {
+        corr_acc_buf[i] = corr_acc_buf[i-1];
+      }
+
+      // insert new measurement
+      corr_acc_buf[0] = a_BodyFrame[2];
+      corr_acc_sum += corr_acc_buf[0];
+
+      // calculate velocity difference between gnss delay and present
+      corr_delta_v = corr_acc_sum * dt;
+
+
+      // discard oldest measurement
+      corr_vel_sum -= corr_vel_buf[GNSS_POSITION_DELAY-1];
+
+      // shift measurements down
+      for (int i = GNSS_POSITION_DELAY - 1; i > 0; i--) {
+        corr_vel_buf[i] = corr_vel_buf[i-1];
+      }
+
+      // insert new measurement
+      corr_vel_buf[0] = EKF2.x[1];
+      corr_vel_sum += corr_vel_buf[0] + 0.5 * dt * corr_acc_buf[0];
+
+      // calculate position difference between gnss delay and present
+      corr_delta_h = corr_vel_sum * dt;
+
+      // KALMAN FILTER, HEIGHT
+      EKFPredictionStep(&EKF2);
+
+      if (BMP_GetRawData(&pressure_raw, &temperature_raw)) {
+        // Calculate compensated BMP390 pressure & temperature
+        temperature = bmp390_compensate_temperature(temperature_raw, &bmp_handle);
+        pressure = bmp390_compensate_pressure(pressure_raw, &bmp_handle);
+
+        // correction step
+        BaroPressureToHeight(pressure, 101325, &height_baro);
+        EKF2_corr1.z[0] = pressure;
+        arm_mat_set_entry_f32(EKF2_corr1.R, 0, 0, BARO_VAR);
+        EKFCorrectionStep(&EKF2, &EKF2_corr1);
+      }
+
+      // KALMAN FILTER, QUATERNION
+      // prediction step
+      EKFPredictionStep(&EKF3);
+
+      RotationMatrixFromQuaternion(x3, &M_rot_bi, DCM_bi_WorldToBody);
+      RotationMatrixFromQuaternion(x3, &M_rot_ib, DCM_ib_BodyToWorld);
+
+      // Conversion to Euler
+      EulerFromRotationMatrix(&M_rot_bi, euler_from_q);
     }
-
-    // KALMAN FILTER, ORIENTATION
-    // initialize A and B matrix
-    DeulerMatrixFromEuler(phi, theta, &Mdeuler);
-    arm_mat_insert_mult_f32(&Mdeuler, &F1, 0, 3, -dt);
-    arm_mat_insert_mult_f32(&Mdeuler, &B1, 0, 0, dt);
-
-    // Prediction Step
-    EKFPredictionStep(&EKF1);
-
-    // normalize phi, theta, psi to be within +-180 deg
-    normalizeAngleVector(x1, 0, 2, PI, -PI, 2*PI);
-
-    phi = x1[0];
-    theta = x1[1];
-    psi = x1[2];
-
-    euler_deg[0] = phi * 180. / PI;
-    euler_deg[1] = theta * 180. / PI;
-    euler_deg[2] = psi * 180. / PI;
-
-
-    // transform measured body acceleration to world-frame acceleration
-    RotationMatrixFromQuaternion(x3, &M_rot_bi, DCM_bi_WorldToBody);
-    RotationMatrixFromQuaternion(x3, &M_rot_ib, DCM_ib_BodyToWorld);
-    arm_mat_vec_mult_f32(&M_rot_ib, average_imu_data.accel, a_WorldFrame);
-    a_WorldFrame[2] -= gravity_world_vec[2];
-
-    // calculate acceleration w/o gravity in body frame
-    arm_mat_vec_mult_f32(&M_rot_bi, gravity_world_vec, gravity_body_vec);
-    arm_vec3_sub_f32(average_imu_data.accel, gravity_body_vec, a_BodyFrame);
-    a_abs = arm_vec3_length_f32(a_BodyFrame);
-
-    // GNSS DELAY COMPENSATION TESTING
-
-    // discard oldest measurement
-    corr_acc_sum -= corr_acc_buf[GNSS_VELOCITY_DELAY-1];
-
-    // shift measurements down
-    for (int i = GNSS_VELOCITY_DELAY - 1; i > 0; i--) {
-      corr_acc_buf[i] = corr_acc_buf[i-1];
-    }
-
-    // insert new measurement
-    corr_acc_buf[0] = a_BodyFrame[2];
-    corr_acc_sum += corr_acc_buf[0];
-
-    // calculate velocity difference between gnss delay and present
-    corr_delta_v = corr_acc_sum * dt;
-
-
-    // discard oldest measurement
-    corr_vel_sum -= corr_vel_buf[GNSS_POSITION_DELAY-1];
-
-    // shift measurements down
-    for (int i = GNSS_POSITION_DELAY - 1; i > 0; i--) {
-      corr_vel_buf[i] = corr_vel_buf[i-1];
-    }
-
-    // insert new measurement
-    corr_vel_buf[0] = EKF2.x[1];
-    corr_vel_sum += corr_vel_buf[0] + 0.5 * dt * corr_acc_buf[0];
-
-    // calculate position difference between gnss delay and present
-    corr_delta_h = corr_vel_sum * dt;
-
-    // KALMAN FILTER, HEIGHT
-    EKFPredictionStep(&EKF2);
-
-    if (BMP_GetRawData(&pressure_raw, &temperature_raw)) {
-      // Calculate compensated BMP390 pressure & temperature
-      temperature = bmp390_compensate_temperature(temperature_raw, &bmp_handle);
-      pressure = bmp390_compensate_pressure(pressure_raw, &bmp_handle);
-
-      // correction step
-      BaroPressureToHeight(pressure, 101325, &height_baro);
-      EKF2_corr1.z[0] = pressure;
-      arm_mat_set_entry_f32(EKF2_corr1.R, 0, 0, BARO_VAR);
-      EKFCorrectionStep(&EKF2, &EKF2_corr1);
-    }
-
-    // KALMAN FILTER, QUATERNION
-    // prediction step
-    EKFPredictionStep(&EKF3);
-
-    // Conversion to Euler
-    RotationMatrixFromQuaternion(x3, &M_rot_q, DCM_bi_WorldToBody);
-    EulerFromRotationMatrix(&M_rot_q, euler_from_q);
 
     // EVENTS
-    
 
     dt_1000Hz = TimeMeasureStop();
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz) Always at the end of the loop
@@ -545,42 +351,10 @@ void Start100HzTask(void *argument) {
       UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &imu1_data, &mag_data);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_LOAD_REQUEST | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);
 
-      UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), phi, theta, psi);
+      UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler_from_q[0], euler_from_q[1], euler_from_q[2]);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_LOAD_REQUEST | INTERBOARD_TARGET_RADIO, &Attitude_DataPacket);
     }
     InterBoardCom_ProcessTxBuffer();
-
-    #ifdef SIGNAL_PLOTTER_OUT_1 // signal plotter outputs position ekf testing
-    signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
-    signalPlotter_sendData(1, (float)nrf_timeout);
-    signalPlotter_sendData(2, a_WorldFrame[0]);
-    signalPlotter_sendData(3, a_WorldFrame[1]);
-    signalPlotter_sendData(4, a_WorldFrame[2]);
-    signalPlotter_sendData(5, x2[6]);
-    signalPlotter_sendData(6, x2[7]);
-    signalPlotter_sendData(7, x2[8]);
-    signalPlotter_sendData(8, (float)gps_data.sAcc/1000.f);
-    signalPlotter_sendData(9, (float)gps_data.hAcc/1000.f);
-    signalPlotter_sendData(10, (float)gps_data.vAcc/1000.f);
-    signalPlotter_sendData(11, phi);
-    signalPlotter_sendData(12, theta);
-    signalPlotter_sendData(13, psi);
-    signalPlotter_sendData(14, phi_fix);
-    signalPlotter_sendData(15, theta_fix);
-    signalPlotter_sendData(16, psi_fix);
-    signalPlotter_sendData(17, x2[0]);
-    signalPlotter_sendData(18, x2[1]);
-    signalPlotter_sendData(19, x2[2]);
-    signalPlotter_sendData(20, x2[3]);
-    signalPlotter_sendData(21, x2[4]);
-    signalPlotter_sendData(22, x2[5]);
-    signalPlotter_sendData(23, z2_corr1[0]);
-    signalPlotter_sendData(24, z2_corr1[1]);
-    signalPlotter_sendData(25, z2_corr1[2]);
-    signalPlotter_sendData(26, z2_corr1[3]);
-    signalPlotter_sendData(27, z2_corr1[4]);
-    signalPlotter_sendData(28, z2_corr1[5]);
-    #endif
 
     #ifdef SIGNAL_PLOTTER_OUT_2 // signal plotter outputs raw sensor data
     signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
@@ -621,24 +395,18 @@ void Start100HzTask(void *argument) {
     signalPlotter_sendData(8, h3_corr1[3]);
     signalPlotter_sendData(9, h3_corr1[4]);
     signalPlotter_sendData(10, h3_corr1[5]);
-    signalPlotter_sendData(11, imu1_data.accel[0]);
-    signalPlotter_sendData(12, imu1_data.accel[1]);
-    signalPlotter_sendData(13, imu1_data.accel[2]);
+    signalPlotter_sendData(11, average_imu_data.accel[0]);
+    signalPlotter_sendData(12, average_imu_data.accel[1]);
+    signalPlotter_sendData(13, average_imu_data.accel[2]);
     signalPlotter_sendData(14, mag_data.field[0]);
     signalPlotter_sendData(15, mag_data.field[1]);
     signalPlotter_sendData(16, mag_data.field[2]);
-    signalPlotter_sendData(17, phi);
-    signalPlotter_sendData(18, theta);
-    signalPlotter_sendData(19, psi);
-    signalPlotter_sendData(20, imu1_data.gyro[0]);
-    signalPlotter_sendData(21, imu1_data.gyro[1]);
-    signalPlotter_sendData(22, imu1_data.gyro[2]);
-    signalPlotter_sendData(23, x3[4]);
-    signalPlotter_sendData(24, x3[5]);
-    signalPlotter_sendData(25, x3[6]);
-    signalPlotter_sendData(26, x1[3]);
-    signalPlotter_sendData(27, x1[4]);
-    signalPlotter_sendData(28, x1[5]);
+    signalPlotter_sendData(17, average_imu_data.gyro[0]);
+    signalPlotter_sendData(18, average_imu_data.gyro[1]);
+    signalPlotter_sendData(19, average_imu_data.gyro[2]);
+    signalPlotter_sendData(20, x3[4]);
+    signalPlotter_sendData(21, x3[5]);
+    signalPlotter_sendData(22, x3[6]);
     #endif
 
     #ifdef SIGNAL_PLOTTER_OUT_4 // signal plotter outputs height ekf testing
@@ -683,32 +451,14 @@ void Start100HzTask(void *argument) {
 
     signalPlotter_executeTransmission(HAL_GetTick());
 
-    // attitude estimation using magnetometer and accelerometer
-    EulerOrientationFix(imu1_data.accel, mag_data.field, z1_corr1);
-
-    normalizeAnglePairVector(x1, z1_corr1, 0, 2, PI, -PI, 2*PI);
-
-    phi_fix = z1_corr1[0];
-    theta_fix = z1_corr1[1];
-    psi_fix = z1_corr1[2];
-
-    // Kalman Filter euler correction step
-    EKFCorrectionStep(&EKF1, &EKF1_corr1);
-
-    // normalize phi, theta, psi to be within +-180 deg
-    normalizeAngleVector(x1, 0, 2, PI, -PI, 2*PI);
-
-    phi = x1[0];
-    theta = x1[1];
-    psi = x1[2];
-
     // KALMAN FILTER, QUATERNION
     // correction step
-    arm_vecN_concatenate_f32(3, imu1_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
-    EKFCorrectionStep(&EKF3, &EKF3_corr1);
+    if (flight_sm.currentFlightState != STATE_FLIGHT_STARTUP) {
+      arm_vecN_concatenate_f32(3, imu1_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
+      EKFCorrectionStep(&EKF3, &EKF3_corr1);
+    }
 
-
-    ShowStatus(RGB_PRIMARY, flight_sm.currentFlightState, 1, 100);
+    ShowStatus(flight_sm.currentFlightState, 1, 100);
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }
@@ -724,20 +474,12 @@ void Start10HzTask(void *argument) {
   DataPacket_t Temp_DataPacket = CreateDataPacket(PACKET_ID_TEMPERATURE);
   /* Infinite loop */
   for(;;) {
-    SelfTest();         // Run self-test on startup
+    StateMachine_DoActions(&flight_sm);
 
     GPS_ReadSensorData(&gps_data);
     //GPS_RequestSensorData(); // Request GPS data
 
-    if(primary_status > 0) {
-      switch(gps_data.gpsFix) {
-        case 0: primary_status = STATUS_GNSS_ALIGN; break;
-        case 2: primary_status = STATUS_GNSS_2D; break;
-        case 3: primary_status = STATUS_STANDBY; break;
-      }
-    }
-
-    if(gps_data.gpsFix == 3) { // FLIGHT STATE!!!
+    if(flight_sm.currentFlightState != STATE_FLIGHT_STARTUP && flight_sm.currentFlightState != STATE_FLIGHT_INIT) {
       UBLOXtoWGS84(gps_data.lat, gps_data.lon, gps_data.height, WGS84);
       WGS84toECEF(WGS84, ECEF);
 
@@ -764,17 +506,15 @@ void Start10HzTask(void *argument) {
     // RECOVERY TEST
     if(uwTick  > 10000 && servo_status == 5) {
       servo_status = 6;
-      SERVO_MoveToAngle(3, 90);
+      SERVO_MoveToAngle(2, 90);
     }
     if(uwTick > 5300 && servo_status == 4) {
       servo_status = 5;
       SERVO_MoveToAngle(1, 0);
-      SERVO_MoveToAngle(2, 0);
     }
     if(uwTick > 5000 && servo_status == 1) {
       servo_status = 4;
       SERVO_MoveToAngle(1, 35);
-      SERVO_MoveToAngle(2, 35);
     }
 
     // EVENTS
@@ -854,37 +594,6 @@ void StartInterruptHandlerTask(void *argument)
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
-uint8_t selftest_tries = 0;
-uint8_t SelfTest(void) {
-  if((status_data.sensor_status_flags & 0x1f) == 0x1f && ((status_data.sensor_status_flags >> 7) & 0x01) == 0) { //All sensors are working but selftest_pass flag not set
-    if(primary_status >= 0) primary_status = STATUS_GNSS_ALIGN;
-
-    status_data.sensor_status_flags |= (1<<7);  //All checks passed
-
-  } else if (selftest_tries > 100){
-    primary_status = STATUS_ERROR_STARTUP;
-    return status_data.sensor_status_flags;
-  }
-  else if((status_data.sensor_status_flags & 0xff) != 0x9F) { //Run selftest if not all sensors are working or selftest not passed
-    selftest_tries += 1;
-
-    IMU_Data_t tmp_imu1_data;
-    IMU_Data_t tmp_imu2_data;
-    tmp_imu1_data.imu = IMU1;
-    tmp_imu2_data.imu = IMU2;
-
-    status_data.sensor_status_flags |= IMU_SelfTest(&tmp_imu1_data);
-    status_data.sensor_status_flags |= (IMU_SelfTest(&tmp_imu2_data)<<1);
-    status_data.sensor_status_flags |= (MAG_SelfTest()<<2);
-    status_data.sensor_status_flags |= (BMP_SelfTest()<<3);
-    //status_data.sensor_status_flags |= (GPS_VER_CHECK()<<4); //Check if GPS is connected and working
-    status_data.sensor_status_flags |= (1<<4); //Excluding GPS check for now, as the first message cant be relaibly received by this function
-
-    if(primary_status > 0) primary_status = STATUS_STARTUP;
-  }
-
-  return status_data.sensor_status_flags;
-}
 
 void ReadInternalADC(uint32_t* temperature, uint32_t* v_ref) {
   HAL_ADC_Start(&hadc3);
