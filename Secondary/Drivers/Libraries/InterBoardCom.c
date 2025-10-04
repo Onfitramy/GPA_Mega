@@ -7,6 +7,7 @@
 #include "fatfs.h"
 #include "SD.h"
 #include "xBee.h"
+#include "PowerUnit.h"
 
 extern SPI_HandleTypeDef hspi1;
 
@@ -213,7 +214,6 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
             }
 
             if ((Interboard_Target & INTERBOARD_TARGET_RADIO) == INTERBOARD_TARGET_RADIO) {
-                //XBee_Transmit((uint8_t*)&dataPacket, 32, addr); // Broadcast to all XBees
                 XBee_QueueDataPacket(&dataPacket);
             }
             break;
@@ -229,36 +229,10 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
                 if (dataPacket.Packet_ID != PACKET_ID_COMMAND) {
                     // Invalid command ID
                     return;
+                } else {
+                    InterBoardCom_EvaluateCommand(&dataPacket);
                 }
-                switch (dataPacket.Data.command.command_target) {
-                    case COMMAND_TARGET_NONE:
-                        // No target specified, possibly log or ignore
-                        break;
-                    case COMMAND_TARGET_SPECIAL:
-                        // Handle special commands
-                        break;
-                    case COMMAND_TARGET_STATE:
-                        // Handle state-related commands
-                        break;
-                    case COMMAND_TARGET_POWERUNIT:
-                        // Should never receive this command from secondary board as it should already have handled it
-                        break;
-                    case COMMAND_TARGET_TESTING:
-                        // Handle testing commands
-                        break;
-                    case COMMAND_TARGET_STORAGE:
-                        // Handle storage commands
-                        break;
-                    case COMMAND_TARGET_CAMERA:
-                        // Should never receive this command from secondary board as it should already have handled it
-                        break;
-                    case COMMAND_TARGET_GROUNDSTATION:
-                        // Groundstation should never receive commands from other boards, only via USB from PC
-                        break;
-                    default:
-                        // Unknown command target
-                        break;
-                }
+
             }
             break;
         }
@@ -286,6 +260,80 @@ void InterBoardCom_ReactivateDMAReceive(void) {
     (void)tmp;
     SPI1_STATUS = 1;
     HAL_SPI_TransmitReceive_DMA(&hspi1,  (uint8_t *)&transmitBuffer, (uint8_t *)&receiveBuffer, sizeof(InterBoardPacket_t));
+}
+
+void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
+    switch (dataPacket->Data.command.command_target) {
+        case COMMAND_TARGET_NONE:
+            // No target specified, possibly log or ignore
+            break;
+        case COMMAND_TARGET_SPECIAL:
+            if (dataPacket->Data.command.command_id == 0x00) {
+                // Special command 0x00: Reset the primary board
+                InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_MCU, dataPacket); // Forward command to main board
+            } else if (dataPacket->Data.command.command_id == 0x01) {
+                // Special command 0x01: Reset the secondary board
+                NVIC_SystemReset();
+            }
+            break;
+        case COMMAND_TARGET_STATE:
+            // State machine is on the main board, forward command
+            InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_MCU, dataPacket);
+            break;
+        case COMMAND_TARGET_POWERUNIT:
+            // Should never receive this command from secondary board as it should already have handled it
+            break;
+        case COMMAND_TARGET_TESTING:
+            // Testing commands are on the main board, forward command
+            InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_MCU, dataPacket);
+            break;
+        case COMMAND_TARGET_STORAGE:
+            // Handle storage commands
+            if (dataPacket->Data.command.command_id == 0x00) {
+                // Storage command 0x00: FlashToSD
+            } else if (dataPacket->Data.command.command_id == 0x01) {
+                // Storage command 0x01: FlashReset
+                W25Q_Chip_Erase();
+            }
+            break;
+        case COMMAND_TARGET_CAMERA:
+            if (dataPacket->Data.command.command_id == 0x00) {
+                // Camera command 0x00: Power On/Off
+                if (dataPacket->Data.command.params[0] == 0x01) {
+                    Camera_SwitchOn(); // Power On
+                } else if (dataPacket->Data.command.params[0] == 0x00) {
+                    Camera_SwitchOff(); // Power Off
+                }
+            } else if (dataPacket->Data.command.command_id == 0x01) {
+                // Camera command 0x01: Start/Stop recording
+                if (dataPacket->Data.command.params[0] == 0x01) {
+                    Camera_StartRecording();
+                } else if (dataPacket->Data.command.params[0] == 0x00) {
+                    Camera_StopRecording();
+                }
+            } else if (dataPacket->Data.command.command_id == 0x02) {
+                // Camera command 0x02: Skip Date
+                Camera_SkipDate();
+            } else if (dataPacket->Data.command.command_id == 0x03) {
+                // Camera command 0x03: Wifi On/Off
+                if (dataPacket->Data.command.params[0] == 0x01) {
+                    Camera_WifiOn(); // Wifi On
+                } else if (dataPacket->Data.command.params[0] == 0x00) {
+                    Camera_WifiOff(); // Wifi Off
+                }
+            }
+            break;
+        case COMMAND_TARGET_GROUNDSTATION:
+            // Groundstation should never receive commands from other boards, only via USB from PC
+            break;
+        case COMMAND_TARGET_LOGGING:
+            // Logging commands are on the main board, forward command
+            InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_MCU, dataPacket);
+            break;
+        default:
+            // Unknown command target
+            break;
+    }
 }
 
 /**

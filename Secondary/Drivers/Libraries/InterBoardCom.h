@@ -48,6 +48,7 @@ void InterBoardCom_ActivateReceive(void);
 InterBoardPacket_t InterBoardCom_ReceivePacket(void);
 
 void InterBoardCom_ParsePacket(InterBoardPacket_t packet);
+void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket);
 
 void InterBoardCom_ReactivateDMAReceive(void);
 

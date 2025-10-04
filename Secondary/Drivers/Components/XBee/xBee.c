@@ -322,8 +322,9 @@ void XBee_parseReceivedRFFrame(xbee_frame_t* frame)
             return;
         }
 
+        // Handle command packet from the XBee
         if (receivedData.Packet_ID == PACKET_ID_COMMAND) {
-            // Process command packet
+            InterBoardCom_EvaluateCommand(&receivedData);
             // For example, you can check the command type and execute corresponding actions
         } else {
             //Send data packets to main board for display/logging

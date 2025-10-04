@@ -1,6 +1,7 @@
 #include "InterBoardCom.h"
 #include "string.h"
 #include <stdarg.h>
+#include "statemachine.h"
 
 //The H7 send data to the F4 via SPI1. The data is made up of packets which are sent immediatly after completion of the previous packet.
 //The Packets are made up of 1byte of Packet_ID and 32bytes of Data 33 bytes long.
@@ -174,6 +175,56 @@ void InterBoardCom_ProcessReceivedPacket(InterBoardPacket_t *packet) {
     }
 }
 
+void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
+    switch (dataPacket->Data.command.command_target) {
+        case COMMAND_TARGET_NONE:
+            // No target specified, possibly log or ignore
+            break;
+        case COMMAND_TARGET_SPECIAL:
+            if (dataPacket->Data.command.command_id == 0x00) {
+                // Special command 0x00: Reset the primary board
+                HAL_NVIC_SystemReset();
+            } else if (dataPacket->Data.command.command_id == 0x01) {
+                // Special command 0x01: Reset the secondary board
+                // We never get here
+            }
+            break;
+        case COMMAND_TARGET_STATE:
+            // Handle state-related commands
+            if (dataPacket->Data.command.command_id == 0x04) {
+                // State command 0x04: Force State
+                flight_sm.currentFlightState = (flight_state_t)dataPacket->Data.command.params[0];
+            } else if (dataPacket->Data.command.command_id == 0x05) {
+                // State command 0x05: Simulate Event
+                StateMachine_Dispatch(&flight_sm, (flight_event_t)dataPacket->Data.command.params[0]);
+            }
+            break;
+        case COMMAND_TARGET_POWERUNIT:
+            // Should never receive this command from secondary board as it should already have handled it
+            break;
+        case COMMAND_TARGET_TESTING:
+            // Handle testing commands
+            break;
+        case COMMAND_TARGET_STORAGE:
+            // Should never receive this command from secondary board as it should already have handled it
+            break;
+        case COMMAND_TARGET_CAMERA:
+            // Should never receive this command from secondary board as it should already have handled it
+            break;
+        case COMMAND_TARGET_GROUNDSTATION:
+            // Groundstation should never receive commands from other boards, only via USB from PC
+            break;
+        case COMMAND_TARGET_LOGGING:
+            if (dataPacket->Data.command.command_id == 0x00) {
+                // Logging command 0x00: FlightDataOut
+                // StartLogging();
+            }
+        default:
+            // Unknown command target
+            break;
+    }
+}
+
 extern uint8_t is_groundstation;
 void InterBoardCom_ParsePacket(InterBoardPacket_t *packet) {
     // Process the received packet based on its ID
@@ -185,42 +236,14 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t *packet) {
             break;
         // Add cases for other packet IDs as needed
 
-        case INTERBOARD_OP_CMD: {
+        case (INTERBOARD_OP_CMD | INTERBOARD_TARGET_MCU): {
             DataPacket_t *cmd = (DataPacket_t *)packet->Data;
             if (cmd->Packet_ID != PACKET_ID_COMMAND) {
                 // Invalid command ID
                 return;
+            } else {
+                InterBoardCom_EvaluateCommand(cmd);
             }
-            switch (cmd->Data.command.command_target) {
-                case COMMAND_TARGET_NONE:
-                    // No target specified, possibly log or ignore
-                    break;
-                case COMMAND_TARGET_SPECIAL:
-                    // Handle special commands
-                    break;
-                case COMMAND_TARGET_STATE:
-                    // Handle state-related commands
-                    break;
-                case COMMAND_TARGET_POWERUNIT:
-                    // Should never receive this command from secondary board as it should already have handled it
-                    break;
-                case COMMAND_TARGET_TESTING:
-                    // Handle testing commands
-                    break;
-                case COMMAND_TARGET_STORAGE:
-                    // Handle storage commands
-                    break;
-                case COMMAND_TARGET_CAMERA:
-                    // Should never receive this command from secondary board as it should already have handled it
-                    break;
-                case COMMAND_TARGET_GROUNDSTATION:
-                    // Groundstation should never receive commands from other boards, only via USB from PC
-                    break;
-                default:
-                    // Unknown command target
-                    break;
-            }
-            break;
         }
         default:
             break;
