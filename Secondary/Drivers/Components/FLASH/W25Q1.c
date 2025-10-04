@@ -228,7 +228,7 @@ void disable_write (void)
 void W25Q_Erase_Sector (uint16_t numsector)
 {
 	uint8_t tData[6];
-	uint32_t memAddr = numsector*16*256;   // Each sector contains 16 pages * 256 bytes
+	uint32_t memAddr = numsector * SECTOR_SIZE;   // Each sector contains 16 pages * 256 bytes
 
 	enable_write();
 
@@ -243,8 +243,6 @@ void W25Q_Erase_Sector (uint16_t numsector)
 	  HAL_SPI_Transmit(&W25Q1_SPI, tData, 4, 100);
 	  csHIGH();
 	}
-
-	disable_write();
 
 	uint8_t tDataStatus = 0x05;
 	csLOW();
@@ -261,6 +259,8 @@ void W25Q_Erase_Sector (uint16_t numsector)
 	}
 
 	csHIGH();
+
+	disable_write();
 }
 
 void W25Q_Write_Page (uint32_t page, uint16_t offset, uint32_t size, uint8_t *data)
@@ -473,7 +473,7 @@ void W25Q_Chip_Erase (void)
 	W25Q_Write_Page(0, 0, sizeof(W25QPage0_config_t), (uint8_t *)&W25Q_FLASH_CONFIG);
 }
 
-static void W25Q_AlignPageOffset() {
+static void W25Q_AlignSectorOffset() {
 	uint32_t sectorOffset = W25Q_FLASH_CONFIG.curr_logPage % 16;
 	if (sectorOffset == 0) return;
 
@@ -498,7 +498,7 @@ void W25Q_GetConfig()
 	if (tempConfig[0] == W25Q_FLASH_CONFIG.ID[0] && tempConfig[1] == W25Q_FLASH_CONFIG.ID[1])
 	{
 		memcpy(&W25Q_FLASH_CONFIG, tempConfig, sizeof(W25QPage0_config_t));
-		W25Q_AlignPageOffset();
+		W25Q_AlignSectorOffset();
 	}
 	else
 	{
