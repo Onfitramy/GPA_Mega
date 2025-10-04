@@ -1,5 +1,7 @@
 #include "statemachine.h"
 
+StateMachine_t flight_sm;
+
 static flight_state_t AbortHandler(flight_event_t event);
 static flight_state_t StartupHandler(flight_event_t event);
 static flight_state_t InitHandler(flight_event_t event);

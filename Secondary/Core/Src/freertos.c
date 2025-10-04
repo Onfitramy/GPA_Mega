@@ -233,7 +233,6 @@ void Start10HzTask(void *argument){
         if(INA219_readPower(&health_filtered.power.out_pu) != HAL_OK) break;
         if(INA219_readCurrent(&health_filtered.current.out_pu) != HAL_OK) break;
         secondary_status = 1;
-        if(health_filtered.voltage.bus_pu_bat < 6.6) secondary_status = -4;
         break;
 
       // normal operations
@@ -244,7 +243,7 @@ void Start10HzTask(void *argument){
         if(INA219_readPower(&health.power.out_pu) != HAL_OK) secondary_status = -1;
         if(INA219_readCurrent(&health.current.out_pu) != HAL_OK) secondary_status = -1;
         
-        if(health_filtered.voltage.bus_pu_bat < 6.6) secondary_status = -4;
+        if(health.voltage.bus_pu_bat < 6.6) secondary_status = -4;
         break;
 
     }

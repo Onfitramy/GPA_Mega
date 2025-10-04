@@ -9,6 +9,8 @@
 //#define SIGNAL_PLOTTER_OUT_5 // state machine testing
 //#define SIGNAL_PLOTTER_OUT_GROUND // ground station data
 
+extern uint32_t dt_1000Hz;
+
 // actually performs send operation to signal plotter
 // (is done automatically)
 void signalPlotter_executeTransmission(uint32_t millisTime);
@@ -25,4 +27,5 @@ void TimeMeasureStart(void);
 uint32_t TimeMeasureStop(void);
 
 void signalPlotter_init(void);
+void signalPlotter_sendAll(void);
 #endif /* signalPlotter_H_ */

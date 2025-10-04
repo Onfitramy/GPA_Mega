@@ -46,6 +46,8 @@ typedef struct {
 } StateMachine_t;
 
 /* --- Extern variables used in the state machine Entry, Do and Exit functions --- */
+extern StateMachine_t flight_sm;
+
 extern GPA_Mega gpa_mega;
 extern StatusPayload_t status_data;
 extern uint8_t selftest_tries;

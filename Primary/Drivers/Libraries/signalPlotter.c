@@ -16,6 +16,8 @@ uint32_t TimeMeasureTick = 0;
 
 uint32_t TimerOverflow = 0;
 
+uint32_t dt_1000Hz;
+
 void signalPlotter_setSignalName(uint8_t id, char *name) {
   strncpy(data[id].name, name, 16);
 }
@@ -140,6 +142,8 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(20, "gyro x bias");
   signalPlotter_setSignalName(21, "gyro y bias");
   signalPlotter_setSignalName(22, "gyro z bias");
+  signalPlotter_setSignalName(23, "FlightState");
+  signalPlotter_setSignalName(24, "Entry_Timestamp");
   #endif
 
   #ifdef SIGNAL_PLOTTER_OUT_4 // raw sensor data
@@ -190,5 +194,102 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(4, "x_Accel");
   signalPlotter_setSignalName(5, "y_Accel");
   signalPlotter_setSignalName(6, "z_Accel");
+  #endif
+}
+
+void signalPlotter_sendAll(void) {
+  #ifdef SIGNAL_PLOTTER_OUT_2 // signal plotter outputs raw sensor data
+  signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
+  signalPlotter_sendData(1, (float)nrf_timeout);
+  signalPlotter_sendData(2, mag_data.field[0]);
+  signalPlotter_sendData(3, mag_data.field[1]);
+  signalPlotter_sendData(4, mag_data.field[2]);
+  signalPlotter_sendData(5, imu2_data.accel[0]);
+  signalPlotter_sendData(6, imu2_data.accel[1]);
+  signalPlotter_sendData(7, imu2_data.accel[2]);
+  signalPlotter_sendData(8, imu2_data.gyro[0]);
+  signalPlotter_sendData(9, imu2_data.gyro[1]);
+  signalPlotter_sendData(10, imu2_data.gyro[2]);
+  signalPlotter_sendData(11, pressure);
+  signalPlotter_sendData(12, temperature);
+  signalPlotter_sendData(13, (float)gps_data.gpsFix);
+  signalPlotter_sendData(14, (float)gps_data.numSV);
+  signalPlotter_sendData(15, (float)gps_data.hAcc/1000.f);
+  signalPlotter_sendData(16, (float)gps_data.vAcc/1000.f);
+  signalPlotter_sendData(17, (float)gps_data.sAcc/1000.f);
+  signalPlotter_sendData(18, (float)gps_data.lat*1e-7);
+  signalPlotter_sendData(19, (float)gps_data.lon*1e-7);
+  signalPlotter_sendData(20, (float)gps_data.height/1000.f);
+  signalPlotter_sendData(21, (float)gps_data.velN/1000.f);
+  signalPlotter_sendData(22, (float)gps_data.velE/1000.f);
+  signalPlotter_sendData(23, (float)gps_data.velD/1000.f);
+  #endif
+
+  #ifdef SIGNAL_PLOTTER_OUT_3 // signal plotter outputs quaternion ekf testing
+  signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
+  signalPlotter_sendData(1, (float)nrf_timeout);
+  signalPlotter_sendData(2, euler_from_q[0]);
+  signalPlotter_sendData(3, euler_from_q[1]);
+  signalPlotter_sendData(4, euler_from_q[2]);
+  signalPlotter_sendData(5, h3_corr1[0]);
+  signalPlotter_sendData(6, h3_corr1[1]);
+  signalPlotter_sendData(7, h3_corr1[2]);
+  signalPlotter_sendData(8, h3_corr1[3]);
+  signalPlotter_sendData(9, h3_corr1[4]);
+  signalPlotter_sendData(10, h3_corr1[5]);
+  signalPlotter_sendData(11, average_imu_data.accel[0]);
+  signalPlotter_sendData(12, average_imu_data.accel[1]);
+  signalPlotter_sendData(13, average_imu_data.accel[2]);
+  signalPlotter_sendData(14, mag_data.field[0]);
+  signalPlotter_sendData(15, mag_data.field[1]);
+  signalPlotter_sendData(16, mag_data.field[2]);
+  signalPlotter_sendData(17, average_imu_data.gyro[0]);
+  signalPlotter_sendData(18, average_imu_data.gyro[1]);
+  signalPlotter_sendData(19, average_imu_data.gyro[2]);
+  signalPlotter_sendData(20, x3[4]);
+  signalPlotter_sendData(21, x3[5]);
+  signalPlotter_sendData(22, x3[6]);
+  signalPlotter_sendData(23, (float)flight_sm.currentFlightState);
+  signalPlotter_sendData(24, (float)flight_sm.timestamp_us);
+  #endif
+
+  #ifdef SIGNAL_PLOTTER_OUT_4 // signal plotter outputs height ekf testing
+  signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
+  signalPlotter_sendData(1, (float)nrf_timeout);
+  signalPlotter_sendData(2, euler_from_q[0]);
+  signalPlotter_sendData(3, euler_from_q[1]);
+  signalPlotter_sendData(4, euler_from_q[2]);
+  signalPlotter_sendData(5, average_imu_data.accel[0]);
+  signalPlotter_sendData(6, average_imu_data.accel[1]);
+  signalPlotter_sendData(7, average_imu_data.accel[2]);
+  signalPlotter_sendData(8, a_WorldFrame[0]);
+  signalPlotter_sendData(9, a_WorldFrame[1]);
+  signalPlotter_sendData(10, a_WorldFrame[2]);
+  signalPlotter_sendData(11, pressure);
+  signalPlotter_sendData(12, temperature);
+  signalPlotter_sendData(13, height_baro);
+  signalPlotter_sendData(14, (float)gps_data.gpsFix);
+  signalPlotter_sendData(15, (float)gps_data.numSV);
+  signalPlotter_sendData(16, (float)gps_data.hAcc/1000.f);
+  signalPlotter_sendData(17, (float)gps_data.vAcc/1000.f);
+  signalPlotter_sendData(18, (float)gps_data.sAcc/1000.f);
+  signalPlotter_sendData(19, (float)gps_data.lat*1e-7);
+  signalPlotter_sendData(20, (float)gps_data.lon*1e-7);
+  signalPlotter_sendData(21, (float)gps_data.height/1000.f);
+  signalPlotter_sendData(22, (float)gps_data.velN/1000.f);
+  signalPlotter_sendData(23, (float)gps_data.velE/1000.f);
+  signalPlotter_sendData(24, (float)-gps_data.velD/1000.f);
+  signalPlotter_sendData(25, EKF2.x[0]);
+  signalPlotter_sendData(26, EKF2.x[1]);
+  signalPlotter_sendData(27, EKF2.x[2]);
+  signalPlotter_sendData(28, gnss_height_corr);
+  signalPlotter_sendData(29, gnss_velZ_corr);
+  #endif
+
+  #ifdef SIGNAL_PLOTTER_OUT_5 // signal plotter outputs testing data
+  signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
+  signalPlotter_sendData(1, (float)nrf_timeout);
+  signalPlotter_sendData(2, (float)flight_sm.currentFlightState);
+  signalPlotter_sendData(3, (float)flight_sm.timestamp_us);
   #endif
 }
