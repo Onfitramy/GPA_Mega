@@ -325,6 +325,13 @@ void StartDefaultTask(void *argument)
     }
 
     // EVENTS
+    uint8_t high_g_count = 0;
+    for (int i = 0; i < 10; i++) {
+      if (corr_acc_buf[i] > 10)
+        high_g_count++;
+    }
+    if (high_g_count >= 5)
+      StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_LAUNCH_DETECTED);
 
     dt_1000Hz = TimeMeasureStop();
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz) Always at the end of the loop

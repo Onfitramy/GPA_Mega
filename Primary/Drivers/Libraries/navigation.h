@@ -7,7 +7,7 @@
 
 // GNSS delay compensation settings
 #define GNSS_VELOCITY_DELAY 350 // ms
-#define GNSS_POSITION_DELAY 200 // ms
+#define GNSS_POSITION_DELAY 200 // ms | needs to be >= 50 in order for liftoff detection to work
 
 // Quaternion EKF Settings
 #define magnetic_dip_angle 66.0f

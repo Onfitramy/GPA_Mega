@@ -177,6 +177,8 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(27, "EKF_p_ref");
   signalPlotter_setSignalName(28, "height_comp");
   signalPlotter_setSignalName(29, "velZ_comp");
+  signalPlotter_setSignalName(30, "FlightState");
+  signalPlotter_setSignalName(31, "Entry_Timestamp");
   #endif
 
   #ifdef SIGNAL_PLOTTER_OUT_5 // variable testing data
@@ -284,6 +286,8 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(27, EKF2.x[2]);
   signalPlotter_sendData(28, gnss_height_corr);
   signalPlotter_sendData(29, gnss_velZ_corr);
+  signalPlotter_sendData(30, (float)flight_sm.currentFlightState);
+  signalPlotter_sendData(31, (float)flight_sm.timestamp_us);
   #endif
 
   #ifdef SIGNAL_PLOTTER_OUT_5 // signal plotter outputs testing data
