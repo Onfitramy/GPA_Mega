@@ -179,7 +179,6 @@ DataPacket_t InterBoardCom_UnpackPacket(InterBoardPacket_t packet) {
 
 uint32_t valid_packets;
 uint32_t invalid_packets;
-uint8_t raw_array[26] = {2, 119, 11, 80, 188, 201, 104, 122, 60, 213, 248, 111, 63, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11};
 DataPacket_t attitudeTransmitPacket;
 void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
     //This function is used to parse the received packet
@@ -189,7 +188,7 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
 
     uint8_t valid_crc = InterBoard_CheckCRC(&dataPacket); //Check CRC
 
-    if (valid_crc || packet.InterBoardPacket_ID == INTERBOARD_OP_ECHO || (packet.InterBoardPacket_ID & INTERBOARD_OP_CMD) == INTERBOARD_OP_CMD) {
+    if (valid_crc) {
         valid_packets++;
     } else {
         invalid_packets++;
@@ -199,15 +198,6 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
     uint8_t Interboard_OP = packet.InterBoardPacket_ID & 0x07; //Extract operation type
     uint8_t Interboard_Target = packet.InterBoardPacket_ID & 0xF8; //Extract Target type
     switch (Interboard_OP) {
-        case INTERBOARD_OP_CMD:
-            //Handle command packet
-            if (packet.InterBoardPacket_ID == INTERBOARD_OP_NONE) {
-                packet.InterBoardPacket_ID = INTERBOARD_OP_NONE; // Change ID to NONE to make the MCU ignore it
-                InterBoardCom_SendPacket(&packet); // Echo back the received packet
-                break;
-            }
-            break;
-
         case INTERBOARD_OP_SAVE_SEND:
         {
             //Handle data save to flash packet
@@ -223,19 +213,61 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
             }
 
             if ((Interboard_Target & INTERBOARD_TARGET_RADIO) == INTERBOARD_TARGET_RADIO) {
-                uint64_t addr = 0x0013a200426e530e; // XBee broadcast address
-                if (dataPacket.Packet_ID == PACKET_ID_ATTITUDE) {
-                    XBee_Transmit((uint8_t*)&dataPacket, 32, addr); // Broadcast to all XBees
+                //XBee_Transmit((uint8_t*)&dataPacket, 32, addr); // Broadcast to all XBees
+                XBee_QueueDataPacket(&dataPacket);
+            }
+            break;
+        }
+
+        //Target MCU mean act on the commands or send them to main if needed
+        case (INTERBOARD_OP_CMD): {
+            //Target Radio means send the command via radio to the flight computer
+            if(Interboard_Target == INTERBOARD_TARGET_RADIO) {
+                XBee_QueueDataPacket(&dataPacket);
+                break;
+            } else if (Interboard_Target == INTERBOARD_TARGET_MCU) {
+                if (dataPacket.Packet_ID != PACKET_ID_COMMAND) {
+                    // Invalid command ID
+                    return;
+                }
+                switch (dataPacket.Data.command.command_target) {
+                    case COMMAND_TARGET_NONE:
+                        // No target specified, possibly log or ignore
+                        break;
+                    case COMMAND_TARGET_SPECIAL:
+                        // Handle special commands
+                        break;
+                    case COMMAND_TARGET_STATE:
+                        // Handle state-related commands
+                        break;
+                    case COMMAND_TARGET_POWERUNIT:
+                        // Should never receive this command from secondary board as it should already have handled it
+                        break;
+                    case COMMAND_TARGET_TESTING:
+                        // Handle testing commands
+                        break;
+                    case COMMAND_TARGET_STORAGE:
+                        // Handle storage commands
+                        break;
+                    case COMMAND_TARGET_CAMERA:
+                        // Should never receive this command from secondary board as it should already have handled it
+                        break;
+                    case COMMAND_TARGET_GROUNDSTATION:
+                        // Groundstation should never receive commands from other boards, only via USB from PC
+                        break;
+                    default:
+                        // Unknown command target
+                        break;
                 }
             }
             break;
         }
 
-        case INTERBOARD_OP_CMD | INTERBOARD_TARGET_FLASH:
-            // This is a command packet, so we might want to send an acknowledgment back
-            // TODO: Implement command handling logic here and define command packet structure
-            //W25Q1_Reset(); // Reset the flash memory
+        //Target Radio means send the command via radio to the flight computer
+        case (INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO): {
+            XBee_QueueDataPacket(&dataPacket);
             break;
+        }
 
         default:
             //Handle unknown packet

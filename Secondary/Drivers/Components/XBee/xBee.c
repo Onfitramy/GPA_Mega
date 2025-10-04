@@ -1,11 +1,29 @@
 #include "xBee.h"
+#include "InterBoardCom.h"
+#include "string.h"
 
 #define XBEE_CS_GPIO_PIN GPIO_PIN_4
 #define XBEE_CS_GPIO_PORT GPIOD
 
 extern UART_HandleTypeDef huart1;
+extern uint8_t UART_RX_Buffer [64];
+
+DataCircularBuffer_t xBeeRxCircBuffer; // incoming buffer for outgoing packets
+
+uint8_t XBee_Init(void)
+{
+    // Initialize circular buffer
+    DataCircBuffer_Init(&xBeeRxCircBuffer);
+
+    HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 3); // Start UART receive interrupt
+    XBee_changeBaudRate(115200); // Change XBee baudrate to 115200
+    HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 3); // Start UART receive interrupt
+    XBee_changeDataRate(1);
+    return 0;
+}
 
 uint8_t XBee_checkCRC(uint8_t* data, uint16_t length, uint8_t crc);
+void XBee_Transmit(uint8_t* data, uint16_t length, uint64_t destinationAddress);
 
 /**
  * @brief Constructs an XBee Transmit Request frame.
@@ -161,7 +179,29 @@ void XBee_GetTemperature()
     constructATFrame(&at_frame, 0x01, ('T' << 8) | 'P', NULL, 0);
     sendAPIFrame((uint8_t*)&at_frame, at_frame.frame_length[0] << 8 | at_frame.frame_length[1]);
 }
-uint8_t xbee_frame_buffer[XBEE_MAX_FRAME_SIZE+4];
+uint8_t xbee_frame_buffer[350]; // 256 bytes max payload + overhead
+
+uint8_t XBee_QueueDataPacket(DataPacket_t* data)
+{
+    return DataCircBuffer_Push(&xBeeRxCircBuffer, data);
+}
+
+void XBee_TransmitQueue(uint64_t destinationAddress)
+{
+    uint16_t max_payload_bytes = 256;
+    uint16_t curr_payload_bytes = 0;
+
+    if (xBeeRxCircBuffer.count == 0) {
+        return; // No data to send
+    }
+
+    while (xBeeRxCircBuffer.count > 0 && (curr_payload_bytes + sizeof(DataPacket_t)) <= max_payload_bytes) {
+        DataCircBuffer_Pop(&xBeeRxCircBuffer, (DataPacket_t*)&frame[curr_payload_bytes]);
+        curr_payload_bytes += sizeof(DataPacket_t);
+    }
+    XBee_Transmit((uint8_t*)&frame, curr_payload_bytes, destinationAddress);
+}
+
 void XBee_Transmit(uint8_t* data, uint16_t length, uint64_t destinationAddress)
 {
     if (UART_LOCK) {
@@ -257,6 +297,42 @@ void XBee_ReadHardwareAddress()
     HAL_Delay(100);
     constructATFrame(&at_frame, 0x01, ('S' << 8) | 'L', NULL, 0);
     sendAPIFrame((uint8_t*)&at_frame, at_frame.frame_length[0] << 8 | at_frame.frame_length[1]);
+}
+
+//Parses a received RF frame and splits it into the different packets inside
+void XBee_parseReceivedRFFrame(xbee_frame_t* frame)
+{
+    // Process received RF data
+    uint8_t* packetData = &frame->frame_data[12]; // RF data starts at byte 12
+    uint16_t packetDataLength = (frame->frame_length[0] << 8 | frame->frame_length[1]) - 12; // Length of RF data
+
+    uint8_t numPackets = packetDataLength / sizeof(DataPacket_t);
+    while (numPackets > 0) {
+        uint8_t packet_id =  packetData[0];
+        DataPacket_t receivedData = CreateDataPacket(packet_id);
+        memcpy(&receivedData.timestamp, &packetData[1], sizeof(uint32_t));
+        memcpy(&receivedData.Data, &packetData[5], sizeof(receivedData.Data));
+        receivedData.crc = packetData[31];
+
+        //Check CRC
+        uint8_t valid_crc = InterBoard_CheckCRC(&receivedData);
+
+        if (!valid_crc) {
+            // Handle invalid CRC
+            return;
+        }
+
+        if (receivedData.Packet_ID == PACKET_ID_COMMAND) {
+            // Process command packet
+            // For example, you can check the command type and execute corresponding actions
+        } else {
+            //Send data packets to main board for display/logging
+            InterBoardCom_SendDataPacket(INTERBOARD_OP_DEBUG_VIEW, &receivedData);
+        }
+
+        packetData += sizeof(DataPacket_t); // Move to the next packet
+        numPackets--;
+    }
 }
 
 //void XBee_BufferT

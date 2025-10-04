@@ -24,7 +24,6 @@ typedef enum {
     INTERBOARD_TARGET_FOLLOWING = 0x80, // Indicates more packets to follow
 
     // Unusual combined types
-    INTERBOARD_OP_ECHO = INTERBOARD_OP_CMD | INTERBOARD_TARGET_NONE, // Echo command
     INTERBOARD_OP_DEBUG_VIEW = INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_NONE, // Send for debugging to PC
 } InterBoardPacketID_t;
 
@@ -55,6 +54,7 @@ void InterBoardCom_ReactivateDMAReceive(void);
 void InterBoardCom_SendPacket(InterBoardPacket_t *packet);
 void InterBoardCom_SendTestPacket(void);
 void InterBoardCom_SendDataPacket(InterBoardPacketID_t Inter_ID, DataPacket_t *packet);
+uint8_t InterBoard_CheckCRC(DataPacket_t *packet);
 
 void InterBoardCom_Init(void);
 InterBoardPacket_t InterBoardCom_CreatePacket(InterBoardPacketID_t ID);

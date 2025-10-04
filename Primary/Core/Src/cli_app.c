@@ -14,6 +14,8 @@
 #include "ws2812.h"
 #include "IMUS.h"
 #include "FreeRTOS.h"
+#include "Packets.h"
+#include "InterBoardCom.h"
 
 #define MAX_INPUT_LENGTH 50
 #define USING_VS_CODE_TERMINAL 0
@@ -50,60 +52,223 @@ BaseType_t cmd_clearScreen(char *pcWriteBuffer, size_t xWriteBufferLen, const ch
 }
 
 //*****************************************************************************
-BaseType_t cmd_set_led(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
-{
-    (void)pcCommandString; // comntains the command string
-    (void)xWriteBufferLen; // contains the length of the write buffer
-
-    const char *pcParameter;
-    BaseType_t xParameterStringLength;
-
-    int r, g, b;
-
-    // Get the first parameter (R)
-    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
-    if (pcParameter == NULL) {
-        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1 (R)\r\n");
-        return pdFALSE;
-    }
-    r = atoi(pcParameter); // Convert to integer
-
-    // Get the second parameter (G)
-    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 2, &xParameterStringLength);
-    if (pcParameter == NULL) {
-        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 2 (G)\r\n");
-        return pdFALSE;
-    }
-    g = atoi(pcParameter); // Convert to integer
-
-    // Get the third parameter (B)
-    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 3, &xParameterStringLength);
-    if (pcParameter == NULL) {
-        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 3 (B)\r\n");
-        return pdFALSE;
-    }
-    b = atoi(pcParameter); // Convert to integercCommandString, 1, &xParameterStringLength );
-    
-    /* Toggle the LED */
-    Set_LED(r, g, b);
-    WS2812_Send();
-
-    
-    /* Write the response to the buffer */
-    uint8_t string[] = "LED set\r\n";
-    strcpy(pcWriteBuffer, (char *)string);
-    
-    return pdFALSE;
-}
-
-//*****************************************************************************
-BaseType_t cmd_read_IMU1(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+BaseType_t cmd_resetPrimary(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {
     (void)pcCommandString;
     (void)xWriteBufferLen;
 
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPECIAL, 0, NULL, 0);
+    InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, &packet);
+
     /* Write the response to the buffer */
-    snprintf(pcWriteBuffer, 100, "Accelerometer: %d, %d, %d Gyroscope: %d, %d, %d\r\n", imu1_data.accel[0], imu1_data.accel[1], imu1_data.accel[2], imu1_data.gyro[0], imu1_data.accel[1], imu1_data.gyro[3]);
+    snprintf(pcWriteBuffer, 30, "Resetting Primary MCU...\r\n");
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_resetSecondary(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPECIAL, 1, NULL, 0);
+    InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, &packet);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 30, "Resetting Secondary MCU...\r\n");
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_Camera_Power(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    uint8_t parameters[1];
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+    parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, 0, parameters, sizeof(parameters));
+    InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, &packet);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 30, "Toggling Camera Power...\r\n");
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_Camera_Recording(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    uint8_t parameters[1];
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+    parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, 1, parameters, sizeof(parameters));
+    InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, &packet);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 30, "Toggling Camera Recording...\r\n");
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_Camera_SkipDate(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+    
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, 2, NULL, 0);
+    InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, &packet);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 30, "Skipping Camera Date...\r\n");
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_Camera_Wifi(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    uint8_t parameters[1];
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+    parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, 3, parameters, sizeof(parameters));
+    InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, &packet);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 30, "Toggling Camera WiFi...\r\n");
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_State_Force(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    uint8_t parameters[1];
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+    parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STATE, 4, parameters, sizeof(parameters));
+    InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, &packet);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 30, "Forcing State...\r\n");
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_State_SimulateEvent(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    uint8_t parameters[1];
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+    parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STATE, 5, parameters, sizeof(parameters));
+    InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, &packet);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 30, "Simulating Event...\r\n");
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_Logging_FlightDataOut(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    uint8_t parameters[1];
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+    parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_LOGGING, 0, parameters, sizeof(parameters));
+    InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, &packet);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 50, "Toggling Flight Data Output Logging...\r\n");
 
     return pdFALSE;
 }
@@ -173,22 +338,58 @@ const CLI_Command_Definition_t xCommandList[] = {
         .cExpectedNumberOfParameters = 0 /* No parameters are expected. */
     },
     {
-        .pcCommand = "set_LED", /* The command string to type. */
-        .pcHelpString = "set_LED[R,G,B]: Set LED to a color(max 255)\r\n\r\n",
-        .pxCommandInterpreter = cmd_set_led, /* The function to run. */
-        .cExpectedNumberOfParameters = 3 /* No parameters are expected. */
+        .pcCommand = "RESET_PRIMARY", /* The command string to type. */
+        .pcHelpString = "RESET_PRIMARY: Resets the Primary MCU on the flight computer\r\n\r\n",
+        .pxCommandInterpreter = cmd_resetPrimary, /* The function to run. */
+        .cExpectedNumberOfParameters = 0
     },
     {
-        .pcCommand = "read_IMU1", /* The command string to type. */
-        .pcHelpString = "read_IMU1: Read IMU1\r\n\r\n",
-        .pxCommandInterpreter = cmd_read_IMU1, /* The function to run. */
-        .cExpectedNumberOfParameters = 0 /* No parameters are expected. */
+        .pcCommand = "RESET_SECONDARY", /* The command string to type. */
+        .pcHelpString = "RESET_SECONDARY: Resets the Secondary MCU on the flight computer\r\n\r\n",
+        .pxCommandInterpreter = cmd_resetSecondary, /* The function to run. */
+        .cExpectedNumberOfParameters = 0
     },
     {
-        .pcCommand = "Flash", /* The command string to type. */
-        .pcHelpString = "Flash[Mode, Param1, Param2, Param3]: Reset, Read, Write data from at Page Param1 of size Param2, data is Param3\r\n\r\n",
-        .pxCommandInterpreter = cmd_Flash, /* The function to run. */
-        .cExpectedNumberOfParameters = 4 /* No parameters are expected. */
+        .pcCommand = "Camera_Power", /* The command string to type. */
+        .pcHelpString = "Camera_Power <1/0>: Turns the camera power on or off\r\n\r\n",
+        .pxCommandInterpreter = cmd_Camera_Power, /* The function to run. */
+        .cExpectedNumberOfParameters = 1
+    },
+    {
+        .pcCommand = "Camera_Recording", /* The command string to type. */
+        .pcHelpString = "Camera_Recording <1/0>: Turns the camera recording on or off\r\n\r\n",
+        .pxCommandInterpreter = cmd_Camera_Recording, /* The function to run. */
+        .cExpectedNumberOfParameters = 1
+    },
+    {
+        .pcCommand = "Camera_SkipDate", /* The command string to type. */
+        .pcHelpString = "Camera_SkipDate: Skips the current date for the camera\r\n\r\n",
+        .pxCommandInterpreter = cmd_Camera_SkipDate, /* The function to run. */
+        .cExpectedNumberOfParameters = 0
+    },
+    {
+        .pcCommand = "Camera_Wifi", /* The command string to type. */
+        .pcHelpString = "Camera_Wifi <1/0>: Turns the camera WiFi on or off\r\n\r\n",
+        .pxCommandInterpreter = cmd_Camera_Wifi, /* The function to run. */
+        .cExpectedNumberOfParameters = 1
+    },
+    {
+        .pcCommand = "State_Force", /* The command string to type. */
+        .pcHelpString = "State_Force <x>: Force the Statemachine into state x\r\n\r\n",
+        .pxCommandInterpreter = cmd_State_Force, /* The function to run. */
+        .cExpectedNumberOfParameters = 1
+    },
+    {
+        .pcCommand = "State_SimulateEvent", /* The command string to type. */
+        .pcHelpString = "State_SimulateEvent <event>: Simulate state event <event>\r\n\r\n",
+        .pxCommandInterpreter = cmd_State_SimulateEvent, /* The function to run. */
+        .cExpectedNumberOfParameters = 1
+    },
+    {
+        .pcCommand = "Logging_FlightDataOut", /* The command string to type. */
+        .pcHelpString = "Logging_FlightDataOut <Enable/Disable>: Enables or disables flight data output logging to PC\r\n\r\n",
+        .pxCommandInterpreter = cmd_Logging_FlightDataOut, /* The function to run. */
+        .cExpectedNumberOfParameters = 1
     },
     {
         .pcCommand = NULL /* simply used as delimeter for end of array*/

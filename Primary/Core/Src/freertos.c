@@ -343,17 +343,23 @@ void Start100HzTask(void *argument) {
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 10; //100 Hz
   /* Infinite loop */
-  //Groundstation has empty IMU and Attitude Packets which are requested from secondary board
   DataPacket_t IMU_DataPacket = CreateDataPacket(PACKET_ID_IMU);
   DataPacket_t Attitude_DataPacket = CreateDataPacket(PACKET_ID_ATTITUDE);
   for(;;) {
-    if (is_groundstation){
+    if (is_groundstation) {
       UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &imu1_data, &mag_data);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_LOAD_REQUEST | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);
 
       UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler_from_q[0], euler_from_q[1], euler_from_q[2]);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_LOAD_REQUEST | INTERBOARD_TARGET_RADIO, &Attitude_DataPacket);
+    } else {
+      UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &imu1_data, &mag_data);
+      InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, &IMU_DataPacket);
+
+      UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler_from_q[0], euler_from_q[1], euler_from_q[2]);
+      InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, &Attitude_DataPacket);
     }
+
     InterBoardCom_ProcessTxBuffer();
 
     #ifdef SIGNAL_PLOTTER_OUT_2 // signal plotter outputs raw sensor data
@@ -472,12 +478,27 @@ void Start10HzTask(void *argument) {
   GPS_Init(); //Initialize the GPS module
   DataPacket_t GPS_DataPacket = CreateDataPacket(PACKET_ID_GPS);
   DataPacket_t Temp_DataPacket = CreateDataPacket(PACKET_ID_TEMPERATURE);
+  DataPacket_t IMU_DataPacket = CreateDataPacket(PACKET_ID_IMU);
+  DataPacket_t Attitude_DataPacket = CreateDataPacket(PACKET_ID_ATTITUDE);
   /* Infinite loop */
   for(;;) {
     StateMachine_DoActions(&flight_sm);
 
     GPS_ReadSensorData(&gps_data);
+
     //GPS_RequestSensorData(); // Request GPS data
+    if (is_groundstation){ //Groundstation requests data from secondary board
+
+    } else { //Secondary board sends data to groundstation
+      UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &imu1_data, &mag_data);
+      InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);
+
+      UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler_from_q[0], euler_from_q[1], euler_from_q[2]);
+      InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &Attitude_DataPacket);
+
+      UpdateGPSDataPacket(&GPS_DataPacket, HAL_GetTick(), &gps_data);
+      InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &GPS_DataPacket);
+    }
 
     if(flight_sm.currentFlightState != STATE_FLIGHT_STARTUP && flight_sm.currentFlightState != STATE_FLIGHT_INIT) {
       UBLOXtoWGS84(gps_data.lat, gps_data.lon, gps_data.height, WGS84);
@@ -586,7 +607,7 @@ void StartInterruptHandlerTask(void *argument)
         InterBoardCom_ProcessTxBuffer(); // Check if more packets to send and send them
         HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
         // Process received InterBoardCom_Packet
-        InterBoardCom_GroundstationParsePacket(&InterBoardCom_Packet);
+        InterBoardCom_ParsePacket(&InterBoardCom_Packet);
       }
     }
   }

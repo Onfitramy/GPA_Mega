@@ -19,7 +19,22 @@ typedef enum {
     PACKET_ID_POSITION = 0x06, // Position data packet
     PACKET_ID_ATTITUDE = 0x07, // Attitude data packet
     PACKET_ID_KALMANMATRIX = 0x08, // Kalman Matrix data packet
+
+    PACKET_ID_COMMAND = 0x10, // Command packet
 } PacketType_t;
+
+
+typedef enum {
+    COMMAND_TARGET_NONE = 0x00,
+    COMMAND_TARGET_SPECIAL = 0x01,
+    COMMAND_TARGET_CAMERA = 0x02,
+    COMMAND_TARGET_STATE = 0x03,
+    COMMAND_TARGET_POWERUNIT = 0x04,
+    COMMAND_TARGET_TESTING = 0x05,
+    COMMAND_TARGET_STORAGE = 0x06,
+    COMMAND_TARGET_GROUNDSTATION = 0x07,
+    COMMAND_TARGET_LOGGING = 0x08,
+} CommandTarget_t;
 
 /* Packet and Payload structure definitions */
 /* Each Payload has to be exactly 26 bytes */
@@ -80,6 +95,12 @@ typedef struct {
     uint16_t unused1; // 26 bytes
 } TestPayload_t;
 
+typedef struct {
+    CommandTarget_t command_target;
+    uint8_t command_id;
+    uint8_t params[24];
+} CommandPayload_t;
+
 typedef union {
     StatusPayload_t status;
     PowerPayload_t power;
@@ -90,6 +111,7 @@ typedef union {
     AttitudePayload_t attitude;
     KalmanMatrixPayload_t kalman;
     TestPayload_t test;
+    CommandPayload_t command;
     uint8_t raw[26];
 } PayloadData_u;
 
@@ -112,4 +134,5 @@ void UpdateKalmanMatrixPacket(DataPacket_t *kalman_packet, uint32_t timestamp, f
 void UpdatePositionPacket(DataPacket_t *position_packet, uint32_t timestamp, float posX, float posY, float posZ, float velX, float velY, float velZ);
 void UpdateAttitudePacket(DataPacket_t *attitude_packet, uint32_t timestamp, float phi, float theta, float psi);
 void PlotDataPacket(DataPacket_t *packet);
+void CreateCommandPacket(DataPacket_t *command_packet, uint32_t timestamp, CommandTarget_t command_target, uint8_t command_id, uint8_t *params, size_t params_length);
 #endif /* Packets_H_ */

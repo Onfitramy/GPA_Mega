@@ -106,6 +106,8 @@ uint32_t Counter_10Hz = 0;
 
 health_t health;
 health_t health_filtered;
+
+uint64_t XBee_transmit_addr = 0x0013a200426e530e; // XBee transmit address
 /* USER CODE END Variables */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -253,6 +255,8 @@ void Start10HzTask(void *argument){
     FilterLP(&health, &health_filtered);
 
 
+    XBee_TransmitQueue(XBee_transmit_addr); // Transmit data at 10Hz
+
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
   }
 
@@ -278,7 +282,6 @@ void StartInterBoardComTask(void *argument)
       InterBoardCom_ParsePacket(packet);
       #ifdef DEBUG
       DMA_ReRun_time = HAL_GetTick() + 6; //Set the next reactivation time to 6ms in the future
-      HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin); // Toggle M2 LED to indicate packet received
       #endif
     }
 
@@ -326,29 +329,22 @@ void StartInterruptTask(void *argument)
           // Check if command was successful
         }
       }  else if (packet.frame_data[0] == 0x90) { // RX Packet
-          // Process received RF data
-          uint8_t* rfData = &packet.frame_data[12]; // RF data starts at byte 12
-          uint16_t rfDataLength = (packet.frame_length[0] << 8 | packet.frame_length[1]) - 12; // Length of RF data
-
-          DataPacket_t receivedData = CreateDataPacket(packet.frame_data[12]);
-          memcpy(&receivedData.timestamp, &packet.frame_data[13], sizeof(uint32_t));
-          memcpy(&receivedData.Data, &packet.frame_data[17], sizeof(receivedData.Data));
-          receivedData.crc = packet.frame_data[43];
-          InterBoardCom_SendDataPacket(INTERBOARD_OP_DEBUG_VIEW, &receivedData);
-
-          XBEE_TransmittedReceived += 1;
-          // Handle rfData as needed
+        XBEE_TransmittedReceived += 1;
+        HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin); // Toggle M2 LED to indicate transmitting
+        XBee_parseReceivedRFFrame(&packet);
+        // Handle rfData as needed
       } else if (packet.frame_data[0] == 0x8B) { // Transmit Status
-          // Process transmit status
-          uint8_t frameID = packet.frame_data[1];
-          transmitStatus = packet.frame_data[5];
-          if (transmitStatus != 0x00) {
-            TransmissionErrors += 1;
-          } else {
-            // Transmission successful
-            XBEE_TransmittedReceived += 1;
-          }
-          // Handle transmit status as needed
+        // Process transmit status
+        HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin); // Toggle M2 LED to indicate transmitting
+        uint8_t frameID = packet.frame_data[1];
+        transmitStatus = packet.frame_data[5];
+        if (transmitStatus != 0x00) {
+          TransmissionErrors += 1;
+        } else {
+          // Transmission successful
+          XBEE_TransmittedReceived += 1;
+        }
+        // Handle transmit status as needed
       }
     }
   }

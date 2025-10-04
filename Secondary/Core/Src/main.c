@@ -101,7 +101,7 @@ static void MX_I2C2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint8_t UART_RX_Buffer [64]; // Buffer for UART receive interrupt
+uint8_t UART_RX_Buffer [350]; // Buffer for UART receive interrupt
 /* USER CODE END 0 */
 
 /**
@@ -148,10 +148,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   uint32_t flashid = W25Q1_ReadID(); //Check if the FLASH works, flashid = 0xEF4017
 
-  HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 3); // Start UART receive interrupt
-  XBee_changeBaudRate(115200); // Change XBee baudrate to 115200
-  HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 3); // Start UART receive interrupt
-  XBee_changeDataRate(1);
+  XBee_Init();
 
   //PU_enableRecovery();
   //PU_enableCamera();

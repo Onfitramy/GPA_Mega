@@ -17,7 +17,21 @@ typedef enum {
     PACKET_ID_POSITION = 0x06, // Position data packet
     PACKET_ID_ATTITUDE = 0x07, // Attitude data packet
     PACKET_ID_KALMANMATRIX = 0x08, // Kalman Matrix data packet
+
+    PACKET_ID_COMMAND = 0x10, // Command packet
 } PacketType_t;
+
+typedef enum {
+    COMMAND_TARGET_NONE = 0x00,
+    COMMAND_TARGET_SPECIAL = 0x01,
+    COMMAND_TARGET_CAMERA = 0x02,
+    COMMAND_TARGET_STATE = 0x03,
+    COMMAND_TARGET_POWERUNIT = 0x04,
+    COMMAND_TARGET_TESTING = 0x05,
+    COMMAND_TARGET_STORAGE = 0x06,
+    COMMAND_TARGET_GROUNDSTATION = 0x07,
+    COMMAND_TARGET_LOGGING = 0x08,
+} CommandTarget_t;
 
 /* Packet and Payload structure definitions */
 /* Each Payload has to be exactly 26 bytes */
@@ -74,6 +88,12 @@ typedef struct {
 }KalmanMatrixPayload_t;
 
 typedef struct {
+    CommandTarget_t command_target;
+    uint8_t command_id;
+    uint8_t params[24];
+} CommandPayload_t;
+
+typedef struct {
     float test1, test2, test3, test4, test5, test6; // 24 bytes
     uint16_t unused1; // 26 bytes
 } TestPayload_t;
@@ -87,6 +107,7 @@ typedef union {
     PositionPayload_t position;
     AttitudePayload_t attitude;
     KalmanMatrixPayload_t kalman;
+    CommandPayload_t command;
     TestPayload_t test;
     uint8_t raw[26];
 } PayloadData_u;
@@ -99,7 +120,23 @@ typedef struct {
 } DataPacket_t;
 #pragma pack(pop)
 
+#define DATA_BUFFER_SIZE  32  // Size of the data circular buffer
+typedef struct {
+    DataPacket_t buffer[DATA_BUFFER_SIZE];
+    volatile uint16_t head;      // Write index
+    volatile uint16_t tail;      // Read index
+    volatile uint16_t count;     // Number of items in buffer
+} DataCircularBuffer_t;
+
 DataPacket_t CreateDataPacket(PacketType_t Packet_ID);
+
+void DataCircBuffer_Init(DataCircularBuffer_t* cb);
+uint8_t DataCircBuffer_Push(DataCircularBuffer_t* cb, DataPacket_t* packet);
+uint8_t DataCircBuffer_Pop(DataCircularBuffer_t* cb, DataPacket_t* packet);
+uint8_t DataCircBuffer_IsEmpty(DataCircularBuffer_t* cb);
+uint8_t DataCircBuffer_IsFull(DataCircularBuffer_t* cb);
+uint16_t DataCircBuffer_Count(DataCircularBuffer_t* cb);
+void DataCircBuffer_Clear(DataCircularBuffer_t* cb);
 
 
 #endif /* Packets_H_ */

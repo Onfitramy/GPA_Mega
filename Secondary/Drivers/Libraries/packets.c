@@ -1,5 +1,6 @@
 #include "packets.h"
 #include "InterBoardCom.h"
+#include <string.h>
 
 int16_t float_to_int16_scaled(float value, float scale_factor);
 int32_t float_to_int32_scaled(float value, float scale_factor);
@@ -155,4 +156,105 @@ int32_t float_to_int32_scaled(float value, float scale_factor) {
 // Convert int32 back to float
 float int32_to_float_scaled(int32_t value, float scale_factor) {
     return (float)value * scale_factor;
+}
+
+/**
+ * @brief Initializes the circular buffer
+ * @param cb Pointer to the circular buffer structure
+ */
+void DataCircBuffer_Init(DataCircularBuffer_t* cb) {
+    cb->head = 0;
+    cb->tail = 0;
+    cb->count = 0;
+}
+
+/**
+ * @brief Pushes a packet into the circular buffer
+ * @param cb Pointer to the circular buffer structure
+ * @param packet Pointer to the packet to be added
+ * @return 1 if successful, 0 if buffer is full
+ */
+uint8_t DataCircBuffer_Push(DataCircularBuffer_t* cb, DataPacket_t* packet) {
+    if (cb->count >= INTERBOARD_BUFFER_SIZE) {
+        return 0; // Buffer is full
+    }
+    
+    // Disable interrupts to ensure atomic operation
+    __disable_irq();
+    
+    // Copy packet to buffer
+    memcpy(&cb->buffer[cb->head], packet, sizeof(DataPacket_t));
+    
+    // Update head pointer
+    cb->head = (cb->head + 1) % INTERBOARD_BUFFER_SIZE;
+    cb->count++;
+    
+    __enable_irq();
+    
+    return 1; // Success
+}
+
+/**
+ * @brief Pops a packet from the circular buffer
+ * @param cb Pointer to the circular buffer structure
+ * @param packet Pointer to store the popped packet
+ * @return 1 if successful, 0 if buffer is empty
+ */
+uint8_t DataCircBuffer_Pop(DataCircularBuffer_t* cb, DataPacket_t* packet) {
+    if (cb->count == 0) {
+        return 0; // Buffer is empty
+    }
+    
+    // Disable interrupts to ensure atomic operation
+    __disable_irq();
+    
+    // Copy packet from buffer
+    memcpy(packet, &cb->buffer[cb->tail], sizeof(DataPacket_t));
+
+    // Update tail pointer
+    cb->tail = (cb->tail + 1) % INTERBOARD_BUFFER_SIZE;
+    cb->count--;
+    
+    __enable_irq();
+    
+    return 1; // Success
+}
+
+/**
+ * @brief Checks if the circular buffer is empty
+ * @param cb Pointer to the circular buffer structure
+ * @return 1 if empty, 0 if not empty
+ */
+uint8_t DataCircBuffer_IsEmpty(DataCircularBuffer_t* cb) {
+    return (cb->count == 0);
+}
+
+/**
+ * @brief Checks if the circular buffer is full
+ * @param cb Pointer to the circular buffer structure
+ * @return 1 if full, 0 if not full
+ */
+uint8_t DataCircBuffer_IsFull(DataCircularBuffer_t* cb) {
+    return (cb->count >= INTERBOARD_BUFFER_SIZE);
+}
+
+/**
+ * @brief Gets the current count of items in the buffer
+ * @param cb Pointer to the circular buffer structure
+ * @return Number of items in buffer
+ */
+uint16_t DataCircBuffer_Count(DataCircularBuffer_t* cb) {
+    return cb->count;
+}
+
+/**
+ * @brief Clears the circular buffer
+ * @param cb Pointer to the circular buffer structure
+ */
+void DataCircBuffer_Clear(DataCircularBuffer_t* cb) {
+    __disable_irq();
+    cb->head = 0;
+    cb->tail = 0;
+    cb->count = 0;
+    __enable_irq();
 }

@@ -60,7 +60,7 @@ void InterBoardCom_SendTestPacket(void);
 void InterBoardCom_SendDataPacket(InterBoardPacketID_t Inter_ID, DataPacket_t *packet);
 InterBoardPacket_t InterBoardCom_ReceivePacket(void);
 void InterBoardCom_ProcessReceivedPacket(InterBoardPacket_t *packet);
-void InterBoardCom_GroundstationParsePacket(InterBoardPacket_t *packet);
+void InterBoardCom_ParsePacket(InterBoardPacket_t *packet);
 void InterBoardCom_ActivateReceive(void);
 
 InterBoardPacket_t InterBoardCom_CreatePacket(InterBoardPacketID_t ID);

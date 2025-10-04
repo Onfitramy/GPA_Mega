@@ -23,7 +23,7 @@ void buzzerSetFreq(int frequency) {
 void buzzerPlayNote(char *note, uint32_t duration_ms) {
 	float frequency = get_frequency(note);
 	buzzerSetFreq(frequency);
-    HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin);
+    //HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin);
     HAL_Delay(duration_ms);
     buzzerSetFreq(0);
 }

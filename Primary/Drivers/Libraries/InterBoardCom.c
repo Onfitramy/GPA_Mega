@@ -174,13 +174,54 @@ void InterBoardCom_ProcessReceivedPacket(InterBoardPacket_t *packet) {
     }
 }
 
-void InterBoardCom_GroundstationParsePacket(InterBoardPacket_t *packet) {
+extern uint8_t is_groundstation;
+void InterBoardCom_ParsePacket(InterBoardPacket_t *packet) {
     // Process the received packet based on its ID
     switch (packet->InterBoardPacket_ID) {
         case INTERBOARD_OP_DEBUG_VIEW: //Send for debugging
-            PlotDataPacket((DataPacket_t *)packet->Data);
+            if (is_groundstation) {
+                PlotDataPacket((DataPacket_t *)packet->Data);
+            }
             break;
         // Add cases for other packet IDs as needed
+
+        case INTERBOARD_OP_CMD: {
+            DataPacket_t *cmd = (DataPacket_t *)packet->Data;
+            if (cmd->Packet_ID != PACKET_ID_COMMAND) {
+                // Invalid command ID
+                return;
+            }
+            switch (cmd->Data.command.command_target) {
+                case COMMAND_TARGET_NONE:
+                    // No target specified, possibly log or ignore
+                    break;
+                case COMMAND_TARGET_SPECIAL:
+                    // Handle special commands
+                    break;
+                case COMMAND_TARGET_STATE:
+                    // Handle state-related commands
+                    break;
+                case COMMAND_TARGET_POWERUNIT:
+                    // Should never receive this command from secondary board as it should already have handled it
+                    break;
+                case COMMAND_TARGET_TESTING:
+                    // Handle testing commands
+                    break;
+                case COMMAND_TARGET_STORAGE:
+                    // Handle storage commands
+                    break;
+                case COMMAND_TARGET_CAMERA:
+                    // Should never receive this command from secondary board as it should already have handled it
+                    break;
+                case COMMAND_TARGET_GROUNDSTATION:
+                    // Groundstation should never receive commands from other boards, only via USB from PC
+                    break;
+                default:
+                    // Unknown command target
+                    break;
+            }
+            break;
+        }
         default:
             break;
     }

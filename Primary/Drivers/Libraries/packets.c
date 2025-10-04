@@ -1,6 +1,7 @@
 #include "packets.h"
 #include "InterBoardCom.h"
 #include "signalPlotter.h"
+#include <string.h>
 
 int16_t float_to_int16_scaled(float value, float scale_factor);
 int32_t float_to_int32_scaled(float value, float scale_factor);
@@ -41,6 +42,7 @@ void PlotDataPacket(DataPacket_t *packet) {
                 signalPlotter_sendData(4, packet->Data.imu.accelX / 1000.0f);
                 signalPlotter_sendData(5, packet->Data.imu.accelY / 1000.0f);
                 signalPlotter_sendData(6, packet->Data.imu.accelZ / 1000.0f);
+        
             default:
                 break;
         }
@@ -155,6 +157,21 @@ void UpdateAttitudePacket(DataPacket_t *attitude_packet, uint32_t timestamp, flo
     attitude_packet->Data.attitude.psi = psi;
 
     calcCRC(attitude_packet);
+}
+
+void CreateCommandPacket(DataPacket_t *command_packet, uint32_t timestamp, CommandTarget_t command_target, uint8_t command_id, uint8_t *params, size_t params_length) {
+    command_packet->Packet_ID = PACKET_ID_COMMAND;
+    command_packet->timestamp = timestamp;
+
+    // Update the Command packet with the command information
+    command_packet->Data.command.command_target = command_target;
+    command_packet->Data.command.command_id = command_id;
+    if (params != NULL && params_length > 0) {
+        size_t copy_length = (params_length > sizeof(command_packet->Data.command.params)) ? sizeof(command_packet->Data.command.params) : params_length;
+        memcpy(command_packet->Data.command.params, params, copy_length);
+    }
+
+    calcCRC(command_packet);
 }
 
 // Convert float to int16 with conversion factor
