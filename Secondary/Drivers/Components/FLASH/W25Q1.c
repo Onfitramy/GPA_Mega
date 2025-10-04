@@ -57,13 +57,9 @@ void W25Q_AddFlashBufferPacket(const DataPacket_t *data_packet) {
 
 	if (flash_buffer_index == FLASH_BUFFER_SIZE) {
 		W25Q_Erase_Sector(W25Q_FLASH_CONFIG.curr_logPage / PAGES_PER_SECTOR);
-		DataPacket_t result[8];
-		uint32_t start = HAL_GetTick();
 		for (int i = 0; i < PAGES_PER_SECTOR; ++i) {
 			W25Q_SaveToLog((uint8_t*)(flash_packet_buffer + i * PACKETS_PER_PAGE), PACKETS_PER_PAGE * sizeof(DataPacket_t));
-			W25Q_LoadFromLog((uint8_t*)result, PACKETS_PER_PAGE * sizeof(DataPacket_t), W25Q_FLASH_CONFIG.curr_logPage - 1, 0);
 		}
-		uint32_t deltaT = HAL_GetTick() - start;
 		flash_buffer_index = 0;
 	}
 }
@@ -225,6 +221,26 @@ void disable_write (void)
 	vTaskDelay(5);  // Write cycle delay (5ms)
 }
 
+void W25Q_WaitForInstruction(uint8_t address) {
+	uint8_t tDataStatus = address;
+
+	csLOW();
+
+	HAL_SPI_Transmit(&W25Q1_SPI, &tDataStatus, 1, 100);
+
+	uint8_t rDataStatus[2] = {255};
+	// wait until erase is finished
+	while (true) {
+		HAL_SPI_Receive(&W25Q1_SPI, rDataStatus, 2, 100);
+		// I don't know why the first byte is sometimes not altered, but the second is
+		if ((rDataStatus[1] & 0b00000001) == 0) {
+			break;
+		}
+	}
+
+	csHIGH();
+}
+
 void W25Q_Erase_Sector (uint16_t numsector)
 {
 	uint8_t tData[6];
@@ -244,21 +260,7 @@ void W25Q_Erase_Sector (uint16_t numsector)
 	  csHIGH();
 	}
 
-	uint8_t tDataStatus = 0x05;
-	csLOW();
-	HAL_SPI_Transmit(&W25Q1_SPI, &tDataStatus, 1, 100);
-
-	uint8_t rDataStatus[2] = {255};
-	// wait until erase is finished
-	while (true) {
-		HAL_SPI_Receive(&W25Q1_SPI, rDataStatus, 12, 100);
-		// I don't know why the first byte is sometimes not altered, but the second is
-		if ((rDataStatus[1] & 0b00000001) == 0) {
-			break;
-		}
-	}
-
-	csHIGH();
+	W25Q_WaitForInstruction(0x05);
 
 	disable_write();
 }
@@ -288,7 +290,8 @@ void W25Q_Write_Page (uint32_t page, uint16_t offset, uint32_t size, uint8_t *da
 		uint16_t bytesremaining  = bytestowrite(size, offset);
 
 		enable_write();
-                uint32_t indx = 0;
+
+		uint32_t indx = 0;
 		if (numBLOCK<512)   // Chip Size<256Mb
 		{
 			tData[0] = 0x02;  // page program
@@ -315,7 +318,8 @@ void W25Q_Write_Page (uint32_t page, uint16_t offset, uint32_t size, uint8_t *da
 		size = size-bytesremaining;
 		dataPosition = dataPosition+bytesremaining;
 
-        vTaskDelay(4);
+        W25Q_WaitForInstruction(0x05);
+
 		disable_write();
     }
 }
@@ -491,7 +495,7 @@ static void W25Q_AlignSectorOffset() {
 
 void W25Q_GetConfig()
 {
-	uint8_t tempConfig[256];
+	uint8_t tempConfig[sizeof(W25QPage0_config_t)];
 	// Copy the config on the chip to a local variable
 	W25Q_Read(0, 0, sizeof(W25QPage0_config_t), tempConfig);
 	// Copy the data to the W25Q_FLASH_CONFIG structure if ID is correct
@@ -528,6 +532,7 @@ void W25Q_Write_Cleared(uint32_t page, uint16_t offset, uint32_t size, uint8_t *
 		uint16_t bytesremaining  = bytestowrite(size, offset);
 
 		enable_write();
+
         uint32_t indx = 0;
 		if (numBLOCK<512)   // Chip Size<256Mb
 		{
@@ -555,7 +560,8 @@ void W25Q_Write_Cleared(uint32_t page, uint16_t offset, uint32_t size, uint8_t *
 		size = size-bytesremaining;
 		dataPosition = dataPosition+bytesremaining;
 
-        vTaskDelay(4);
+        W25Q_WaitForInstruction(0x05);
+
 		disable_write();
     }
 }
