@@ -19,6 +19,12 @@ W25QPage0_config_t W25Q_FLASH_CONFIG = {
 	.write_logs = true,
 };
 
+void W25Q_WriteConfig() {
+	// Write two configs in case of power loss between erasing and writing.
+	W25Q_Write_Page(0, 0, sizeof(W25QPage0_config_t), (uint8_t *)&W25Q_FLASH_CONFIG);
+	W25Q_Write_Page(PAGES_PER_SECTOR, 0, sizeof(W25QPage0_config_t), (uint8_t *)&W25Q_FLASH_CONFIG);
+}
+
 //Saves the data to the log page
 void W25Q_SaveToLog(uint8_t *data, uint32_t size)
 {
@@ -43,7 +49,7 @@ void W25Q_SaveToLog(uint8_t *data, uint32_t size)
 		W25Q_FLASH_CONFIG.curr_logPage += 1;
 	}
 
-	W25Q_Write_Page(0, 0, sizeof(W25QPage0_config_t), (uint8_t *)&W25Q_FLASH_CONFIG);
+	W25Q_WriteConfig();
 }
 
 
@@ -474,7 +480,7 @@ void W25Q_Chip_Erase (void)
     vTaskDelay(40000); //should be 40s - 200s
 	disable_write();
 
-	W25Q_Write_Page(0, 0, sizeof(W25QPage0_config_t), (uint8_t *)&W25Q_FLASH_CONFIG);
+	W25Q_WriteConfig();
 }
 
 static void W25Q_AlignSectorOffset() {
@@ -493,21 +499,23 @@ static void W25Q_AlignSectorOffset() {
 	W25Q_FLASH_CONFIG.curr_logPage += PAGES_PER_SECTOR - sectorOffset;
 }
 
-void W25Q_GetConfig()
-{
-	uint8_t tempConfig[sizeof(W25QPage0_config_t)];
+void W25Q_GetConfig() {
+	uint8_t tempConfig1[sizeof(W25QPage0_config_t)];
+	uint8_t tempConfig2[sizeof(W25QPage0_config_t)];
+
 	// Copy the config on the chip to a local variable
-	W25Q_Read(0, 0, sizeof(W25QPage0_config_t), tempConfig);
+	W25Q_Read(0, 0, sizeof(W25QPage0_config_t), tempConfig1);
+	W25Q_Read(PAGES_PER_SECTOR, 0, sizeof(W25QPage0_config_t), tempConfig2);
 	// Copy the data to the W25Q_FLASH_CONFIG structure if ID is correct
-	if (tempConfig[0] == W25Q_FLASH_CONFIG.ID[0] && tempConfig[1] == W25Q_FLASH_CONFIG.ID[1])
-	{
-		memcpy(&W25Q_FLASH_CONFIG, tempConfig, sizeof(W25QPage0_config_t));
+	if (tempConfig1[0] == W25Q_FLASH_CONFIG.ID[0] && tempConfig1[1] == W25Q_FLASH_CONFIG.ID[1]) {
+		memcpy(&W25Q_FLASH_CONFIG, tempConfig1, sizeof(W25QPage0_config_t));
 		W25Q_AlignSectorOffset();
-	}
-	else
-	{
+	} else if (tempConfig2[0] == W25Q_FLASH_CONFIG.ID[0] && tempConfig2[1] == W25Q_FLASH_CONFIG.ID[1]) {
+		memcpy(&W25Q_FLASH_CONFIG, tempConfig2, sizeof(W25QPage0_config_t));
+		W25Q_AlignSectorOffset();
+	} else {
 		// If the ID does not match, save the default config
-		W25Q_Write_Page(0, 0, sizeof(W25QPage0_config_t), (uint8_t *)&W25Q_FLASH_CONFIG);
+		W25Q_WriteConfig();
 	}
 }
 
