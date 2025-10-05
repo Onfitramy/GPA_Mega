@@ -46,6 +46,21 @@ uint32_t minEventDelayTable[EVENT_FLIGHT_MAX] = {
     MIN_DELAY_UNTIL_TOUCHDOWN
 };
 
+uint32_t maxEventDelayTable[STATE_FLIGHT_MAX] = {
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    MAX_DELAY_UNTIL_BURNOUT_DETECTED,
+    MAX_DELAY_UNTIL_APOGEE_DETECTED,
+    MAX_DELAY_UNTIL_TOUCHDOWN_BAD,
+    MAX_DELAY_UNTIL_TOUCHDOWN_DROGUE,
+    MAX_DELAY_UNTIL_TOUCHDOWN_MAIN,
+    0
+};
+
 /* --- Entry actions --- */
 static void AbortEntry(StateMachine_t *sm) {
     // TODO:
@@ -255,7 +270,7 @@ static void ArmedDo(StateMachine_t *sm, uint16_t freq) {
     // Check liftoff with 1000 Hz
     if (freq != 1000) return;
 
-    acc_z_buf[acc_z_index] = average_imu_data.accel[1];
+    acc_z_buf[acc_z_index] = a_BodyFrame[1];
     acc_z_index = (acc_z_index + 1) % LIFTOFF_ACC_BUFFER_SIZE;
 
     uint8_t high_g_count = 0;
@@ -384,6 +399,14 @@ void StateMachine_Dispatch(StateMachine_t *sm, flight_event_t event) {
     // update flight state
     sm->currentFlightState = newState;
 
+    // stop timer
+    HAL_TIM_Base_Stop_IT(&htim7);
+
+    // start timer to enforce maximum delay until event
+    if (tim7_target_ms = maxEventDelayTable[newState]) {
+        HAL_TIM_Base_Start_IT(&htim7);
+    }
+
     // enter new state
     StateEntryHandler(sm, newState);
 }
@@ -404,6 +427,14 @@ void StateMachine_ForceState(StateMachine_t *sm, flight_state_t newState) {
 
     // update flight state
     sm->currentFlightState = newState;
+
+    // stop timer
+    HAL_TIM_Base_Stop_IT(&htim7);
+
+    // start timer to enforce maximum delay until event
+    if (tim7_target_ms = maxEventDelayTable[newState]) {
+        HAL_TIM_Base_Start_IT(&htim7);
+    }
 
     // enter new state
     StateEntryHandler(sm, newState);
@@ -480,6 +511,7 @@ static flight_state_t UnbrakedDescendHandler(flight_event_t event) {
     switch (event) {
         case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
         case EVENT_FLIGHT_DROGUE_DEPLOY:        return STATE_FLIGHT_DESCEND_DROGUE;
+        case EVENT_FLIGHT_TOUCHDOWN:            return STATE_FLIGHT_LANDED; // :(
         default: return STATE_FLIGHT_DESCEND_UNBRAKED;
     }
 }
@@ -488,6 +520,7 @@ static flight_state_t DrogueDescendHandler(flight_event_t event) {
     switch (event) {
         case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
         case EVENT_FLIGHT_MAIN_DEPLOY:          return STATE_FLIGHT_DESCEND_MAIN;
+        case EVENT_FLIGHT_TOUCHDOWN:            return STATE_FLIGHT_LANDED; // :/
         default: return STATE_FLIGHT_DESCEND_DROGUE;
     }
 }

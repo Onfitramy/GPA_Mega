@@ -13,6 +13,13 @@
 #define MIN_DELAY_UNTIL_APOGEE_DETECTED     15000
 #define MIN_DELAY_UNTIL_TOUCHDOWN           15000
 
+/* --- Define maximum Event delay times in ms --- */
+#define MAX_DELAY_UNTIL_BURNOUT_DETECTED    6000
+#define MAX_DELAY_UNTIL_APOGEE_DETECTED     25000
+#define MAX_DELAY_UNTIL_TOUCHDOWN_BAD       18000
+#define MAX_DELAY_UNTIL_TOUCHDOWN_DROGUE    30000
+#define MAX_DELAY_UNTIL_TOUCHDOWN_MAIN      60000
+
 /* --- Define all possible flight states --- */
 typedef enum {
     STATE_FLIGHT_ABORT,             // abort encountered
@@ -59,6 +66,9 @@ extern StateMachine_t flight_sm;
 extern GPA_Mega gpa_mega;
 extern StatusPayload_t status_data;
 extern uint8_t selftest_tries;
+
+extern TIM_HandleTypeDef htim7;
+extern uint32_t tim7_target_ms;
 
 /* --- Function declarations --- */
 void StateMachine_Init(StateMachine_t *sm, flight_state_t initialState);

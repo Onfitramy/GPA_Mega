@@ -54,6 +54,9 @@ extern volatile uint8_t SPI1_ReceivePending; // Flag to indicate a pending recei
 
 extern StateMachine_t flight_sm;
 extern bool is_groundstation;
+
+volatile uint32_t tim7_ms = 0;
+uint32_t tim7_target_ms;
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -135,6 +138,7 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM4_Init();
   MX_TIM5_Init();
+  MX_TIM7_Init();
   MX_TIM8_Init();
   MX_DTS_Init();
   MX_USB_DEVICE_Init();
@@ -352,6 +356,22 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE END Callback 0 */
   if (htim->Instance == TIM6) {
     HAL_IncTick();
+  }
+  else if (htim->Instance == TIM7) {
+    tim7_ms++;
+    if (tim7_ms >= tim7_target_ms) {
+      tim7_ms = 0;
+      HAL_TIM_Base_Stop_IT(&htim7);
+
+      switch (flight_sm.currentFlightState) {
+        case STATE_FLIGHT_BURN:             StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_BURNOUT_DETECTED); break;
+        case STATE_FLIGHT_COAST:            StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_APOGEE_DETECTED); break;
+        case STATE_FLIGHT_DESCEND_UNBRAKED:
+        case STATE_FLIGHT_DESCEND_DROGUE: 
+        case STATE_FLIGHT_DESCEND_MAIN:     StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_TOUCHDOWN); break;
+        default: break; // error?
+      }
+    }
   }
   /* USER CODE BEGIN Callback 1 */
 
