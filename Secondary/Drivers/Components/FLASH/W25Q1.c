@@ -51,8 +51,6 @@ void W25Q_SaveToLog(uint8_t *data, uint32_t size)
 		W25Q_FLASH_CONFIG.curr_logOffset %= 256;
 		W25Q_FLASH_CONFIG.curr_logPage += 1;
 	}
-
-	W25Q_WriteConfig();
 }
 
 
@@ -74,6 +72,8 @@ void W25Q_AddFlashBufferPacket(const DataPacket_t *data_packet) {
 		for (int i = 0; i < PAGES_PER_SECTOR; ++i) {
 			W25Q_SaveToLog((uint8_t*)(flash_packet_buffer + i * PACKETS_PER_PAGE), PACKETS_PER_PAGE * sizeof(DataPacket_t));
 		}
+
+		W25Q_WriteConfig();
 		flash_buffer_index = 0;
 	}
 }
