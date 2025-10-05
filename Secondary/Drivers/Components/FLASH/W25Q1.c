@@ -19,8 +19,11 @@ W25QPage0_config_t W25Q_FLASH_CONFIG = {
 	.write_logs = true,
 };
 
+/**
+ * @brief Write two configs to the flash.
+ * If a power loss happens between erasing and writing data, there will always be one valid config.
+ */
 void W25Q_WriteConfig() {
-	// Write two configs in case of power loss between erasing and writing.
 	W25Q_Write_Page(0, 0, sizeof(W25QPage0_config_t), (uint8_t *)&W25Q_FLASH_CONFIG);
 	W25Q_Write_Page(PAGES_PER_SECTOR, 0, sizeof(W25QPage0_config_t), (uint8_t *)&W25Q_FLASH_CONFIG);
 }
@@ -56,6 +59,11 @@ void W25Q_SaveToLog(uint8_t *data, uint32_t size)
 uint8_t flash_buffer_index = 0;
 DataPacket_t flash_packet_buffer[FLASH_BUFFER_SIZE];
 
+/**
+ * @brief Add a data packet to the flash buffer.
+ * If the flash buffer is full, its data written to the next flash sector.
+ * @param data_packet
+ */
 void W25Q_AddFlashBufferPacket(const DataPacket_t *data_packet) {
 	if (flash_buffer_index < FLASH_BUFFER_SIZE) {
 		flash_packet_buffer[flash_buffer_index++] = *data_packet;
@@ -227,6 +235,10 @@ void disable_write (void)
 	vTaskDelay(5);  // Write cycle delay (5ms)
 }
 
+/**
+ * @brief Wait for an instruction being completed, by checking the specified register.
+ * @param address
+ */
 void W25Q_WaitForInstruction(uint8_t address) {
 	uint8_t tDataStatus = address;
 
@@ -483,6 +495,10 @@ void W25Q_Chip_Erase (void)
 	W25Q_WriteConfig();
 }
 
+/**
+ * @brief Align the current log page with the next sector.
+ * All remaining data in the current sector is replaced by 0.
+ */
 static void W25Q_AlignSectorOffset() {
 	uint32_t sectorOffset = W25Q_FLASH_CONFIG.curr_logPage % 16;
 	if (sectorOffset == 0) return;
