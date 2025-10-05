@@ -356,12 +356,16 @@ void Start10HzTask(void *argument) {
   DataPacket_t Temp_DataPacket = CreateDataPacket(PACKET_ID_TEMPERATURE);
   DataPacket_t IMU_DataPacket = CreateDataPacket(PACKET_ID_IMU);
   DataPacket_t Attitude_DataPacket = CreateDataPacket(PACKET_ID_ATTITUDE);
+  DataPacket_t Spark_CommandPacket;
   /* Infinite loop */
   for(;;) {
     // Run 10 Hz Do Actions
     StateMachine_DoActions(&flight_sm, 10);
 
     GPS_ReadSensorData(&gps_data);
+
+    CreateCommandPacket(&Spark_CommandPacket, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, 0x00, NULL, 0); // Example command to test
+    spark_sendCommand(&Spark_CommandPacket);
 
     //GPS_RequestSensorData(); // Request GPS data
     if (is_groundstation) { //Groundstation requests data from secondary board

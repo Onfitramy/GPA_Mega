@@ -48,6 +48,7 @@ extern "C" {
 #include "navigation.h"
 #include "control.h"
 #include "statemachine.h"
+#include "spark.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 /* USER CODE END Includes */

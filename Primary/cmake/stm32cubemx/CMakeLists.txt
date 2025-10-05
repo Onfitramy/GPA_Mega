@@ -128,6 +128,7 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/Libraries/control.c
     ../../Drivers/Libraries/statemachine.c
     ../../Drivers/Libraries/packets.c
+    ../../Drivers/Libraries/spark.c
 )
 
 target_link_directories(stm32cubemx INTERFACE
