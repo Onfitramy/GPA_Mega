@@ -62,6 +62,7 @@ InterBoardPacket_t InterBoardCom_ReceivePacket(void);
 void InterBoardCom_ProcessReceivedPacket(InterBoardPacket_t *packet);
 void InterBoardCom_ParsePacket(InterBoardPacket_t *packet);
 void InterBoardCom_ActivateReceive(void);
+void InterBoardCom_command_acknowledge(uint8_t command_target, uint8_t command_id, uint8_t status);
 
 InterBoardPacket_t InterBoardCom_CreatePacket(InterBoardPacketID_t ID);
 void InterBoardCom_FillRaw(InterBoardPacket_t *packet, int num, ...);

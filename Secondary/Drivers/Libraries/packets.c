@@ -104,6 +104,21 @@ void UpdateKalmanMatrixPacket(DataPacket_t *kalman_packet, uint32_t timestamp, f
     calcCRC(kalman_packet);
 }
 
+void CreateCommandPacket(DataPacket_t *command_packet, uint32_t timestamp, CommandTarget_t command_target, uint8_t command_id, uint8_t *params, size_t params_length) {
+    command_packet->Packet_ID = PACKET_ID_COMMAND;
+    command_packet->timestamp = timestamp;
+
+    // Update the Command packet with the command information
+    command_packet->Data.command.command_target = command_target;
+    command_packet->Data.command.command_id = command_id;
+    if (params != NULL && params_length > 0) {
+        size_t copy_length = (params_length > sizeof(command_packet->Data.command.params)) ? sizeof(command_packet->Data.command.params) : params_length;
+        memcpy(command_packet->Data.command.params, params, copy_length);
+    }
+
+    calcCRC(command_packet);
+}
+
 // Convert float to int16 with conversion factor
 int16_t float_to_int16_scaled(float value, float scale_factor) {
     float scaled_value = value / scale_factor;

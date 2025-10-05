@@ -1,6 +1,9 @@
 #include "InterBoardCom.h"
 #include "string.h"
 #include <stdarg.h>
+#include <stdio.h>
+#include "main.h"
+#include "usbd_cdc_if.h"
 #include "statemachine.h"
 
 //The H7 send data to the F4 via SPI1. The data is made up of packets which are sent immediatly after completion of the previous packet.
@@ -174,7 +177,7 @@ void InterBoardCom_ProcessReceivedPacket(InterBoardPacket_t *packet) {
             break;
     }
 }
-
+uint8_t return_string[80];
 void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
     switch (dataPacket->Data.command.command_target) {
         case COMMAND_TARGET_NONE:
@@ -184,6 +187,7 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
             if (dataPacket->Data.command.command_id == 0x00) {
                 // Special command 0x00: Reset the primary board
                 HAL_NVIC_SystemReset();
+                // No Acknowledgment possible, as we reset immediately
             } else if (dataPacket->Data.command.command_id == 0x01) {
                 // Special command 0x01: Reset the secondary board
                 // We never get here
@@ -194,9 +198,11 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
             if (dataPacket->Data.command.command_id == 0x04) {
                 // State command 0x04: Force State
                 StateMachine_ForceState(&flight_sm, (flight_state_t)dataPacket->Data.command.params[0]);
+                InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
             } else if (dataPacket->Data.command.command_id == 0x05) {
                 // State command 0x05: Simulate Event
                 StateMachine_Dispatch(&flight_sm, (flight_event_t)dataPacket->Data.command.params[0]);
+                InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
             }
             break;
         case COMMAND_TARGET_POWERUNIT:
@@ -219,10 +225,28 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
                 // Logging command 0x00: FlightDataOut
                 // StartLogging();
             }
+        case COMMAND_TARGET_ACK:
+            // Acknowledgment packet received, possibly log or process
+            snprintf((char *)return_string, sizeof(return_string), "Received ACK for target %d, command %d with status %d\r\n",
+                     dataPacket->Data.command.params[0], dataPacket->Data.command.params[1], dataPacket->Data.command.command_id);
+            CDC_Transmit_HS(return_string, strlen((char *)return_string));
+            break;
         default:
             // Unknown command target
+            InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 2); // Invalid command
             break;
     }
+}
+
+// Acknowledge a command with status of its execution as its ID (0=Success, 1=Failed, 2=Invalid)
+void InterBoardCom_command_acknowledge(uint8_t command_target, uint8_t command_id, uint8_t status) {
+    uint8_t params[2];
+    params[0] = command_target;
+    params[1] = command_id;
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_ACK, status, params, sizeof(params));
+    InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, &packet);
 }
 
 extern uint8_t is_groundstation;

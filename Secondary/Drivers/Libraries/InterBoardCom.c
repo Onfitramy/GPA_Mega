@@ -274,6 +274,7 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
             } else if (dataPacket->Data.command.command_id == 0x01) {
                 // Special command 0x01: Reset the secondary board
                 NVIC_SystemReset();
+                // No ACK possible as the board resets immediately
             }
             break;
         case COMMAND_TARGET_STATE:
@@ -294,6 +295,7 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
             } else if (dataPacket->Data.command.command_id == 0x01) {
                 // Storage command 0x01: FlashReset
                 W25Q_Chip_Erase();
+                InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
             }
             break;
         case COMMAND_TARGET_CAMERA:
@@ -301,25 +303,32 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
                 // Camera command 0x00: Power On/Off
                 if (dataPacket->Data.command.params[0] == 0x01) {
                     Camera_SwitchOn(); // Power On
+                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
                 } else if (dataPacket->Data.command.params[0] == 0x00) {
                     Camera_SwitchOff(); // Power Off
+                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
                 }
             } else if (dataPacket->Data.command.command_id == 0x01) {
                 // Camera command 0x01: Start/Stop recording
                 if (dataPacket->Data.command.params[0] == 0x01) {
                     Camera_StartRecording();
+                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
                 } else if (dataPacket->Data.command.params[0] == 0x00) {
                     Camera_StopRecording();
+                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0); 
                 }
             } else if (dataPacket->Data.command.command_id == 0x02) {
                 // Camera command 0x02: Skip Date
                 Camera_SkipDate();
+                InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
             } else if (dataPacket->Data.command.command_id == 0x03) {
                 // Camera command 0x03: Wifi On/Off
                 if (dataPacket->Data.command.params[0] == 0x01) {
                     Camera_WifiOn(); // Wifi On
+                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
                 } else if (dataPacket->Data.command.params[0] == 0x00) {
                     Camera_WifiOff(); // Wifi Off
+                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
                 }
             }
             break;
@@ -330,10 +339,26 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
             // Logging commands are on the main board, forward command
             InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_MCU, dataPacket);
             break;
+        
+        case COMMAND_TARGET_ACK:
+            // ACK commands are on the main board, forward command
+            InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_MCU, dataPacket);
+            break;
         default:
             // Unknown command target
             break;
     }
+}
+
+// Acknowledge a command with status of its execution as its ID (0=Success, 1=Failed, 2=Invalid)
+void InterBoardCom_command_acknowledge(uint8_t command_target, uint8_t command_id, uint8_t status) {
+    uint8_t params[2];
+    params[0] = command_target;
+    params[1] = command_id;
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_ACK, status, params, sizeof(params));
+    XBee_QueueDataPacket(&packet);
 }
 
 /**

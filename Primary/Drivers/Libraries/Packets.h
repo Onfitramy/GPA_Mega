@@ -34,6 +34,7 @@ typedef enum {
     COMMAND_TARGET_STORAGE = 0x06,
     COMMAND_TARGET_GROUNDSTATION = 0x07,
     COMMAND_TARGET_LOGGING = 0x08,
+    COMMAND_TARGET_ACK = 0x10,
 } CommandTarget_t;
 
 /* Packet and Payload structure definitions */

@@ -31,6 +31,7 @@ typedef enum {
     COMMAND_TARGET_STORAGE = 0x06,
     COMMAND_TARGET_GROUNDSTATION = 0x07,
     COMMAND_TARGET_LOGGING = 0x08,
+    COMMAND_TARGET_ACK = 0x10,
 } CommandTarget_t;
 
 /* Packet and Payload structure definitions */
@@ -137,6 +138,7 @@ uint8_t DataCircBuffer_IsEmpty(DataCircularBuffer_t* cb);
 uint8_t DataCircBuffer_IsFull(DataCircularBuffer_t* cb);
 uint16_t DataCircBuffer_Count(DataCircularBuffer_t* cb);
 void DataCircBuffer_Clear(DataCircularBuffer_t* cb);
+void CreateCommandPacket(DataPacket_t *command_packet, uint32_t timestamp, CommandTarget_t command_target, uint8_t command_id, uint8_t *params, size_t params_length);
 
 
 #endif /* Packets_H_ */
