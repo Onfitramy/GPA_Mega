@@ -255,7 +255,12 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t *packet) {
     switch (packet->InterBoardPacket_ID) {
         case INTERBOARD_OP_DEBUG_VIEW: //Send for debugging
             if (is_groundstation) {
-                PlotDataPacket((DataPacket_t *)packet->Data);
+                //PlotDataPacket((DataPacket_t *)packet->Data);
+                /*if (((DataPacket_t *)packet->Data)->Packet_ID == PACKET_ID_ATTITUDE) {
+                    uint8_t test_sending[64];
+                    sprintf((char *)test_sending, "%ld,%f,%f,%f\r\n", ((DataPacket_t *)packet->Data)->timestamp, ((DataPacket_t *)packet->Data)->Data.attitude.phi, ((DataPacket_t *)packet->Data)->Data.attitude.theta, ((DataPacket_t *)packet->Data)->Data.attitude.psi);
+                    CDC_Transmit_HS(test_sending, strlen((char *)test_sending));
+                }*/ //For Debug with unfinished groundstation software
             }
             break;
         // Add cases for other packet IDs as needed
