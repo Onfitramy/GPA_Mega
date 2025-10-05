@@ -10,7 +10,7 @@
 
 #define INVALID_FLOAT -999.0f 
 
-typedef enum {
+typedef enum __attribute__((packed)){
     PACKET_ID_STATUS = 0x01, // VR data packet
     PACKET_ID_POWER = 0x02, // Power data packet
     PACKET_ID_GPS = 0x03, // GPS data packet
@@ -21,10 +21,13 @@ typedef enum {
     PACKET_ID_KALMANMATRIX = 0x08, // Kalman Matrix data packet
 
     PACKET_ID_COMMAND = 0x10, // Command packet
+    
+    // Force to 8-bit size
+    PACKET_ID_FORCE_8BIT = 0xFF
 } PacketType_t;
 
 
-typedef enum {
+typedef enum __attribute__((packed)){
     COMMAND_TARGET_NONE = 0x00,
     COMMAND_TARGET_SPECIAL = 0x01,
     COMMAND_TARGET_CAMERA = 0x02,

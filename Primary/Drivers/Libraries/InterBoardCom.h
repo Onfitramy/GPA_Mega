@@ -8,7 +8,7 @@
 
 //The ID describe what should be expected and done with the data received
 //The top bit of the ID describes if there are more packets to follow or if it is the last packet (for 10ms till next scheduled packets)
-typedef enum {
+typedef enum __attribute__((packed)){
     // Status Packets:
     // Operation Types (bits 0-2, lower nibble)
     INTERBOARD_OP_NONE         = 0x00,

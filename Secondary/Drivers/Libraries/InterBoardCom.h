@@ -7,7 +7,7 @@
 #define INTERBOARD_BUFFER_SIZE 32
 
 //The Bitfield describe what should be expected and done with the data received.
-typedef enum {
+typedef enum __attribute__((packed)){
     // Status Packets:
     // Operation Types (bits 0-2, lower nibble)
     INTERBOARD_OP_NONE         = 0x00,
