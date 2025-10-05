@@ -3,6 +3,7 @@
 
 #include "stm32h7xx_hal.h"
 
+//#define SIGNAL_PLOTTER_OUT_1 // imu testing
 //#define SIGNAL_PLOTTER_OUT_2 // raw sensor data
 //#define SIGNAL_PLOTTER_OUT_3 // orientation ekf testing
 #define SIGNAL_PLOTTER_OUT_4 // height ekf testing

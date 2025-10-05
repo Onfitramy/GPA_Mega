@@ -5,20 +5,29 @@
 #include "stdbool.h"
 #include "armMathAddon.h"
 
-// GNSS delay compensation settings
+/* --- GNSS delay compensation settings --- */
 #define GNSS_VELOCITY_DELAY 350 // ms
 #define GNSS_POSITION_DELAY 200 // ms | needs to be >= 50 in order for liftoff detection to work
 
-// Quaternion EKF Settings
+
+/* --- Quaternion EKF Settings --- */
 #define magnetic_dip_angle 66.0f
 
 #define GYRO_VAR 0.3*0.3
 #define GYRO_BIAS_VAR 1e-12
 
-// Height EKF Settings
+
+/* --- Height EKF Settings --- */
 #define ACCEL_VAR   0.5*0.5
 #define BARO_VAR    2*2
 #define REFERENCE_PRESSURE_VAR 1e-6
+
+
+/* --- Event detection Settings --- */
+#define LIFTOFF_ACC_BUFFER_SIZE 50
+#define LIFTOFF_MIN_OVERSHOOTS  30
+#define LIFTOFF_ACC_THRESHOLD   10  // m/s²
+
 
 // EKF sizes
 #define x_size2 3
@@ -47,9 +56,16 @@ typedef enum {
     corr2_type
 } ekf_correction_t;
 
+typedef enum {
+    inactive = 0,
+    active = 1
+} state_t;
+
 // standard EKF variables
 typedef struct {
     ekf_instance_t type;
+
+    state_t prediction_state;
 
     uint8_t x_size;
     uint8_t u_size;
@@ -67,6 +83,8 @@ typedef struct {
 // correction step EKF variables
 typedef struct {
     ekf_correction_t type;
+
+    state_t correction_state;
 
     uint8_t z_size;
 
@@ -146,14 +164,19 @@ extern float gravity_body_vec[3];
 
 extern float corr_acc_buf[GNSS_VELOCITY_DELAY];
 extern float corr_acc_sum;
+extern uint16_t corr_acc_index;
 extern float corr_delta_v;
 
 extern float corr_vel_buf[GNSS_POSITION_DELAY];
 extern float corr_vel_sum;
+extern uint16_t corr_vel_index;
 extern float corr_delta_h;
 
 extern float gnss_height_corr;
 extern float gnss_velZ_corr;
+
+extern float acc_z_buf[LIFTOFF_ACC_BUFFER_SIZE];
+extern uint16_t acc_z_index;
 
 /* --- Function declarations --- */
 void normalizeAngle(float* angle, float upper_boundary, float lower_boundary, float step_size);
@@ -175,6 +198,7 @@ void RotationMatrixFromQuaternion(float *q, arm_matrix_instance_f32 *mat, direct
 void QuaternionFromRotationMatrix(arm_matrix_instance_f32 *mat, float *q);
 void DeulerMatrixFromEuler(float phi, float theta, arm_matrix_instance_f32 *mat);
 
+void CompensateGNSSDelay(float acc_meas, float vel_meas, float *v_corr_val, float *h_corr_val);
 void BaroPressureToHeight(float pressure, float pressure_reference, float *height);
 void BaroHeightToPressure(float height, float pressure_reference, float *pressure);
 

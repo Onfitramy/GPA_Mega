@@ -234,8 +234,11 @@ void StartDefaultTask(void *argument)
     TimeMeasureStart();
     nrf_timeout++;
 
-    HAL_DTS_GetTemperature(&hdts, &DTS_Temperature);
+    // Run 1000 Hz Do Actions
+    StateMachine_DoActions(&flight_sm, 1000);
 
+    HAL_DTS_GetTemperature(&hdts, &DTS_Temperature);
+  
     ReadInternalADC(&ADC_Temperature, &ADC_V_Ref);
 
     SensorStatus_Reset(&imu1_status);
@@ -267,36 +270,7 @@ void StartDefaultTask(void *argument)
       a_abs = arm_vec3_length_f32(a_BodyFrame);
 
       /* --- GNSS DELAY COMPENSATION TESTING --- */
-      // discard oldest measurement
-      corr_acc_sum -= corr_acc_buf[GNSS_VELOCITY_DELAY-1];
-
-      // shift measurements down
-      for (int i = GNSS_VELOCITY_DELAY - 1; i > 0; i--) {
-        corr_acc_buf[i] = corr_acc_buf[i-1];
-      }
-
-      // insert new measurement
-      corr_acc_buf[0] = a_WorldFrame[2];
-      corr_acc_sum += corr_acc_buf[0];
-
-      // calculate velocity difference between gnss delay and present
-      corr_delta_v = corr_acc_sum * dt;
-
-
-      // discard oldest measurement
-      corr_vel_sum -= corr_vel_buf[GNSS_POSITION_DELAY-1];
-
-      // shift measurements down
-      for (int i = GNSS_POSITION_DELAY - 1; i > 0; i--) {
-        corr_vel_buf[i] = corr_vel_buf[i-1];
-      }
-
-      // insert new measurement
-      corr_vel_buf[0] = EKF2.x[1];
-      corr_vel_sum += corr_vel_buf[0] + 0.5 * dt * corr_acc_buf[0];
-
-      // calculate position difference between gnss delay and present
-      corr_delta_h = corr_vel_sum * dt;
+      CompensateGNSSDelay(a_WorldFrame[2], EKF2.x[1], &corr_delta_v, &corr_delta_h);
 
       // KALMAN FILTER, HEIGHT
       EKFPredictionStep(&EKF2);
@@ -324,15 +298,6 @@ void StartDefaultTask(void *argument)
       EulerFromRotationMatrix(&M_rot_bi, euler_from_q);
     }
 
-    // EVENTS
-    uint8_t high_g_count = 0;
-    for (int i = 0; i < 10; i++) {
-      if (corr_acc_buf[i] > 10)
-        high_g_count++;
-    }
-    if (high_g_count >= 5)
-      StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_LAUNCH_DETECTED);
-
     dt_1000Hz = TimeMeasureStop();
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz) Always at the end of the loop
   }
@@ -348,6 +313,9 @@ void Start100HzTask(void *argument) {
   DataPacket_t IMU_DataPacket = CreateDataPacket(PACKET_ID_IMU);
   DataPacket_t Attitude_DataPacket = CreateDataPacket(PACKET_ID_ATTITUDE);
   for(;;) {
+    // Run 100 Hz Do Actions
+    StateMachine_DoActions(&flight_sm, 100);
+
     if (is_groundstation) {
       UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &imu1_data, &mag_data);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_LOAD_REQUEST | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);
@@ -368,12 +336,9 @@ void Start100HzTask(void *argument) {
 
     signalPlotter_executeTransmission(HAL_GetTick());
 
-    // KALMAN FILTER, QUATERNION
-    // correction step
-    if (flight_sm.currentFlightState != STATE_FLIGHT_STARTUP) {
-      arm_vecN_concatenate_f32(3, average_imu_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
-      EKFCorrectionStep(&EKF3, &EKF3_corr1);
-    }
+    // Quaternion EKF correction step
+    arm_vecN_concatenate_f32(3, average_imu_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
+    EKFCorrectionStep(&EKF3, &EKF3_corr1);
 
     ShowStatus(flight_sm.currentFlightState, 1, 100);
 
@@ -393,12 +358,13 @@ void Start10HzTask(void *argument) {
   DataPacket_t Attitude_DataPacket = CreateDataPacket(PACKET_ID_ATTITUDE);
   /* Infinite loop */
   for(;;) {
-    StateMachine_DoActions(&flight_sm);
+    // Run 10 Hz Do Actions
+    StateMachine_DoActions(&flight_sm, 10);
 
     GPS_ReadSensorData(&gps_data);
 
     //GPS_RequestSensorData(); // Request GPS data
-    if (is_groundstation){ //Groundstation requests data from secondary board
+    if (is_groundstation) { //Groundstation requests data from secondary board
 
     } else { //Secondary board sends data to groundstation
       UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &average_imu_data, &mag_data);
@@ -411,7 +377,7 @@ void Start10HzTask(void *argument) {
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &GPS_DataPacket);
     }
 
-    if(flight_sm.currentFlightState != STATE_FLIGHT_STARTUP && flight_sm.currentFlightState != STATE_FLIGHT_INIT) {
+    if (flight_sm.currentFlightState != STATE_FLIGHT_STARTUP && flight_sm.currentFlightState != STATE_FLIGHT_INIT) {
       UBLOXtoWGS84(gps_data.lat, gps_data.lon, gps_data.height, WGS84);
       WGS84toECEF(WGS84, ECEF);
 
@@ -427,6 +393,8 @@ void Start10HzTask(void *argument) {
       z2_corr2[1] = gnss_velZ_corr;
       arm_mat_set_entry_f32(EKF2_corr2.R, 0, 0, (float)gps_data.vAcc*gps_data.vAcc*1e-6);
       arm_mat_set_entry_f32(EKF2_corr2.R, 1, 1, (float)gps_data.sAcc*gps_data.sAcc*1e-6);
+
+      // Height EKF GNSS correction step
       EKFCorrectionStep(&EKF2, &EKF2_corr2);
     }
 

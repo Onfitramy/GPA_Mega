@@ -193,7 +193,7 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
             // Handle state-related commands
             if (dataPacket->Data.command.command_id == 0x04) {
                 // State command 0x04: Force State
-                flight_sm.currentFlightState = (flight_state_t)dataPacket->Data.command.params[0];
+                StateMachine_ForceState(&flight_sm, (flight_state_t)dataPacket->Data.command.params[0]);
             } else if (dataPacket->Data.command.command_id == 0x05) {
                 // State command 0x05: Simulate Event
                 StateMachine_Dispatch(&flight_sm, (flight_event_t)dataPacket->Data.command.params[0]);

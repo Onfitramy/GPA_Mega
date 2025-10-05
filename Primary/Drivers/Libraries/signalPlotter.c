@@ -91,6 +91,20 @@ uint32_t TimeMeasureStop(void) {
 }
 
 void signalPlotter_init(void) {
+  #ifdef SIGNAL_PLOTTER_OUT_1 // imu testing
+  signalPlotter_setSignalName(0, "delta Time");
+  signalPlotter_setSignalName(1, "NRF Data");
+  signalPlotter_setSignalName(2, "IMU1_ACC_X");
+  signalPlotter_setSignalName(3, "IMU1_ACC_Y");
+  signalPlotter_setSignalName(4, "IMU1_ACC_Z");
+  signalPlotter_setSignalName(5, "IMU2_ACC_X");
+  signalPlotter_setSignalName(6, "IMU2_ACC_Y");
+  signalPlotter_setSignalName(7, "IMU2_ACC_Z");
+  signalPlotter_setSignalName(8, "AVG_ACC_X");
+  signalPlotter_setSignalName(9, "AVG_ACC_Y");
+  signalPlotter_setSignalName(10, "AVG_ACC_Z");
+  #endif
+
   #ifdef SIGNAL_PLOTTER_OUT_2 // raw sensor data
   signalPlotter_setSignalName(0, "delta Time");
   signalPlotter_setSignalName(1, "NRF Data");
@@ -200,6 +214,21 @@ void signalPlotter_init(void) {
 }
 
 void signalPlotter_sendAll(void) {
+  #ifdef SIGNAL_PLOTTER_OUT_1
+  signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
+  signalPlotter_sendData(1, (float)nrf_timeout);
+  signalPlotter_sendData(2, imu1_data.accel[0]);
+  signalPlotter_sendData(3, imu1_data.accel[1]);
+  signalPlotter_sendData(4, imu1_data.accel[2]);
+  signalPlotter_sendData(5, imu2_data.accel[0]);
+  signalPlotter_sendData(6, imu2_data.accel[1]);
+  signalPlotter_sendData(7, imu2_data.accel[2]);
+  signalPlotter_sendData(8, average_imu_data.accel[0]);
+  signalPlotter_sendData(9, average_imu_data.accel[1]);
+  signalPlotter_sendData(10, average_imu_data.accel[2]);
+  #endif
+
+
   #ifdef SIGNAL_PLOTTER_OUT_2 // signal plotter outputs raw sensor data
   signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
   signalPlotter_sendData(1, (float)nrf_timeout);

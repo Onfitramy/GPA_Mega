@@ -5,6 +5,14 @@
 
 #define MAX_SELFTEST_TRIES 10
 
+/* --- Define minimum Event delay times in ms --- */
+#define MIN_DELAY_UNTIL_FILTER_CONVERGED    1000
+#define MIN_DELAY_UNTIL_CHECKOUTS_COMPLETE  1000
+#define MIN_DELAY_UNTIL_LAUNCH_DETECTED     500
+#define MIN_DELAY_UNTIL_BURNOUT_DETECTED    4000
+#define MIN_DELAY_UNTIL_APOGEE_DETECTED     15000
+#define MIN_DELAY_UNTIL_TOUCHDOWN           15000
+
 /* --- Define all possible flight states --- */
 typedef enum {
     STATE_FLIGHT_ABORT,             // abort encountered
@@ -55,6 +63,7 @@ extern uint8_t selftest_tries;
 /* --- Function declarations --- */
 void StateMachine_Init(StateMachine_t *sm, flight_state_t initialState);
 void StateMachine_Dispatch(StateMachine_t *sm, flight_event_t event);
-void StateMachine_DoActions(StateMachine_t *sm);
+void StateMachine_ForceState(StateMachine_t *sm, flight_state_t newState);
+void StateMachine_DoActions(StateMachine_t *sm, uint16_t freq);
 
 #endif // STATEMACHINE_H

@@ -32,19 +32,18 @@ static StateHandler_t stateTable[STATE_FLIGHT_MAX] = {
     LandedHandler
 };
 
-uint32_t stateMinEntryDelayTable[STATE_FLIGHT_MAX] = {
-    0,      // Abort
-    0,      // Startup
-    0,      // Init
-    50,     // AlignGNC
-    5000,   // Checkouts
-    60000,  // Armed
-    60000,  // Burn
-    3000,   // Coast
-    10000,  // UnbrakedDescend
-    500,    // DrogueDescend
-    60000,  // MainDescend
-    500     // Landed
+uint32_t minEventDelayTable[EVENT_FLIGHT_MAX] = {
+    0,
+    0,
+    0,
+    MIN_DELAY_UNTIL_FILTER_CONVERGED,
+    MIN_DELAY_UNTIL_CHECKOUTS_COMPLETE,
+    MIN_DELAY_UNTIL_LAUNCH_DETECTED,
+    MIN_DELAY_UNTIL_BURNOUT_DETECTED,
+    MIN_DELAY_UNTIL_APOGEE_DETECTED,
+    0,
+    0,
+    MIN_DELAY_UNTIL_TOUCHDOWN
 };
 
 /* --- Entry actions --- */
@@ -138,10 +137,20 @@ static void InitEntry(StateMachine_t *sm) {
     RotationMatrixFromQuaternion(x3, &M_rot_bi, DCM_bi_WorldToBody);
     RotationMatrixFromQuaternion(x3, &M_rot_ib, DCM_ib_BodyToWorld);
 
+    // Activate height EKF prediction step and barometer correction step
+    EKF2.prediction_state = active;
+    EKF2_corr1.correction_state = active;
+    EKF2_corr2.correction_state = inactive;
+
+    // Activate quaternion EKF prediction and correction step
+    EKF3.prediction_state = active;
+    EKF3_corr1.correction_state = active;
+
     // TODO:
     // check communications
 }
 static void AlignGNCEntry(StateMachine_t *sm) {
+    EKF2_corr2.correction_state = active;
     // TODO:
     // begin xBee comms
 }
@@ -181,8 +190,11 @@ static void LandedEntry(StateMachine_t *sm) {
 }
 
 /* --- Do actions --- */
-static void AbortDo(StateMachine_t *sm) {}
-static void StartupDo(StateMachine_t *sm) {
+static void AbortDo(StateMachine_t *sm, uint16_t freq) {}
+static void StartupDo(StateMachine_t *sm, uint16_t freq) {
+    // Selftest is called with 10 Hz
+    if (freq != 10) return;
+
     // All sensors are working but selftest_pass flag not set
     if ((status_data.sensor_status_flags & 0x1F) == 0x1F) {
         status_data.sensor_status_flags |= (1<<7);  //All checks passed
@@ -219,20 +231,48 @@ static void StartupDo(StateMachine_t *sm) {
         status_data.sensor_status_flags |= (1<<4);
     }
 }
-static void InitDo(StateMachine_t *sm) {
+static void InitDo(StateMachine_t *sm, uint16_t freq) {
+    // Check GPS with 10 Hz
+    if (freq != 10) return;
+
     if ((gps_data.gpsFix == 3)) {
         StateMachine_Dispatch(sm, EVENT_FLIGHT_GNSS_FIX);
     }
 }
-static void AlignGNCDo(StateMachine_t *sm) {}
-static void CheckoutsDo(StateMachine_t *sm) {}
-static void ArmedDo(StateMachine_t *sm) {}
-static void BurnDo(StateMachine_t *sm) {}
-static void CoastDo(StateMachine_t *sm) {}
-static void UnbrakedDescendDo(StateMachine_t *sm) {}
-static void DrogueDescendDo(StateMachine_t *sm) {}
-static void MainDescendDo(StateMachine_t *sm) {}
-static void LandedDo(StateMachine_t *sm) {}
+static void AlignGNCDo(StateMachine_t *sm, uint16_t freq) {
+    // Skip GNC alignment for now
+    if (freq != 10) return;
+    StateMachine_Dispatch(sm, EVENT_FLIGHT_FILTER_CONVERGED);
+
+    // TODO: proper GNC alignment algorithm
+}
+static void CheckoutsDo(StateMachine_t *sm, uint16_t freq) {
+    // Skip Checkouts Phase for now
+    if (freq != 10) return;
+    StateMachine_Dispatch(sm, EVENT_FLIGHT_CHECKOUTS_COMPLETE);
+}
+static void ArmedDo(StateMachine_t *sm, uint16_t freq) {
+    // Check liftoff with 1000 Hz
+    if (freq != 1000) return;
+
+    acc_z_buf[acc_z_index] = average_imu_data.accel[1];
+    acc_z_index = (acc_z_index + 1) % LIFTOFF_ACC_BUFFER_SIZE;
+
+    uint8_t high_g_count = 0;
+    for (int i = 0; i < LIFTOFF_ACC_BUFFER_SIZE; i++) {
+        if (acc_z_buf[i] > LIFTOFF_ACC_THRESHOLD)
+            high_g_count++;
+    }
+    if (high_g_count >= LIFTOFF_MIN_OVERSHOOTS) {
+        StateMachine_Dispatch(sm, EVENT_FLIGHT_LAUNCH_DETECTED);
+    }
+}
+static void BurnDo(StateMachine_t *sm, uint16_t freq) {}
+static void CoastDo(StateMachine_t *sm, uint16_t freq) {}
+static void UnbrakedDescendDo(StateMachine_t *sm, uint16_t freq) {}
+static void DrogueDescendDo(StateMachine_t *sm, uint16_t freq) {}
+static void MainDescendDo(StateMachine_t *sm, uint16_t freq) {}
+static void LandedDo(StateMachine_t *sm, uint16_t freq) {}
 
 /* --- Exit actions --- */
 static void AbortExit(StateMachine_t *sm) {}
@@ -295,20 +335,20 @@ static void StateExitHandler(StateMachine_t *sm, flight_state_t state) {
     }
 }
 
-static void StateDoHandler(StateMachine_t *sm, flight_state_t state) {
+static void StateDoHandler(StateMachine_t *sm, flight_state_t state, uint16_t freq) {
     switch (state) {
-        case STATE_FLIGHT_ABORT:            AbortDo(sm); break;
-        case STATE_FLIGHT_STARTUP:          StartupDo(sm); break;
-        case STATE_FLIGHT_INIT:             InitDo(sm); break;
-        case STATE_FLIGHT_GNC_ALIGN:        AlignGNCDo(sm); break;
-        case STATE_FLIGHT_CHECKOUTS:        CheckoutsDo(sm); break;
-        case STATE_FLIGHT_ARMED:            ArmedDo(sm); break;
-        case STATE_FLIGHT_BURN:             BurnDo(sm); break;
-        case STATE_FLIGHT_COAST:            CoastDo(sm); break;
-        case STATE_FLIGHT_DESCEND_UNBRAKED: UnbrakedDescendDo(sm); break;
-        case STATE_FLIGHT_DESCEND_DROGUE:   DrogueDescendDo(sm); break;
-        case STATE_FLIGHT_DESCEND_MAIN:     MainDescendDo(sm); break;
-        case STATE_FLIGHT_LANDED:           LandedDo(sm); break;
+        case STATE_FLIGHT_ABORT:            AbortDo(sm, freq); break;
+        case STATE_FLIGHT_STARTUP:          StartupDo(sm, freq); break;
+        case STATE_FLIGHT_INIT:             InitDo(sm, freq); break;
+        case STATE_FLIGHT_GNC_ALIGN:        AlignGNCDo(sm, freq); break;
+        case STATE_FLIGHT_CHECKOUTS:        CheckoutsDo(sm, freq); break;
+        case STATE_FLIGHT_ARMED:            ArmedDo(sm, freq); break;
+        case STATE_FLIGHT_BURN:             BurnDo(sm, freq); break;
+        case STATE_FLIGHT_COAST:            CoastDo(sm, freq); break;
+        case STATE_FLIGHT_DESCEND_UNBRAKED: UnbrakedDescendDo(sm, freq); break;
+        case STATE_FLIGHT_DESCEND_DROGUE:   DrogueDescendDo(sm, freq); break;
+        case STATE_FLIGHT_DESCEND_MAIN:     MainDescendDo(sm, freq); break;
+        case STATE_FLIGHT_LANDED:           LandedDo(sm, freq); break;
         default: break;
     }
 }
@@ -335,8 +375,8 @@ void StateMachine_Dispatch(StateMachine_t *sm, flight_event_t event) {
     // prevent exit and entry actions if no state change
     if (newState == oldState || newState >= STATE_FLIGHT_MAX) return;
 
-    // don't update state if minimum entry time delay hasn't elapsed yet
-    if (stateMinEntryDelayTable[newState] > (uwTick - sm->timestamp_us)) return;
+    // don't update state if minimum entry time delay for event hasn't elapsed yet
+    if (minEventDelayTable[event] > (uwTick - sm->timestamp_us)) return;
     
     // exit old state
     StateExitHandler(sm, oldState);
@@ -348,9 +388,30 @@ void StateMachine_Dispatch(StateMachine_t *sm, flight_event_t event) {
     StateEntryHandler(sm, newState);
 }
 
-void StateMachine_DoActions(StateMachine_t *sm) {
+void StateMachine_ForceState(StateMachine_t *sm, flight_state_t newState) {
+    if (sm->currentFlightState >= STATE_FLIGHT_MAX) return;
+
+    // TODO: store command on Flash & SD
+    
+    // store old flight state
+    flight_state_t oldState = sm->currentFlightState;
+
+    // prevent exit and entry actions if no state change
+    if (newState == oldState || newState >= STATE_FLIGHT_MAX) return;
+    
+    // exit old state
+    StateExitHandler(sm, oldState);
+
+    // update flight state
+    sm->currentFlightState = newState;
+
+    // enter new state
+    StateEntryHandler(sm, newState);
+}
+
+void StateMachine_DoActions(StateMachine_t *sm, uint16_t freq) {
     // perform standard state actions
-    StateDoHandler(sm, sm->currentFlightState);
+    StateDoHandler(sm, sm->currentFlightState, freq);
 }
 
 /* --- Event handlers --- */

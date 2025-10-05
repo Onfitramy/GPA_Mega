@@ -110,34 +110,40 @@ float gravity_body_vec[3];
 // GNSS delay compensation
 float corr_acc_buf[GNSS_VELOCITY_DELAY] = {0};
 float corr_acc_sum = 0;
+uint16_t corr_acc_index = 0;
 float corr_delta_v = 0;
 
 float corr_vel_buf[GNSS_POSITION_DELAY] = {0};
 float corr_vel_sum = 0;
+uint16_t corr_vel_index = 0;
 float corr_delta_h = 0;
 
 float gnss_height_corr;
 float gnss_velZ_corr;
 
+// Liftoff detection
+float acc_z_buf[LIFTOFF_ACC_BUFFER_SIZE] = {0};
+uint16_t acc_z_index = 0;
+
 /* ------------------------------------------- FUNCTIONS ------------------------------------------- */
 
 // set boundaries for angle
 void normalizeAngle(float *angle, float upper_boundary, float lower_boundary, float step_size) {
-    if(*angle > upper_boundary) {
+    if (*angle > upper_boundary) {
         *angle -= step_size;
     } 
-    if(*angle < lower_boundary) {
+    if (*angle < lower_boundary) {
         *angle += step_size;
     }
 }
 
 // set boundaries for angles
 void normalizeAngleVector(float *angle_vec, uint8_t pos_top, uint8_t pos_bottom, float upper_boundary, float lower_boundary, float step_size) {
-    for(int i = pos_top; i <= pos_bottom; i++) {
-        if( angle_vec[i] > upper_boundary) {
+    for (int i = pos_top; i <= pos_bottom; i++) {
+        if ( angle_vec[i] > upper_boundary) {
             angle_vec[i] -= step_size;
         } 
-        if( angle_vec[i] < lower_boundary) {
+        if ( angle_vec[i] < lower_boundary) {
             angle_vec[i] += step_size;
         }
     }
@@ -152,7 +158,7 @@ void normalizeAnglePair(float angle_lead, float *angle_mod, float upper_boundary
 
 // make mod angles keep normalized difference towards lead angles
 void normalizeAnglePairVector(float *angle_lead_vec, float *angle_mod_vec, uint8_t pos_top, uint8_t pos_bottom, float upper_boundary, float lower_boundary, float step_size) {
-    for(int i = pos_top; i <= pos_bottom; i++) {
+    for (int i = pos_top; i <= pos_bottom; i++) {
         angle_mod_vec[i] -= angle_lead_vec[i];
         normalizeAngle(&angle_mod_vec[i], upper_boundary, lower_boundary, step_size);
         angle_mod_vec[i] += angle_lead_vec[i];
@@ -237,7 +243,7 @@ void RotationMatrixOrientationFix(float *a_vec, float *m_vec, arm_matrix_instanc
     arm_vec3_cross_product_f32(base_zi, base_xi, base_yi);
 
     // set rotation matrix
-    if(dcm_type == DCM_bi_WorldToBody) {
+    if (dcm_type == DCM_bi_WorldToBody) {
         arm_mat_set_column_f32(mat, 0, base_xi);
         arm_mat_set_column_f32(mat, 1, base_yi);
         arm_mat_set_column_f32(mat, 2, base_zi);
@@ -298,19 +304,19 @@ void RotationMatrixFromQuaternion(float *q, arm_matrix_instance_f32 *mat, direct
 // create quaternion from rotation matrix
 void QuaternionFromRotationMatrix(arm_matrix_instance_f32 *mat, float *q) {
     float trace = arm_mat_get_entry_f32(mat, 0, 0) + arm_mat_get_entry_f32(mat, 1, 1) + arm_mat_get_entry_f32(mat, 2, 2);
-    if(trace > 0) {
+    if (trace > 0) {
         float s = 2.0f * sqrtf(trace + 1.0f);
         q[0] = 0.25f * s;
         q[1] = (arm_mat_get_entry_f32(mat, 2, 1) - arm_mat_get_entry_f32(mat, 1, 2)) / s;
         q[2] = (arm_mat_get_entry_f32(mat, 0, 2) - arm_mat_get_entry_f32(mat, 2, 0)) / s;
         q[3] = (arm_mat_get_entry_f32(mat, 1, 0) - arm_mat_get_entry_f32(mat, 0, 1)) / s;
-    } else if(arm_mat_get_entry_f32(mat, 0, 0) > arm_mat_get_entry_f32(mat, 1, 1) && arm_mat_get_entry_f32(mat, 0, 0) > arm_mat_get_entry_f32(mat, 2, 2)) {
+    } else if (arm_mat_get_entry_f32(mat, 0, 0) > arm_mat_get_entry_f32(mat, 1, 1) && arm_mat_get_entry_f32(mat, 0, 0) > arm_mat_get_entry_f32(mat, 2, 2)) {
         float s = 2.0f * sqrtf(1.0f + arm_mat_get_entry_f32(mat, 0, 0) - arm_mat_get_entry_f32(mat, 1, 1) - arm_mat_get_entry_f32(mat, 2, 2));
         q[0] = (arm_mat_get_entry_f32(mat, 2, 1) - arm_mat_get_entry_f32(mat, 1, 2)) / s;
         q[1] = 0.25f * s;
         q[2] = (arm_mat_get_entry_f32(mat, 0, 1) + arm_mat_get_entry_f32(mat, 1, 0)) / s;
         q[3] = (arm_mat_get_entry_f32(mat, 0, 2) + arm_mat_get_entry_f32(mat, 2, 0)) / s;
-    } else if(arm_mat_get_entry_f32(mat, 1, 1) > arm_mat_get_entry_f32(mat, 2, 2)) {
+    } else if (arm_mat_get_entry_f32(mat, 1, 1) > arm_mat_get_entry_f32(mat, 2, 2)) {
         float s = 2.0f * sqrtf(1.0f + arm_mat_get_entry_f32(mat, 1, 1) - arm_mat_get_entry_f32(mat, 0, 0) - arm_mat_get_entry_f32(mat, 2, 2));
         q[0] = (arm_mat_get_entry_f32(mat, 0, 2) - arm_mat_get_entry_f32(mat, 2, 0)) / s;
         q[1] = (arm_mat_get_entry_f32(mat, 0, 1) + arm_mat_get_entry_f32(mat, 1, 0)) / s;
@@ -346,6 +352,29 @@ void DeulerMatrixFromEuler(float phi, float theta, arm_matrix_instance_f32 *mat)
     arm_mat_set_entry_f32(mat, 2, 2, cos_vec[0]/cos_vec[1]);
 }
 
+
+
+// compensate GNSS measurement delay
+void CompensateGNSSDelay(float acc_meas, float vel_meas, float *v_corr_val, float *h_corr_val) {
+    // update acceleration buffer and sum
+    corr_acc_sum -= corr_acc_buf[corr_acc_index];
+    corr_acc_buf[corr_acc_index] = acc_meas;
+    corr_acc_sum += corr_acc_buf[corr_acc_index];
+    corr_acc_index = (corr_acc_index + 1) % GNSS_VELOCITY_DELAY;
+
+    // calculate velocity difference between gnss delay and present
+    *v_corr_val = corr_acc_sum * dt;
+
+    // update velocity buffer and sum
+    corr_vel_sum -= corr_vel_buf[corr_vel_index] + 0.5 * dt * corr_acc_buf[corr_vel_index];
+    corr_vel_buf[corr_vel_index] = vel_meas;
+    corr_vel_sum += corr_vel_buf[corr_vel_index] + 0.5 * dt * corr_acc_buf[corr_vel_index];
+    corr_vel_index = (corr_vel_index + 1) % GNSS_POSITION_DELAY;
+
+    // calculate position difference between gnss delay and present
+    *h_corr_val = corr_vel_sum * dt;
+}
+
 // calculate barometric height from static pressure measurement
 void BaroPressureToHeight(float pressure, float pressure_reference, float *height) {
     double buffer;
@@ -365,6 +394,9 @@ void EKFInit(ekf_data_t *ekf, ekf_instance_t kalman_type, uint8_t x_vec_size, ui
              arm_matrix_instance_f32 *F_mat, arm_matrix_instance_f32 *P_mat, arm_matrix_instance_f32 *Q_mat,
              arm_matrix_instance_f32 *B_mat, float *x_vec, float *u_vec) 
 {
+    // DEFAULT: prediction step is inactive
+    ekf->prediction_state = inactive;
+
     // set type and sizes
     ekf->type = kalman_type;
     ekf->x_size = x_vec_size;
@@ -381,7 +413,7 @@ void EKFInit(ekf_data_t *ekf, ekf_instance_t kalman_type, uint8_t x_vec_size, ui
     ekf->P = P_mat;
     ekf->Q = Q_mat;
 
-    if(kalman_type == EKF1_type) {
+    if (kalman_type == EKF1_type) {
         // initialize EKF1 matrices
         // configure orientation EKF matrices
         arm_mat_fill_diag_f32(ekf->F, 0, 0, 1.);
@@ -392,7 +424,7 @@ void EKFInit(ekf_data_t *ekf, ekf_instance_t kalman_type, uint8_t x_vec_size, ui
         arm_mat_set_diag_f32(ekf->Q, 0, 0, 3, 1e-8);    // variance of gyroscope data   (noise)
         arm_mat_set_diag_f32(ekf->Q, 3, 3, 3, 1e-12);   // variance of gyroscope offset (drift)
 
-    } else if(kalman_type == EKF2_type) {
+    } else if (kalman_type == EKF2_type) {
         // initialize EKF2 matrices
         // configure height EKF matrices
         arm_mat_fill_diag_f32(ekf->F, 0, 0, 1.);
@@ -409,7 +441,7 @@ void EKFInit(ekf_data_t *ekf, ekf_instance_t kalman_type, uint8_t x_vec_size, ui
         arm_mat_set_entry_f32(ekf->Q, 2, 2, REFERENCE_PRESSURE_VAR);
         //arm_mat_set_diag_f32(ekf->Q, 6, 6, 3, 1e-12f);       // variance of accelerometer offset (drift)
 
-    } else if(kalman_type == EKF3_type) {
+    } else if (kalman_type == EKF3_type) {
         // initialize EKF3 matrices
         // configure Quaternion EKF matrices
         arm_mat_fill_diag_f32(ekf->F, 0, 0, 1.);
@@ -425,6 +457,9 @@ void EKFCorrectionInit(ekf_data_t ekf, ekf_corr_data_t *ekf_corr, ekf_correction
                        arm_matrix_instance_f32 *H_mat, arm_matrix_instance_f32 *K_mat, arm_matrix_instance_f32 *R_mat,
                        arm_matrix_instance_f32 *S_mat, float *z_vec, float *h_vec, float *v_vec)
 {
+    // DEFAULT: correction step is inactive
+    ekf_corr->correction_state = inactive;
+
     // set type and sizes
     ekf_corr->type = corr_type;
     ekf_corr->z_size = z_vec_size;
@@ -440,16 +475,16 @@ void EKFCorrectionInit(ekf_data_t ekf, ekf_corr_data_t *ekf_corr, ekf_correction
     ekf_corr->R = R_mat;
     ekf_corr->S = S_mat;
 
-    if(ekf.type == EKF1_type) {
+    if (ekf.type == EKF1_type) {
         // configure orientation EKF correction matrices
         arm_mat_fill_diag_f32(ekf_corr->H, 0, 0, 1.);
 
         arm_mat_fill_diag_f32(ekf_corr->R, 0, 0, 1.);         // angle fixing method variance (noise)
 
-    } else if(ekf.type == EKF2_type) {
+    } else if (ekf.type == EKF2_type) {
         // configure height EKF correction matrices
 
-    } else if(ekf.type == EKF3_type) {
+    } else if (ekf.type == EKF3_type) {
         // configure Quaternion EKF correction matrices
         arm_mat_set_diag_f32(ekf_corr->R, 0, 0, 3, 0.5*0.5);  // accelerometer variance (noise)
         arm_mat_set_diag_f32(ekf_corr->R, 3, 3, 3, 0.8*0.8);  // magnetometer variance (noise)
@@ -458,10 +493,10 @@ void EKFCorrectionInit(ekf_data_t ekf, ekf_corr_data_t *ekf_corr, ekf_correction
 }
 
 void EKFStateVInit(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
-    if(ekf->type == EKF2_type) {
+    if (ekf->type == EKF2_type) {
         ekf->x[0] = ekf_corr->z[0];
 
-    } else if(ekf->type == EKF3_type) {
+    } else if (ekf->type == EKF3_type) {
         // calculate initial quaternion from accelerometer and magnetometer readings
         float *q = ekf->x;
 
@@ -475,7 +510,7 @@ void EKFStateVInit(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
 }
 
 void EKFPredictStateV(ekf_data_t *ekf) {
-    if(ekf->type == EKF1_type) {
+    if (ekf->type == EKF1_type) {
         float dx[ekf->x_size];
 
         // calculate predicted state x^(t) = F * x(t-1) + B * u(t)
@@ -483,11 +518,11 @@ void EKFPredictStateV(ekf_data_t *ekf) {
         arm_mat_vec_mult_f32(ekf->B, ekf->u, dx);
         arm_vecN_add_f32(ekf->x_size, ekf->x, dx, ekf->x);
 
-    } else if(ekf->type == EKF2_type) {
+    } else if (ekf->type == EKF2_type) {
         ekf->x[0] += ekf->x[1]*ekf->dt + 0.5*ekf->u[0]*ekf->dt*ekf->dt;
         ekf->x[1] += ekf->u[0]*ekf->dt;
 
-    } else if(ekf->type == EKF3_type) {
+    } else if (ekf->type == EKF3_type) {
         // prediction step for quaternion state vector
         float *q = ekf->x;
 
@@ -500,7 +535,7 @@ void EKFPredictStateV(ekf_data_t *ekf) {
         float q_omega[4];
         arm_quaternion_product_f32(q, omega, q_omega);
 
-        for(int i = 0; i < 4; i++) {
+        for (int i = 0; i < 4; i++) {
             q[i] = q[i] + 0.5f * q_omega[i] * ekf->dt;
         }
         arm_quaternion_normalize_f32(q);
@@ -511,7 +546,7 @@ void EKFPredictStateV(ekf_data_t *ekf) {
 
 void EKFPredictCovariance(ekf_data_t *ekf) {
     // calculate Q separately for quaternion EKF
-    if(ekf->type == EKF3_type) {
+    if (ekf->type == EKF3_type) {
         float *q = ekf->x;
 
         float M1_data[4*4];
@@ -548,22 +583,22 @@ void EKFPredictCovariance(ekf_data_t *ekf) {
 
 
 void EKFPredictMeasurement(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
-    if(ekf->type == EKF1_type) {
+    if (ekf->type == EKF1_type) {
         // h(t) = H * x^(t)
         arm_mat_vec_mult_f32(ekf_corr->H, ekf->x, ekf_corr->h);
 
-    } else if(ekf->type == EKF2_type) {
-        if(ekf_corr->type == corr1_type) {
+    } else if (ekf->type == EKF2_type) {
+        if (ekf_corr->type == corr1_type) {
             // measurement prediction of type 1 correction step
             // expected barometer measurement equivalent to current height estimate
             BaroHeightToPressure(ekf->x[0], ekf->x[2], ekf_corr->h);
-        } else if(ekf_corr->type == corr2_type) {
+        } else if (ekf_corr->type == corr2_type) {
             // measurement prediction of type 2 correction step
             ekf_corr->h[0] = ekf->x[0];
             ekf_corr->h[1] = ekf->x[1];
         }
 
-    } else if(ekf->type == EKF3_type) {
+    } else if (ekf->type == EKF3_type) {
         // predict expected accelerometer and magnetometer readings (z vector)
         float *q = ekf->x;
 
@@ -585,10 +620,10 @@ void EKFPredictMeasurement(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
 
 // calculate innovation v(t) = z(t) - h(q^(t))
 void EKFGetInnovation(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
-    if(ekf->type == EKF1_type || ekf->type == EKF2_type) {
+    if (ekf->type == EKF1_type || ekf->type == EKF2_type) {
         arm_vecN_sub_f32(ekf_corr->z_size, ekf_corr->z, ekf_corr->h, ekf_corr->v);
 
-    } else if(ekf->type == EKF3_type) {
+    } else if (ekf->type == EKF3_type) {
         float *vt = ekf_corr->v;
 
         float a_norm_vec[3];
@@ -599,7 +634,7 @@ void EKFGetInnovation(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
         arm_vec3_normalize_f32(a_norm_vec);
         arm_vec3_normalize_f32(m_norm_vec);
     
-        for(int i = 0; i < 3; i++) {
+        for (int i = 0; i < 3; i++) {
             vt[i]   = a_norm_vec[i] - ekf_corr->h[i];
             vt[i+3] = m_norm_vec[i] - ekf_corr->h[i+3];
         }
@@ -609,7 +644,7 @@ void EKFGetInnovation(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
 
 // update ekf Gain
 void EKFUpdateKalmanGain(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
-    if(ekf->type == EKF2_type || ekf->type == EKF3_type) {
+    if (ekf->type == EKF2_type || ekf->type == EKF3_type) {
         EKFGetObservationJacobian(ekf, ekf_corr);
     }
 
@@ -656,11 +691,11 @@ void EKFCorrectCovariance(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
 
 // diagonal must be set to 1 in advance
 void EKFGetStateTransitionJacobian(ekf_data_t *ekf) {
-    if(ekf->type == EKF1_type) {
+    if (ekf->type == EKF1_type) {
 
-    } else if(ekf->type == EKF2_type) {
+    } else if (ekf->type == EKF2_type) {
 
-    } else if(ekf->type == EKF3_type) {
+    } else if (ekf->type == EKF3_type) {
         float *q = ekf->x;
 
         float gyro_vec[3];
@@ -699,18 +734,18 @@ void EKFGetStateTransitionJacobian(ekf_data_t *ekf) {
 
 void EKFGetObservationJacobian(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
 
-    if(ekf->type == EKF1_type) {
+    if (ekf->type == EKF1_type) {
 
-    } else if(ekf->type == EKF2_type) {
+    } else if (ekf->type == EKF2_type) {
         if(ekf_corr->type == corr1_type) {
             arm_mat_set_entry_f32(ekf_corr->H, 0, 0, (-g0_const * ekf_corr->h[0]) / (R_const * (T0_const + L_const * ekf->x[0])));
             arm_mat_set_entry_f32(ekf_corr->H, 0, 2, ekf_corr->h[0] / ekf->x[2]);
 
-        } else if(ekf_corr->type == corr2_type) {
+        } else if (ekf_corr->type == corr2_type) {
             arm_mat_set_diag_f32(ekf_corr->H, 0, 0, 2, 1);
         }
 
-    } else if(ekf->type == EKF3_type) {
+    } else if (ekf->type == EKF3_type) {
         float *q = ekf->x;
 
         //float g_vec_enu[3] = {0, 0, 1};
@@ -744,6 +779,9 @@ void EKFGetObservationJacobian(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
 }
 
 void EKFPredictionStep(ekf_data_t *ekf) {
+    // skip prediction step if status flag is set to inactive
+    if (ekf->prediction_state != active) return;
+
     // predicting state vector x
     EKFPredictStateV(ekf);
 
@@ -752,6 +790,9 @@ void EKFPredictionStep(ekf_data_t *ekf) {
 }
 
 void EKFCorrectionStep(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
+    // skip correction step if status flag is set to inactive
+    if (ekf_corr->correction_state != active) return;
+
     // calculate Kalman Gain
     EKFUpdateKalmanGain(ekf, ekf_corr);
 
