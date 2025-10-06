@@ -1,7 +1,5 @@
 #include "spark.h"
 
-extern SPI_HandleTypeDef hspi2;
-
 void spark_sendCommand(DataPacket_t *packet)
 {
   // Send the command over SPI

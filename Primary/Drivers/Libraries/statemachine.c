@@ -133,16 +133,10 @@ static void InitEntry(StateMachine_t *sm) {
     arm_vec3_sub_f32(mag_data.field, mag_data.calibration.offset, mag_data.field);
     arm_vec3_element_product_f32(mag_data.field, mag_data.calibration.scale, mag_data.field);
 
-    BMP_GetRawData(&pressure_raw, &temperature_raw);
-
-    // Calculate compensated BMP390 pressure & temperature
-    temperature = bmp390_compensate_temperature(temperature_raw, &bmp_handle);
-    pressure = bmp390_compensate_pressure(pressure_raw, &bmp_handle);
-
-    BaroPressureToHeight(pressure, 101325, &height_baro);
+    BMP_readData(&bmp_data.pressure, &bmp_data.height, &bmp_data.temperature);
 
     // initialize height EKF state vector
-    EKF2.x[0] = height_baro;
+    EKF2.x[0] = bmp_data.height;
     EKF2.x[1] = 0;
     EKF2.x[2] = 101325;
 
@@ -212,18 +206,24 @@ static void StartupDo(StateMachine_t *sm, uint16_t freq) {
 
     // All sensors are working but selftest_pass flag not set
     if ((status_data.sensor_status_flags & 0x1F) == 0x1F) {
+        imu1_data.passed_self_test = true;
+        imu2_data.passed_self_test = true;
         status_data.sensor_status_flags |= (1<<7);  //All checks passed
         StateMachine_Dispatch(sm, EVENT_FLIGHT_STARTUP_COMPLETE);
     }
     // All sensors but IMU1 working
     else if (((selftest_tries > MAX_SELFTEST_TRIES) && (status_data.sensor_status_flags & 0x1E) == 0x1E)) {
         // TODO: Notify user of defect IMU1 and disable IMU1 permanently
+        imu1_data.passed_self_test = false;
+        imu2_data.passed_self_test = true;
         status_data.sensor_status_flags |= (1<<7);  //All checks passed
         StateMachine_Dispatch(sm, EVENT_FLIGHT_STARTUP_COMPLETE);
     }
     // All sensors but IMU2 working
     else if (((selftest_tries > MAX_SELFTEST_TRIES) && (status_data.sensor_status_flags & 0x1D) == 0x1D)) {
         // TODO: Notify user of defect IMU2 and disable IMU2 permanently
+        imu1_data.passed_self_test = true;
+        imu2_data.passed_self_test = false;
         status_data.sensor_status_flags |= (1<<7);  //All checks passed
         StateMachine_Dispatch(sm, EVENT_FLIGHT_STARTUP_COMPLETE);
     }

@@ -2,15 +2,10 @@
 
 HAL_StatusTypeDef BMP_I2C_status;
 
-uint32_t pressure_raw;
-uint32_t temperature_raw;
 bmp390_handle_t bmp_handle;
+bmp390_data_t bmp_data;
 
-float temperature, pressure;
-float height_baro;
-
-HAL_StatusTypeDef BMP_write_reg(uint8_t reg, uint8_t data)
-{
+HAL_StatusTypeDef BMP_write_reg(uint8_t reg, uint8_t data) {
     HAL_StatusTypeDef status;
     uint8_t buffer[2] = {reg, data};
 
@@ -18,8 +13,7 @@ HAL_StatusTypeDef BMP_write_reg(uint8_t reg, uint8_t data)
     return status;
 }
 
-HAL_StatusTypeDef BMP_read_reg(uint8_t reg, uint8_t *data)
-{
+HAL_StatusTypeDef BMP_read_reg(uint8_t reg, uint8_t *data) {
     HAL_StatusTypeDef status;
     status = HAL_I2C_Master_Transmit(&hi2c3, BMP390_I2C_ADDR, &reg, 1, 100);
     if (status != HAL_OK) return status;
@@ -28,8 +22,7 @@ HAL_StatusTypeDef BMP_read_reg(uint8_t reg, uint8_t *data)
     return status;
 }
 
-HAL_StatusTypeDef BMP_read_burst(uint8_t start_reg, uint8_t *data, uint8_t length)
-{
+HAL_StatusTypeDef BMP_read_burst(uint8_t start_reg, uint8_t *data, uint8_t length) {
     HAL_StatusTypeDef status;
     status = HAL_I2C_Master_Transmit(&hi2c3, BMP390_I2C_ADDR, &start_reg, 1, 100);
     if (status != HAL_OK) return status;
@@ -38,21 +31,19 @@ HAL_StatusTypeDef BMP_read_burst(uint8_t start_reg, uint8_t *data, uint8_t lengt
     return status;
 }
 
-uint8_t BMP_SelfTest(void)
-{
+uint8_t BMP_SelfTest(void) {
     uint8_t Who_Am_I_return = 0;
     BMP_read_reg(BMP390_CHIP_ID_REG, &Who_Am_I_return);
 
-    if(Who_Am_I_return == 0x60){ // 0x60 = BMP390 ID
+    if (Who_Am_I_return == 0x60) { // 0x60 = BMP390 ID
         return 1;
-    }else{
+    } else {
         return 0;
     }
 }
 
 // Ab hier Test von Daniel
-uint8_t BMP_enable(void) 
-{
+uint8_t BMP_enable(void) {
     BMP_write_reg(BMP_390_PWR_CTRL_REG, 0x33);  // press_en=1, temp_en=1, mode=11
 
     // 2. Oversampling: osrs_p = x8 (0b011), osrs_t = x1 (0b000)
@@ -74,31 +65,42 @@ uint8_t BMP_VerifyDataReady(void) {
 }
 
 
-uint8_t BMP_GetRawData(uint32_t *pressure_raw, uint32_t *temperature_raw)
-{
-    if (BMP_VerifyDataReady() == 0x70) {
-        uint8_t buffer[6];
-        if (BMP_read_burst(0x04, buffer, 6) != HAL_OK)
-            return 0;
+uint8_t BMP_GetRawData(uint32_t *pressure_raw, uint32_t *temperature_raw) {
+    if (BMP_VerifyDataReady() != 0x70) return 0;
+    uint8_t buffer[6];
+    if (BMP_read_burst(0x04, buffer, 6) != HAL_OK)
+        return 0;
 
-        *pressure_raw =
-            ((uint32_t)buffer[2] << 16) |
-            ((uint32_t)buffer[1] << 8) |
-            ((uint32_t)buffer[0]);
+    *pressure_raw =
+        ((uint32_t)buffer[2] << 16) |
+        ((uint32_t)buffer[1] << 8) |
+        ((uint32_t)buffer[0]);
 
-        *temperature_raw =
-            ((uint32_t)buffer[5] << 16) |
-            ((uint32_t)buffer[4] << 8) |
-            ((uint32_t)buffer[3]);
+    *temperature_raw =
+        ((uint32_t)buffer[5] << 16) |
+        ((uint32_t)buffer[4] << 8) |
+        ((uint32_t)buffer[3]);
 
-        return 1;
-    }
-    return 0;
+    return 1;
+}
+
+uint8_t BMP_readData(float *pressure, float *height, float *temperature) {
+    uint32_t pressure_raw;
+    uint32_t temperature_raw;
+    
+    if (!BMP_GetRawData(&pressure_raw, &temperature_raw)) return 0;
+
+    // Calculate compensated BMP390 pressure & temperature
+    *temperature = bmp390_compensate_temperature(temperature_raw, &bmp_handle);
+    *pressure = bmp390_compensate_pressure(pressure_raw, &bmp_handle);
+
+    BaroPressureToHeight(*pressure, 101325, height);
+
+    return 1;
 }
 
 
-float bmp390_compensate_temperature(uint32_t uncomp_temp, bmp390_handle_t *handle)
-{
+float bmp390_compensate_temperature(uint32_t uncomp_temp, bmp390_handle_t *handle) {
     float partial_data1;
     float partial_data2;
 
@@ -111,8 +113,7 @@ float bmp390_compensate_temperature(uint32_t uncomp_temp, bmp390_handle_t *handl
 }
 
 
-float bmp390_compensate_pressure(uint32_t uncomp_press, bmp390_handle_t *handle)
-{
+float bmp390_compensate_pressure(uint32_t uncomp_press, bmp390_handle_t *handle) {
     float comp_press;
     float partial_data1, partial_data2, partial_data3, partial_data4;
     float partial_out1, partial_out2;

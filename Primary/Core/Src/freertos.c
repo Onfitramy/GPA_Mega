@@ -275,16 +275,17 @@ void StartDefaultTask(void *argument)
       // KALMAN FILTER, HEIGHT
       EKFPredictionStep(&EKF2);
 
-      if (BMP_GetRawData(&pressure_raw, &temperature_raw)) {
-        // Calculate compensated BMP390 pressure & temperature
-        temperature = bmp390_compensate_temperature(temperature_raw, &bmp_handle);
-        pressure = bmp390_compensate_pressure(pressure_raw, &bmp_handle);
-
+      if (BMP_readData(&bmp_data.pressure, &bmp_data.height, &bmp_data.temperature)) {
+        // execute this if new data is available
         // correction step
-        BaroPressureToHeight(pressure, 101325, &height_baro);
-        EKF2_corr1.z[0] = pressure;
+        EKF2_corr1.z[0] = bmp_data.pressure;
         arm_mat_set_entry_f32(EKF2_corr1.R, 0, 0, BARO_VAR);
         EKFCorrectionStep(&EKF2, &EKF2_corr1);
+      }
+
+      if (ptot_readData(&ptot_data.pressure, &ptot_data.temperature)) {
+        // execute this if new data is available
+
       }
 
       // KALMAN FILTER, QUATERNION

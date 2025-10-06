@@ -161,6 +161,7 @@ HAL_StatusTypeDef IMU_Update(IMU_Data_t *imu_data) {
     HAL_StatusTypeDef status = HAL_OK;
 
     if (!imu_data->passed_self_test) {
+        imu_data->active = false;
         return status;
     }
 
@@ -193,8 +194,8 @@ static void average_arrays(float array_1[3], float array_2[3], float average_arr
 }
 
 void IMU_Average(IMU_Data_t *imu_data_1, IMU_Data_t *imu_data_2, IMU_AverageData_t *average_imu_data) {
-    bool use_imu1 = imu_data_1->active && imu_data_1->passed_self_test;
-    bool use_imu2 = imu_data_2->active && imu_data_2->passed_self_test;
+    bool use_imu1 = imu_data_1->active;
+    bool use_imu2 = imu_data_2->active;
 
     if (use_imu1 && use_imu2) {
         float accel_average[3];
@@ -218,11 +219,9 @@ uint8_t IMU_SelfTest(IMU_Data_t *imu_data) {
     uint8_t Who_Am_I_return = 0;
     IMU_read_reg(IMU_WHO_AM_I, 1, &Who_Am_I_return, imu_data);
     if (Who_Am_I_return == IMU_WHO_AM_I_VAL) {
-        imu_data->passed_self_test = true;
         return 1;
     }
 
-    imu_data->passed_self_test = false;
     return 0;
 }
 

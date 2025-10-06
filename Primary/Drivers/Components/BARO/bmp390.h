@@ -30,17 +30,19 @@ typedef struct {
     float t_lin;
 } bmp390_handle_t;
 
+typedef struct {
+    float pressure;
+    float temperature;
+    float height;
+} bmp390_data_t;
+
 // I²C-Handle extern deklarieren
 extern I2C_HandleTypeDef hi2c3;  // Falls du I²C1 benutzt, sonst anpassen
 #define BMP_I2C        hi2c3      // Das richtige I²C-Interface setzen
 #define BMP390_I2C_ADDR  (0x76 << 1)  // BMP390 I²C-Adresse (STM32 nutzt 8-Bit-Adresse)
 
-extern uint32_t pressure_raw;
-extern uint32_t temperature_raw;
 extern bmp390_handle_t bmp_handle;
-
-extern float temperature, pressure;
-extern float height_baro;
+extern bmp390_data_t bmp_data;
 
 // Register-Adressen
 #define BMP390_CHIP_ID_REG  0x00  // WHO_AM_I Register (sollte 0x60 zurückgeben)
@@ -85,6 +87,7 @@ uint8_t BMP_SelfTest(void);
 uint8_t BMP_enable(void);
 void BMP_Read_Calibration_Params(bmp390_handle_t *handle);
 uint8_t BMP_GetRawData(uint32_t *pressure_raw, uint32_t *temperature_raw);
+uint8_t BMP_readData(float *pressure, float *height, float *temperature);
 float bmp390_compensate_pressure(uint32_t uncomp_press, bmp390_handle_t *handle);
 float bmp390_compensate_temperature(uint32_t uncomp_temp, bmp390_handle_t *handle);
 

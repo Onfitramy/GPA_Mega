@@ -51,7 +51,8 @@
         "guidance.h": "c",
         "statemachine.h": "c",
         "control.h": "c",
-        "sam-m8q.h": "c"
+        "sam-m8q.h": "c",
+        "ptot.h": "c"
     },
     "cortex-debug.variableUseNaturalFormat": true
 }
