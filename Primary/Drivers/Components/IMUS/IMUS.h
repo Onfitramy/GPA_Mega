@@ -25,6 +25,7 @@ typedef struct {
     CalibrationData_t calibration;
     float acc_data_history[8][3];
     bool active;
+    bool passed_self_test;
     IMU imu;
 } IMU_Data_t;
 
@@ -80,7 +81,7 @@ HAL_StatusTypeDef IMU_Update(IMU_Data_t *imu_data);
 void IMU_Average(IMU_Data_t *imu_data_1, IMU_Data_t *imu_data_2, IMU_AverageData_t *average_imu_data);
 
 void IMU_SwitchSensors(IMU_Data_t *imu_data);
-uint8_t IMU_SelfTest(const IMU_Data_t *imu_data);
+uint8_t IMU_SelfTest(IMU_Data_t *imu_data);
 uint8_t IMU_VerifyDataReady(const IMU_Data_t *imu_data);
 HAL_StatusTypeDef IMU_ConfigXL(uint8_t ODR, uint8_t FS, bool LPF2, IMU_Data_t *imu_data);
 HAL_StatusTypeDef IMU_ConfigG(uint8_t ODR, uint8_t FS, IMU_Data_t *imu_data);

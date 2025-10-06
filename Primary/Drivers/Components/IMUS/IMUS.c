@@ -159,6 +159,11 @@ static bool IMU_IsActive(const IMU_Data_t *imu_data) {
 
 HAL_StatusTypeDef IMU_Update(IMU_Data_t *imu_data) {
     HAL_StatusTypeDef status = HAL_OK;
+
+    if (!imu_data->passed_self_test) {
+        return status;
+    }
+
     bool imu_ready = IMU_VerifyDataReady(imu_data) & 0x03 == 0x03;
 
     if (imu_ready) {
@@ -188,7 +193,10 @@ static void average_arrays(float array_1[3], float array_2[3], float average_arr
 }
 
 void IMU_Average(IMU_Data_t *imu_data_1, IMU_Data_t *imu_data_2, IMU_AverageData_t *average_imu_data) {
-    if (imu_data_1->active && imu_data_2->active) {
+    bool use_imu1 = imu_data_1->active && imu_data_1->passed_self_test;
+    bool use_imu2 = imu_data_2->active && imu_data_2->passed_self_test;
+
+    if (use_imu1 && use_imu2) {
         float accel_average[3];
         float gyro_average[3];
         average_arrays(imu_data_1->accel, imu_data_2->accel, accel_average);
@@ -196,7 +204,7 @@ void IMU_Average(IMU_Data_t *imu_data_1, IMU_Data_t *imu_data_2, IMU_AverageData
 
         memcpy(average_imu_data->accel, accel_average, sizeof(accel_average));
         memcpy(average_imu_data->gyro, gyro_average, sizeof(gyro_average));
-    } else if (imu_data_1->active) {
+    } else if (use_imu1) {
         memcpy(average_imu_data->accel, imu_data_1->accel, sizeof(imu_data_1->accel));
         memcpy(average_imu_data->gyro, imu_data_1->gyro, sizeof(imu_data_1->gyro));
     } else {
@@ -206,10 +214,15 @@ void IMU_Average(IMU_Data_t *imu_data_1, IMU_Data_t *imu_data_2, IMU_AverageData
 }
 
 
-uint8_t IMU_SelfTest(const IMU_Data_t *imu_data) {
+uint8_t IMU_SelfTest(IMU_Data_t *imu_data) {
     uint8_t Who_Am_I_return = 0;
     IMU_read_reg(IMU_WHO_AM_I, 1, &Who_Am_I_return, imu_data);
-    if (Who_Am_I_return == IMU_WHO_AM_I_VAL) return 1;
+    if (Who_Am_I_return == IMU_WHO_AM_I_VAL) {
+        imu_data->passed_self_test = true;
+        return 1;
+    }
+
+    imu_data->passed_self_test = false;
     return 0;
 }
 

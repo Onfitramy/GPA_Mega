@@ -231,13 +231,8 @@ static void StartupDo(StateMachine_t *sm, uint16_t freq) {
     else if ((status_data.sensor_status_flags & 0xFF) != 0x9F) {
         selftest_tries += 1;
 
-        IMU_Data_t tmp_imu1_data;
-        IMU_Data_t tmp_imu2_data;
-        tmp_imu1_data.imu = IMU1;
-        tmp_imu2_data.imu = IMU2;
-
-        status_data.sensor_status_flags |= IMU_SelfTest(&tmp_imu1_data);
-        status_data.sensor_status_flags |= (IMU_SelfTest(&tmp_imu2_data)<<1);
+        status_data.sensor_status_flags |= IMU_SelfTest(&imu1_data);
+        status_data.sensor_status_flags |= (IMU_SelfTest(&imu2_data)<<1);
         status_data.sensor_status_flags |= (MAG_SelfTest()<<2);
         status_data.sensor_status_flags |= (BMP_SelfTest()<<3);
 
