@@ -1,4 +1,7 @@
 #include "packets.h"
+
+#include <string.h>
+
 #include "InterBoardCom.h"
 #include "signalPlotter.h"
 #include <string.h>

@@ -6,7 +6,7 @@
 /*They are used for radio transmittion, flash/SD saving and interBoardCommunication*/
 /*---------------------*/
 
-#define INVALID_FLOAT -999.0f 
+#define INVALID_FLOAT -999.0f
 
 typedef enum __attribute__((packed)){
     PACKET_ID_STATUS = 0x01, // VR data packet

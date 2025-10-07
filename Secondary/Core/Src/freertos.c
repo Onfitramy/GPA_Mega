@@ -61,6 +61,8 @@ QueueHandle_t XBeeDataQueue;
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
+SemaphoreHandle_t flashSemaphore;
+
 /* Definitions for defaultTask */
 
 osThreadId_t defaultTaskHandle;
@@ -134,6 +136,7 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
+  flashSemaphore = xSemaphoreCreateBinary();
   /* USER CODE END RTOS_SEMAPHORES */
 
   /* USER CODE BEGIN RTOS_TIMERS */
@@ -358,15 +361,18 @@ void StartSDTask(void *argument)
     // Successfully mounted SD card
   } else {
     // Failed to mount SD card
-    vTaskDelete(NULL); // Delete this task if SD card cannot be mounted
+    // vTaskDelete(NULL); // Delete this task if SD card cannot be mounted
   }
 
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 100; // 10 Hz
   /* Infinite loop */
   for(;;) {
-    SD_SaveBuffer();
-    vTaskDelayUntil( &xLastWakeTime, xFrequency);
+    // SD_SaveBuffer();
+
+    if (xSemaphoreTake(flashSemaphore, portMAX_DELAY) == pdTRUE) {
+      W25Q_WriteFlashBuffer();
+    }
   }
   /* USER CODE END StartSDTask */
 }

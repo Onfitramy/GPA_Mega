@@ -32,7 +32,7 @@
 #include "W25Q1.h"
 #include "PowerUnit.h"
 #include "SD.h"
-#include "XBee.h"
+#include "xBee.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/

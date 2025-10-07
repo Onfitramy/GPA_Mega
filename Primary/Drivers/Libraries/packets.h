@@ -8,7 +8,7 @@
 /*This file includes all public Packets for the differten devices and sending modes*/
 /*They are used for radio transmittion, flash/SD saving and interBoardCommunication*/
 
-#define INVALID_FLOAT -999.0f 
+#define INVALID_FLOAT -999.0f
 
 typedef enum __attribute__((packed)){
     PACKET_ID_STATUS = 0x01, // VR data packet
@@ -19,7 +19,6 @@ typedef enum __attribute__((packed)){
     PACKET_ID_POSITION = 0x06, // Position data packet
     PACKET_ID_ATTITUDE = 0x07, // Attitude data packet
     PACKET_ID_KALMANMATRIX = 0x08, // Kalman Matrix data packet
-
     PACKET_ID_COMMAND = 0x10, // Command packet
     
     // Force to 8-bit size

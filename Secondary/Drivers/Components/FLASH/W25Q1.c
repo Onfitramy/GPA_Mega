@@ -8,6 +8,7 @@
 #include "W25Q1.h"
 #include "string.h"
 #include "FreeRTOS.h"
+#include "semphr.h"
 #include "task.h"
 
 W25QPage0_config_t W25Q_FLASH_CONFIG = {
@@ -15,60 +16,74 @@ W25QPage0_config_t W25Q_FLASH_CONFIG = {
 	.curr_configPage = CONFIG_PAGE, // Start at the configuration page
 	.curr_configOffset = 0, // Start at the beginning of the configuration page
 	.curr_logPage = LOG_PAGE, // Start at the log page
-	.curr_logOffset = 0 // Start at the beginning of the log page
+	.curr_logOffset = 0, // Start at the beginning of the log page
+	.write_logs = true,
 };
 
-// CIRC_BBUF_DEF(event_circ_buf, 8192);
-
-// int circ_bbuf_push(circ_bbuf_t *c, uint8_t data)
-// {
-//     int next;
-
-//     next = c->head + 1;  // next is where head will point to after this write.
-//     if (next >= c->maxlen)
-//         next = 0;
-
-//     if (next == c->tail)  // if the head + 1 == tail, circular buffer is full
-//         return -1;
-
-//     c->buffer[c->head] = data;  // Load data and then move
-//     c->head = next;             // head to next data offset.
-//     return 0;  // return success to indicate successful push.
-// }
-
-// int circ_bbuf_pop(circ_bbuf_t *c, uint8_t *data)
-// {
-//     int next;
-
-//     if (c->head == c->tail)  // if the head == tail, we don't have any data
-//         return -1;
-
-//     next = c->tail + 1;  // next is where tail will point to after this read.
-//     if(next >= c->maxlen)
-//         next = 0;
-
-//     *data = c->buffer[c->tail];  // Read data and then move
-//     c->tail = next;              // tail to next offset.
-//     return 0;  // return success to indicate successful push.
-// }
+/**
+ * @brief Write two configs to the flash.
+ * If a power loss happens between erasing and writing data, there will always be one valid config.
+ */
+void W25Q_WriteConfig() {
+	W25Q_Write_Page(0, 0, sizeof(W25QPage0_config_t), (uint8_t *)&W25Q_FLASH_CONFIG);
+	W25Q_Write_Page(PAGES_PER_SECTOR, 0, sizeof(W25QPage0_config_t), (uint8_t *)&W25Q_FLASH_CONFIG);
+}
 
 //Saves the data to the log page
 void W25Q_SaveToLog(uint8_t *data, uint32_t size)
 {
-	if (size == 0) return; // nothing to save
+	if (size == 0 || !W25Q_FLASH_CONFIG.write_logs) return; // nothing to save
 
 	// Check if we have enough space in the current log page
-	if (W25Q_FLASH_CONFIG.curr_logOffset + size >= 256) {
+	if (W25Q_FLASH_CONFIG.curr_logOffset + size > 256) {
 		W25Q_FLASH_CONFIG.curr_logPage += 1; // Move to next page
 		W25Q_FLASH_CONFIG.curr_logOffset = 0; // Reset offset
+	}
+
+	// wrap around if the end of the flash memory is reached
+	if (W25Q_FLASH_CONFIG.curr_logPage >= 65536) {
+		W25Q_FLASH_CONFIG.curr_logPage = LOG_PAGE;
 	}
 
 	W25Q_Write_Cleared(W25Q_FLASH_CONFIG.curr_logPage, W25Q_FLASH_CONFIG.curr_logOffset, size, data);
 
 	W25Q_FLASH_CONFIG.curr_logOffset += size;
+	if (W25Q_FLASH_CONFIG.curr_logOffset >= 256) {
+		W25Q_FLASH_CONFIG.curr_logOffset %= 256;
+		W25Q_FLASH_CONFIG.curr_logPage += 1;
+	}
+}
 
-	uint32_t tData32[2] = {W25Q_FLASH_CONFIG.curr_logPage, W25Q_FLASH_CONFIG.curr_logOffset};
-	W25Q_Write_32B(0, 0, 2, tData32); // Save current log page and offset at 0
+
+uint8_t flash_buffer_index = 0;
+DataPacket_t flash_packet_buffer[FLASH_BUFFER_SIZE];
+extern SemaphoreHandle_t flashSemaphore;
+
+/**
+ * @brief Add a data packet to the flash buffer.
+ * If the flash buffer is full, its data written to the next flash sector.
+ * @param data_packet
+ */
+void W25Q_AddFlashBufferPacket(const DataPacket_t *data_packet) {
+	if (flash_buffer_index < FLASH_BUFFER_SIZE) {
+		flash_packet_buffer[flash_buffer_index++] = *data_packet;
+	}
+
+	if (flash_buffer_index >= FLASH_BUFFER_SIZE) {
+		xSemaphoreGive(flashSemaphore);
+	}
+}
+
+void W25Q_WriteFlashBuffer() {
+	if (flash_buffer_index == FLASH_BUFFER_SIZE) {
+		W25Q_Erase_Sector(W25Q_FLASH_CONFIG.curr_logPage / PAGES_PER_SECTOR);
+		for (int i = 0; i < PAGES_PER_SECTOR; ++i) {
+			W25Q_SaveToLog((uint8_t*)(flash_packet_buffer + i * PACKETS_PER_PAGE), PACKETS_PER_PAGE * sizeof(DataPacket_t));
+		}
+
+		W25Q_WriteConfig();
+		flash_buffer_index = 0;
+	}
 }
 
 void W25Q_LoadFromLog(uint8_t *data, uint32_t size, uint32_t log_page, uint32_t log_offset)
@@ -76,7 +91,7 @@ void W25Q_LoadFromLog(uint8_t *data, uint32_t size, uint32_t log_page, uint32_t 
 	// Load data from the log page
 	if (size == 0) return; // nothing to load
 
-	W25Q_Read(LOG_PAGE+log_page, log_offset, size, data);
+	W25Q_Read(log_page, log_offset, size, data);
 }
 
 void csLOW(void) 
@@ -145,10 +160,7 @@ void W25Q_Read (uint32_t startPage, uint8_t offset, uint32_t size, uint8_t *rDat
         HAL_SPI_Transmit(&W25Q1_SPI , tData, 4, 100);
     }
     
-    uint8_t tempRx[3000];
-    memset(tempRx, 0, 3000);
-    HAL_SPI_TransmitReceive(&W25Q1_SPI, tempRx, rData, size, 100);
-    //HAL_SPI_Receive(&W25Q1_SPI, rData, size, 100); 
+    HAL_SPI_Receive(&W25Q1_SPI, rData, size, 100);
     csHIGH();
 }
 
@@ -172,10 +184,7 @@ void W25Q_FastRead (uint32_t startPage, uint8_t offset, uint32_t size, uint8_t *
 		HAL_SPI_Transmit(&W25Q1_SPI, tData, 5, 100);  // send read instruction along with the 24 bit memory address
 	}
 
-    uint8_t tempRx[3000];
-    memset(tempRx, 0, 3000);
-    HAL_SPI_TransmitReceive(&W25Q1_SPI, tempRx, rData, size, 100);
-	//HAL_SPI_Receive(&W25Q1_SPI, rData, size, 100);  // Read the data
+	HAL_SPI_Receive(&W25Q1_SPI, rData, size, 100);  // Read the data
 	csHIGH();  // pull the CS High
 }
 
@@ -234,10 +243,34 @@ void disable_write (void)
 	vTaskDelay(5);  // Write cycle delay (5ms)
 }
 
+/**
+ * @brief Wait for an instruction being completed, by checking the specified register.
+ * @param address
+ */
+void W25Q_WaitForInstruction(uint8_t address) {
+	uint8_t tDataStatus = address;
+
+	csLOW();
+
+	HAL_SPI_Transmit(&W25Q1_SPI, &tDataStatus, 1, 100);
+
+	uint8_t rDataStatus[2] = {255};
+	// wait until erase is finished
+	while (true) {
+		HAL_SPI_Receive(&W25Q1_SPI, rDataStatus, 2, 100);
+		// I don't know why the first byte is sometimes not altered, but the second is
+		if ((rDataStatus[1] & 0b00000001) == 0) {
+			break;
+		}
+	}
+
+	csHIGH();
+}
+
 void W25Q_Erase_Sector (uint16_t numsector)
 {
 	uint8_t tData[6];
-	uint32_t memAddr = numsector*16*256;   // Each sector contains 16 pages * 256 bytes
+	uint32_t memAddr = numsector * SECTOR_SIZE;   // Each sector contains 16 pages * 256 bytes
 
 	enable_write();
 
@@ -253,10 +286,9 @@ void W25Q_Erase_Sector (uint16_t numsector)
 	  csHIGH();
 	}
 
-	vTaskDelay(450);  // 450ms delay for sector erase
+	W25Q_WaitForInstruction(0x05);
 
 	disable_write();
-
 }
 
 void W25Q_Write_Page (uint32_t page, uint16_t offset, uint32_t size, uint8_t *data)
@@ -284,7 +316,8 @@ void W25Q_Write_Page (uint32_t page, uint16_t offset, uint32_t size, uint8_t *da
 		uint16_t bytesremaining  = bytestowrite(size, offset);
 
 		enable_write();
-                uint32_t indx = 0;
+
+		uint32_t indx = 0;
 		if (numBLOCK<512)   // Chip Size<256Mb
 		{
 			tData[0] = 0x02;  // page program
@@ -311,7 +344,8 @@ void W25Q_Write_Page (uint32_t page, uint16_t offset, uint32_t size, uint8_t *da
 		size = size-bytesremaining;
 		dataPosition = dataPosition+bytesremaining;
 
-        vTaskDelay(4);
+        W25Q_WaitForInstruction(0x05);
+
 		disable_write();
     }
 }
@@ -466,49 +500,46 @@ void W25Q_Chip_Erase (void)
     vTaskDelay(40000); //should be 40s - 200s
 	disable_write();
 
-	uint32_t tData32[2] = {W25Q_FLASH_CONFIG.curr_logPage, W25Q_FLASH_CONFIG.curr_logOffset};
-
-	W25Q_Write_32B(0, 0, 2, tData32); //Save current log page and offset at 0
-
+	W25Q_WriteConfig();
 }
 
 /**
-  * @brief Reads the current log Position from Page 0, offset 0 in memory
-  * @param None
-  * @retval None
-  */
-void W25Q_updateLogPosition(void){
-	uint32_t LogPos[2];
+ * @brief Align the current log page with the next sector.
+ * All remaining data in the current sector is replaced by 0.
+ */
+static void W25Q_AlignSectorOffset() {
+	uint32_t sectorOffset = W25Q_FLASH_CONFIG.curr_logPage % 16;
+	if (sectorOffset == 0) return;
 
-	W25Q_Read_32B(0, 0, 2, LogPos);
+	uint8_t tempLogs[SECTOR_SIZE];
+	uint32_t startPage = W25Q_FLASH_CONFIG.curr_logPage - sectorOffset;
+	uint32_t emptyStart = sectorOffset * PACKETS_PER_PAGE * sizeof(DataPacket_t);
 
-	if (LogPos[0] >= 1024 && LogPos[0] <= 65536) { // Check if the log page is valid
-		W25Q_FLASH_CONFIG.curr_logPage = LogPos[0];
-		W25Q_FLASH_CONFIG.curr_logOffset = LogPos[1];
-	}else {
-		W25Q_FLASH_CONFIG.curr_logPage = LOG_PAGE; // Reset to default log page
-		W25Q_FLASH_CONFIG.curr_logOffset = 0; // Reset offset
-		uint32_t tData32[2] = {W25Q_FLASH_CONFIG.curr_logPage, W25Q_FLASH_CONFIG.curr_logOffset};
+	W25Q_Read(startPage, 0, emptyStart, tempLogs);
+	W25Q_Erase_Sector(W25Q_FLASH_CONFIG.curr_logPage / PAGES_PER_SECTOR);
 
-		W25Q_Write_32B(0, 0, 2, tData32); //Save current log page and offset at 0
-	}
-
+	memset(tempLogs + emptyStart, 0, sizeof(tempLogs) - emptyStart);
+	W25Q_Write_Cleared(startPage / PAGES_PER_SECTOR, 0, sizeof(tempLogs), tempLogs);
+	W25Q_FLASH_CONFIG.curr_logPage += PAGES_PER_SECTOR - sectorOffset;
 }
 
-void W25Q_GetConfig()
-{
-	uint8_t tempConfig[256];
+void W25Q_GetConfig() {
+	uint8_t tempConfig1[sizeof(W25QPage0_config_t)];
+	uint8_t tempConfig2[sizeof(W25QPage0_config_t)];
+
 	// Copy the config on the chip to a local variable
-	W25Q_Read(0, 0, sizeof(W25QPage0_config_t), tempConfig);
+	W25Q_Read(0, 0, sizeof(W25QPage0_config_t), tempConfig1);
+	W25Q_Read(PAGES_PER_SECTOR, 0, sizeof(W25QPage0_config_t), tempConfig2);
 	// Copy the data to the W25Q_FLASH_CONFIG structure if ID is correct
-	if (tempConfig[0] == W25Q_FLASH_CONFIG.ID[0] && tempConfig[1] == W25Q_FLASH_CONFIG.ID[1])
-	{
-		memcpy(&W25Q_FLASH_CONFIG, tempConfig, sizeof(W25QPage0_config_t));
-	}
-	else
-	{
+	if (tempConfig1[0] == W25Q_FLASH_CONFIG.ID[0] && tempConfig1[1] == W25Q_FLASH_CONFIG.ID[1]) {
+		memcpy(&W25Q_FLASH_CONFIG, tempConfig1, sizeof(W25QPage0_config_t));
+		W25Q_AlignSectorOffset();
+	} else if (tempConfig2[0] == W25Q_FLASH_CONFIG.ID[0] && tempConfig2[1] == W25Q_FLASH_CONFIG.ID[1]) {
+		memcpy(&W25Q_FLASH_CONFIG, tempConfig2, sizeof(W25QPage0_config_t));
+		W25Q_AlignSectorOffset();
+	} else {
 		// If the ID does not match, save the default config
-		W25Q_Write_Page(0, 0, sizeof(W25QPage0_config_t), (uint8_t *)&W25Q_FLASH_CONFIG);
+		W25Q_WriteConfig();
 	}
 }
 
@@ -524,10 +555,6 @@ void W25Q_Write_Cleared(uint32_t page, uint16_t offset, uint32_t size, uint8_t *
 	uint32_t endPage  = startPage + ((size+offset-1)/256);
 	uint32_t numPages = endPage-startPage+1;
 
-    uint16_t startSector  = startPage/16;
-	uint16_t endSector  = endPage/16;
-	uint16_t numSectors = endSector-startSector+1;
-
     uint32_t dataPosition = 0;
 
 	// write the data
@@ -537,6 +564,7 @@ void W25Q_Write_Cleared(uint32_t page, uint16_t offset, uint32_t size, uint8_t *
 		uint16_t bytesremaining  = bytestowrite(size, offset);
 
 		enable_write();
+
         uint32_t indx = 0;
 		if (numBLOCK<512)   // Chip Size<256Mb
 		{
@@ -564,98 +592,8 @@ void W25Q_Write_Cleared(uint32_t page, uint16_t offset, uint32_t size, uint8_t *
 		size = size-bytesremaining;
 		dataPosition = dataPosition+bytesremaining;
 
-        vTaskDelay(4);
+        W25Q_WaitForInstruction(0x05);
+
 		disable_write();
     }
 }
-
-// void W25Q_SaveLog(void)
-// {
-// 	uint8_t tData[4096];
-// 	uint8_t out_data;
-// 	uint32_t size = 0;
-// 	for(int i=0 ;circ_bbuf_pop(&event_circ_buf, &out_data)!=-1; i++){
-// 		size += 1;
-// 		tData[i] = out_data;
-// 	}
-
-// 	W25Q_Write_Cleared(curr_logPage, curr_logOffset, size, tData);
-
-// 	if (curr_logOffset + size >= 256){
-// 		curr_logPage += 1;
-// 		size -= 256;
-// 		while (curr_logOffset + size >= 256){
-// 			curr_logPage += 1;
-// 			size -= 256;
-// 		}
-// 	}
-// 	curr_logOffset += size;
-
-// 	//uint32_t tData32[2] = {curr_logPage, curr_logOffset};
-
-// 	//W25Q_Write_32B(0, 0, 2, tData32); //Save current log page and offset at 0
-
-// }
-
-// /**
-//   * @brief Append the LOG with a event , eventsize is alway wscode shown - 1
-//   * @param None
-//   * @retval None
-//   */
-// uint8_t W25Q_AppendLog(uint8_t *event, uint32_t eventSize, float data1, float data2, float data3)
-// {
-// 	uint32_t timestamp = HAL_GetTick();
-// 	uint8_t tData[37];
-// 	uint32_t size = 6; //initial size only \n and  timestamp 
-// 	tData[0] = 0x5C; 
-// 	tData[1] = 0x6E;	// backslash n
-// 	tData[2] = (timestamp>>24)&0xFF;   // add timestamp
-// 	tData[3] = (timestamp>>16)&0xFF;
-// 	tData[4] = (timestamp>>8)&0xFF;
-// 	tData[5] = timestamp&0xFF;
-	
-// 	if (eventSize>16){
-// 		return 0; //to long event description
-// 	}else{
-// 		size += eventSize + 1;
-// 		tData[6] = 0x3A; //":"
-// 		for (int i=0; i<eventSize; i++)
-// 		{
-// 			tData[7+i] = event[i];   //add event
-// 		}
-// 	}
-
-// 	if (data1 != 0){
-// 		tData[size] = 0x3A; //":"
-// 		float2Bytes(tempBytes, data1);
-// 		tData[size+1] = tempBytes[0];
-// 		tData[size+2] = tempBytes[1];
-// 		tData[size+3] = tempBytes[2];
-// 		tData[size+4] = tempBytes[3];
-// 		size += 5;
-// 	}
-
-// 	if (data2 != 0){
-// 		tData[size] = 0x3A; //":"
-// 		float2Bytes(tempBytes, data2);
-// 		tData[size+1] = tempBytes[0];
-// 		tData[size+2] = tempBytes[1];
-// 		tData[size+3] = tempBytes[2];
-// 		tData[size+4] = tempBytes[3];
-// 		size += 5;
-// 	}
-
-// 	if (data3 != 0){
-// 		tData[size] = 0x3A; //":"
-// 		float2Bytes(tempBytes, data3);
-// 		tData[size+1] = tempBytes[0];
-// 		tData[size+2] = tempBytes[1];
-// 		tData[size+3] = tempBytes[2];
-// 		tData[size+4] = tempBytes[3];
-// 		size += 5;
-// 	}
-
-// 	for (int i=0; i<size; i++){
-// 		circ_bbuf_push(&event_circ_buf, tData[i]);
-// 	}
-// }

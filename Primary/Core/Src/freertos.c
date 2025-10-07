@@ -34,6 +34,14 @@
 /* USER CODE BEGIN Includes */
 #include "calibration_data.h"
 #include "InterBoardCom.h"
+#include "packets.h"
+#include "status.h"
+#include "radio.h"
+
+#include "guidance.h"
+#include "navigation.h"
+#include "control.h"
+#include "statemachine.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -238,7 +246,7 @@ void StartDefaultTask(void *argument)
     StateMachine_DoActions(&flight_sm, 1000);
 
     HAL_DTS_GetTemperature(&hdts, &DTS_Temperature);
-  
+
     ReadInternalADC(&ADC_Temperature, &ADC_V_Ref);
 
     SensorStatus_Reset(&imu1_status);
