@@ -60,5 +60,6 @@ void W25Q_updateLogPosition(void);
 void W25Q_Write_Cleared(uint32_t page, uint16_t offset, uint32_t size, uint8_t *data);
 void W25Q_SaveToLog(uint8_t *data, uint32_t size);
 void W25Q_AddFlashBufferPacket(const DataPacket_t *data_packet);
+void W25Q_WriteFlashBuffer();
 void W25Q_LoadFromLog(uint8_t *data, uint32_t size, uint32_t log_page, uint32_t log_offset);
 void W25Q_GetConfig();

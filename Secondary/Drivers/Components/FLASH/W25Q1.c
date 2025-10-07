@@ -8,6 +8,7 @@
 #include "W25Q1.h"
 #include "string.h"
 #include "FreeRTOS.h"
+#include "semphr.h"
 #include "task.h"
 
 W25QPage0_config_t W25Q_FLASH_CONFIG = {
@@ -56,6 +57,7 @@ void W25Q_SaveToLog(uint8_t *data, uint32_t size)
 
 uint8_t flash_buffer_index = 0;
 DataPacket_t flash_packet_buffer[FLASH_BUFFER_SIZE];
+extern SemaphoreHandle_t flashSemaphore;
 
 /**
  * @brief Add a data packet to the flash buffer.
@@ -67,6 +69,12 @@ void W25Q_AddFlashBufferPacket(const DataPacket_t *data_packet) {
 		flash_packet_buffer[flash_buffer_index++] = *data_packet;
 	}
 
+	if (flash_buffer_index >= FLASH_BUFFER_SIZE) {
+		xSemaphoreGive(flashSemaphore);
+	}
+}
+
+void W25Q_WriteFlashBuffer() {
 	if (flash_buffer_index == FLASH_BUFFER_SIZE) {
 		W25Q_Erase_Sector(W25Q_FLASH_CONFIG.curr_logPage / PAGES_PER_SECTOR);
 		for (int i = 0; i < PAGES_PER_SECTOR; ++i) {
