@@ -2,7 +2,7 @@
 #define XBEE_H_
 
 #include "stm32f4xx_hal.h"
-#include "Packets.h"
+#include "packets.h"
 
 uint8_t XBee_Init(void);
 void XBee_TestDeviceIdentifier();

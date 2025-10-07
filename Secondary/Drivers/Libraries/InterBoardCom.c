@@ -127,7 +127,7 @@ void InterBoardCom_FillData(InterBoardPacket_t *packet, DataPacket_t *data_packe
     memcpy(packet->Data, data_packet, 32);
 }
 
-bool InterBoard_CheckCRC(const DataPacket_t *packet) {
+uint8_t InterBoard_CheckCRC(DataPacket_t *packet) {
     // Calculate CRC (XOR checksum)
     uint8_t crc = 0;
     for (int i = 0; i < sizeof(packet->Data.raw); i++) {
