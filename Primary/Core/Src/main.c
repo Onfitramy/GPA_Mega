@@ -157,7 +157,7 @@ int main(void)
 
   // if board is a ground station, set flag
   if (gpa_mega == GPA_MEGA_2) {
-    is_groundstation = true;
+    is_groundstation = false;
   }
 
   // define output signal names
@@ -243,6 +243,16 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 
 uint32_t HAL_GetTickUS(){
   return TIM5->CNT; // Get the current value of TIM5 counter
+}
+
+uint32_t HAL_GetTickDiffUS(uint32_t start){
+  uint32_t now = HAL_GetTickUS();
+  if (now >= start) {
+    return now - start;
+  } else {
+    // Handle overflow
+    return (0xFFFFFFFF - start + now + 1);
+  }
 }
 /**
   * @brief System Clock Configuration

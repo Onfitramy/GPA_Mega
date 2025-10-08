@@ -73,6 +73,7 @@ extern QueueHandle_t InterBoardCom_Queue;
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
 uint32_t HAL_GetTickUS(void);
+uint32_t HAL_GetTickDiffUS(uint32_t start);
 
 /* USER CODE BEGIN EFP */
 

@@ -368,7 +368,6 @@ void Start10HzTask(void *argument) {
   DataPacket_t Attitude_DataPacket = CreateDataPacket(PACKET_ID_ATTITUDE);
   DataPacket_t Spark_CommandPacket;
 
-  uint8_t test_output = 0;
   /* Infinite loop */
   for(;;) {
     // Run 10 Hz Do Actions
@@ -384,12 +383,6 @@ void Start10HzTask(void *argument) {
 
     } else { //Secondary board sends data to groundstation
       UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &average_imu_data, &mag_data);
-      if(test_output == 0) {
-        UartOutputDataPacket(&IMU_DataPacket);
-        test_output = 1;
-      } else {
-        test_output = 0;
-      }
       UartOutputDataPacket(&IMU_DataPacket);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);
 

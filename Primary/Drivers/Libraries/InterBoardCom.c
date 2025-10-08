@@ -323,8 +323,9 @@ void UartOutputDataPacket(DataPacket_t *packet) {
         default:
             return; // Unsupported packet type
     }
-
-   CDC_Transmit_HS(usb_packet_buffer, strlen((char *)usb_packet_buffer));
+    uint32_t start = HAL_GetTickUS();
+    while(CDC_Transmit_HS(usb_packet_buffer, strlen((char *)usb_packet_buffer)) == USBD_BUSY);
+    uint32_t dur = HAL_GetTickDiffUS(start);
 }
 
 InterBoardPacket_t TestPacket;
