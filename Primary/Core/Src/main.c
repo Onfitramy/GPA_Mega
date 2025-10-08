@@ -157,7 +157,7 @@ int main(void)
 
   // if board is a ground station, set flag
   if (gpa_mega == GPA_MEGA_2) {
-    is_groundstation = false;
+    is_groundstation = true;
   }
 
   // define output signal names
