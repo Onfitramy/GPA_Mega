@@ -32,11 +32,31 @@ uint8_t backspace_tt[] = " \b";
 
 extern IMU_Data_t imu1_data;
 
+typedef enum {
+    CLI_TARGET_MODE_INTERNAL = 0,
+    CLI_TARGET_MODE_EXTERNAL = 1,
+} CLI_TargetMode_t;
+
+//Internal commands are executed on this board, external commands are sent via radio to the other board
+uint8_t cli_target_mode = CLI_TARGET_MODE_EXTERNAL;
+
 int _write(int file, char *data, int len)
 {
     UNUSED(file);
     // Transmit data using USB
     while(CDC_Transmit_HS(data, len)==USBD_BUSY);
+}
+
+int sendcmdToTarget(DataPacket_t *packet) {
+    if (cli_target_mode == CLI_TARGET_MODE_INTERNAL) {
+        // Execute command locally (sends to secondary, then evaluated like normaly, potentially forwarded back to primary)
+        InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_MCU, packet);
+        return 0; // Assume success for sending
+    } else if (cli_target_mode == CLI_TARGET_MODE_EXTERNAL) {
+        // Send command to other board via InterBoardCom
+        InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, packet);
+        return 0; // Assume success for sending
+    }
 }
 //*****************************************************************************
 BaseType_t cmd_clearScreen(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
@@ -52,6 +72,35 @@ BaseType_t cmd_clearScreen(char *pcWriteBuffer, size_t xWriteBufferLen, const ch
 }
 
 //*****************************************************************************
+BaseType_t cmd_switchCLIMode(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) {
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+
+    if (strncmp(pcParameter, "internal", xParameterStringLength) == 0) {
+        cli_target_mode = CLI_TARGET_MODE_INTERNAL;
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Switched to Internal CLI Mode\r\n");
+    } else if (strncmp(pcParameter, "external", xParameterStringLength) == 0) {
+        cli_target_mode = CLI_TARGET_MODE_EXTERNAL;
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Switched to External CLI Mode\r\n");
+    } else {
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Invalid parameter 1\r\n");
+        return pdFALSE;
+    }
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
 BaseType_t cmd_resetPrimary(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {
     (void)pcCommandString;
@@ -59,7 +108,7 @@ BaseType_t cmd_resetPrimary(char *pcWriteBuffer, size_t xWriteBufferLen, const c
 
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPECIAL, 0, NULL, 0);
-    InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, &packet);
+    sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
     snprintf(pcWriteBuffer, 30, "Resetting Primary MCU...\r\n");
@@ -75,7 +124,7 @@ BaseType_t cmd_resetSecondary(char *pcWriteBuffer, size_t xWriteBufferLen, const
 
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPECIAL, 1, NULL, 0);
-    InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, &packet);
+    sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
     snprintf(pcWriteBuffer, 30, "Resetting Secondary MCU...\r\n");
@@ -104,7 +153,7 @@ BaseType_t cmd_Camera_Power(char *pcWriteBuffer, size_t xWriteBufferLen, const c
 
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, 0, parameters, sizeof(parameters));
-    InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, &packet);
+    sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
     snprintf(pcWriteBuffer, 30, "Toggling Camera Power...\r\n");
@@ -133,7 +182,7 @@ BaseType_t cmd_Camera_Recording(char *pcWriteBuffer, size_t xWriteBufferLen, con
 
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, 1, parameters, sizeof(parameters));
-    InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, &packet);
+    sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
     snprintf(pcWriteBuffer, 30, "Toggling Camera Recording...\r\n");
@@ -149,7 +198,7 @@ BaseType_t cmd_Camera_SkipDate(char *pcWriteBuffer, size_t xWriteBufferLen, cons
     
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, 2, NULL, 0);
-    InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, &packet);
+    sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
     snprintf(pcWriteBuffer, 30, "Skipping Camera Date...\r\n");
@@ -178,7 +227,7 @@ BaseType_t cmd_Camera_Wifi(char *pcWriteBuffer, size_t xWriteBufferLen, const ch
 
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, 3, parameters, sizeof(parameters));
-    InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, &packet);
+    sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
     snprintf(pcWriteBuffer, 30, "Toggling Camera WiFi...\r\n");
@@ -207,7 +256,7 @@ BaseType_t cmd_State_Force(char *pcWriteBuffer, size_t xWriteBufferLen, const ch
 
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STATE, 4, parameters, sizeof(parameters));
-    InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, &packet);
+    sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
     snprintf(pcWriteBuffer, 30, "Forcing State...\r\n");
@@ -236,7 +285,7 @@ BaseType_t cmd_State_SimulateEvent(char *pcWriteBuffer, size_t xWriteBufferLen, 
 
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STATE, 5, parameters, sizeof(parameters));
-    InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, &packet);
+    sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
     snprintf(pcWriteBuffer, 30, "Simulating Event...\r\n");
@@ -265,7 +314,7 @@ BaseType_t cmd_Logging_FlightDataOut(char *pcWriteBuffer, size_t xWriteBufferLen
 
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_LOGGING, 0, parameters, sizeof(parameters));
-    InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, &packet);
+    sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
     snprintf(pcWriteBuffer, 50, "Toggling Flight Data Output Logging...\r\n");
@@ -281,7 +330,7 @@ BaseType_t cmd_PU_ZeroStepper(char *pcWriteBuffer, size_t xWriteBufferLen, const
 
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, 1, NULL, 0);
-    InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, &packet);
+    sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
     snprintf(pcWriteBuffer, 30, "Zeroing Power Unit Angle...\r\n");
@@ -312,7 +361,7 @@ BaseType_t cmd_PU_SetAngle(char *pcWriteBuffer, size_t xWriteBufferLen, const ch
 
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, 2, parameters, sizeof(parameters));
-    InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, &packet);
+    sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
     snprintf(pcWriteBuffer, 30, "Setting Power Unit Angle...\r\n");
@@ -383,6 +432,12 @@ const CLI_Command_Definition_t xCommandList[] = {
         .pcHelpString = "cls: Clears screen\r\n\r\n",
         .pxCommandInterpreter = cmd_clearScreen, /* The function to run. */
         .cExpectedNumberOfParameters = 0 /* No parameters are expected. */
+    },
+    {
+        .pcCommand = "switchCLIMode", /* The command string to type. */
+        .pcHelpString = "switchCLIMode <mode>: Switches the CLI mode (internal/external)\r\n\r\n",
+        .pxCommandInterpreter = cmd_switchCLIMode, /* The function to run. */
+        .cExpectedNumberOfParameters = 1 /* One parameter is expected. */
     },
     {
         .pcCommand = "RESET_PRIMARY", /* The command string to type. */
