@@ -291,10 +291,11 @@ void StartDefaultTask(void *argument)
         EKFCorrectionStep(&EKF2, &EKF2_corr1);
       }
 
-      if (ptot_readData(&ptot_data.pressure, &ptot_data.temperature)) {
+      //Dont activate this and the SPARK communication at the same time, because they use the same SPI
+      //if (ptot_readData(&ptot_data.pressure, &ptot_data.temperature)) {
         // execute this if new data is available
 
-      }
+      //}
 
       // KALMAN FILTER, QUATERNION
       // prediction step
