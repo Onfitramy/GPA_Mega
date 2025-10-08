@@ -261,6 +261,9 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t *packet) {
                     sprintf((char *)test_sending, "%ld,%f,%f,%f\r\n", ((DataPacket_t *)packet->Data)->timestamp, ((DataPacket_t *)packet->Data)->Data.attitude.phi, ((DataPacket_t *)packet->Data)->Data.attitude.theta, ((DataPacket_t *)packet->Data)->Data.attitude.psi);
                     CDC_Transmit_HS(test_sending, strlen((char *)test_sending));
                 }*/ //For Debug with unfinished groundstation software
+                if(packet->Data[0] == PACKET_ID_IMU) {
+                    //UartOutputDataPacket((DataPacket_t *)packet->Data);
+                }
             }
             break;
         // Add cases for other packet IDs as needed
@@ -277,6 +280,50 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t *packet) {
         default:
             break;
     }
+}
+
+uint8_t usb_packet_buffer[128];
+void UartOutputDataPacket(DataPacket_t *packet) {
+    if (packet == NULL) {
+        return;
+    }
+
+    switch(packet->Packet_ID) {
+        case PACKET_ID_IMU:
+            sprintf((char *)usb_packet_buffer, "ID%d,%ld,%ld,%ld,%ld,%d,%d.%d,%d,%d,%d\n",
+                    packet->Packet_ID , packet->timestamp, packet->Data.imu.accelX, packet->Data.imu.accelY, packet->Data.imu.accelZ,
+                    packet->Data.imu.gyroX, packet->Data.imu.gyroY, packet->Data.imu.gyroZ, packet->Data.imu.magX, packet->Data.imu.magY, packet->Data.imu.magZ);
+            break;
+        case PACKET_ID_ATTITUDE:
+            sprintf((char *)usb_packet_buffer, "ID%d,%ld,%f,%f,%f\n",
+                    packet->Packet_ID , packet->timestamp, packet->Data.attitude.phi, packet->Data.attitude.theta, packet->Data.attitude.psi);
+            break;
+        case PACKET_ID_GPS:
+            sprintf((char *)usb_packet_buffer, "ID%d,%ld,%ld,%ld,%ld,%d,%d\n",
+                    packet->Packet_ID , packet->timestamp, packet->Data.gps.latitude, packet->Data.gps.longitude, packet->Data.gps.altitude, packet->Data.gps.course, packet->Data.gps.speed);
+            break;
+        case PACKET_ID_POSITION:
+            sprintf((char *)usb_packet_buffer, "ID%d,%ld,%ld,%ld,%ld,%ld,%ld,%ld\n",
+                    packet->Packet_ID , packet->timestamp, packet->Data.position.posX, packet->Data.position.posY, packet->Data.position.posZ,
+                    packet->Data.position.velX, packet->Data.position.velY, packet->Data.position.velZ);
+            break;
+        case PACKET_ID_POWER:
+            sprintf((char *)usb_packet_buffer, "ID%d,%ld,%ld,%ld,%d,%d,%d,%d,%d\n",
+                    packet->Packet_ID , packet->timestamp, packet->Data.power.M1_5V_bus, packet->Data.power.M1_BAT_bus_volt,
+                    packet->Data.power.M2_bus_5V, packet->Data.power.M2_bus_GPA_bat_volt, packet->Data.power.PU_bat_bus_volt,
+                    packet->Data.power.PU_curr, packet->Data.power.PU_pow);
+            break;
+        case PACKET_ID_TEMPERATURE:
+            sprintf((char *)usb_packet_buffer, "ID%d,%ld,%d,%d,%d,%d,%d,%d,%d\n",
+                    packet->Packet_ID , packet->timestamp, packet->Data.temperature.M1_ADC, packet->Data.temperature.M1_BMP,
+                    packet->Data.temperature.M1_DTS, packet->Data.temperature.M1_IMU1, packet->Data.temperature.M1_MAG,
+                    packet->Data.temperature.M2_3V3, packet->Data.temperature.M2_XBee);
+            break;
+        default:
+            return; // Unsupported packet type
+    }
+
+   CDC_Transmit_HS(usb_packet_buffer, strlen((char *)usb_packet_buffer));
 }
 
 InterBoardPacket_t TestPacket;

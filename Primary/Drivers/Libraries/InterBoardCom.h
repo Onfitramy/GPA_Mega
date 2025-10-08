@@ -53,6 +53,8 @@ uint8_t InterBoardBuffer_IsFull(InterBoardCircularBuffer_t* cb);
 uint16_t InterBoardBuffer_Count(InterBoardCircularBuffer_t* cb);
 void InterBoardBuffer_Clear(InterBoardCircularBuffer_t* cb);
 
+void UartOutputDataPacket(DataPacket_t *packet);
+
 void InterBoardCom_Init(void);
 uint8_t InterBoardCom_QueuePacket(InterBoardPacket_t *packet);
 void InterBoardCom_ProcessTxBuffer(void);

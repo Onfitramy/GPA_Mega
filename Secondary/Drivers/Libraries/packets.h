@@ -17,6 +17,7 @@ typedef enum __attribute__((packed)){
     PACKET_ID_POSITION = 0x06, // Position data packet
     PACKET_ID_ATTITUDE = 0x07, // Attitude data packet
     PACKET_ID_KALMANMATRIX = 0x08, // Kalman Matrix data packet
+    PACKET_ID_SPARK = 0x09, // SPARK data packet
 
     PACKET_ID_COMMAND = 0x10, // Command packet
 } PacketType_t;
@@ -89,6 +90,16 @@ typedef struct {
 }KalmanMatrixPayload_t;
 
 typedef struct {
+  float magAngle;      // 4 bytes
+  float posDeviation; // 8 bytes
+  float voltage_driver; // 12 bytes
+  float temperature_NTC1; // 16 bytes
+  float temperature_NTC2; // 20 bytes
+  uint8_t sparkStatus;  // 21 bytes
+  uint8_t reserved[5];  // 26 bytes
+} SPARKPayload_t;
+
+typedef struct {
     CommandTarget_t command_target;
     uint8_t command_id;
     uint8_t params[24];
@@ -108,6 +119,7 @@ typedef union {
     PositionPayload_t position;
     AttitudePayload_t attitude;
     KalmanMatrixPayload_t kalman;
+    SPARKPayload_t spark;
     CommandPayload_t command;
     TestPayload_t test;
     uint8_t raw[26];

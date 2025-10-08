@@ -149,6 +149,7 @@ int main(void)
   uint32_t flashid = W25Q1_ReadID(); //Check if the FLASH works, flashid = 0xEF4017
 
   XBee_Init();
+  //HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 3);
 
   //PU_enableRecovery();
   //PU_enableCamera();

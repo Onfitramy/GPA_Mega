@@ -164,7 +164,7 @@ void XBee_SetAPIMode(uint8_t mode) // mode: 0 = Passthrough 1 = API without esca
     command_sequence[5] = '0' + mode; //Convert mode to ASCII
     command_sequence[6] = '\r';
     HAL_UART_Transmit(&huart1, command_sequence, 7, HAL_MAX_DELAY);
-    HAL_Delay(1000);
+    HAL_Delay(1100);
     command_sequence[0] = 'A';
     command_sequence[1] = 'T';
     command_sequence[2] = 'W';
