@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include "main.h"
+#include "spark.h"
 #include "usbd_cdc_if.h"
 #include "statemachine.h"
 
@@ -206,7 +207,7 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
             }
             break;
         case COMMAND_TARGET_POWERUNIT:
-            // Should never receive this command from secondary board as it should already have handled it
+            spark_sendCommand(dataPacket);
             break;
         case COMMAND_TARGET_TESTING:
             // Handle testing commands

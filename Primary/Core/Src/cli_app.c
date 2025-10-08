@@ -273,6 +273,53 @@ BaseType_t cmd_Logging_FlightDataOut(char *pcWriteBuffer, size_t xWriteBufferLen
     return pdFALSE;
 }
 
+//*****************************************************************************
+BaseType_t cmd_PU_ZeroStepper(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, 1, NULL, 0);
+    InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, &packet);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 30, "Zeroing Power Unit Angle...\r\n");
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_PU_SetAngle(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    float parameter;
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+    parameter = strtof(pcParameter, &endPtr);
+    uint8_t parameters[sizeof(float)];
+    memcpy(parameters, &parameter, sizeof(float));
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, 2, parameters, sizeof(parameters));
+    InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, &packet);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 30, "Setting Power Unit Angle...\r\n");
+
+    return pdFALSE;
+}
+
 BaseType_t cmd_Flash(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {
     (void)pcCommandString;
@@ -389,6 +436,18 @@ const CLI_Command_Definition_t xCommandList[] = {
         .pcCommand = "Logging_FlightDataOut", /* The command string to type. */
         .pcHelpString = "Logging_FlightDataOut <Enable/Disable>: Enables or disables flight data output logging to PC\r\n\r\n",
         .pxCommandInterpreter = cmd_Logging_FlightDataOut, /* The function to run. */
+        .cExpectedNumberOfParameters = 1
+    },
+    {
+        .pcCommand = "PU_ZeroStepper", /* The command string to type. */
+        .pcHelpString = "PU_ZeroStepper: Resets the stepper motor position\r\n\r\n",
+        .pxCommandInterpreter = cmd_PU_ZeroStepper, /* The function to run. */
+        .cExpectedNumberOfParameters = 0
+    },
+    {
+        .pcCommand = "PU_SetAngle", /* The command string to type. */
+        .pcHelpString = "PU_SetAngle <float>: Sets the angle of the stepper motor\r\n\r\n",
+        .pxCommandInterpreter = cmd_PU_SetAngle, /* The function to run. */
         .cExpectedNumberOfParameters = 1
     },
     {

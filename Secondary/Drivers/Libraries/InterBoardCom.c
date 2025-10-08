@@ -284,7 +284,8 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
             InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_MCU, dataPacket);
             break;
         case COMMAND_TARGET_POWERUNIT:
-            // Should never receive this command from secondary board as it should already have handled it
+            // Forward power unit commands to the main board
+            InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_MCU, dataPacket);
             break;
         case COMMAND_TARGET_TESTING:
             // Testing commands are on the main board, forward command

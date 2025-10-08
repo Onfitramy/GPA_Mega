@@ -98,6 +98,13 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(F4_CS_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : SPARK_CS_Pin */
+  GPIO_InitStruct.Pin = SPARK_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(SPARK_CS_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pins : GPIO11_Pin GPIO12_Pin GPIO13_Pin EXT2_CS_Pin
                            M1_LED_Pin */
   GPIO_InitStruct.Pin = GPIO12_Pin|GPIO13_Pin|EXT2_CS_Pin
