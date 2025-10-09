@@ -96,6 +96,7 @@ typedef struct {
     arm_matrix_instance_f32 *K;
     arm_matrix_instance_f32 *R;
     arm_matrix_instance_f32 *S;
+    arm_matrix_instance_f32 *S_inv;
 } ekf_corr_data_t;
 
 /* EKF variables, vectors and matrices */
@@ -115,6 +116,7 @@ extern float v2_corr1[z_size2_corr1];
 extern arm_matrix_instance_f32 H2_corr1;
 extern arm_matrix_instance_f32 R2_corr1;
 extern arm_matrix_instance_f32 S2_corr1;
+extern arm_matrix_instance_f32 S2_inv_corr1;
 extern arm_matrix_instance_f32 K2_corr1;
 
 extern ekf_corr_data_t EKF2_corr2;
@@ -124,9 +126,12 @@ extern float v2_corr2[z_size2_corr2];
 extern arm_matrix_instance_f32 H2_corr2;
 extern arm_matrix_instance_f32 R2_corr2;
 extern arm_matrix_instance_f32 S2_corr2;
+extern arm_matrix_instance_f32 S2_inv_corr2;
 extern arm_matrix_instance_f32 K2_corr2;
 extern float R2_corr2_data[z_size2_corr2*z_size2_corr2];
 
+extern float NIS_EKF2_corr1;
+extern float NIS_EKF2_corr2;
 
 extern ekf_data_t EKF3;
 extern float x3[x_size3];
@@ -142,7 +147,10 @@ extern float v3_corr1[z_size3_corr1];
 extern arm_matrix_instance_f32 H3_corr1;
 extern arm_matrix_instance_f32 R3_corr1;
 extern arm_matrix_instance_f32 S3_corr1;
+extern arm_matrix_instance_f32 S3_inv_corr1;
 extern arm_matrix_instance_f32 K3_corr1;
+
+extern float NIS_EKF3_corr1;
 
 extern double WGS84[3];
 extern double WGS84_ref[3];
@@ -207,7 +215,7 @@ void EKFInit(ekf_data_t *ekf, ekf_instance_t kalman_type, uint8_t x_vec_size, ui
              arm_matrix_instance_f32 *B_mat, float *x_vec, float *u_vec);
 void EKFCorrectionInit(ekf_data_t ekf, ekf_corr_data_t *ekf_corr, ekf_correction_t corr_type, uint8_t z_vec_size,
                        arm_matrix_instance_f32 *H_mat, arm_matrix_instance_f32 *K_mat, arm_matrix_instance_f32 *R_mat,
-                       arm_matrix_instance_f32 *S_mat, float *z_vec, float *h_vec, float *v_vec);
+                       arm_matrix_instance_f32 *S_mat, arm_matrix_instance_f32 *S_inv_mat, float *z_vec, float *h_vec, float *v_vec);
 void EKFStateVInit(ekf_data_t *Kalman, ekf_corr_data_t *ekf_corr);
 void EKFPredictStateV(ekf_data_t *Kalman);
 void EKFPredictCovariance(ekf_data_t *Kalman);
@@ -217,11 +225,13 @@ void EKFUpdateKalmanGain(ekf_data_t *Kalman, ekf_corr_data_t *ekf_corr);
 void EKFCorrectStateV(ekf_data_t *Kalman, ekf_corr_data_t *ekf_corr);
 void EKFCorrectCovariance(ekf_data_t *Kalman, ekf_corr_data_t *ekf_corr);
 
+void EKFGetStateTransitionJacobian(ekf_data_t *Kalman);
+void EKFGetObservationJacobian(ekf_data_t *Kalman, ekf_corr_data_t *ekf_corr);
+
 void EKFPredictionStep(ekf_data_t *Kalman);
 void EKFCorrectionStep(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr);
 
-void EKFGetStateTransitionJacobian(ekf_data_t *Kalman);
-void EKFGetObservationJacobian(ekf_data_t *Kalman, ekf_corr_data_t *ekf_corr);
+void EKFgetNIS(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr, float *NIS);
 
     /*float H_data[6*4] = { original observation model jacobian
         2*(g_vec_enu[0]*q[0]+g_vec_enu[1]*q[3]-g_vec_enu[2]*q[2]), 2*(g_vec_enu[0]*q[1]+g_vec_enu[1]*q[2]+g_vec_enu[2]*q[3]), 2*(-g_vec_enu[0]*q[2]+g_vec_enu[1]*q[1]-g_vec_enu[2]*q[0]), 2*(-g_vec_enu[0]*q[3]+g_vec_enu[1]*q[0]+g_vec_enu[2]*q[1]),

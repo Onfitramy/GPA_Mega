@@ -93,7 +93,7 @@ uint32_t TimeMeasureStop(void) {
 void signalPlotter_init(void) {
   #ifdef SIGNAL_PLOTTER_OUT_1 // imu testing
   signalPlotter_setSignalName(0, "delta Time");
-  signalPlotter_setSignalName(1, "NRF Data");
+  signalPlotter_setSignalName(1, "FlightState");
   signalPlotter_setSignalName(2, "IMU1_ACC_X");
   signalPlotter_setSignalName(3, "IMU1_ACC_Y");
   signalPlotter_setSignalName(4, "IMU1_ACC_Z");
@@ -107,7 +107,7 @@ void signalPlotter_init(void) {
 
   #ifdef SIGNAL_PLOTTER_OUT_2 // raw sensor data
   signalPlotter_setSignalName(0, "delta Time");
-  signalPlotter_setSignalName(1, "NRF Data");
+  signalPlotter_setSignalName(1, "FlightState");
   signalPlotter_setSignalName(2, "MAG_X");
   signalPlotter_setSignalName(3, "MAG_Y");
   signalPlotter_setSignalName(4, "MAG_Z");
@@ -117,8 +117,8 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(8, "GYR_X");
   signalPlotter_setSignalName(9, "GYR_Y");
   signalPlotter_setSignalName(10, "GYR_Z");
-  signalPlotter_setSignalName(11, "pressure");
-  signalPlotter_setSignalName(12, "temperature");
+  signalPlotter_setSignalName(11, "bmp pressure");
+  signalPlotter_setSignalName(12, "bmp temperature");
   signalPlotter_setSignalName(13, "GPS_fix");
   signalPlotter_setSignalName(14, "numSV");
   signalPlotter_setSignalName(15, "hAcc");
@@ -134,7 +134,7 @@ void signalPlotter_init(void) {
 
   #ifdef SIGNAL_PLOTTER_OUT_3 // orientation ekf testing
   signalPlotter_setSignalName(0, "delta Time");
-  signalPlotter_setSignalName(1, "NRF Data");
+  signalPlotter_setSignalName(1, "FlightState");
   signalPlotter_setSignalName(2, "phi");
   signalPlotter_setSignalName(3, "theta");
   signalPlotter_setSignalName(4, "psi");
@@ -162,7 +162,7 @@ void signalPlotter_init(void) {
 
   #ifdef SIGNAL_PLOTTER_OUT_4 // raw sensor data
   signalPlotter_setSignalName(0, "delta_Time");
-  signalPlotter_setSignalName(1, "NRF_Data");
+  signalPlotter_setSignalName(1, "FlightState");
   signalPlotter_setSignalName(2, "phi");
   signalPlotter_setSignalName(3, "theta");
   signalPlotter_setSignalName(4, "psi");
@@ -173,29 +173,27 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(9, "AWORLD_Y");
   signalPlotter_setSignalName(10, "AWORLD_Z");
   signalPlotter_setSignalName(11, "pressure baro");
-  signalPlotter_setSignalName(12, "temperature baro");
-  signalPlotter_setSignalName(13, "height baro");
-  signalPlotter_setSignalName(14, "pressure tot");
-  signalPlotter_setSignalName(15, "temperature tot");
-  signalPlotter_setSignalName(16, "gnss_numSV");
-  signalPlotter_setSignalName(17, "gnss_vAcc");
-  signalPlotter_setSignalName(18, "gnss_sAcc");
-  signalPlotter_setSignalName(19, "gnss_height");
-  signalPlotter_setSignalName(20, "gnss_velU");
-  signalPlotter_setSignalName(21, "EKF_height");
-  signalPlotter_setSignalName(22, "EKF_vel_Z");
-  signalPlotter_setSignalName(23, "EKF_p_ref");
-  signalPlotter_setSignalName(24, "height_comp");
-  signalPlotter_setSignalName(25, "velZ_comp");
-  signalPlotter_setSignalName(26, "FlightState");
-  signalPlotter_setSignalName(27, "Entry_Timestamp");
+  signalPlotter_setSignalName(12, "height baro");
+  signalPlotter_setSignalName(13, "pressure tot");
+  signalPlotter_setSignalName(14, "temperature tot");
+  signalPlotter_setSignalName(15, "gnss_numSV");
+  signalPlotter_setSignalName(16, "gnss_vAcc");
+  signalPlotter_setSignalName(17, "gnss_sAcc");
+  signalPlotter_setSignalName(18, "gnss_height");
+  signalPlotter_setSignalName(19, "gnss_velU");
+  signalPlotter_setSignalName(20, "EKF_height");
+  signalPlotter_setSignalName(21, "EKF_vel_Z");
+  signalPlotter_setSignalName(22, "EKF_p_ref");
+  signalPlotter_setSignalName(23, "height_comp");
+  signalPlotter_setSignalName(24, "velZ_comp");
+  signalPlotter_setSignalName(25, "NIS baro EKF2");
+  signalPlotter_setSignalName(26, "NIS GNSS EKF2");
   #endif
 
   #ifdef SIGNAL_PLOTTER_OUT_5 // variable testing data
   signalPlotter_setSignalName(0, "delta_Time");
-  signalPlotter_setSignalName(1, "NRF_Data");
-  signalPlotter_setSignalName(2, "FlightState");
-  signalPlotter_setSignalName(3, "Entry_Timestamp");
+  signalPlotter_setSignalName(1, "FlightState");
+  signalPlotter_setSignalName(2, "Entry_Timestamp");
   #endif
 
   #ifdef SIGNAL_PLOTTER_OUT_GROUND // ground station data
@@ -212,7 +210,7 @@ void signalPlotter_init(void) {
 void signalPlotter_sendAll(void) {
   #ifdef SIGNAL_PLOTTER_OUT_1
   signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
-  signalPlotter_sendData(1, (float)nrf_timeout);
+  signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
   signalPlotter_sendData(2, imu1_data.accel[0]);
   signalPlotter_sendData(3, imu1_data.accel[1]);
   signalPlotter_sendData(4, imu1_data.accel[2]);
@@ -227,7 +225,7 @@ void signalPlotter_sendAll(void) {
 
   #ifdef SIGNAL_PLOTTER_OUT_2 // signal plotter outputs raw sensor data
   signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
-  signalPlotter_sendData(1, (float)nrf_timeout);
+  signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
   signalPlotter_sendData(2, mag_data.field[0]);
   signalPlotter_sendData(3, mag_data.field[1]);
   signalPlotter_sendData(4, mag_data.field[2]);
@@ -237,8 +235,8 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(8, imu2_data.gyro[0]);
   signalPlotter_sendData(9, imu2_data.gyro[1]);
   signalPlotter_sendData(10, imu2_data.gyro[2]);
-  signalPlotter_sendData(11, pressure);
-  signalPlotter_sendData(12, temperature);
+  signalPlotter_sendData(11, bmp_data.pressure);
+  signalPlotter_sendData(12, bmp_data.temperature);
   signalPlotter_sendData(13, (float)gps_data.gpsFix);
   signalPlotter_sendData(14, (float)gps_data.numSV);
   signalPlotter_sendData(15, (float)gps_data.hAcc/1000.f);
@@ -254,7 +252,7 @@ void signalPlotter_sendAll(void) {
 
   #ifdef SIGNAL_PLOTTER_OUT_3 // signal plotter outputs quaternion ekf testing
   signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
-  signalPlotter_sendData(1, (float)nrf_timeout);
+  signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
   signalPlotter_sendData(2, euler_from_q[0]);
   signalPlotter_sendData(3, euler_from_q[1]);
   signalPlotter_sendData(4, euler_from_q[2]);
@@ -276,13 +274,11 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(20, x3[4]);
   signalPlotter_sendData(21, x3[5]);
   signalPlotter_sendData(22, x3[6]);
-  signalPlotter_sendData(23, (float)flight_sm.currentFlightState);
-  signalPlotter_sendData(24, (float)flight_sm.timestamp_us);
   #endif
 
   #ifdef SIGNAL_PLOTTER_OUT_4 // signal plotter outputs height ekf testing
   signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
-  signalPlotter_sendData(1, (float)nrf_timeout);
+  signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
   signalPlotter_sendData(2, euler_from_q[0]);
   signalPlotter_sendData(3, euler_from_q[1]);
   signalPlotter_sendData(4, euler_from_q[2]);
@@ -293,28 +289,26 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(9, a_WorldFrame[1]);
   signalPlotter_sendData(10, a_WorldFrame[2]);
   signalPlotter_sendData(11, bmp_data.pressure);
-  signalPlotter_sendData(12, bmp_data.temperature);
-  signalPlotter_sendData(13, bmp_data.height);
-  signalPlotter_sendData(14, ptot_data.pressure);
-  signalPlotter_sendData(15, ptot_data.temperature);
-  signalPlotter_sendData(16, (float)gps_data.numSV);
-  signalPlotter_sendData(17, (float)gps_data.vAcc/1000.f);
-  signalPlotter_sendData(18, (float)gps_data.sAcc/1000.f);
-  signalPlotter_sendData(19, (float)gps_data.height/1000.f);
-  signalPlotter_sendData(20, (float)-gps_data.velD/1000.f);
-  signalPlotter_sendData(21, EKF2.x[0]);
-  signalPlotter_sendData(22, EKF2.x[1]);
-  signalPlotter_sendData(23, EKF2.x[2]);
-  signalPlotter_sendData(24, gnss_height_corr);
-  signalPlotter_sendData(25, gnss_velZ_corr);
-  signalPlotter_sendData(26, (float)flight_sm.currentFlightState);
-  signalPlotter_sendData(27, (float)flight_sm.timestamp_us);
+  signalPlotter_sendData(12, bmp_data.height);
+  signalPlotter_sendData(13, ptot_data.pressure);
+  signalPlotter_sendData(14, ptot_data.temperature);
+  signalPlotter_sendData(15, (float)gps_data.numSV);
+  signalPlotter_sendData(16, (float)gps_data.vAcc/1000.f);
+  signalPlotter_sendData(17, (float)gps_data.sAcc/1000.f);
+  signalPlotter_sendData(18, (float)gps_data.height/1000.f);
+  signalPlotter_sendData(19, (float)-gps_data.velD/1000.f);
+  signalPlotter_sendData(20, EKF2.x[0]);
+  signalPlotter_sendData(21, EKF2.x[1]);
+  signalPlotter_sendData(22, EKF2.x[2]);
+  signalPlotter_sendData(23, gnss_height_corr);
+  signalPlotter_sendData(24, gnss_velZ_corr);
+  signalPlotter_sendData(25, NIS_EKF2_corr1);
+  signalPlotter_sendData(26, NIS_EKF2_corr2);
   #endif
 
   #ifdef SIGNAL_PLOTTER_OUT_5 // signal plotter outputs testing data
   signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
-  signalPlotter_sendData(1, (float)nrf_timeout);
-  signalPlotter_sendData(2, (float)flight_sm.currentFlightState);
-  signalPlotter_sendData(3, (float)flight_sm.timestamp_us);
+  signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
+  signalPlotter_sendData(2, (float)flight_sm.timestamp_us);
   #endif
 }

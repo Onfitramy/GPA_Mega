@@ -21,7 +21,7 @@ const float dt = 0.001;
 
 /* --- EKF vectors and matrices --- */
 
-// create new Kalman Filter instance for velocity and height
+// Vertical Position EKF variables
 ekf_data_t EKF2;
 float x2[x_size2] = {0};
 float F2_data[x_size2*x_size2] = {0};
@@ -41,6 +41,8 @@ float R2_corr1_data[z_size2_corr1*z_size2_corr1] = {0};
 arm_matrix_instance_f32 R2_corr1 = {z_size2_corr1, z_size2_corr1, R2_corr1_data};
 float S2_corr1_data[z_size2_corr1*z_size2_corr1] = {0};
 arm_matrix_instance_f32 S2_corr1 = {z_size2_corr1, z_size2_corr1, S2_corr1_data};
+float S2_inv_corr1_data[z_size2_corr1*z_size2_corr1] = {0};
+arm_matrix_instance_f32 S2_inv_corr1 = {z_size2_corr1, z_size2_corr1, S2_inv_corr1_data};
 float K2_corr1_data[x_size2*z_size2_corr1];
 arm_matrix_instance_f32 K2_corr1 = {x_size2, z_size2_corr1, K2_corr1_data};
 
@@ -54,8 +56,13 @@ float R2_corr2_data[z_size2_corr2*z_size2_corr2] = {0};
 arm_matrix_instance_f32 R2_corr2 = {z_size2_corr2, z_size2_corr2, R2_corr2_data};
 float S2_corr2_data[z_size2_corr2*z_size2_corr2] = {0};
 arm_matrix_instance_f32 S2_corr2 = {z_size2_corr2, z_size2_corr2, S2_corr2_data};
+float S2_inv_corr2_data[z_size2_corr2*z_size2_corr2] = {0};
+arm_matrix_instance_f32 S2_inv_corr2 = {z_size2_corr2, z_size2_corr2, S2_inv_corr2_data};
 float K2_corr2_data[x_size2*z_size2_corr2];
 arm_matrix_instance_f32 K2_corr2 = {x_size2, z_size2_corr2, K2_corr2_data};
+
+float NIS_EKF2_corr1;
+float NIS_EKF2_corr2;
 
 // Quaternion EKF variables
 ekf_data_t EKF3;
@@ -71,14 +78,18 @@ ekf_corr_data_t EKF3_corr1;
 float z3_corr1[z_size3_corr1] = {0};
 float h3_corr1[z_size3_corr1] = {0};
 float v3_corr1[z_size3_corr1] = {0};
-float H3_corr1_data[z_size3_corr1*x_size3] = {0}; // 6x7
+float H3_corr1_data[z_size3_corr1*x_size3] = {0};
 arm_matrix_instance_f32 H3_corr1 = {z_size3_corr1, x_size3, H3_corr1_data};
-float R3_corr1_data[z_size3_corr1*z_size3_corr1] = {0}; // 6x6
+float R3_corr1_data[z_size3_corr1*z_size3_corr1] = {0};
 arm_matrix_instance_f32 R3_corr1 = {z_size3_corr1, z_size3_corr1, R3_corr1_data};
-float S3_corr1_data[z_size3_corr1*z_size3_corr1] = {0}; // 6x6
+float S3_corr1_data[z_size3_corr1*z_size3_corr1] = {0};
 arm_matrix_instance_f32 S3_corr1 = {z_size3_corr1, z_size3_corr1, S3_corr1_data};
-float K3_corr1_data[x_size3*z_size3_corr1];       // 7x6
+float S3_inv_corr1_data[z_size3_corr1*z_size3_corr1] = {0};
+arm_matrix_instance_f32 S3_inv_corr1 = {z_size3_corr1, z_size3_corr1, S3_inv_corr1_data};
+float K3_corr1_data[x_size3*z_size3_corr1];
 arm_matrix_instance_f32 K3_corr1 = {x_size3, z_size3_corr1, K3_corr1_data};
+
+float NIS_EKF3_corr1;
 
 
 /* --- Coordinate system variables --- */
@@ -455,7 +466,7 @@ void EKFInit(ekf_data_t *ekf, ekf_instance_t kalman_type, uint8_t x_vec_size, ui
 // Create new EKF correction step instance
 void EKFCorrectionInit(ekf_data_t ekf, ekf_corr_data_t *ekf_corr, ekf_correction_t corr_type, uint8_t z_vec_size,
                        arm_matrix_instance_f32 *H_mat, arm_matrix_instance_f32 *K_mat, arm_matrix_instance_f32 *R_mat,
-                       arm_matrix_instance_f32 *S_mat, float *z_vec, float *h_vec, float *v_vec)
+                       arm_matrix_instance_f32 *S_mat, arm_matrix_instance_f32 *S_inv_mat, float *z_vec, float *h_vec, float *v_vec)
 {
     // DEFAULT: correction step is inactive
     ekf_corr->correction_state = inactive;
@@ -474,6 +485,7 @@ void EKFCorrectionInit(ekf_data_t ekf, ekf_corr_data_t *ekf_corr, ekf_correction
     ekf_corr->K = K_mat;
     ekf_corr->R = R_mat;
     ekf_corr->S = S_mat;
+    ekf_corr->S_inv = S_inv_mat;
 
     if (ekf.type == EKF1_type) {
         // configure orientation EKF correction matrices
@@ -569,16 +581,16 @@ void EKFPredictCovariance(ekf_data_t *ekf) {
         EKFGetStateTransitionJacobian(ekf);
     }
 
-    float M1_data[ekf->x_size*ekf->x_size];
-    arm_matrix_instance_f32 M1 = {ekf->x_size, ekf->x_size, M1_data};
-    float M2_data[ekf->x_size*ekf->x_size];
-    arm_matrix_instance_f32 M2 = {ekf->x_size, ekf->x_size, M2_data};
+    float Temp1_data[ekf->x_size*ekf->x_size];
+    arm_matrix_instance_f32 Temp1_mat = {ekf->x_size, ekf->x_size, Temp1_data};
+    float Temp2_data[ekf->x_size*ekf->x_size];
+    arm_matrix_instance_f32 Temp2_mat = {ekf->x_size, ekf->x_size, Temp2_data};
 
     // calculate Covariance Matrix P(t)^ = F * P(t-1) * F' + Q(t)
-    arm_mat_trans_f32(ekf->F, &M1);
-    arm_mat_mult_f32(ekf->P, &M1, &M2);
-    arm_mat_mult_f32(ekf->F, &M2, &M1);
-    arm_mat_add_f32(&M1, ekf->Q, ekf->P);
+    arm_mat_trans_f32(ekf->F, &Temp1_mat);
+    arm_mat_mult_f32(ekf->P, &Temp1_mat, &Temp2_mat);
+    arm_mat_mult_f32(ekf->F, &Temp2_mat, &Temp1_mat);
+    arm_mat_add_f32(&Temp1_mat, ekf->Q, ekf->P);
 }
 
 
@@ -662,8 +674,9 @@ void EKFUpdateKalmanGain(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
     arm_mat_add_f32(&Temp2_mat, ekf_corr->R, ekf_corr->S);
 
     // calculate ekf Gain K(t) = P^(t) * H'(t) * inv(S(t))
-    arm_mat_inverse_f32(ekf_corr->S, &Temp2_mat);
-    arm_mat_mult_f32(&H_trans_mat, &Temp2_mat, &Temp1_mat);
+    arm_mat_copy_f32(ekf_corr->S, &Temp2_mat);
+    arm_mat_inverse_f32(&Temp2_mat, ekf_corr->S_inv);
+    arm_mat_mult_f32(&H_trans_mat, ekf_corr->S_inv, &Temp1_mat);
     arm_mat_mult_f32(ekf->P, &Temp1_mat, ekf_corr->K);
 }
 
@@ -678,15 +691,15 @@ void EKFCorrectStateV(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
 
 // correct quaternion covariance matrix P(t) = P^(t) - K(t) * S(t) * K'(t)
 void EKFCorrectCovariance(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
-    float M2_data[ekf->x_size*ekf->x_size];
-    arm_matrix_instance_f32 M2 = {ekf->x_size, ekf->x_size, M2_data};
-    float M7_data[ekf_corr->z_size*ekf->x_size];
-    arm_matrix_instance_f32 M7 = {ekf_corr->z_size, ekf->x_size, M7_data};
+    float Temp1_data[ekf->x_size*ekf->x_size];
+    arm_matrix_instance_f32 Temp1_mat = {ekf->x_size, ekf->x_size, Temp1_data};
+    float Temp2_data[ekf_corr->z_size*ekf->x_size];
+    arm_matrix_instance_f32 Temp2_mat = {ekf_corr->z_size, ekf->x_size, Temp2_data};
 
     // update Covariance Matrix P(t) = P^(t) - K(t) * H(t) * P^(t)
-    arm_mat_mult_f32(ekf_corr->H, ekf->P, &M7);
-    arm_mat_mult_f32(ekf_corr->K, &M7, &M2);
-    arm_mat_sub_f32(ekf->P, &M2, ekf->P);
+    arm_mat_mult_f32(ekf_corr->H, ekf->P, &Temp2_mat);
+    arm_mat_mult_f32(ekf_corr->K, &Temp2_mat, &Temp1_mat);
+    arm_mat_sub_f32(ekf->P, &Temp1_mat, ekf->P);
 }
 
 // diagonal must be set to 1 in advance
@@ -807,4 +820,13 @@ void EKFCorrectionStep(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
 
     // update covariance matrix
     EKFCorrectCovariance(ekf, ekf_corr);
+}
+
+// calculate Normalized Innovation Squared
+void EKFgetNIS(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr, float *NIS) {
+    float buffer[ekf_corr->z_size];
+
+    // NIS = v' * S_inv * v
+    arm_mat_vec_mult_f32(ekf_corr->S_inv, ekf_corr->v, buffer);
+    arm_vecN_dot_prod_f32(ekf_corr->z_size, ekf_corr->v, buffer, NIS);
 }

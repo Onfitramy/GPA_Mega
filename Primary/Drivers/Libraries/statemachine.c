@@ -113,12 +113,12 @@ static void StartupEntry(StateMachine_t *sm) {
     /* --- Initialize (Extended) Kalman Filters --- */
     // define Kalman Filter dimensions and pointers for velocity and position
     EKFInit(&EKF2, EKF2_type, x_size2, u_size2, 0.001, &F2, &P2, &Q2, NULL, x2, &a_WorldFrame[2]);
-    EKFCorrectionInit(EKF2, &EKF2_corr1, corr1_type, 1, &H2_corr1, &K2_corr1, &R2_corr1, &S2_corr1, z2_corr1, h2_corr1, v2_corr1); // baro
-    EKFCorrectionInit(EKF2, &EKF2_corr2, corr2_type, 2, &H2_corr2, &K2_corr2, &R2_corr2, &S2_corr2, z2_corr2, h2_corr2, v2_corr2); // GNSS
+    EKFCorrectionInit(EKF2, &EKF2_corr1, corr1_type, 1, &H2_corr1, &K2_corr1, &R2_corr1, &S2_corr1, &S2_inv_corr1, z2_corr1, h2_corr1, v2_corr1); // baro
+    EKFCorrectionInit(EKF2, &EKF2_corr2, corr2_type, 2, &H2_corr2, &K2_corr2, &R2_corr2, &S2_corr2, &S2_inv_corr2, z2_corr2, h2_corr2, v2_corr2); // GNSS
 
     // define Kalman Filter dimensions and pointers for Quaternion EKF
     EKFInit(&EKF3, EKF3_type, x_size3, u_size3, 0.001, &F3, &P3, &Q3, NULL, x3, average_imu_data.gyro);
-    EKFCorrectionInit(EKF3, &EKF3_corr1, corr1_type, 6, &H3_corr1, &K3_corr1, &R3_corr1, &S3_corr1, z3_corr1, h3_corr1, v3_corr1);
+    EKFCorrectionInit(EKF3, &EKF3_corr1, corr1_type, 6, &H3_corr1, &K3_corr1, &R3_corr1, &S3_corr1, &S3_inv_corr1, z3_corr1, h3_corr1, v3_corr1);
 }
 static void InitEntry(StateMachine_t *sm) {
     /* --- Read sensor data for EKF initialization --- */
@@ -243,7 +243,7 @@ static void StartupDo(StateMachine_t *sm, uint16_t freq) {
 }
 static void InitDo(StateMachine_t *sm, uint16_t freq) {
     // Check GPS with 10 Hz
-    if (freq != 10) return;
+    if (freq != 1000) return;
 
     if ((gps_data.gpsFix == 3)) {
         StateMachine_Dispatch(sm, EVENT_FLIGHT_GNSS_FIX);
@@ -251,9 +251,11 @@ static void InitDo(StateMachine_t *sm, uint16_t freq) {
 }
 static void AlignGNCDo(StateMachine_t *sm, uint16_t freq) {
     // Skip GNC alignment for now
-    if (freq != 10) return;
-    StateMachine_Dispatch(sm, EVENT_FLIGHT_FILTER_CONVERGED);
+    if (freq != 100) return;
 
+    EKFgetNIS(&EKF2, &EKF2_corr1, &NIS_EKF2_corr1);
+    EKFgetNIS(&EKF2, &EKF2_corr2, &NIS_EKF2_corr2);
+    EKFgetNIS(&EKF3, &EKF3_corr1, &NIS_EKF3_corr1);
     // TODO: proper GNC alignment algorithm
 }
 static void CheckoutsDo(StateMachine_t *sm, uint16_t freq) {
@@ -427,7 +429,7 @@ void StateMachine_ForceState(StateMachine_t *sm, flight_state_t newState) {
     HAL_TIM_Base_Stop_IT(&htim7);
 
     // start timer to enforce maximum delay until event
-    if (tim7_target_ms = maxEventDelayTable[newState]) {
+    if ((tim7_target_ms = maxEventDelayTable[newState])) {
         HAL_TIM_Base_Start_IT(&htim7);
     }
 

@@ -184,6 +184,18 @@ void arm_vecN_scalar_mult_f32(int N, float32_t *vec, float scalar, float32_t *re
   }
 }
 
+void arm_vecN_dot_prod_f32(int N, float32_t *vecA, float32_t *vecB, float32_t *result) {
+  arm_matrix_instance_f32 vecSrcA;
+  arm_matrix_instance_f32 vecSrcB;
+  arm_matrix_instance_f32 vecDst;
+
+  arm_mat_init_f32(&vecSrcA, 1, N, vecA);
+  arm_mat_init_f32(&vecSrcB, N, 1, vecB);
+  arm_mat_init_f32(&vecDst, 1, 1, result);
+
+  arm_mat_mult_f32(&vecSrcA, &vecSrcB, &vecDst);
+}
+
 void arm_vecN_concatenate_f32(int N1, float32_t *vec1, int N2, float32_t *vec2, float32_t *result) {
   for (int i = 0; i < N1; i++) {
     result[i] = vec1[i];
