@@ -426,14 +426,6 @@ void EKFInit(ekf_data_t *ekf, ekf_instance_t kalman_type, uint8_t x_vec_size, ui
 
     if (kalman_type == EKF1_type) {
         // initialize EKF1 matrices
-        // configure orientation EKF matrices
-        arm_mat_fill_diag_f32(ekf->F, 0, 0, 1.);
-
-        arm_mat_set_diag_f32(ekf->P, 0, 0, 3, 0.1);     // initial guess for angle variance
-        arm_mat_set_diag_f32(ekf->P, 3, 3, 3, 0.001);   // initial guess for offset variance
-
-        arm_mat_set_diag_f32(ekf->Q, 0, 0, 3, 1e-8);    // variance of gyroscope data   (noise)
-        arm_mat_set_diag_f32(ekf->Q, 3, 3, 3, 1e-12);   // variance of gyroscope offset (drift)
 
     } else if (kalman_type == EKF2_type) {
         // initialize EKF2 matrices
@@ -488,10 +480,7 @@ void EKFCorrectionInit(ekf_data_t ekf, ekf_corr_data_t *ekf_corr, ekf_correction
     ekf_corr->S_inv = S_inv_mat;
 
     if (ekf.type == EKF1_type) {
-        // configure orientation EKF correction matrices
-        arm_mat_fill_diag_f32(ekf_corr->H, 0, 0, 1.);
-
-        arm_mat_fill_diag_f32(ekf_corr->R, 0, 0, 1.);         // angle fixing method variance (noise)
+        // configure EKF1 correction matrices
 
     } else if (ekf.type == EKF2_type) {
         // configure height EKF correction matrices
@@ -523,12 +512,7 @@ void EKFStateVInit(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
 
 void EKFPredictStateV(ekf_data_t *ekf) {
     if (ekf->type == EKF1_type) {
-        float dx[ekf->x_size];
-
         // calculate predicted state x^(t) = F * x(t-1) + B * u(t)
-        arm_mat_vec_mult_f32(ekf->F, ekf->x, ekf->x);
-        arm_mat_vec_mult_f32(ekf->B, ekf->u, dx);
-        arm_vecN_add_f32(ekf->x_size, ekf->x, dx, ekf->x);
 
     } else if (ekf->type == EKF2_type) {
         ekf->x[0] += ekf->x[1]*ekf->dt + 0.5*ekf->u[0]*ekf->dt*ekf->dt;
@@ -597,7 +581,6 @@ void EKFPredictCovariance(ekf_data_t *ekf) {
 void EKFPredictMeasurement(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
     if (ekf->type == EKF1_type) {
         // h(t) = H * x^(t)
-        arm_mat_vec_mult_f32(ekf_corr->H, ekf->x, ekf_corr->h);
 
     } else if (ekf->type == EKF2_type) {
         if (ekf_corr->type == corr1_type) {
@@ -656,16 +639,15 @@ void EKFGetInnovation(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
 
 // update ekf Gain
 void EKFUpdateKalmanGain(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
-    if (ekf->type == EKF2_type || ekf->type == EKF3_type) {
-        EKFGetObservationJacobian(ekf, ekf_corr);
-    }
-
-    float H_trans_data[ekf->x_size*ekf_corr->z_size];
-    arm_matrix_instance_f32 H_trans_mat = {ekf->x_size, ekf_corr->z_size, H_trans_data};
     float Temp1_data[ekf->x_size*ekf_corr->z_size];
     arm_matrix_instance_f32 Temp1_mat = {ekf->x_size, ekf_corr->z_size, Temp1_data};
     float Temp2_data[ekf_corr->z_size*ekf_corr->z_size];
     arm_matrix_instance_f32 Temp2_mat = {ekf_corr->z_size, ekf_corr->z_size, Temp2_data};
+    float H_trans_data[ekf->x_size*ekf_corr->z_size];
+    arm_matrix_instance_f32 H_trans_mat = {ekf->x_size, ekf_corr->z_size, H_trans_data};
+
+    // retrieve observation jacobian H
+    EKFGetObservationJacobian(ekf, ekf_corr);
 
     // calculate Measurement Prediction Covariance Matrix S(t) = H * P^(t) * H' + R
     arm_mat_trans_f32(ekf_corr->H, &H_trans_mat);
@@ -748,7 +730,7 @@ void EKFGetStateTransitionJacobian(ekf_data_t *ekf) {
 void EKFGetObservationJacobian(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
 
     if (ekf->type == EKF1_type) {
-
+        return;
     } else if (ekf->type == EKF2_type) {
         if(ekf_corr->type == corr1_type) {
             arm_mat_set_entry_f32(ekf_corr->H, 0, 0, (-g0_const * ekf_corr->h[0]) / (R_const * (T0_const + L_const * ekf->x[0])));
@@ -806,11 +788,11 @@ void EKFCorrectionStep(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
     // skip correction step if status flag is set to inactive
     if (ekf_corr->correction_state != active) return;
 
-    // calculate Kalman Gain
-    EKFUpdateKalmanGain(ekf, ekf_corr);
-
     // predict measurement
     EKFPredictMeasurement(ekf, ekf_corr);
+
+    // calculate Kalman Gain
+    EKFUpdateKalmanGain(ekf, ekf_corr);
 
     // calculate difference between predicted and actual measurement
     EKFGetInnovation(ekf, ekf_corr);
@@ -829,4 +811,16 @@ void EKFgetNIS(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr, float *NIS) {
     // NIS = v' * S_inv * v
     arm_mat_vec_mult_f32(ekf_corr->S_inv, ekf_corr->v, buffer);
     arm_vecN_dot_prod_f32(ekf_corr->z_size, ekf_corr->v, buffer, NIS);
+}
+
+// returns true if predicted variance obeys thresholds
+bool EKFisAligned(ekf_data_t *ekf) {
+    if(ekf->type == EKF2_type) {
+        if (arm_mat_get_entry_f32(ekf->P, 0, 0) > P_VAR_HEIGHT_THRESH) return false;
+        else if (arm_mat_get_entry_f32(ekf->P, 1, 1) > P_VAR_VELZ_THRESH) return false;
+        else if (arm_mat_get_entry_f32(ekf->P, 2, 2) > P_VAR_PREF_THRESH) return false;
+        else return true;
+    } else if (ekf->type == EKF3_type) {
+        return true;
+    }
 }

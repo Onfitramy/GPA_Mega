@@ -289,6 +289,7 @@ void StartDefaultTask(void *argument)
         EKF2_corr1.z[0] = bmp_data.pressure;
         arm_mat_set_entry_f32(EKF2_corr1.R, 0, 0, BARO_VAR);
         EKFCorrectionStep(&EKF2, &EKF2_corr1);
+        EKFgetNIS(&EKF2, &EKF2_corr1, &NIS_EKF2_corr1);
       }
 
       //Dont activate this and the SPARK communication at the same time, because they use the same SPI
@@ -348,6 +349,7 @@ void Start100HzTask(void *argument) {
     // Quaternion EKF correction step
     arm_vecN_concatenate_f32(3, average_imu_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
     EKFCorrectionStep(&EKF3, &EKF3_corr1);
+    EKFgetNIS(&EKF3, &EKF3_corr1, &NIS_EKF3_corr1);
 
     ShowStatus(flight_sm.currentFlightState, 1, 100);
 
@@ -412,6 +414,7 @@ void Start10HzTask(void *argument) {
 
       // Height EKF GNSS correction step
       EKFCorrectionStep(&EKF2, &EKF2_corr2);
+      EKFgetNIS(&EKF2, &EKF2_corr2, &NIS_EKF2_corr2);
     }
 
     // transmit data

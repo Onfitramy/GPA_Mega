@@ -188,6 +188,9 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(24, "velZ_comp");
   signalPlotter_setSignalName(25, "NIS baro EKF2");
   signalPlotter_setSignalName(26, "NIS GNSS EKF2");
+  signalPlotter_setSignalName(27, "EKF height var");
+  signalPlotter_setSignalName(28, "EKF velZ var");
+  signalPlotter_setSignalName(29, "EKF pref var");
   #endif
 
   #ifdef SIGNAL_PLOTTER_OUT_5 // variable testing data
@@ -304,6 +307,9 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(24, gnss_velZ_corr);
   signalPlotter_sendData(25, NIS_EKF2_corr1);
   signalPlotter_sendData(26, NIS_EKF2_corr2);
+  signalPlotter_sendData(27, arm_mat_get_entry_f32(EKF2.P, 0, 0));
+  signalPlotter_sendData(28, arm_mat_get_entry_f32(EKF2.P, 1, 1));
+  signalPlotter_sendData(29, arm_mat_get_entry_f32(EKF2.P, 2, 2));
   #endif
 
   #ifdef SIGNAL_PLOTTER_OUT_5 // signal plotter outputs testing data

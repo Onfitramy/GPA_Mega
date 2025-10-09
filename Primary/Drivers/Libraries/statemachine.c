@@ -243,19 +243,17 @@ static void StartupDo(StateMachine_t *sm, uint16_t freq) {
 }
 static void InitDo(StateMachine_t *sm, uint16_t freq) {
     // Check GPS with 10 Hz
-    if (freq != 1000) return;
+    if (freq != 10) return;
 
     if ((gps_data.gpsFix == 3)) {
         StateMachine_Dispatch(sm, EVENT_FLIGHT_GNSS_FIX);
     }
 }
 static void AlignGNCDo(StateMachine_t *sm, uint16_t freq) {
-    // Skip GNC alignment for now
-    if (freq != 100) return;
-
-    EKFgetNIS(&EKF2, &EKF2_corr1, &NIS_EKF2_corr1);
-    EKFgetNIS(&EKF2, &EKF2_corr2, &NIS_EKF2_corr2);
-    EKFgetNIS(&EKF3, &EKF3_corr1, &NIS_EKF3_corr1);
+    if (freq != 10) return;
+    if (EKFisAligned(&EKF2) && EKFisAligned(&EKF3)) {
+        StateMachine_Dispatch(sm, EVENT_FLIGHT_FILTER_CONVERGED);
+    }
     // TODO: proper GNC alignment algorithm
 }
 static void CheckoutsDo(StateMachine_t *sm, uint16_t freq) {

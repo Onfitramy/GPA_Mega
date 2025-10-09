@@ -22,6 +22,10 @@
 #define BARO_VAR    2*2
 #define REFERENCE_PRESSURE_VAR 1e-6
 
+#define P_VAR_HEIGHT_THRESH 0.01
+#define P_VAR_VELZ_THRESH   0.001
+#define P_VAR_PREF_THRESH   1
+
 
 /* --- Event detection Settings --- */
 #define LIFTOFF_ACC_BUFFER_SIZE 50
@@ -232,6 +236,8 @@ void EKFPredictionStep(ekf_data_t *Kalman);
 void EKFCorrectionStep(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr);
 
 void EKFgetNIS(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr, float *NIS);
+bool EKFisAligned(ekf_data_t *ekf);
+
 
     /*float H_data[6*4] = { original observation model jacobian
         2*(g_vec_enu[0]*q[0]+g_vec_enu[1]*q[3]-g_vec_enu[2]*q[2]), 2*(g_vec_enu[0]*q[1]+g_vec_enu[1]*q[2]+g_vec_enu[2]*q[3]), 2*(-g_vec_enu[0]*q[2]+g_vec_enu[1]*q[1]-g_vec_enu[2]*q[0]), 2*(-g_vec_enu[0]*q[3]+g_vec_enu[1]*q[0]+g_vec_enu[2]*q[1]),
