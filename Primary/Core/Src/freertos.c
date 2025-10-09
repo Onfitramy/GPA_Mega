@@ -100,6 +100,7 @@ Data_Package_Send tx_data;
 StreamBufferHandle_t xStreamBuffer;
 QueueHandle_t InterruptQueue;
 QueueHandle_t InterBoardCom_Queue;
+QueueHandle_t USB_Tx_Queue;
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -198,6 +199,7 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_QUEUES */
   InterruptQueue = xQueueCreate(10, sizeof(uint8_t)); // Queue for 10 bytes
   InterBoardCom_Queue = xQueueCreate(10, sizeof(InterBoardPacket_t));
+  USB_Tx_Queue = xQueueCreate(10, sizeof(InterBoardPacket_t));
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -383,16 +385,16 @@ void Start10HzTask(void *argument) {
     if (is_groundstation) { //Groundstation requests data from secondary board
 
     } else { //Secondary board sends data to groundstation
-      /*UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &average_imu_data, &mag_data);
-      UartOutputDataPacket(&IMU_DataPacket);
+      UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &average_imu_data, &mag_data);
+      USB_QueueDataPacket(&IMU_DataPacket);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);
 
       UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler_from_q[0], euler_from_q[1], euler_from_q[2]);
-      UartOutputDataPacket(&Attitude_DataPacket);
+      USB_QueueDataPacket(&Attitude_DataPacket);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &Attitude_DataPacket);
 
       UpdateGPSDataPacket(&GPS_DataPacket, HAL_GetTick(), &gps_data);
-      InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &GPS_DataPacket);*/
+      InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &GPS_DataPacket);
     }
 
     if (flight_sm.currentFlightState != STATE_FLIGHT_STARTUP && flight_sm.currentFlightState != STATE_FLIGHT_INIT) {
@@ -464,6 +466,9 @@ void StartInterruptHandlerTask(void *argument)
   char GPS_Buffer[100]; // Buffer for GPS data
   InterBoardCom_Init();
 
+  volatile bool usb_queue_enabled = true;
+  uint32_t usb_queue_enable_time = 0;
+
   // Create queue set that can hold items from both queues
   QueueSetHandle_t xQueueSet = xQueueCreateSet(20); // Total items from both queues
 
@@ -475,6 +480,10 @@ void StartInterruptHandlerTask(void *argument)
   {
     // Wait on the queue set with timeout (blocks efficiently)
     QueueSetMemberHandle_t xActivatedMember = xQueueSelectFromSet(xQueueSet, portMAX_DELAY);
+
+    if (!usb_queue_enabled && HAL_GetTick() >= usb_queue_enable_time) {
+      usb_queue_enabled = true;
+    }
 
     if (xActivatedMember == InterruptQueue) {
       if (xQueueReceive(InterruptQueue, &receivedData, 0) == pdTRUE) {
@@ -502,6 +511,22 @@ void StartInterruptHandlerTask(void *argument)
         HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
         // Process received InterBoardCom_Packet
         InterBoardCom_ParsePacket(&InterBoardCom_Packet);
+      }
+    }
+
+    if (!usb_queue_enabled) {
+      continue; // Skip processing if USB queue is disabled
+    } else {
+      DataPacket_t receivedPacket;
+      if (xQueueReceive(USB_Tx_Queue, &receivedPacket, 0) == pdTRUE) {
+        if (USB_OutputDataPacket(&receivedPacket) == USBD_OK) {
+          usb_queue_enable_time = HAL_GetTick() + 1; // Disable for 1ms
+          usb_queue_enabled = false;
+        } else {
+          usb_queue_enable_time = HAL_GetTick() + 1; // Disable for 1ms
+          usb_queue_enabled = false;
+          xQueueSendToFront(USB_Tx_Queue, &receivedPacket, 0);
+        }
       }
     }
   }

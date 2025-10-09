@@ -263,7 +263,7 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t *packet) {
                     CDC_Transmit_HS(test_sending, strlen((char *)test_sending));
                 }*/ //For Debug with unfinished groundstation software
                 if(packet->Data[0] == PACKET_ID_IMU) {
-                    //UartOutputDataPacket((DataPacket_t *)packet->Data);
+                    //USB_OutputDataPacket((DataPacket_t *)packet->Data);
                 }
             }
             break;
@@ -284,9 +284,20 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t *packet) {
 }
 
 uint8_t usb_packet_buffer[128];
-void UartOutputDataPacket(DataPacket_t *packet) {
+extern QueueHandle_t USB_Tx_Queue;
+uint8_t USB_QueueDataPacket(DataPacket_t *packet) {
     if (packet == NULL) {
-        return;
+        return 0;
+    }
+    if (xQueueSend(USB_Tx_Queue, packet, 0) == pdTRUE) {
+        return 1; // Successfully queued
+    }
+    return 0; // Queue full or error
+}
+
+uint8_t USB_OutputDataPacket(DataPacket_t *packet) {
+    if (packet == NULL) {
+        return 0;
     }
 
     switch(packet->Packet_ID) {
@@ -323,9 +334,7 @@ void UartOutputDataPacket(DataPacket_t *packet) {
         default:
             return; // Unsupported packet type
     }
-    uint32_t start = HAL_GetTickUS();
-    while(CDC_Transmit_HS(usb_packet_buffer, strlen((char *)usb_packet_buffer)) == USBD_BUSY);
-    uint32_t dur = HAL_GetTickDiffUS(start);
+    return CDC_Transmit_HS(usb_packet_buffer, strlen((char *)usb_packet_buffer));
 }
 
 InterBoardPacket_t TestPacket;

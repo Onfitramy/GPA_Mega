@@ -31,6 +31,8 @@ extern "C" {
 #include "FreeRTOS.h"
 #include "queue.h"
 
+#include "usb_device.h"
+
 #include "ws2812.h"
 #include "SERVO.h"
 #include "IMUS.h"
