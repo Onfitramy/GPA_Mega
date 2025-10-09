@@ -102,8 +102,8 @@ uint32_t HAL_GetTickDiffUS(uint32_t start);
 #define PWM1_GPIO_Port GPIOA
 #define PWM2_Pin GPIO_PIN_1
 #define PWM2_GPIO_Port GPIOA
-#define SPARK_CS_Pin GPIO_PIN_2
-#define SPARK_CS_GPIO_Port GPIOA
+#define PWM3_Pin GPIO_PIN_2
+#define PWM3_GPIO_Port GPIOA
 #define PWM4_Pin GPIO_PIN_3
 #define PWM4_GPIO_Port GPIOA
 #define F4_CS_Pin GPIO_PIN_4

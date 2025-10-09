@@ -292,10 +292,9 @@ void StartDefaultTask(void *argument)
       }
 
       //Dont activate this and the SPARK communication at the same time, because they use the same SPI
-      //if (ptot_readData(&ptot_data.pressure, &ptot_data.temperature)) {
+      if (ptot_readData(&ptot_data.pressure, &ptot_data.temperature)) {
         // execute this if new data is available
-
-      //}
+      }
 
       // KALMAN FILTER, QUATERNION
       // prediction step
@@ -382,7 +381,7 @@ void Start10HzTask(void *argument) {
     if (is_groundstation) { //Groundstation requests data from secondary board
 
     } else { //Secondary board sends data to groundstation
-      UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &average_imu_data, &mag_data);
+      /*UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &average_imu_data, &mag_data);
       UartOutputDataPacket(&IMU_DataPacket);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);
 
@@ -391,7 +390,7 @@ void Start10HzTask(void *argument) {
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &Attitude_DataPacket);
 
       UpdateGPSDataPacket(&GPS_DataPacket, HAL_GetTick(), &gps_data);
-      InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &GPS_DataPacket);
+      InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &GPS_DataPacket);*/
     }
 
     if (flight_sm.currentFlightState != STATE_FLIGHT_STARTUP && flight_sm.currentFlightState != STATE_FLIGHT_INIT) {

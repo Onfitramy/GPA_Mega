@@ -9,11 +9,11 @@ bool ptot_readData(float *pressure, float *temperature) {
     uint16_t pressure_bits = 0;
     uint16_t temperature_bits = 0;
 
-    HAL_GPIO_WritePin(EXT2_CS_GPIO_Port, EXT2_CS_Pin, GPIO_PIN_RESET); // Activate CS
+    HAL_GPIO_WritePin(PWM4_GPIO_Port, PWM4_Pin, GPIO_PIN_RESET); // Activate CS
 
     HAL_SPI_Receive(&hspi2, buffer, 4, HAL_MAX_DELAY);
 
-    HAL_GPIO_WritePin(EXT2_CS_GPIO_Port, EXT2_CS_Pin, GPIO_PIN_SET); // Deactivate CS
+    HAL_GPIO_WritePin(PWM4_GPIO_Port, PWM4_Pin, GPIO_PIN_SET); // Deactivate CS
 
     status_bits = (buffer[0] & 0xC0) >> 6;
 
