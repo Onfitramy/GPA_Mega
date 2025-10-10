@@ -136,7 +136,7 @@ float gnss_velZ_corr;
 float acc_z_buf[LIFTOFF_ACC_BUFFER_SIZE] = {0};
 uint16_t acc_z_index = 0;
 
-/* ------------------------------------------- FUNCTIONS ------------------------------------------- */
+/* ------------------------------------------- GENERAL PURPOSE FUNCTIONS ------------------------------------------- */
 
 // set boundaries for angle
 void normalizeAngle(float *angle, float upper_boundary, float lower_boundary, float step_size) {
@@ -399,6 +399,12 @@ void BaroHeightToPressure(float height, float pressure_reference, float *pressur
     buffer = pow(L_const / T0_const * height + 1., -g0_const / L_const / R_const) * pressure_reference;
     *pressure = (float)buffer;
 }
+
+void MagnetometerCalibration() {
+    
+}
+
+/* ------------------------------------------- KALMAN FILTER FUNCTIONS ------------------------------------------- */
 
 // create new Kalman Filter instance
 void EKFInit(ekf_data_t *ekf, ekf_instance_t kalman_type, uint8_t x_vec_size, uint8_t u_vec_size, const float dt,

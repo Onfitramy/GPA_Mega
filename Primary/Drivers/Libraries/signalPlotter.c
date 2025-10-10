@@ -317,4 +317,6 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
   signalPlotter_sendData(2, (float)flight_sm.timestamp_us);
   #endif
+
+  signalPlotter_executeTransmission(HAL_GetTick());
 }

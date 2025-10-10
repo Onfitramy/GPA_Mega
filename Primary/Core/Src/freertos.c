@@ -141,7 +141,6 @@ const osThreadAttr_t InterruptHandlerTask_attributes = {
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
-uint8_t SelfTest(void);
 void ReadInternalADC(uint32_t* temperature, uint32_t* v_ref);
 /* USER CODE END FunctionPrototypes */
 
@@ -327,7 +326,7 @@ void Start100HzTask(void *argument) {
   for(;;) {
     // Run 100 Hz Do Actions
     StateMachine_DoActions(&flight_sm, 100);
-
+    
     if (is_groundstation) {
       UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &imu1_data, &mag_data);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_LOAD_REQUEST | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);
@@ -345,8 +344,6 @@ void Start100HzTask(void *argument) {
     InterBoardCom_ProcessTxBuffer();
 
     signalPlotter_sendAll();
-
-    signalPlotter_executeTransmission(HAL_GetTick());
 
     // Quaternion EKF correction step
     arm_vecN_concatenate_f32(3, average_imu_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
@@ -385,6 +382,7 @@ void Start10HzTask(void *argument) {
     if (is_groundstation) { //Groundstation requests data from secondary board
 
     } else { //Secondary board sends data to groundstation
+      /*
       UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &average_imu_data, &mag_data);
       USB_QueueDataPacket(&IMU_DataPacket);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);
@@ -394,7 +392,7 @@ void Start10HzTask(void *argument) {
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &Attitude_DataPacket);
 
       UpdateGPSDataPacket(&GPS_DataPacket, HAL_GetTick(), &gps_data);
-      InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &GPS_DataPacket);
+      InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &GPS_DataPacket);*/
     }
 
     if (flight_sm.currentFlightState != STATE_FLIGHT_STARTUP && flight_sm.currentFlightState != STATE_FLIGHT_INIT) {

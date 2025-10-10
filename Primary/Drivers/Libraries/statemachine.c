@@ -2,64 +2,114 @@
 
 StateMachine_t flight_sm;
 
-static flight_state_t AbortHandler(flight_event_t event);
-static flight_state_t StartupHandler(flight_event_t event);
-static flight_state_t InitHandler(flight_event_t event);
-static flight_state_t AlignGNCHandler(flight_event_t event);
-static flight_state_t CheckoutsHandler(flight_event_t event);
-static flight_state_t ArmedHandler(flight_event_t event);
-static flight_state_t BurnHandler(flight_event_t event);
-static flight_state_t CoastHandler(flight_event_t event);
-static flight_state_t UnbrakedDescendHandler(flight_event_t event);
-static flight_state_t DrogueDescendHandler(flight_event_t event);
-static flight_state_t MainDescendHandler(flight_event_t event);
-static flight_state_t LandedHandler(flight_event_t event);
+/* --- Event handlers --- */
+static flight_state_t AbortHandler(flight_event_t event) {
+    switch (event) {
+        default: return STATE_FLIGHT_ABORT;
+    }
+}
 
-/* --- State handler lookup table --- */
-typedef flight_state_t (*StateHandler_t)(flight_event_t event);
-static StateHandler_t stateTable[STATE_FLIGHT_MAX] = {
-    AbortHandler,
-    StartupHandler,
-    InitHandler,
-    AlignGNCHandler,
-    CheckoutsHandler,
-    ArmedHandler,
-    BurnHandler,
-    CoastHandler,
-    UnbrakedDescendHandler,
-    DrogueDescendHandler,
-    MainDescendHandler,
-    LandedHandler
-};
+static flight_state_t StartupHandler(flight_event_t event) {
+    switch (event) {
+        case EVENT_FLIGHT_STARTUP_COMPLETE:     return STATE_FLIGHT_INIT;
+        default: return STATE_FLIGHT_STARTUP;
+    }
+}
 
-uint32_t minEventDelayTable[EVENT_FLIGHT_MAX] = {
-    0,
-    0,
-    0,
-    MIN_DELAY_UNTIL_FILTER_CONVERGED,
-    MIN_DELAY_UNTIL_CHECKOUTS_COMPLETE,
-    MIN_DELAY_UNTIL_LAUNCH_DETECTED,
-    MIN_DELAY_UNTIL_BURNOUT_DETECTED,
-    MIN_DELAY_UNTIL_APOGEE_DETECTED,
-    0,
-    0,
-    MIN_DELAY_UNTIL_TOUCHDOWN
-};
+static flight_state_t InitHandler(flight_event_t event) {
+    switch (event) {
+        case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
+        case EVENT_FLIGHT_GNSS_FIX:             return STATE_FLIGHT_GNC_ALIGN;
+        case EVENT_TEST_MODE_ENTER:             return STATE_TEST_INIT;
+        default: return STATE_FLIGHT_INIT;
+    }
+}
 
-uint32_t maxEventDelayTable[STATE_FLIGHT_MAX] = {
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    MAX_DELAY_UNTIL_BURNOUT_DETECTED,
-    MAX_DELAY_UNTIL_APOGEE_DETECTED,
-    MAX_DELAY_UNTIL_TOUCHDOWN_BAD,
-    MAX_DELAY_UNTIL_TOUCHDOWN_DROGUE,
-    MAX_DELAY_UNTIL_TOUCHDOWN_MAIN,
-    0
-};
+static flight_state_t AlignGNCHandler(flight_event_t event) {
+    switch (event) {
+        case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
+        case EVENT_FLIGHT_FILTER_CONVERGED:     return STATE_FLIGHT_CHECKOUTS;
+        default: return STATE_FLIGHT_GNC_ALIGN;
+    }
+}
+
+static flight_state_t CheckoutsHandler(flight_event_t event) {
+    switch (event) {
+        case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
+        case EVENT_FLIGHT_CHECKOUTS_COMPLETE:   return STATE_FLIGHT_ARMED;
+        default: return STATE_FLIGHT_CHECKOUTS;
+    }
+}
+
+static flight_state_t ArmedHandler(flight_event_t event) {
+    switch (event) {
+        case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
+        case EVENT_FLIGHT_LAUNCH_DETECTED:      return STATE_FLIGHT_BURN;
+        default: return STATE_FLIGHT_ARMED;
+    }
+}
+
+static flight_state_t BurnHandler(flight_event_t event) {
+    switch (event) {
+        case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
+        case EVENT_FLIGHT_BURNOUT_DETECTED:     return STATE_FLIGHT_COAST;
+        default: return STATE_FLIGHT_BURN;
+    }
+}
+
+static flight_state_t CoastHandler(flight_event_t event) {
+    switch (event) {
+        case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
+        case EVENT_FLIGHT_APOGEE_DETECTED:      return STATE_FLIGHT_DESCEND_UNBRAKED;
+        default: return STATE_FLIGHT_COAST;
+    }
+}
+
+static flight_state_t UnbrakedDescendHandler(flight_event_t event) {
+    switch (event) {
+        case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
+        case EVENT_FLIGHT_DROGUE_DEPLOY:        return STATE_FLIGHT_DESCEND_DROGUE;
+        case EVENT_FLIGHT_TOUCHDOWN:            return STATE_FLIGHT_LANDED; // :(
+        default: return STATE_FLIGHT_DESCEND_UNBRAKED;
+    }
+}
+
+static flight_state_t DrogueDescendHandler(flight_event_t event) {
+    switch (event) {
+        case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
+        case EVENT_FLIGHT_MAIN_DEPLOY:          return STATE_FLIGHT_DESCEND_MAIN;
+        case EVENT_FLIGHT_TOUCHDOWN:            return STATE_FLIGHT_LANDED; // :/
+        default: return STATE_FLIGHT_DESCEND_DROGUE;
+    }
+}
+
+static flight_state_t MainDescendHandler(flight_event_t event) {
+    switch (event) {
+        case EVENT_FLIGHT_TOUCHDOWN:            return STATE_FLIGHT_LANDED;
+        default:                                return STATE_FLIGHT_DESCEND_MAIN;
+    }
+}
+
+static flight_state_t LandedHandler(flight_event_t event) {
+    switch (event) {
+        default: return STATE_FLIGHT_LANDED;
+    }
+}
+
+static flight_state_t TestInitHandler(flight_event_t event) {
+    switch (event) {
+        case EVENT_TEST_CALIBRATE:              return STATE_TEST_CALIB;
+        case EVENT_TEST_MODE_EXIT:              return STATE_FLIGHT_INIT;
+        default: return STATE_TEST_INIT;
+    }
+}
+
+static flight_state_t TestCalibHandler(flight_event_t event) {
+    switch (event) {
+        case EVENT_TEST_MODE_EXIT:              return STATE_FLIGHT_INIT;
+        default: return STATE_TEST_CALIB;
+    }
+}
 
 /* --- Entry actions --- */
 static void AbortEntry(StateMachine_t *sm) {
@@ -197,6 +247,8 @@ static void LandedEntry(StateMachine_t *sm) {
     // slow xBee and NRF data rate down to save power
     // enable buzzer
 }
+static void TestInitEntry(StateMachine_t *sm) {}
+static void TestCalibEntry(StateMachine_t *sm) {}
 
 /* --- Do actions --- */
 static void AbortDo(StateMachine_t *sm, uint16_t freq) {}
@@ -283,6 +335,8 @@ static void UnbrakedDescendDo(StateMachine_t *sm, uint16_t freq) {}
 static void DrogueDescendDo(StateMachine_t *sm, uint16_t freq) {}
 static void MainDescendDo(StateMachine_t *sm, uint16_t freq) {}
 static void LandedDo(StateMachine_t *sm, uint16_t freq) {}
+static void TestInitDo(StateMachine_t *sm, uint16_t freq) {}
+static void TestCalibDo(StateMachine_t *sm, uint16_t freq) {}
 
 /* --- Exit actions --- */
 static void AbortExit(StateMachine_t *sm) {}
@@ -303,6 +357,112 @@ static void UnbrakedDescendExit(StateMachine_t *sm) {}
 static void DrogueDescendExit(StateMachine_t *sm) {}
 static void MainDescendExit(StateMachine_t *sm) {}
 static void LandedExit(StateMachine_t *sm) {}
+static void TestInitExit(StateMachine_t *sm) {}
+static void TestCalibExit(StateMachine_t *sm) {}
+
+/* --- Lookup tables for state functions --- */
+static StateHandler_t stateHandlerTable[STATE_MAX] = {
+    AbortHandler,
+    StartupHandler,
+    InitHandler,
+    AlignGNCHandler,
+    CheckoutsHandler,
+    ArmedHandler,
+    BurnHandler,
+    CoastHandler,
+    UnbrakedDescendHandler,
+    DrogueDescendHandler,
+    MainDescendHandler,
+    LandedHandler,
+    TestInitHandler,
+    TestCalibHandler
+};
+
+static StateEntry_t stateEntryTable[STATE_MAX] = {
+    AbortEntry,
+    StartupEntry,
+    InitEntry,
+    AlignGNCEntry,
+    CheckoutsEntry,
+    ArmedEntry,
+    BurnEntry,
+    CoastEntry,
+    UnbrakedDescendEntry,
+    DrogueDescendEntry,
+    MainDescendEntry,
+    LandedEntry,
+    TestInitEntry,
+    TestCalibEntry
+};
+
+static StateDo_t stateDoTable[STATE_MAX] = {
+    AbortDo,
+    StartupDo,
+    InitDo,
+    AlignGNCDo,
+    CheckoutsDo,
+    ArmedDo,
+    BurnDo,
+    CoastDo,
+    UnbrakedDescendDo,
+    DrogueDescendDo,
+    MainDescendDo,
+    LandedDo,
+    TestInitDo,
+    TestCalibDo
+};
+
+static StateExit_t stateExitTable[STATE_MAX] = {
+    AbortExit,
+    StartupExit,
+    InitExit,
+    AlignGNCExit,
+    CheckoutsExit,
+    ArmedExit,
+    BurnExit,
+    CoastExit,
+    UnbrakedDescendExit,
+    DrogueDescendExit,
+    MainDescendExit,
+    LandedExit,
+    TestInitExit,
+    TestCalibExit
+};
+
+/* --- Lookup tables for timing constraints --- */
+uint32_t minEventDelayTable[EVENT_MAX] = {
+    0,
+    0,
+    0,
+    MIN_DELAY_UNTIL_FILTER_CONVERGED,
+    MIN_DELAY_UNTIL_CHECKOUTS_COMPLETE,
+    MIN_DELAY_UNTIL_LAUNCH_DETECTED,
+    MIN_DELAY_UNTIL_BURNOUT_DETECTED,
+    MIN_DELAY_UNTIL_APOGEE_DETECTED,
+    0,
+    0,
+    MIN_DELAY_UNTIL_TOUCHDOWN,
+    0,
+    0,
+    0
+};
+
+uint32_t maxEventDelayTable[STATE_MAX] = {
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    MAX_DELAY_UNTIL_BURNOUT_DETECTED,
+    MAX_DELAY_UNTIL_APOGEE_DETECTED,
+    MAX_DELAY_UNTIL_TOUCHDOWN_BAD,
+    MAX_DELAY_UNTIL_TOUCHDOWN_DROGUE,
+    MAX_DELAY_UNTIL_TOUCHDOWN_MAIN,
+    0,
+    0,
+    0
+};
 
 /* --- Action handler functions --- */
 static void StateEntryHandler(StateMachine_t *sm, flight_state_t state) {
@@ -310,57 +470,15 @@ static void StateEntryHandler(StateMachine_t *sm, flight_state_t state) {
     sm->timestamp_us = uwTick;
 
     // handle entry for each state
-    switch (state) {
-        case STATE_FLIGHT_ABORT:            AbortEntry(sm); break;
-        case STATE_FLIGHT_STARTUP:          StartupEntry(sm); break;
-        case STATE_FLIGHT_INIT:             InitEntry(sm); break;
-        case STATE_FLIGHT_GNC_ALIGN:        AlignGNCEntry(sm); break;
-        case STATE_FLIGHT_CHECKOUTS:        CheckoutsEntry(sm); break;
-        case STATE_FLIGHT_ARMED:            ArmedEntry(sm); break;
-        case STATE_FLIGHT_BURN:             BurnEntry(sm); break;
-        case STATE_FLIGHT_COAST:            CoastEntry(sm); break;
-        case STATE_FLIGHT_DESCEND_UNBRAKED: UnbrakedDescendEntry(sm); break;
-        case STATE_FLIGHT_DESCEND_DROGUE:   DrogueDescendEntry(sm); break;
-        case STATE_FLIGHT_DESCEND_MAIN:     MainDescendEntry(sm); break;
-        case STATE_FLIGHT_LANDED:           LandedEntry(sm); break;
-        default: break;
-    }
+    stateEntryTable[state](sm);
 }
 
 static void StateExitHandler(StateMachine_t *sm, flight_state_t state) {
-    switch (state) {
-        case STATE_FLIGHT_ABORT:            AbortExit(sm); break;
-        case STATE_FLIGHT_STARTUP:          StartupExit(sm); break;
-        case STATE_FLIGHT_INIT:             InitExit(sm); break;
-        case STATE_FLIGHT_GNC_ALIGN:        AlignGNCExit(sm); break;
-        case STATE_FLIGHT_CHECKOUTS:        CheckoutsExit(sm); break;
-        case STATE_FLIGHT_ARMED:            ArmedExit(sm); break;
-        case STATE_FLIGHT_BURN:             BurnExit(sm); break;
-        case STATE_FLIGHT_COAST:            CoastExit(sm); break;
-        case STATE_FLIGHT_DESCEND_UNBRAKED: UnbrakedDescendExit(sm); break;
-        case STATE_FLIGHT_DESCEND_DROGUE:   DrogueDescendExit(sm); break;
-        case STATE_FLIGHT_DESCEND_MAIN:     MainDescendExit(sm); break;
-        case STATE_FLIGHT_LANDED:           LandedExit(sm); break;
-        default: break;
-    }
+    stateExitTable[state](sm);
 }
 
 static void StateDoHandler(StateMachine_t *sm, flight_state_t state, uint16_t freq) {
-    switch (state) {
-        case STATE_FLIGHT_ABORT:            AbortDo(sm, freq); break;
-        case STATE_FLIGHT_STARTUP:          StartupDo(sm, freq); break;
-        case STATE_FLIGHT_INIT:             InitDo(sm, freq); break;
-        case STATE_FLIGHT_GNC_ALIGN:        AlignGNCDo(sm, freq); break;
-        case STATE_FLIGHT_CHECKOUTS:        CheckoutsDo(sm, freq); break;
-        case STATE_FLIGHT_ARMED:            ArmedDo(sm, freq); break;
-        case STATE_FLIGHT_BURN:             BurnDo(sm, freq); break;
-        case STATE_FLIGHT_COAST:            CoastDo(sm, freq); break;
-        case STATE_FLIGHT_DESCEND_UNBRAKED: UnbrakedDescendDo(sm, freq); break;
-        case STATE_FLIGHT_DESCEND_DROGUE:   DrogueDescendDo(sm, freq); break;
-        case STATE_FLIGHT_DESCEND_MAIN:     MainDescendDo(sm, freq); break;
-        case STATE_FLIGHT_LANDED:           LandedDo(sm, freq); break;
-        default: break;
-    }
+    stateDoTable[state](sm, freq);
 }
 
 /* --- User functions --- */
@@ -372,7 +490,7 @@ void StateMachine_Init(StateMachine_t *sm, flight_state_t initialState) {
 }
 
 void StateMachine_Dispatch(StateMachine_t *sm, flight_event_t event) {
-    if (sm->currentFlightState >= STATE_FLIGHT_MAX) return;
+    if (sm->currentFlightState >= STATE_MAX) return;
 
     // TODO: store event on Flash & SD
     
@@ -380,10 +498,10 @@ void StateMachine_Dispatch(StateMachine_t *sm, flight_event_t event) {
     flight_state_t oldState = sm->currentFlightState;
 
     // handle event and retrieve new flight state
-    flight_state_t newState = stateTable[oldState](event);
+    flight_state_t newState = stateHandlerTable[oldState](event);
 
     // prevent exit and entry actions if no state change
-    if (newState == oldState || newState >= STATE_FLIGHT_MAX) return;
+    if (newState == oldState || newState >= STATE_MAX) return;
 
     // don't update state if minimum entry time delay for event hasn't elapsed yet
     if (minEventDelayTable[event] > (uwTick - sm->timestamp_us)) return;
@@ -407,7 +525,7 @@ void StateMachine_Dispatch(StateMachine_t *sm, flight_event_t event) {
 }
 
 void StateMachine_ForceState(StateMachine_t *sm, flight_state_t newState) {
-    if (sm->currentFlightState >= STATE_FLIGHT_MAX) return;
+    if (sm->currentFlightState >= STATE_MAX) return;
 
     // TODO: store command on Flash & SD
     
@@ -415,7 +533,7 @@ void StateMachine_ForceState(StateMachine_t *sm, flight_state_t newState) {
     flight_state_t oldState = sm->currentFlightState;
 
     // prevent exit and entry actions if no state change
-    if (newState == oldState || newState >= STATE_FLIGHT_MAX) return;
+    if (newState == oldState || newState >= STATE_MAX) return;
     
     // exit old state
     StateExitHandler(sm, oldState);
@@ -438,97 +556,4 @@ void StateMachine_ForceState(StateMachine_t *sm, flight_state_t newState) {
 void StateMachine_DoActions(StateMachine_t *sm, uint16_t freq) {
     // perform standard state actions
     StateDoHandler(sm, sm->currentFlightState, freq);
-}
-
-/* --- Event handlers --- */
-static flight_state_t AbortHandler(flight_event_t event) {
-    switch (event) {
-        default: return STATE_FLIGHT_ABORT;
-    }
-}
-
-static flight_state_t StartupHandler(flight_event_t event) {
-    switch (event) {
-        case EVENT_FLIGHT_STARTUP_COMPLETE:     return STATE_FLIGHT_INIT;
-        default: return STATE_FLIGHT_STARTUP;
-    }
-}
-
-static flight_state_t InitHandler(flight_event_t event) {
-    switch (event) {
-        case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
-        case EVENT_FLIGHT_GNSS_FIX:             return STATE_FLIGHT_GNC_ALIGN;
-        default: return STATE_FLIGHT_INIT;
-    }
-}
-
-static flight_state_t AlignGNCHandler(flight_event_t event) {
-    switch (event) {
-        case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
-        case EVENT_FLIGHT_FILTER_CONVERGED:     return STATE_FLIGHT_CHECKOUTS;
-        default: return STATE_FLIGHT_GNC_ALIGN;
-    }
-}
-
-static flight_state_t CheckoutsHandler(flight_event_t event) {
-    switch (event) {
-        case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
-        case EVENT_FLIGHT_CHECKOUTS_COMPLETE:   return STATE_FLIGHT_ARMED;
-        default: return STATE_FLIGHT_CHECKOUTS;
-    }
-}
-
-static flight_state_t ArmedHandler(flight_event_t event) {
-    switch (event) {
-        case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
-        case EVENT_FLIGHT_LAUNCH_DETECTED:      return STATE_FLIGHT_BURN;
-        default: return STATE_FLIGHT_ARMED;
-    }
-}
-
-static flight_state_t BurnHandler(flight_event_t event) {
-    switch (event) {
-        case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
-        case EVENT_FLIGHT_BURNOUT_DETECTED:     return STATE_FLIGHT_COAST;
-        default: return STATE_FLIGHT_BURN;
-    }
-}
-
-static flight_state_t CoastHandler(flight_event_t event) {
-    switch (event) {
-        case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
-        case EVENT_FLIGHT_APOGEE_DETECTED:      return STATE_FLIGHT_DESCEND_UNBRAKED;
-        default: return STATE_FLIGHT_COAST;
-    }
-}
-
-static flight_state_t UnbrakedDescendHandler(flight_event_t event) {
-    switch (event) {
-        case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
-        case EVENT_FLIGHT_DROGUE_DEPLOY:        return STATE_FLIGHT_DESCEND_DROGUE;
-        case EVENT_FLIGHT_TOUCHDOWN:            return STATE_FLIGHT_LANDED; // :(
-        default: return STATE_FLIGHT_DESCEND_UNBRAKED;
-    }
-}
-
-static flight_state_t DrogueDescendHandler(flight_event_t event) {
-    switch (event) {
-        case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
-        case EVENT_FLIGHT_MAIN_DEPLOY:          return STATE_FLIGHT_DESCEND_MAIN;
-        case EVENT_FLIGHT_TOUCHDOWN:            return STATE_FLIGHT_LANDED; // :/
-        default: return STATE_FLIGHT_DESCEND_DROGUE;
-    }
-}
-
-static flight_state_t MainDescendHandler(flight_event_t event) {
-    switch (event) {
-        case EVENT_FLIGHT_TOUCHDOWN:            return STATE_FLIGHT_LANDED;
-        default:                                return STATE_FLIGHT_DESCEND_MAIN;
-    }
-}
-
-static flight_state_t LandedHandler(flight_event_t event) {
-    switch (event) {
-        default: return STATE_FLIGHT_LANDED;
-    }
 }

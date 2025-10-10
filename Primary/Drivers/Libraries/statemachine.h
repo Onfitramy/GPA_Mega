@@ -35,7 +35,10 @@ typedef enum {
     STATE_FLIGHT_DESCEND_MAIN,      // descend under main
     STATE_FLIGHT_LANDED,            // touched down
 
-    STATE_FLIGHT_MAX
+    STATE_TEST_INIT,
+    STATE_TEST_CALIB,
+
+    STATE_MAX
 } flight_state_t;
 
 /* --- Define all possible flight events --- */
@@ -52,13 +55,22 @@ typedef enum {
     EVENT_FLIGHT_MAIN_DEPLOY,
     EVENT_FLIGHT_TOUCHDOWN,
 
-    EVENT_FLIGHT_MAX
+    EVENT_TEST_MODE_ENTER,
+    EVENT_TEST_CALIBRATE,
+    EVENT_TEST_MODE_EXIT,
+
+    EVENT_MAX
 } flight_event_t;
 
 typedef struct {
     flight_state_t currentFlightState;  // Holds the current flight state
     uint32_t timestamp_us;              // Holds time of entering current state
 } StateMachine_t;
+
+typedef flight_state_t (*StateHandler_t)(flight_event_t event);
+typedef void (*StateEntry_t)(StateMachine_t *sm);
+typedef void (*StateDo_t)(StateMachine_t *sm, uint16_t freq);
+typedef void (*StateExit_t)(StateMachine_t *sm);
 
 /* --- Extern variables used in the state machine Entry, Do and Exit functions --- */
 extern StateMachine_t flight_sm;
