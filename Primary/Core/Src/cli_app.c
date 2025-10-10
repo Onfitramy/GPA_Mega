@@ -329,7 +329,7 @@ BaseType_t cmd_PU_ZeroStepper(char *pcWriteBuffer, size_t xWriteBufferLen, const
     (void)xWriteBufferLen;
 
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, 1, NULL, 0);
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, 1, NULL, 0);
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
@@ -360,7 +360,7 @@ BaseType_t cmd_PU_SetAngle(char *pcWriteBuffer, size_t xWriteBufferLen, const ch
     memcpy(parameters, &parameter, sizeof(float));
 
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, 2, parameters, sizeof(parameters));
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, 2, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */

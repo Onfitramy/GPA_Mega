@@ -156,7 +156,7 @@ int main(void)
   gpa_mega = GPA_MegaFromUID(uid);
 
   // if board is a ground station, set flag
-  if (gpa_mega == GPA_MEGA_2) {
+  if (gpa_mega == GPA_MEGA_2 || gpa_mega == GPA_MEGA_1) {
     is_groundstation = true;
   }
 

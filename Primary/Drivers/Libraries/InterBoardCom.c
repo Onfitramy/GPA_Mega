@@ -206,7 +206,7 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
                 InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
             }
             break;
-        case COMMAND_TARGET_POWERUNIT:
+        case COMMAND_TARGET_SPARK:
             spark_sendCommand(dataPacket);
             break;
         case COMMAND_TARGET_TESTING:
@@ -302,7 +302,7 @@ uint8_t USB_OutputDataPacket(DataPacket_t *packet) {
 
     switch(packet->Packet_ID) {
         case PACKET_ID_IMU:
-            sprintf((char *)usb_packet_buffer, "ID%d,%ld,%ld,%ld,%ld,%d,%d.%d,%d,%d,%d\n",
+            sprintf((char *)usb_packet_buffer, "ID%d,%ld,%ld,%ld,%ld,%d,%d,%d,%d,%d,%d\n",
                     packet->Packet_ID , packet->timestamp, packet->Data.imu.accelX, packet->Data.imu.accelY, packet->Data.imu.accelZ,
                     packet->Data.imu.gyroX, packet->Data.imu.gyroY, packet->Data.imu.gyroZ, packet->Data.imu.magX, packet->Data.imu.magY, packet->Data.imu.magZ);
             break;

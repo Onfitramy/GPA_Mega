@@ -283,7 +283,7 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
             // State machine is on the main board, forward command
             InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_MCU, dataPacket);
             break;
-        case COMMAND_TARGET_POWERUNIT:
+        case COMMAND_TARGET_SPARK:
             // Forward power unit commands to the main board
             InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_MCU, dataPacket);
             break;

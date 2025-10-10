@@ -376,24 +376,24 @@ void Start10HzTask(void *argument) {
 
     GPS_ReadSensorData(&gps_data);
 
-    CreateCommandPacket(&Spark_CommandPacket, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, 0x00, NULL, 0); // Example command to test
+    CreateCommandPacket(&Spark_CommandPacket, HAL_GetTick(), COMMAND_TARGET_SPARK, 0x00, NULL, 0); // Example command to test
     spark_sendCommand(&Spark_CommandPacket);
 
     //GPS_RequestSensorData(); // Request GPS data
+
+    UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &average_imu_data, &mag_data);
+    UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler_from_q[0], euler_from_q[1], euler_from_q[2]);
+    UpdateGPSDataPacket(&GPS_DataPacket, HAL_GetTick(), &gps_data);
+
     if (is_groundstation) { //Groundstation requests data from secondary board
+      USB_QueueDataPacket(&IMU_DataPacket);
+      USB_QueueDataPacket(&Attitude_DataPacket);
 
     } else { //Secondary board sends data to groundstation
-      /*
-      UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &average_imu_data, &mag_data);
-      USB_QueueDataPacket(&IMU_DataPacket);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);
-
-      UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler_from_q[0], euler_from_q[1], euler_from_q[2]);
-      USB_QueueDataPacket(&Attitude_DataPacket);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &Attitude_DataPacket);
+      InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &GPS_DataPacket);
 
-      UpdateGPSDataPacket(&GPS_DataPacket, HAL_GetTick(), &gps_data);
-      InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &GPS_DataPacket);*/
     }
 
     if (flight_sm.currentFlightState != STATE_FLIGHT_STARTUP && flight_sm.currentFlightState != STATE_FLIGHT_INIT) {
