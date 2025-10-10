@@ -16,6 +16,10 @@
 #define GYRO_VAR 0.3*0.3
 #define GYRO_BIAS_VAR 1e-12
 
+#define P_VAR_ANGLE_THRESH  0.01
+#define P_VAR_BIAS_THRESH   1e-5
+#define P_NIS_EKF3_THRESH   0.1
+
 
 /* --- Height EKF Settings --- */
 #define ACCEL_VAR   0.5*0.5
@@ -132,7 +136,6 @@ extern arm_matrix_instance_f32 R2_corr2;
 extern arm_matrix_instance_f32 S2_corr2;
 extern arm_matrix_instance_f32 S2_inv_corr2;
 extern arm_matrix_instance_f32 K2_corr2;
-extern float R2_corr2_data[z_size2_corr2*z_size2_corr2];
 
 extern float NIS_EKF2_corr1;
 extern float NIS_EKF2_corr2;
@@ -142,7 +145,7 @@ extern float x3[x_size3];
 extern arm_matrix_instance_f32 F3;
 extern arm_matrix_instance_f32 Q3;
 extern arm_matrix_instance_f32 P3;
-extern float P3_data[x_size3*x_size3];
+extern arm_matrix_instance_f32 P3_angle;
 
 extern ekf_corr_data_t EKF3_corr1;
 extern float z3_corr1[z_size3_corr1];
@@ -155,6 +158,7 @@ extern arm_matrix_instance_f32 S3_inv_corr1;
 extern arm_matrix_instance_f32 K3_corr1;
 
 extern float NIS_EKF3_corr1;
+extern float VAR_vec3_abs;
 
 extern double WGS84[3];
 extern double WGS84_ref[3];
@@ -208,6 +212,7 @@ void RotationMatrixFromEuler(float phi, float theta, float psi, arm_matrix_insta
 void EulerFromRotationMatrix(arm_matrix_instance_f32 *mat, float *euler);
 void RotationMatrixFromQuaternion(float *q, arm_matrix_instance_f32 *mat, direct_cosine_matrix_t dcm_type);
 void QuaternionFromRotationMatrix(arm_matrix_instance_f32 *mat, float *q);
+float QuaternionCovToSmallAngleCov(float *q, arm_matrix_instance_f32 *P_q, arm_matrix_instance_f32 *P_angle);
 void DeulerMatrixFromEuler(float phi, float theta, arm_matrix_instance_f32 *mat);
 
 void CompensateGNSSDelay(float acc_meas, float vel_meas, float *v_corr_val, float *h_corr_val);

@@ -156,8 +156,14 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(20, "gyro x bias");
   signalPlotter_setSignalName(21, "gyro y bias");
   signalPlotter_setSignalName(22, "gyro z bias");
-  signalPlotter_setSignalName(23, "FlightState");
-  signalPlotter_setSignalName(24, "Entry_Timestamp");
+  signalPlotter_setSignalName(23, "EKF phi var");
+  signalPlotter_setSignalName(24, "EKF theta var");
+  signalPlotter_setSignalName(25, "EKF psi var");
+  signalPlotter_setSignalName(26, "EKF gbx var");
+  signalPlotter_setSignalName(27, "EKF gby var");
+  signalPlotter_setSignalName(28, "EKF gbz var");
+  signalPlotter_setSignalName(29, "NIS EKF3");
+  signalPlotter_setSignalName(30, "VAR vec3 abs");
   #endif
 
   #ifdef SIGNAL_PLOTTER_OUT_4 // raw sensor data
@@ -197,6 +203,15 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(0, "delta_Time");
   signalPlotter_setSignalName(1, "FlightState");
   signalPlotter_setSignalName(2, "Entry_Timestamp");
+  signalPlotter_setSignalName(3, "GPS_numSV");
+  signalPlotter_setSignalName(4, "EKF2_height_var");
+  signalPlotter_setSignalName(5, "EKF2_velZ_var");
+  signalPlotter_setSignalName(6, "EKF2_pref_var");
+  signalPlotter_setSignalName(7, "EKF3_gbx_var");
+  signalPlotter_setSignalName(8, "EKF3_gby_var");
+  signalPlotter_setSignalName(9, "EKF3_gbz_var");
+  signalPlotter_setSignalName(10, "EKF3_angle_var");
+  signalPlotter_setSignalName(11, "EKF3_NIS");
   #endif
 
   #ifdef SIGNAL_PLOTTER_OUT_GROUND // ground station data
@@ -277,6 +292,14 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(20, x3[4]);
   signalPlotter_sendData(21, x3[5]);
   signalPlotter_sendData(22, x3[6]);
+  signalPlotter_sendData(23, arm_mat_get_entry_f32(&P3_angle, 0, 0));
+  signalPlotter_sendData(24, arm_mat_get_entry_f32(&P3_angle, 1, 1));
+  signalPlotter_sendData(25, arm_mat_get_entry_f32(&P3_angle, 2, 2));
+  signalPlotter_sendData(26, arm_mat_get_entry_f32(EKF3.P, 4, 4));
+  signalPlotter_sendData(27, arm_mat_get_entry_f32(EKF3.P, 5, 5));
+  signalPlotter_sendData(28, arm_mat_get_entry_f32(EKF3.P, 6, 6));
+  signalPlotter_sendData(29, NIS_EKF3_corr1);
+  signalPlotter_sendData(30, VAR_vec3_abs);
   #endif
 
   #ifdef SIGNAL_PLOTTER_OUT_4 // signal plotter outputs height ekf testing
@@ -316,6 +339,16 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
   signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
   signalPlotter_sendData(2, (float)flight_sm.timestamp_us);
+  signalPlotter_sendData(3, (float)gps_data.numSV);
+  signalPlotter_sendData(4, arm_mat_get_entry_f32(EKF2.P, 0, 0));
+  signalPlotter_sendData(5, arm_mat_get_entry_f32(EKF2.P, 1, 1));
+  signalPlotter_sendData(6, arm_mat_get_entry_f32(EKF2.P, 2, 2));
+  signalPlotter_sendData(7, arm_mat_get_entry_f32(EKF3.P, 4, 4));
+  signalPlotter_sendData(8, arm_mat_get_entry_f32(EKF3.P, 5, 5));
+  signalPlotter_sendData(9, arm_mat_get_entry_f32(EKF3.P, 6, 6));
+  signalPlotter_sendData(10, VAR_vec3_abs);
+  signalPlotter_sendData(11, NIS_EKF3_corr1);
+  
   #endif
 
   signalPlotter_executeTransmission(HAL_GetTick());

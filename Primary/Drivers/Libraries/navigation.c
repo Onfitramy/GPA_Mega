@@ -67,12 +67,14 @@ float NIS_EKF2_corr2;
 // Quaternion EKF variables
 ekf_data_t EKF3;
 float x3[x_size3] = {0};
-float F3_data[x_size3*x_size3] = {0}; // 7x7
+float F3_data[x_size3*x_size3] = {0};
 arm_matrix_instance_f32 F3 = {x_size3, x_size3, F3_data};
-float Q3_data[x_size3*x_size3] = {0}; // 7x7
+float Q3_data[x_size3*x_size3] = {0};
 arm_matrix_instance_f32 Q3 = {x_size3, x_size3, Q3_data};
-float P3_data[x_size3*x_size3] = {0}; // 7x7
+float P3_data[x_size3*x_size3] = {0};
 arm_matrix_instance_f32 P3 = {x_size3, x_size3, P3_data};
+float P3_angle_data[3*3] = {0};
+arm_matrix_instance_f32 P3_angle = {3, 3, P3_angle_data};
 
 ekf_corr_data_t EKF3_corr1;
 float z3_corr1[z_size3_corr1] = {0};
@@ -90,6 +92,7 @@ float K3_corr1_data[x_size3*z_size3_corr1];
 arm_matrix_instance_f32 K3_corr1 = {x_size3, z_size3_corr1, K3_corr1_data};
 
 float NIS_EKF3_corr1;
+float VAR_vec3_abs;
 
 
 /* --- Coordinate system variables --- */
@@ -341,6 +344,34 @@ void QuaternionFromRotationMatrix(arm_matrix_instance_f32 *mat, float *q) {
         q[3] = 0.25f * s;
     }
     arm_quaternion_normalize_f32(q);
+}
+
+float QuaternionCovToSmallAngleCov(float *q, arm_matrix_instance_f32 *P_q, arm_matrix_instance_f32 *P_angle) {
+    float M1_data[3*4];
+    arm_matrix_instance_f32 M1 = {3, 4, M1_data};
+    float M2_data[4*4];
+    arm_matrix_instance_f32 M2 = {4, 4, M2_data};
+
+    // define G and G'
+    float G_mat_data[4*3] = {-q[1], -q[2], -q[3],
+                              q[0], -q[3],  q[2],
+                              q[3],  q[0], -q[1],
+                             -q[2],  q[1],  q[0]};
+    arm_matrix_instance_f32 G_mat = {4, 3, G_mat_data};
+    float G_trans_data[3*4];
+    arm_matrix_instance_f32 G_trans = {3, 4, G_trans_data};
+    arm_mat_trans_f32(&G_mat, &G_trans);
+
+    // define P_q
+    arm_mat_extract_f32(P_q, &M2, 0, 0);
+    
+    // calculate P_angle = 4 * W' * P_q * W
+    arm_mat_mult_f32(&G_trans, &M2, &M1);
+    arm_mat_mult_f32(&M1, &G_mat, P_angle);
+    arm_mat_scale_f32(P_angle, 4., P_angle);
+
+    // calculate and return absolut value of variance
+    return arm_mat_get_entry_f32(P_angle, 0, 0) + arm_mat_get_entry_f32(P_angle, 1, 1) + arm_mat_get_entry_f32(P_angle, 2, 2);
 }
 
 void DeulerMatrixFromEuler(float phi, float theta, arm_matrix_instance_f32 *mat) {
@@ -821,12 +852,17 @@ void EKFgetNIS(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr, float *NIS) {
 
 // returns true if predicted variance obeys thresholds
 bool EKFisAligned(ekf_data_t *ekf) {
-    if(ekf->type == EKF2_type) {
+    if (ekf->type == EKF2_type) {
         if (arm_mat_get_entry_f32(ekf->P, 0, 0) > P_VAR_HEIGHT_THRESH) return false;
         else if (arm_mat_get_entry_f32(ekf->P, 1, 1) > P_VAR_VELZ_THRESH) return false;
         else if (arm_mat_get_entry_f32(ekf->P, 2, 2) > P_VAR_PREF_THRESH) return false;
         else return true;
     } else if (ekf->type == EKF3_type) {
-        return true;
+        if (arm_mat_get_entry_f32(ekf->P, 4, 4) > P_VAR_BIAS_THRESH) return false;
+        else if (arm_mat_get_entry_f32(ekf->P, 5, 5) > P_VAR_BIAS_THRESH) return false;
+        else if (arm_mat_get_entry_f32(ekf->P, 6, 6) > P_VAR_BIAS_THRESH) return false;
+        else if (VAR_vec3_abs > P_VAR_ANGLE_THRESH) return false;
+        else if (NIS_EKF3_corr1 > P_NIS_EKF3_THRESH) return false;
+        else return true;
     }
 }

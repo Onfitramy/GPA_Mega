@@ -307,6 +307,7 @@ void StartDefaultTask(void *argument)
 
       // Conversion to Euler
       EulerFromRotationMatrix(&M_rot_bi, euler_from_q);
+      VAR_vec3_abs = QuaternionCovToSmallAngleCov(x3, &P3, &P3_angle);
     }
 
     dt_1000Hz = TimeMeasureStop();

@@ -75,6 +75,14 @@ void arm_mat_insert_mult_f32(const arm_matrix_instance_f32 *src, arm_matrix_inst
   }
 }
 
+void arm_mat_extract_f32(const arm_matrix_instance_f32 *src, arm_matrix_instance_f32 *dst, int row_00, int col_00) {
+  for(int i = 0; i < dst->numRows; i++) {
+    for(int j = 0; j < dst->numCols; j++) {
+      arm_mat_set_entry_f32(dst, i, j, arm_mat_get_entry_f32(src, i+row_00, j+col_00));
+    }
+  }
+}
+
 void arm_mat_print_f32(arm_matrix_instance_f32 *pMat) {
 
   printf("%dx%d-Matrix:\n", pMat->numRows, pMat->numCols);
