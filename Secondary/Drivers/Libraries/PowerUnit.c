@@ -5,6 +5,8 @@ HAL_StatusTypeDef INA219_I2C_status;
 float current_LSB;
 float power_LSB;
 
+camera_status_t CameraStatus;
+
 // Write 16-bit value to INA219 register
 HAL_StatusTypeDef INA219_writeRegister(uint8_t reg, uint16_t data) {
     uint8_t buffer[3];
@@ -191,30 +193,35 @@ void PU_disableACS() {
 }
 
 void Camera_SwitchOn() {
+    CameraStatus.powered = true;
     HAL_GPIO_WritePin(GPIO21_GPIO_Port, GPIO21_Pin, 0);
     HAL_Delay(2000);
     HAL_GPIO_WritePin(GPIO21_GPIO_Port, GPIO21_Pin, 1);
 }
 
 void Camera_WifiOn() {
+    CameraStatus.wifi = true;
     HAL_GPIO_WritePin(GPIO24_GPIO_Port, GPIO24_Pin, 0);
     HAL_Delay(100);
     HAL_GPIO_WritePin(GPIO24_GPIO_Port, GPIO24_Pin, 1);
 }
 
 void Camera_StartRecording() {
+    CameraStatus.recording = true;
     HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 0);
     HAL_Delay(100);
     HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 1);
 }
 
 void Camera_SwitchOff() {
+    CameraStatus.powered = false;
     HAL_GPIO_WritePin(GPIO21_GPIO_Port, GPIO21_Pin, 0);
     HAL_Delay(2000);
     HAL_GPIO_WritePin(GPIO21_GPIO_Port, GPIO21_Pin, 1);
 }
 
 void Camera_WifiOff() {
+    CameraStatus.wifi = false;
     HAL_GPIO_WritePin(GPIO24_GPIO_Port, GPIO24_Pin, 0);
     HAL_Delay(100);
     HAL_GPIO_WritePin(GPIO24_GPIO_Port, GPIO24_Pin, 1);
@@ -229,6 +236,7 @@ void Camera_WifiOff() {
 }
 
 void Camera_StopRecording() {
+    CameraStatus.recording = false;
     HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 0);
     HAL_Delay(100);
     HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 1);

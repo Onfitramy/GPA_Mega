@@ -3,6 +3,7 @@
 
 #include "main.h"
 #include <math.h>
+#include "stdbool.h"
 
 #define MAX_CURRENT         32.768f // A
 #define SHUNT_RESISTANCE    0.00152f  // Ohm
@@ -14,6 +15,12 @@ extern I2C_HandleTypeDef hi2c2;
 // Power_LSB = 0.020
 // Shunt Voltage LSB = 10 uV
 // Bus Voltage LSB = 4 mV
+
+typedef struct {
+    bool powered;
+    bool recording;
+    bool wifi;
+} camera_status_t;
 
 HAL_StatusTypeDef INA219_writeRegister(uint8_t reg, uint16_t data);
 HAL_StatusTypeDef INA219_readRegister(uint8_t reg, uint16_t *data);

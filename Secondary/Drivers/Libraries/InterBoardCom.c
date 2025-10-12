@@ -342,7 +342,15 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
             // Logging commands are on the main board, forward command
             InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_MCU, dataPacket);
             break;
-
+        case COMMAND_TARGET_POWERUNIT:
+            if (dataPacket->Data.command.command_id == 0) {
+                HAL_GPIO_WritePin(CAMS_GPIO_Port, CAMS_Pin, dataPacket->Data.command.params[0]);
+            } else if (dataPacket->Data.command.command_id == 1) {
+                HAL_GPIO_WritePin(Recovery_GPIO_Port, Recovery_Pin, dataPacket->Data.command.params[0]);
+            } else if (dataPacket->Data.command.command_id == 2) {
+                HAL_GPIO_WritePin(ACS_GPIO_Port, ACS_Pin, dataPacket->Data.command.params[0]);
+            }
+            break;
         case COMMAND_TARGET_ACK:
             // ACK commands are on the main board, forward command
             InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_MCU, dataPacket);

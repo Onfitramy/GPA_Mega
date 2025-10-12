@@ -323,7 +323,7 @@ BaseType_t cmd_Logging_FlightDataOut(char *pcWriteBuffer, size_t xWriteBufferLen
 }
 
 //*****************************************************************************
-BaseType_t cmd_PU_ZeroStepper(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+BaseType_t cmd_SPARK_ZeroStepper(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {
     (void)pcCommandString;
     (void)xWriteBufferLen;
@@ -333,13 +333,13 @@ BaseType_t cmd_PU_ZeroStepper(char *pcWriteBuffer, size_t xWriteBufferLen, const
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
-    snprintf(pcWriteBuffer, 30, "Zeroing Power Unit Angle...\r\n");
+    snprintf(pcWriteBuffer, 30, "Activating SPARK Stepper Zero function...\r\n");
 
     return pdFALSE;
 }
 
 //*****************************************************************************
-BaseType_t cmd_PU_SetAngle(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+BaseType_t cmd_SPARK_SetAngle(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {
     (void)pcCommandString;
     (void)xWriteBufferLen;
@@ -364,7 +364,103 @@ BaseType_t cmd_PU_SetAngle(char *pcWriteBuffer, size_t xWriteBufferLen, const ch
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
-    snprintf(pcWriteBuffer, 30, "Setting Power Unit Angle...\r\n");
+    snprintf(pcWriteBuffer, 30, "Setting SPARK Target Angle...\r\n");
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_PU_toggleCAMPower(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    uint8_t parameters[1];
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+    parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, 0, parameters, sizeof(parameters));
+    sendcmdToTarget(&packet);
+
+    /* Write the response to the buffer */
+    if (parameters[0] == 1)
+        snprintf(pcWriteBuffer, 50, "Turning Camera power ON...\r\n");
+    else
+        snprintf(pcWriteBuffer, 50, "Turning Camera power OFF...\r\n");
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_PU_toggleRECPower(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    uint8_t parameters[1];
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+    parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, 1, parameters, sizeof(parameters));
+    sendcmdToTarget(&packet);
+
+    /* Write the response to the buffer */
+    if (parameters[0] == 1)
+        snprintf(pcWriteBuffer, 50, "Turning Recovery power ON...\r\n");
+    else
+        snprintf(pcWriteBuffer, 50, "Turning Recovery power OFF...\r\n");
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_PU_toggleACSPower(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    uint8_t parameters[1];
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+    parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, 2, parameters, sizeof(parameters));
+    sendcmdToTarget(&packet);
+
+    /* Write the response to the buffer */
+    if (parameters[0] == 1)
+        snprintf(pcWriteBuffer, 50, "Turning ACS power ON...\r\n");
+    else
+        snprintf(pcWriteBuffer, 50, "Turning ACS power OFF...\r\n");
 
     return pdFALSE;
 }
@@ -494,15 +590,33 @@ const CLI_Command_Definition_t xCommandList[] = {
         .cExpectedNumberOfParameters = 1
     },
     {
-        .pcCommand = "PU_ZeroStepper", /* The command string to type. */
-        .pcHelpString = "PU_ZeroStepper: Resets the stepper motor position\r\n\r\n",
-        .pxCommandInterpreter = cmd_PU_ZeroStepper, /* The function to run. */
+        .pcCommand = "SPARK_ZeroStepper", /* The command string to type. */
+        .pcHelpString = "SPARK_ZeroStepper: Resets the stepper motor position\r\n\r\n",
+        .pxCommandInterpreter = cmd_SPARK_ZeroStepper, /* The function to run. */
         .cExpectedNumberOfParameters = 0
     },
     {
-        .pcCommand = "PU_SetAngle", /* The command string to type. */
-        .pcHelpString = "PU_SetAngle <float>: Sets the angle of the stepper motor\r\n\r\n",
-        .pxCommandInterpreter = cmd_PU_SetAngle, /* The function to run. */
+        .pcCommand = "SPARK_SetAngle", /* The command string to type. */
+        .pcHelpString = "SPARK_SetAngle <float>: Sets the angle of the stepper motor\r\n\r\n",
+        .pxCommandInterpreter = cmd_SPARK_SetAngle, /* The function to run. */
+        .cExpectedNumberOfParameters = 1
+    },
+    {
+        .pcCommand = "PU_setCAMPower", /* The command string to type. */
+        .pcHelpString = "PU_setCAMPower <1/0>: toggles Camera power\r\n\r\n",
+        .pxCommandInterpreter = cmd_PU_toggleCAMPower, /* The function to run. */
+        .cExpectedNumberOfParameters = 1
+    },
+    {
+        .pcCommand = "PU_setRecoveryPower", /* The command string to type. */
+        .pcHelpString = "PU_setRecoveryPower <1/0>: toggles Recovery power\r\n\r\n",
+        .pxCommandInterpreter = cmd_PU_toggleRECPower, /* The function to run. */
+        .cExpectedNumberOfParameters = 1
+    },
+    {
+        .pcCommand = "PU_setACSPower", /* The command string to type. */
+        .pcHelpString = "PU_setACSPower <1/0>: toggles ACS power\r\n\r\n",
+        .pxCommandInterpreter = cmd_PU_toggleACSPower, /* The function to run. */
         .cExpectedNumberOfParameters = 1
     },
     {
