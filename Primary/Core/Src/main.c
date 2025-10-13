@@ -26,7 +26,6 @@
 #include "memorymap.h"
 #include "spi.h"
 #include "tim.h"
-#include "usb_device.h"
 #include "gpio.h"
 #include "Pyro.h"
 

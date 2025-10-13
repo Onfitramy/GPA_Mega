@@ -101,3 +101,16 @@ void ShowStatus(int8_t status, float freq_cycle, float freq_call) {
     }
 }
 
+void tasksStatus(void) {
+    UBaseType_t uxTaskCount = uxTaskGetNumberOfTasks();
+    TaskStatus_t *pxTaskStatusArray = pvPortMalloc(uxTaskCount * sizeof(TaskStatus_t));
+    if (pxTaskStatusArray != NULL) {
+        uxTaskCount = uxTaskGetSystemState(pxTaskStatusArray, uxTaskCount, NULL);
+        for (UBaseType_t i = 0; i < uxTaskCount; i++) {
+            // Process each task's status information
+            // Example: Log task name and state
+            // printf("Task: %s, State: %d\n", pxTaskStatusArray[i].pcTaskName, pxTaskStatusArray[i].eCurrentState);
+        }
+        vPortFree(pxTaskStatusArray);
+    }
+}

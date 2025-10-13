@@ -111,6 +111,7 @@ health_t health_filtered;
 
 uint64_t XBee_transmit_addr = 0x0013a200426e530e; // XBee transmit address (to groundstation)
 //uint64_t XBee_transmit_addr = 0x0013a200426b848b; // XBee transmit address (to flight controller)
+//uint64_t XBee_transmit_addr = 0x0013a200426e52e7; // XBee transmit address (to flight controller)
 /* USER CODE END Variables */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -255,7 +256,6 @@ void Start10HzTask(void *argument){
     health.voltage.bus_gpa_bat = readVoltage(2) * (10 + 2.2) / 2.2;
     FilterLP(&health, &health_filtered);
 
-
     XBee_TransmitQueue(XBee_transmit_addr); // Transmit data at 10Hz
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
@@ -272,6 +272,8 @@ void StartInterBoardComTask(void *argument)
   uint32_t DMA_ReRun_time = HAL_GetTick() + 6; // Timestamp of the next time the DMA should be reactivated, nominaly every 6ms after the last packet was received
 
   W25Q_GetConfig();
+
+  //XBee_Init();
 
   InterBoardCom_Init();
   InterBoardCom_ActivateReceive();
@@ -319,15 +321,21 @@ void StartInterruptTask(void *argument)
           }
         
         //Device Identifier Response
-        } else if (packet.frame_data[2] == 'D' && packet.frame_data[3] == 'D') { // DD command
+        } else if (packet.frame_data[2] == 'S' && packet.frame_data[3] == 'L') { // DD command
           // Device Identifier Response
           if (packet.frame_data[4] == 0x00) { // Check if command was successful
             // Process device identifier if needed
+            uint8_t deviceID = packet.frame_data[6];
           } else {
             // Handle error
           }
         } else if (packet.frame_data[2] == 'B' && packet.frame_data[3] == 'R'){ //Received Channel Mask (Change this to whatever Packet you are interested in)
           // Check if command was successful
+          if (packet.frame_data[4] == 0x00) {
+              uint16_t channelMask = (packet.frame_data[6] << 8) | packet.frame_data[7];
+              xBee_changeState(0); // Set state to OK
+              // Process channel mask as needed
+          }
         }
       }  else if (packet.frame_data[0] == 0x90) { // RX Packet
         XBEE_TransmittedReceived += 1;
