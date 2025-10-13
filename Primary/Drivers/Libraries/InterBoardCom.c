@@ -226,6 +226,7 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
                 // Logging command 0x00: FlightDataOut
                 // StartLogging();
             }
+            break;
         case COMMAND_TARGET_ACK:
             // Acknowledgment packet received, possibly log or process
             snprintf((char *)return_string, sizeof(return_string), "Received ACK for target %d, command %d with status %d\r\n",

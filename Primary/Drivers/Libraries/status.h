@@ -9,6 +9,8 @@ void ShowStatus(int8_t status, float freq_cycle, float freq_call);
 
 void SetLED_color(color_handle color);
 
+void tasksStatus(void);
+
 #define COLOR_OFF       0x000000
 #define COLOR_RED       0xFF0000
 #define COLOR_ORANGE    0xFF3F00

@@ -34,7 +34,7 @@
 /* USER CODE BEGIN Includes */
 #include "calibration_data.h"
 #include "InterBoardCom.h"
-#include "packets.h"
+#include "Packets.h"
 #include "status.h"
 #include "radio.h"
 
@@ -230,6 +230,7 @@ void MX_FREERTOS_Init(void) {
   * @retval None
   */
 /* USER CODE END Header_StartDefaultTask */
+uint32_t diff;
 void StartDefaultTask(void *argument)
 {
   /* init code for USB_DEVICE */
@@ -248,7 +249,7 @@ void StartDefaultTask(void *argument)
 
     HAL_DTS_GetTemperature(&hdts, &DTS_Temperature);
 
-    ReadInternalADC(&ADC_Temperature, &ADC_V_Ref);
+    ReadInternalADC(&ADC_Temperature, &ADC_V_Ref); // 7us
 
     SensorStatus_Reset(&imu1_status);
     SensorStatus_Reset(&imu2_status);
@@ -256,20 +257,20 @@ void StartDefaultTask(void *argument)
 
     // after startup
     if (flight_sm.currentFlightState != STATE_FLIGHT_STARTUP) {
-      imu1_status.hal_status |= IMU_Update(&imu1_data);
-      imu2_status.hal_status |= IMU_Update(&imu2_data);
+      imu1_status.hal_status |= IMU_Update(&imu1_data); // 70us
+      imu2_status.hal_status |= IMU_Update(&imu2_data); // 70us
       imu1_status.active = imu1_data.active;
       imu2_status.active = imu2_data.active;
-
       IMU_Average(&imu1_data, &imu2_data, &average_imu_data);
 
       if (MAG_VerifyDataReady() & 0b00000001) {
         mag_status.hal_status |= MAG_ReadSensorData(&mag_data);
         arm_vec3_sub_f32(mag_data.field, mag_data.calibration.offset, mag_data.field);
         arm_vec3_element_product_f32(mag_data.field, mag_data.calibration.scale, mag_data.field);
-      }
+      } // 7us
 
       // transform measured body acceleration to world-frame acceleration
+      uint32_t start = HAL_GetTickUS();
       arm_mat_vec_mult_f32(&M_rot_ib, average_imu_data.accel, a_WorldFrame);
       a_WorldFrame[2] -= gravity_world_vec[2];
 
@@ -277,13 +278,13 @@ void StartDefaultTask(void *argument)
       arm_mat_vec_mult_f32(&M_rot_bi, gravity_world_vec, gravity_body_vec);
       arm_vec3_sub_f32(average_imu_data.accel, gravity_body_vec, a_BodyFrame);
       a_abs = arm_vec3_length_f32(a_BodyFrame);
-
+      
       /* --- GNSS DELAY COMPENSATION TESTING --- */
       CompensateGNSSDelay(a_WorldFrame[2], EKF2.x[1], &corr_delta_v, &corr_delta_h);
 
       // KALMAN FILTER, HEIGHT
       EKFPredictionStep(&EKF2);
-
+      diff = HAL_GetTickDiffUS(start);
       if (BMP_readData(&bmp_data.pressure, &bmp_data.height, &bmp_data.temperature)) {
         // execute this if new data is available
         // correction step

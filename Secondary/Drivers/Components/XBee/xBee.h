@@ -20,6 +20,9 @@ void XBee_TransmitErrorCount(void);
 void XBee_ReadChannelMask(void);
 void XBee_ReadDataRate(void);
 void XBee_changeDataRate(uint8_t dataRate);
+void XBee_ReadHardwareAddressHigh(void);
+void XBee_ReadHardwareAddressLow(void);
+void xBee_changeState(uint8_t state);
 
 #define XBEE_MAX_FRAME_SIZE 64
 #define XBEE_MAX_RF_PAYLOAD_SIZE 256
