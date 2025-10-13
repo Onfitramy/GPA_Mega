@@ -10,20 +10,14 @@ extern uint8_t UART_RX_Buffer [64];
 
 DataCircularBuffer_t xBeeRxCircBuffer; // incoming buffer for outgoing packets
 
-int8_t XBee_Status = -1; // -1 = Not initialized, 0 = OK, 1 = Error
-
 uint8_t XBee_Init(void)
 {
     // Initialize circular buffer
-    if (XBee_Status == 0) {
-        return 0; // Already initialized
-    }
     DataCircBuffer_Init(&xBeeRxCircBuffer);
 
     HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 3); // Start UART receive interrupt
     XBee_changeBaudRate(115200); // Change XBee baudrate to 115200
     HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 3); // Start UART receive interrupt
-    HAL_Delay(100);
     XBee_changeDataRate(1);
     return 0;
 }
@@ -134,20 +128,20 @@ uint8_t UART_LOCK = 0;
 uint8_t UART_LOCK_ERROR = 0;
 void sendAPIFrame(uint8_t* frame, uint16_t frame_length)
 {
-    /*if (XBee_Status != 0) {
-        return; // XBee not initialized or in error state
-    }*/
+
     HAL_StatusTypeDef res = HAL_UART_Transmit_IT(&huart1, frame, frame_length + 4); //Convert frame_length to bytes
     res = 0;
 }
 
-void xBee_changeState(uint8_t state)
-{
-    XBee_Status = state;
-}
-
 uint8_t frame[XBEE_MAX_FRAME_SIZE];
 uint8_t response[XBEE_MAX_FRAME_SIZE];
+
+void XBee_TestDeviceIdentifier()
+{
+    xbee_at_cmd_t frame;
+    constructATFrame(&frame, 0x01, ('D' << 8) | 'D', NULL, 0);
+    sendAPIFrame((uint8_t*)&frame, frame.frame_length[0] | (frame.frame_length[1] << 8));
+}
 
 void XBee_ToCommandMode()
 {
@@ -180,12 +174,6 @@ void XBee_SetAPIMode(uint8_t mode) // mode: 0 = Passthrough 1 = API without esca
 }
 
 xbee_at_cmd_t at_frame;
-void XBee_TestDeviceIdentifier()
-{
-    constructATFrame(&at_frame, 0x01, ('D' << 8) | 'D', NULL, 0);
-    sendAPIFrame((uint8_t*)&at_frame, at_frame.frame_length[0] | (at_frame.frame_length[1] << 8));
-}
-
 void XBee_GetTemperature()
 {
     constructATFrame(&at_frame, 0x01, ('T' << 8) | 'P', NULL, 0);
@@ -302,14 +290,11 @@ void XBee_SaveSettings()
     sendAPIFrame((uint8_t*)&at_frame, at_frame.frame_length[0] << 8 | at_frame.frame_length[1]);
 }
 
-void XBee_ReadHardwareAddressHigh(void)
+void XBee_ReadHardwareAddress()
 {
     constructATFrame(&at_frame, 0x01, ('S' << 8) | 'H', NULL, 0);
     sendAPIFrame((uint8_t*)&at_frame, at_frame.frame_length[0] << 8 | at_frame.frame_length[1]);
-}
-
-void XBee_ReadHardwareAddressLow(void)
-{
+    HAL_Delay(100);
     constructATFrame(&at_frame, 0x01, ('S' << 8) | 'L', NULL, 0);
     sendAPIFrame((uint8_t*)&at_frame, at_frame.frame_length[0] << 8 | at_frame.frame_length[1]);
 }
