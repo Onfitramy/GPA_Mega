@@ -9,6 +9,9 @@
 #define SHUNT_RESISTANCE    0.00152f  // Ohm
 
 extern I2C_HandleTypeDef hi2c2;
+extern TIM_HandleTypeDef htim7;
+extern uint32_t tim7_target_ms;
+extern tim_delay_task_t tim7_task;
 
 // R = 1 mOhm
 // Current_LSB = 0.001

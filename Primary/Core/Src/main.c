@@ -368,6 +368,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   if (htim->Instance == TIM6) {
     HAL_IncTick();
   }
+  /* USER CODE BEGIN Callback 1 */
   else if (htim->Instance == TIM7) {
     tim7_ms++;
     if (tim7_ms >= tim7_target_ms) {
@@ -384,8 +385,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       }
     }
   }
-  /* USER CODE BEGIN Callback 1 */
-
   /* USER CODE END Callback 1 */
 }
 

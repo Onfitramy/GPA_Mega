@@ -64,6 +64,7 @@ DMA_HandleTypeDef hdma_spi1_tx;
 
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim7;
 DMA_HandleTypeDef hdma_tim2_ch2_ch4;
 
 UART_HandleTypeDef huart1;
@@ -75,6 +76,11 @@ extern QueueHandle_t XBeeDataQueue; // Queue for XBee data packets
 
 extern volatile uint8_t SPI1_STATUS; // 0= Idle, 1 = Receiving, 2 = Transmitting
 extern uint8_t UART_LOCK;
+
+volatile uint32_t tim7_ms = 0;
+uint32_t tim7_target_ms;
+uint8_t tim7_event_number = 0;
+tim_delay_task_t tim7_task;
 
 /* USER CODE BEGIN PV */
 
@@ -94,6 +100,7 @@ static void MX_TIM3_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_ADC2_Init(void);
 static void MX_I2C2_Init(void);
+static void MX_TIM7_Init(void);
 
 /* USER CODE BEGIN PFP */
 
@@ -145,6 +152,7 @@ int main(void)
   MX_ADC2_Init();
   MX_I2C2_Init();
   MX_FATFS_Init();
+  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
   uint32_t flashid = W25Q1_ReadID(); //Check if the FLASH works, flashid = 0xEF4017
 
@@ -668,6 +676,44 @@ static void MX_TIM3_Init(void)
 }
 
 /**
+  * @brief TIM7 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM7_Init(void)
+{
+
+  /* USER CODE BEGIN TIM7_Init 0 */
+
+  /* USER CODE END TIM7_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM7_Init 1 */
+
+  /* USER CODE END TIM7_Init 1 */
+  htim7.Instance = TIM7;
+  htim7.Init.Prescaler = 83;
+  htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim7.Init.Period = 999;
+  htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim7, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM7_Init 2 */
+
+  /* USER CODE END TIM7_Init 2 */
+
+}
+
+/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -852,12 +898,44 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 0 */
 
   /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM6)
-  {
+  if (htim->Instance == TIM6) {
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
+  else if (htim->Instance == TIM7) {
+    tim7_ms++;
+    if (tim7_ms >= tim7_target_ms) {
+      tim7_ms = 0;
+      tim7_event_number++;
+      HAL_TIM_Base_Stop_IT(&htim7);
+      switch (tim7_task) {
+        case none:
+          break;
 
+        case cam_toggle_power:
+          HAL_GPIO_WritePin(GPIO21_GPIO_Port, GPIO21_Pin, 1);
+          tim7_event_number = 0;
+          tim7_task = none;
+          break;
+
+        case cam_skip_date:
+          break;
+
+        case cam_record:
+          break;
+
+        case cam_wifi_on:
+          break;
+
+        case cam_wifi_off:
+          break;
+
+        case buzzer_on:
+          break;
+          
+      }
+    }
+  }
   /* USER CODE END Callback 1 */
 }
 

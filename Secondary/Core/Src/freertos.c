@@ -185,11 +185,9 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;) {
     Counter_100Hz++;
-
     // show low battery level
 
     ShowStatus(secondary_status, 1, 100);
-
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }
 

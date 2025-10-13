@@ -36,7 +36,15 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
+typedef enum {
+  none,
+  cam_toggle_power,
+  cam_skip_date,
+  cam_record,
+  cam_wifi_on,
+  cam_wifi_off,
+  buzzer_on
+} tim_delay_task_t;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
