@@ -42,8 +42,7 @@ typedef enum {
   cam_skip_date,
   cam_record,
   cam_wifi_on,
-  cam_wifi_off,
-  buzzer_on
+  cam_wifi_off
 } tim_delay_task_t;
 /* USER CODE END ET */
 

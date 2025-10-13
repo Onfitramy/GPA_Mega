@@ -919,20 +919,75 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
           break;
 
         case cam_skip_date:
+          if (tim7_event_number == 1) {
+            HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 1);
+            HAL_TIM_Base_Start_IT(&htim7);
+          } else if (tim7_event_number == 2) {
+            HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 0);
+            HAL_TIM_Base_Start_IT(&htim7);
+          } else if (tim7_event_number == 3) {
+            HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 1);
+            HAL_TIM_Base_Start_IT(&htim7);
+          } else if (tim7_event_number == 4) {
+            HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 0);
+            HAL_TIM_Base_Start_IT(&htim7);
+          } else if (tim7_event_number == 5) {
+            HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 1);
+            HAL_TIM_Base_Start_IT(&htim7);
+          } else if (tim7_event_number == 6) {
+            HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 0);
+            HAL_TIM_Base_Start_IT(&htim7);
+          } else if (tim7_event_number == 7) {
+            HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 1);
+            HAL_TIM_Base_Start_IT(&htim7);
+          } else if (tim7_event_number == 8) {
+            HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 0);
+            HAL_TIM_Base_Start_IT(&htim7);
+          } else if (tim7_event_number == 9) {
+            HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 1);
+            HAL_TIM_Base_Start_IT(&htim7);
+          } else if (tim7_event_number == 10) {
+            HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 0);
+            HAL_TIM_Base_Start_IT(&htim7);
+          } else {
+            HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 1);
+            tim7_event_number = 0;
+            tim7_task = none;
+          }
           break;
 
         case cam_record:
+          HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 1);
+          tim7_event_number = 0;
+          tim7_task = none;
           break;
 
         case cam_wifi_on:
+          HAL_GPIO_WritePin(GPIO24_GPIO_Port, GPIO24_Pin, 1);
+          tim7_event_number = 0;
+          tim7_task = none;
           break;
 
         case cam_wifi_off:
+          if (tim7_event_number == 1) {
+            HAL_GPIO_WritePin(GPIO24_GPIO_Port, GPIO24_Pin, 1);
+            HAL_TIM_Base_Start_IT(&htim7);
+          } else if (tim7_event_number == 2) {
+            HAL_GPIO_WritePin(GPIO21_GPIO_Port, GPIO21_Pin, 0);
+            HAL_TIM_Base_Start_IT(&htim7);
+          } else if (tim7_event_number == 3) {
+            HAL_GPIO_WritePin(GPIO21_GPIO_Port, GPIO21_Pin, 1);
+            HAL_TIM_Base_Start_IT(&htim7);
+          } else if (tim7_event_number == 4) {
+            HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 0);
+            HAL_TIM_Base_Start_IT(&htim7);
+          } else {
+            HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 1);
+            tim7_event_number = 0;
+            tim7_task = none;
+          }
           break;
 
-        case buzzer_on:
-          break;
-          
       }
     }
   }

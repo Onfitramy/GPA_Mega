@@ -194,8 +194,10 @@ void PU_disableACS() {
 
 void Camera_SwitchOn() {
     if (CameraStatus.powered) return;
+    if (tim7_task != none) return;
 
     CameraStatus.powered = true;
+
     // first action
     HAL_GPIO_WritePin(GPIO21_GPIO_Port, GPIO21_Pin, 0);
 
@@ -208,85 +210,92 @@ void Camera_SwitchOn() {
 void Camera_WifiOn() {
     if (!CameraStatus.powered) return;
     if (CameraStatus.wifi) return;
+    if (tim7_task != none) return;
 
     CameraStatus.wifi = true;
+
+    // first action
     HAL_GPIO_WritePin(GPIO24_GPIO_Port, GPIO24_Pin, 0);
-    HAL_Delay(100);
-    HAL_GPIO_WritePin(GPIO24_GPIO_Port, GPIO24_Pin, 1);
+
+    // initial delay
+    tim7_target_ms = 100;
+    tim7_task = cam_wifi_on;
+    HAL_TIM_Base_Start_IT(&htim7);
 }
 
 void Camera_StartRecording() {
     if (!CameraStatus.powered) return;
     if (CameraStatus.recording) return;
+    if (tim7_task != none) return;
 
     CameraStatus.recording = true;
+
+    // first action
     HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 0);
-    HAL_Delay(100);
-    HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 1);
+
+    // initial delay
+    tim7_target_ms = 100;
+    tim7_task = cam_record;
+    HAL_TIM_Base_Start_IT(&htim7);
 }
 
 void Camera_SwitchOff() {
     if (!CameraStatus.powered) return;
+    if (tim7_task != none) return;
 
     CameraStatus.powered = false;
+
+    // first action
     HAL_GPIO_WritePin(GPIO21_GPIO_Port, GPIO21_Pin, 0);
-    HAL_Delay(2000);
-    HAL_GPIO_WritePin(GPIO21_GPIO_Port, GPIO21_Pin, 1);
+
+    // initial delay
+    tim7_target_ms = 2000;
+    tim7_task = cam_toggle_power;
+    HAL_TIM_Base_Start_IT(&htim7);
 }
 
 void Camera_WifiOff() {
     if (!CameraStatus.powered) return;
     if (!CameraStatus.wifi) return;
+    if (tim7_task != none) return;
 
     CameraStatus.wifi = false;
+
+    // first action
     HAL_GPIO_WritePin(GPIO24_GPIO_Port, GPIO24_Pin, 0);
-    HAL_Delay(100);
-    HAL_GPIO_WritePin(GPIO24_GPIO_Port, GPIO24_Pin, 1);
-    HAL_Delay(100);
-    HAL_GPIO_WritePin(GPIO21_GPIO_Port, GPIO21_Pin, 0);
-    HAL_Delay(100);
-    HAL_GPIO_WritePin(GPIO21_GPIO_Port, GPIO21_Pin, 1);
-    HAL_Delay(100);
-    HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 0);
-    HAL_Delay(100);
-    HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 1);
+
+    // initial delay
+    tim7_target_ms = 100;
+    tim7_task = cam_wifi_off;
+    HAL_TIM_Base_Start_IT(&htim7);
 }
 
 void Camera_StopRecording() {
     if (!CameraStatus.powered) return;
     if (!CameraStatus.recording) return;
+    if (tim7_task != none) return;
 
     CameraStatus.recording = false;
+
+    // first action
     HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 0);
-    HAL_Delay(100);
-    HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 1);
+    
+    // initial delay
+    tim7_target_ms = 100;
+    tim7_task = cam_record;
+    HAL_TIM_Base_Start_IT(&htim7);
 }
 
 void Camera_SkipDate() {
     if (!CameraStatus.powered) return;
+    if (CameraStatus.recording) return;
+    if (tim7_task != none) return;
 
-    HAL_Delay(100);
+    // first action
     HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 0);
-    HAL_Delay(100);
-    HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 1);
-    HAL_Delay(100);
-    HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 0);
-    HAL_Delay(100);
-    HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 1);
-    HAL_Delay(100);
-    HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 0);
-    HAL_Delay(100);
-    HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 1);
-    HAL_Delay(100);
-    HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 0);
-    HAL_Delay(100);
-    HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 1);
-    HAL_Delay(100);
-    HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 0);
-    HAL_Delay(100);
-    HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 1);
-    HAL_Delay(100);
-    HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 0);
-    HAL_Delay(100);
-    HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 1);
+
+    // initial delay
+    tim7_target_ms = 100;
+    tim7_task = cam_skip_date;
+    HAL_TIM_Base_Start_IT(&htim7);
 }
