@@ -251,11 +251,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
     // Process the received data in receiveBuffer
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     InterBoardPacket_t packet = InterBoardCom_ReceivePacket();
-    //Check if more data is incoming bit is set
-    if (packet.InterBoardPacket_ID & 0x80) {
-      //More data is incoming, reactivate DMA receive immediately
-      InterBoardCom_ActivateReceive();
-    }
+
     xQueueSendFromISR(InterBoardPacketQueue, &packet, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     //Pass the received packet to a que to be processed by the task
@@ -268,6 +264,14 @@ void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi) {
         SPI1_STATUS = 0; // Idle
         //InterBoardCom_ReactivateDMAReceive();
     }
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
+    if (GPIO_Pin == F4_INT_Pin) {
+        // Handle the interrupt from F4
+        InterBoardCom_ActivateReceive();
+    }
+    // Add other pins if needed
 }
 
 /**
@@ -475,7 +479,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi1.Init.NSS = SPI_NSS_HARD_INPUT;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -842,10 +846,10 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : F4_INT_Pin NRF24_CE_Pin */
-  /*GPIO_InitStruct.Pin = F4_INT_Pin/*|NRF24_CE_Pin*/;
-  /*GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pin = F4_INT_Pin/*|NRF24_CE_Pin*/;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);*/
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : ACS_Pin CAMS_Pin Recovery_Pin NRF24_CS_Pin
                            M2_LED_Pin */
@@ -873,9 +877,7 @@ static void MX_GPIO_Init(void)
   HAL_NVIC_SetPriority(EXTI2_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 
-  /* Deactivated due to using hardware nss
   HAL_NVIC_SetPriority(EXTI4_IRQn, 5, 0);
-  HAL_NVIC_EnableIRQ(EXTI4_IRQn);*/
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
   /* USER CODE END MX_GPIO_Init_2 */

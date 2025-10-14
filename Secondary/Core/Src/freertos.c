@@ -269,29 +269,17 @@ uint16_t receivedPackets = 0;
 void StartInterBoardComTask(void *argument)
 {
   /* USER CODE BEGIN StartInterBoardComTask */
-  uint32_t DMA_ReRun_time = HAL_GetTick() + 6; // Timestamp of the next time the DMA should be reactivated, nominaly every 6ms after the last packet was received
-
   W25Q_GetConfig();
-
+  
   //XBee_Init();
 
   InterBoardCom_Init();
-  InterBoardCom_ActivateReceive();
   /* Infinite loop */
   for(;;) {
     InterBoardPacket_t packet;
     // Calculate 0.1ms in ticks based on configTICK_RATE_HZ
     if (xQueueReceive(InterBoardPacketQueue, &packet, 1) == pdPASS) { // 1ms delay
       InterBoardCom_ParsePacket(packet);
-      #ifdef DEBUG
-      DMA_ReRun_time = HAL_GetTick() + 6; //Set the next reactivation time to 6ms in the future
-      #endif
-    }
-
-    if (HAL_GetTick() > DMA_ReRun_time) {
-      //Re-activate the DMA every 6ms to ensure it is always active
-      InterBoardCom_ActivateReceive();
-      DMA_ReRun_time = HAL_GetTick() + 6;
     }
   }
   /* USER CODE END StartInterBoardComTask */
