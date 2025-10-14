@@ -33,6 +33,8 @@
 #include "SD.h"
 #include "xBee.h"
 #include "statemachine.h"
+#include "NRF24L01P.h"
+#include "radio.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -64,6 +66,7 @@ DMA_HandleTypeDef hdma_spi1_tx;
 
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim5;
 TIM_HandleTypeDef htim7;
 TIM_HandleTypeDef htim10;
 TIM_HandleTypeDef htim11;
@@ -75,6 +78,7 @@ PCD_HandleTypeDef hpcd_USB_OTG_HS;
 
 extern QueueHandle_t InterBoardPacketQueue; // Queue for InterBoardPacket_t packets
 extern QueueHandle_t XBeeDataQueue; // Queue for XBee data packets
+extern QueueHandle_t InterruptQueue; // Queue for Interrupt packets
 
 extern volatile uint8_t SPI1_STATUS; // 0= Idle, 1 = Receiving, 2 = Transmitting
 extern uint8_t UART_LOCK;
@@ -107,6 +111,7 @@ static void MX_TIM3_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_ADC2_Init(void);
 static void MX_I2C2_Init(void);
+static void MX_TIM5_Init(void);
 static void MX_TIM7_Init(void);
 static void MX_TIM10_Init(void);
 static void MX_TIM11_Init(void);
@@ -161,11 +166,19 @@ int main(void)
   MX_ADC2_Init();
   MX_I2C2_Init();
   MX_FATFS_Init();
+  MX_TIM5_Init();
   MX_TIM7_Init();
   MX_TIM10_Init();
   MX_TIM11_Init();
   /* USER CODE BEGIN 2 */
-  //HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 3);
+  uint32_t flashid = W25Q1_ReadID(); //Check if the FLASH works, flashid = 0xEF4017
+
+  XBee_Init();
+  
+  // set NRF24L01 frequency and data rate
+  nrf24l01p_init(2462, _1Mbps);
+  radioSet(NRF_24_ACTIVE);
+  radioSetMode(RADIO_MODE_TRANSCEIVER);
 
   StateMachine_Init(&pu_sm, STATE_STARTUP);
   /* USER CODE END 2 */
@@ -238,6 +251,20 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
   }
 }
 
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+  /*Handle NRF24_INT by sending Queue to FreeRTOS funktion*/
+  if (GPIO_Pin == NRF24_INT_Pin) {
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    uint8_t sendData = (uint8_t)NRF24_INT_Pin;
+    xQueueSendFromISR(InterruptQueue, &sendData, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+  }
+  if (GPIO_Pin == F4_INT_Pin) {
+    // Handle the interrupt from F4
+    InterBoardCom_ActivateReceive();
+  }
+}
+
 void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi) {
     if (hspi->Instance == SPI1) {
         // Reactivate DMA receive on error
@@ -246,12 +273,8 @@ void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi) {
     }
 }
 
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
-    if (GPIO_Pin == F4_INT_Pin) {
-        // Handle the interrupt from F4
-        InterBoardCom_ActivateReceive();
-    }
-    // Add other pins if needed
+uint32_t HAL_GetTickUS(){
+  return TIM5->CNT; // Get the current value of TIM5 counter
 }
 
 /**
@@ -660,6 +683,49 @@ static void MX_TIM3_Init(void)
 }
 
 /**
+  * @brief TIM5 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM5_Init(void)
+{
+
+  /* USER CODE BEGIN TIM5_Init 0 */
+
+  /* USER CODE END TIM5_Init 0 */
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM5_Init 1 */
+
+  /* USER CODE END TIM5_Init 1 */
+  htim5.Instance = TIM5;
+  htim5.Init.Prescaler = 83;
+  htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim5.Init.Period = 4294967295;
+  htim5.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_Base_Init(&htim5) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim5, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim5, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM5_Init 2 */
+
+  /* USER CODE END TIM5_Init 2 */
+}
+
+/**
   * @brief TIM7 Initialization Function
   * @param None
   * @retval None
@@ -694,7 +760,6 @@ static void MX_TIM7_Init(void)
   /* USER CODE BEGIN TIM7_Init 2 */
 
   /* USER CODE END TIM7_Init 2 */
-
 }
 
 /**
@@ -888,15 +953,14 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pins : F4_INT_Pin NRF24_CE_Pin */
-  GPIO_InitStruct.Pin = F4_INT_Pin/*|NRF24_CE_Pin*/;
+  GPIO_InitStruct.Pin = F4_INT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : ACS_Pin CAMS_Pin Recovery_Pin NRF24_CS_Pin
                            M2_LED_Pin */
-  GPIO_InitStruct.Pin = ACS_Pin|CAMS_Pin|Recovery_Pin|NRF24_CS_Pin
+  GPIO_InitStruct.Pin = ACS_Pin|CAMS_Pin|Recovery_Pin|NRF24_CS_Pin|NRF24_CE_Pin
                           |M2_LED_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
@@ -918,7 +982,7 @@ static void MX_GPIO_Init(void)
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI2_IRQn, 5, 0);
-  HAL_NVIC_EnableIRQ(EXTI2_IRQn);
+  //HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 
   HAL_NVIC_SetPriority(EXTI4_IRQn, 5, 0);
 

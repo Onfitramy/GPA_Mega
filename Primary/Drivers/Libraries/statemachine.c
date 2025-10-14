@@ -161,11 +161,6 @@ static void StartupEntry(StateMachine_t *sm) {
     BMP_enable();
     BMP_Read_Calibration_Params(&bmp_handle);
 
-    // set NRF24L01 frequency and data rate
-    nrf24l01p_init(2462, _1Mbps);
-    radioSet(NRF_24_ACTIVE);
-    radioSetMode(RADIO_MODE_TRANSCEIVER);
-
     // initialize Servo PWM timers to neutral position
     SERVO_Init(DROGUE_SERVO, 1500, 2500, 135);
     SERVO_Init(MAIN_SERVO, 1500, 2500, 135);

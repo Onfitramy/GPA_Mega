@@ -22,7 +22,6 @@
 #include "task.h"
 #include "main.h"
 #include "cmsis_os.h"
-//#include "cli_app.h"
 #include "stream_buffer.h"
 #include "semphr.h"
 #include "queue.h"
@@ -32,11 +31,14 @@
 #include "ws2812.h"
 #include "W25Q1.h"
 #include "xBee.h"
+#include "NRF24L01P.h"
+#include "VoltageReader.h"
 #include "InterBoardCom.h"
 #include "status.h"
 #include "SD.h"
 #include "PowerUnit.h"
 #include "statemachine.h"
+#include "radio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -47,6 +49,7 @@ extern UART_HandleTypeDef huart1;
 /* USER CODE BEGIN PTD */
 QueueHandle_t InterBoardPacketQueue;
 QueueHandle_t XBeeDataQueue;
+QueueHandle_t InterruptQueue;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -108,9 +111,11 @@ uint32_t Counter_10Hz = 0;
 health_t health;
 health_t health_filtered;
 
-//uint64_t XBee_transmit_addr = 0x0013a200426e530e; // XBee  1 transmit address (to groundstation)
-//uint64_t XBee_transmit_addr = 0x0013a200426b848b; // XBee 2 transmit address (to flight controller)
-uint64_t XBee_transmit_addr = 0x0013a200426e52e7; // XBee 3 transmit address (to flight controller)
+uint8_t rx_recieve_buf[NRF24L01P_PAYLOAD_LENGTH] = {0};
+
+uint64_t XBee_transmit_addr = 0x0013a200426e530e; // XBee transmit address (to groundstation)
+//uint64_t XBee_transmit_addr = 0x0013a200426b848b; // XBee transmit address (to flight controller)
+//uint64_t XBee_transmit_addr = 0x0013a200426e52e7; // XBee transmit address (to flight controller)
 /* USER CODE END Variables */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -146,6 +151,7 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_QUEUES */
   InterBoardPacketQueue = xQueueCreate(64, sizeof(InterBoardPacket_t)); // Queue for 64 InterBoardPacket_t packets
   XBeeDataQueue = xQueueCreate(4, sizeof(xbee_frame_t)); // Queue for 4 XBee data packets
+  InterruptQueue = xQueueCreate(10, sizeof(uint8_t)); // Queue for 10 interrupt signals
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -229,6 +235,11 @@ void Start10HzTask(void *argument){
 
     XBee_TransmitQueue(XBee_transmit_addr); // Transmit data at 10Hz
 
+    // transmit data
+    uint8_t tx_buf[NRF24L01P_PAYLOAD_LENGTH];
+    tx_buf[1] = HAL_GetTick() >> 24;
+    radioSend(tx_buf);
+
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
   }
 
@@ -262,57 +273,79 @@ uint32_t TransmissionErrors = 0;
 void StartInterruptTask(void *argument)
 {
   /* USER CODE BEGIN StartInterruptTask */
+  HAL_NVIC_EnableIRQ(EXTI2_IRQn); // Enable EXTI2 interrupt for NRF24L01
+
+  QueueSetHandle_t xQueueSet = xQueueCreateSet(20); // Total items from both queues
+  xQueueAddToSet(InterruptQueue, xQueueSet);
+  xQueueAddToSet(XBeeDataQueue, xQueueSet);
   /* Infinite loop */
   for(;;) {
-    xbee_frame_t packet;
-    if (xQueueReceive(XBeeDataQueue, (uint8_t*)&packet, portMAX_DELAY) == pdPASS) {
-      if (packet.frame_data[0] == 0x88) { // Local AT Command Response
 
-        //Temperature Response
-        if (packet.frame_data[2] == 'T' && packet.frame_data[3] == 'P') { // TP command
-          // Extract temperature from the response
-          if (packet.frame_data[4] == 0x00) { // Check if command was successful
-            uint16_t rawTemp = packet.frame_data[6];
-            XBee_Temp = rawTemp;
-          } else {
-            // Handle error
-            XBee_Temp = 255; // Invalid temperature
-          }
-        
-        //Device Identifier Response
-        } else if (packet.frame_data[2] == 'S' && packet.frame_data[3] == 'L') { // DD command
-          // Device Identifier Response
-          if (packet.frame_data[4] == 0x00) { // Check if command was successful
-            // Process device identifier if needed
-            uint8_t deviceID = packet.frame_data[6];
-          } else {
-            // Handle error
-          }
-        } else if (packet.frame_data[2] == 'B' && packet.frame_data[3] == 'R'){ //Received Channel Mask (Change this to whatever Packet you are interested in)
-          // Check if command was successful
-          if (packet.frame_data[4] == 0x00) {
-              uint16_t channelMask = (packet.frame_data[6] << 8) | packet.frame_data[7];
-              xBee_changeState(0); // Set state to OK
-              // Process channel mask as needed
-          }
-        }
-      }  else if (packet.frame_data[0] == 0x90) { // RX Packet
-        XBEE_TransmittedReceived += 1;
-        HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin); // Toggle M2 LED to indicate transmitting
-        XBee_parseReceivedRFFrame(&packet);
-        // Handle rfData as needed
-      } else if (packet.frame_data[0] == 0x8B) { // Transmit Status
-        // Process transmit status
-        HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin); // Toggle M2 LED to indicate transmitting
-        uint8_t frameID = packet.frame_data[1];
-        transmitStatus = packet.frame_data[5];
-        if (transmitStatus != 0x00) {
-          TransmissionErrors += 1;
+     // Wait on the queue set with timeout (blocks efficiently)
+    QueueSetMemberHandle_t xActivatedMember = xQueueSelectFromSet(xQueueSet, portMAX_DELAY);
+
+    if (xActivatedMember == InterruptQueue) {
+      uint8_t int_pin;
+      if (xQueueReceive(InterruptQueue, &int_pin, 0) == pdPASS) {
+        if(nrf_mode) {
+          nrf24l01p_tx_irq();
         } else {
-          // Transmission successful
-          XBEE_TransmittedReceived += 1;
+          //HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
+          memset(rx_recieve_buf, 0, NRF24L01P_PAYLOAD_LENGTH);
+          nrf24l01p_rx_receive(rx_recieve_buf);
         }
-        // Handle transmit status as needed
+      }
+    } else if (xActivatedMember == XBeeDataQueue) {
+      xbee_frame_t packet;
+      if (xQueueReceive(XBeeDataQueue, (uint8_t*)&packet, 0) == pdPASS) {
+        if (packet.frame_data[0] == 0x88) { // Local AT Command Response
+
+          //Temperature Response
+          if (packet.frame_data[2] == 'T' && packet.frame_data[3] == 'P') { // TP command
+            // Extract temperature from the response
+            if (packet.frame_data[4] == 0x00) { // Check if command was successful
+              uint16_t rawTemp = packet.frame_data[6];
+              XBee_Temp = rawTemp;
+            } else {
+              // Handle error
+              XBee_Temp = 255; // Invalid temperature
+            }
+          
+          //Device Identifier Response
+          } else if (packet.frame_data[2] == 'S' && packet.frame_data[3] == 'L') { // DD command
+            // Device Identifier Response
+            if (packet.frame_data[4] == 0x00) { // Check if command was successful
+              // Process device identifier if needed
+              uint8_t deviceID = packet.frame_data[6];
+            } else {
+              // Handle error
+            }
+          } else if (packet.frame_data[2] == 'B' && packet.frame_data[3] == 'R'){ //Received Channel Mask (Change this to whatever Packet you are interested in)
+            // Check if command was successful
+            if (packet.frame_data[4] == 0x00) {
+                uint16_t channelMask = (packet.frame_data[6] << 8) | packet.frame_data[7];
+                xBee_changeState(0); // Set state to OK
+                // Process channel mask as needed
+            }
+          }
+        }  else if (packet.frame_data[0] == 0x90) { // RX Packet
+          XBEE_TransmittedReceived += 1;
+          HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin); // Toggle M2 LED to indicate transmitting
+          XBee_parseReceivedRFFrame(&packet);
+          // Handle rfData as needed
+        } else if (packet.frame_data[0] == 0x8B) { // Transmit Status
+          // Process transmit status
+          HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin); // Toggle M2 LED to indicate transmitting
+          uint8_t frameID = packet.frame_data[1];
+          transmitStatus = packet.frame_data[5];
+          if (transmitStatus != 0x00) {
+            TransmissionErrors += 1;
+          } else {
+            // Transmission successful
+            XBEE_TransmittedReceived += 1;
+          }
+          // Handle transmit status as needed
+        }
       }
     }
   }

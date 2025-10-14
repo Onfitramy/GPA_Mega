@@ -73,21 +73,8 @@ void SensorStatus_Reset(SensorStatus *sensor_status) {
 StatusPayload_t status_data = {0};
 float F4_data_float;
 
-// NRF24L01+ packages
-#pragma pack(push, 1)
-typedef struct {
-  float float1;
-  float float2;
-  float float3;
-  float float4;
-  float float5;
-  float float6;
-  float float7;
-  float float8;
-} Data_Package_Send;
-#pragma pack(pop)
+uint8_t selftest_tries = 0;
 
-Data_Package_Send tx_data;
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -422,10 +409,6 @@ void Start10HzTask(void *argument) {
       EKFgetNIS(&EKF2, &EKF2_corr2, &NIS_EKF2_corr2);
     }
 
-    // transmit data
-    uint8_t tx_buf[NRF24L01P_PAYLOAD_LENGTH];
-    tx_buf[1] = gps_data.sec; // Packet type
-    radioSend(tx_buf);
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
   }

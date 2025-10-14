@@ -19,7 +19,8 @@
         "stdbool.h": "c",
         "powerunit.h": "c",
         "queue.h": "c",
-        "statemachine.h": "c"
+        "statemachine.h": "c",
+        "status.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }
