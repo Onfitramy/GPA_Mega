@@ -166,7 +166,7 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(30, "VAR vec3 abs");
   #endif
 
-  #ifdef SIGNAL_PLOTTER_OUT_4 // raw sensor data
+  #ifdef SIGNAL_PLOTTER_OUT_4 // height ekf testing
   signalPlotter_setSignalName(0, "delta_Time");
   signalPlotter_setSignalName(1, "FlightState");
   signalPlotter_setSignalName(2, "phi");

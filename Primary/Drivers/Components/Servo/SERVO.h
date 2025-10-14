@@ -7,7 +7,16 @@
 
 // The Number OF Servo Motors To Be Used In The Project
 #define SERVO_NUM  8
- 
+
+#define DROGUE_SERVO            1
+#define DROGUE_NEUTRAL_ANGLE    0
+#define DROGUE_DEPLOY_ANGLE     35
+#define DROGUE_MOVE_DELAY_MS    300
+
+#define MAIN_SERVO              2
+#define MAIN_NEUTRAL_ANGLE      0
+#define MAIN_DEPLOY_ANGLE       90
+
 typedef struct {
     TIM_TypeDef*   TIM_Instance;
     uint32_t*      TIM_CCRx;
@@ -30,5 +39,9 @@ void SERVO_MoveToAngle(uint16_t au16_SERVO_Instance, float af_Angle);
 void SERVO_Test(uint8_t Servo, uint8_t Zero_val, int8_t angle, uint8_t dt);
 
 void SERVO_ZeroAll();
+
+void DeployDrogue();
+
+void DeployMain();
 
 #endif /* SERVO_H_ */

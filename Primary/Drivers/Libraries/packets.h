@@ -151,4 +151,9 @@ void UpdatePositionPacket(DataPacket_t *position_packet, uint32_t timestamp, flo
 void UpdateAttitudePacket(DataPacket_t *attitude_packet, uint32_t timestamp, float phi, float theta, float psi);
 void PlotDataPacket(DataPacket_t *packet);
 void CreateCommandPacket(DataPacket_t *command_packet, uint32_t timestamp, CommandTarget_t command_target, uint8_t command_id, uint8_t *params, size_t params_length);
+
+void PU_setCAM(bool on);
+void PU_setREC(bool on);
+void PU_setACS(bool on);
+
 #endif /* Packets_H_ */

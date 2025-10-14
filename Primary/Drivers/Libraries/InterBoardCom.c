@@ -114,10 +114,13 @@ uint8_t InterBoardCom_QueuePacket(InterBoardPacket_t *packet) {
 void InterBoardCom_ProcessTxBuffer(void) {
     
     // If SPI is busy or buffer is empty, return
-    if (SPI1_State != 0 || InterBoardBuffer_IsEmpty(&txCircBuffer)) {
+    if (InterBoardBuffer_IsEmpty(&txCircBuffer)) {
         return;
     }
     
+    if (SPI1_State != 0) {
+        return; // SPI is busy
+    }
     // Get next packet from buffer
     if (InterBoardBuffer_Pop(&txCircBuffer, &transmitBuffer)) {
         // Send the packet

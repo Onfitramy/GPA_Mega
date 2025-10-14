@@ -77,7 +77,6 @@ extern StateMachine_t flight_sm;
 
 extern GPA_Mega gpa_mega;
 extern StatusPayload_t status_data;
-extern uint8_t selftest_tries;
 
 extern TIM_HandleTypeDef htim7;
 extern uint32_t tim7_target_ms;

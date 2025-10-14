@@ -2,6 +2,8 @@
 
 StateMachine_t flight_sm;
 
+uint8_t selftest_tries = 0;
+
 /* --- Event handlers --- */
 static flight_state_t AbortHandler(flight_event_t event) {
     switch (event) {
@@ -113,8 +115,9 @@ static flight_state_t TestCalibHandler(flight_event_t event) {
 
 /* --- Entry actions --- */
 static void AbortEntry(StateMachine_t *sm) {
-    // TODO:
-    // disable recovery, ACS and cams
+    PU_setACS(DISABLE);
+    PU_setREC(DISABLE);
+    PU_setCAM(DISABLE);
 }
 static void StartupEntry(StateMachine_t *sm) {
     /* --- Initialize sensors --- */
@@ -155,10 +158,10 @@ static void StartupEntry(StateMachine_t *sm) {
     radioSetMode(RADIO_MODE_TRANSCEIVER);
 
     // initialize Servo PWM timers to neutral position
-    SERVO_Init(1, 1500, 2500, 135);
-    SERVO_Init(2, 1500, 2500, 135);
-    SERVO_MoveToAngle(1, 0);
-    SERVO_MoveToAngle(2, 0);
+    SERVO_Init(DROGUE_SERVO, 1500, 2500, 135);
+    SERVO_Init(MAIN_SERVO, 1500, 2500, 135);
+    SERVO_MoveToAngle(DROGUE_SERVO, DROGUE_NEUTRAL_ANGLE);
+    SERVO_MoveToAngle(MAIN_SERVO, MAIN_NEUTRAL_ANGLE);
 
     /* --- Initialize (Extended) Kalman Filters --- */
     // define Kalman Filter dimensions and pointers for velocity and position
@@ -214,11 +217,14 @@ static void AlignGNCEntry(StateMachine_t *sm) {
     // begin xBee comms
 }
 static void CheckoutsEntry(StateMachine_t *sm) {
+    PU_setCAM(ENABLE);
     // TODO:
     // notify ground station that it now needs to command the checkouts
-    // enable recovery, ACS and cams
+
 }
 static void ArmedEntry(StateMachine_t *sm) {
+    PU_setACS(ENABLE);
+    PU_setREC(ENABLE);
     // TODO:
     // move acs to neutral position
     // lock ACS
@@ -233,15 +239,18 @@ static void CoastEntry(StateMachine_t *sm) {
     // enable MPC
 }
 static void UnbrakedDescendEntry(StateMachine_t *sm) {
+    DeployDrogue();
     // TODO:
     // deplody drogue
 }
 static void DrogueDescendEntry(StateMachine_t *sm) {}
 static void MainDescendEntry(StateMachine_t *sm) {}
 static void LandedEntry(StateMachine_t *sm) {
+    PU_setACS(DISABLE);
+    PU_setREC(DISABLE);
     // TODO:
     // stop video recording
-    // disable recovery, ACS and cams
+    // disable cams
     // switch off LEDs
     // stop data logging
     // slow xBee and NRF data rate down to save power

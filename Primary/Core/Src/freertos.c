@@ -65,13 +65,8 @@ void SensorStatus_Reset(SensorStatus *sensor_status) {
   sensor_status->active = true;
 } // why is this here?
 
-int8_t servo_status = 1;
-
-//uint8_t SelfTest_Bitfield = 0; //Bitfield for external Devices 0: IMU1, 1: IMU2, 2: MAG, 3: BARO, 4: GPS, 7:All checks passed
 StatusPayload_t status_data = {0};
 float F4_data_float;
-
-uint8_t selftest_tries = 0;
 
 // NRF24L01+ packages
 #pragma pack(push, 1)
@@ -423,22 +418,6 @@ void Start10HzTask(void *argument) {
     uint8_t tx_buf[NRF24L01P_PAYLOAD_LENGTH];
     tx_buf[1] = gps_data.sec; // Packet type
     radioSend(tx_buf);
-
-    // RECOVERY TEST
-    if(uwTick  > 10000 && servo_status == 5) {
-      servo_status = 6;
-      SERVO_MoveToAngle(2, 90);
-    }
-    if(uwTick > 5300 && servo_status == 4) {
-      servo_status = 5;
-      SERVO_MoveToAngle(1, 0);
-    }
-    if(uwTick > 5000 && servo_status == 1) {
-      servo_status = 4;
-      SERVO_MoveToAngle(1, 35);
-    }
-
-    // EVENTS
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
   }

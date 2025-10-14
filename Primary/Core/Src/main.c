@@ -31,6 +31,7 @@
 
 #include "InterBoardCom.h"
 #include <stdint.h>
+#include "cli_app.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -155,8 +156,9 @@ int main(void)
   gpa_mega = GPA_MegaFromUID(uid);
 
   // if board is a ground station, set flag
-  if (gpa_mega == GPA_MEGA_2 || gpa_mega == GPA_MEGA_1) {
+  if (gpa_mega == GPA_MEGA_3 || gpa_mega == GPA_MEGA_1) {
     is_groundstation = true;
+    cli_target_mode = CLI_TARGET_MODE_EXTERNAL; // Groundstation always uses internal target mode
   }
 
   // define output signal names

@@ -230,3 +230,28 @@ int32_t float_to_int32_scaled(float value, float scale_factor) {
 float int32_to_float_scaled(int32_t value, float scale_factor) {
     return (float)value * scale_factor;
 }
+
+/* Secondary commands */
+void PU_setCAM(bool on) {
+    // Create and send command packet to Power Unit to toggle Camera Power
+    DataPacket_t packet;
+    uint8_t params[1] = {on};
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, 0, params, sizeof(params));
+    sendcmdToTarget(&packet);
+}
+
+void PU_setREC(bool on) {
+    // Create and send command packet to Power Unit to toggle Recovery Power
+    DataPacket_t packet;
+    uint8_t params[1] = {on};
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, 1, params, sizeof(params));
+    sendcmdToTarget(&packet);
+}
+
+void PU_setACS(bool on) {
+    // Create and send command packet to Power Unit to toggle ACS Power
+    DataPacket_t packet;
+    uint8_t params[1] = {on};
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, 2, params, sizeof(params));
+    sendcmdToTarget(&packet);
+}

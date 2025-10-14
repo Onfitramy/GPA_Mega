@@ -1,6 +1,7 @@
 #ifndef CLI_COMMANDS_H
 #define CLI_COMMANDS_H
 
+#include "cli_app.h"
 #include "main.h"
 #include "FreeRTOS.h"
 #include "task.h"
@@ -32,13 +33,8 @@ uint8_t backspace_tt[] = " \b";
 
 extern IMU_Data_t imu1_data;
 
-typedef enum {
-    CLI_TARGET_MODE_INTERNAL = 0,
-    CLI_TARGET_MODE_EXTERNAL = 1,
-} CLI_TargetMode_t;
-
 //Internal commands are executed on this board, external commands are sent via radio to the other board
-uint8_t cli_target_mode = CLI_TARGET_MODE_EXTERNAL;
+CLI_TargetMode_t cli_target_mode = CLI_TARGET_MODE_INTERNAL;
 
 int _write(int file, char *data, int len)
 {
@@ -58,6 +54,7 @@ int sendcmdToTarget(DataPacket_t *packet) {
         return 0; // Assume success for sending
     }
 }
+
 //*****************************************************************************
 BaseType_t cmd_clearScreen(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {

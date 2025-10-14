@@ -110,3 +110,15 @@ void SERVO_ZeroAll() {
         SERVO_MoveToAngle(i, 0);
     }
 }
+
+void DeployDrogue() {
+    SERVO_MoveToAngle(DROGUE_SERVO, DROGUE_DEPLOY_ANGLE);
+
+    HAL_Delay(DROGUE_MOVE_DELAY_MS);
+
+    SERVO_MoveToAngle(DROGUE_SERVO, DROGUE_NEUTRAL_ANGLE);
+}
+
+void DeployMain() {
+    SERVO_MoveToAngle(MAIN_SERVO, MAIN_DEPLOY_ANGLE);
+}
