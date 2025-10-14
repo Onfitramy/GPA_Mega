@@ -23,27 +23,34 @@ CircularBuffer_t txCircBuffer; // outgoing buffer
 
 volatile uint8_t SPI1_STATUS = 0; // 0= Idle, 1 = Busy
 
+uint32_t packets_sent_to_self = 0;
+uint32_t valid_packets;
+uint32_t invalid_packets;
+uint32_t packets_dropped;
+float packets_dropped_rate; //% of packets dropped
+
 void InterBoardCom_ClearSPIErrors(void);
 
 void InterBoardCom_Init(void) {
     // Initialize circular buffers
     CircBuffer_Init(&txCircBuffer);
+
+    HAL_NVIC_EnableIRQ(EXTI4_IRQn); // Enable EXTI4 interrupt for NSS pin (PA4)
     // Initialize SPI state
 }
 
 
 /* The SPI Slave (F4) is triggered by the main (H7) and automaticaly sends out its data packets while receiving from the master */
-
+//Right now a dropped packet rate of 3 in 1000 is observed
 void InterBoardCom_ActivateReceive(void) {
     //Called to activate the SPI DMA receive
+    packets_sent_to_self++;
+    packets_dropped = packets_sent_to_self - valid_packets - invalid_packets;
 
     if (SPI1_STATUS != 0 || hspi1.State != HAL_SPI_STATE_READY || hdma_spi1_rx.State != HAL_DMA_STATE_READY || hspi1.hdmatx->State != HAL_DMA_STATE_READY) {
         return; // Busy
-    }
-
-    if (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4) == GPIO_PIN_RESET) {
-        // Master is currently transmitting - don't start DMA
-        return;
+        //HAL_SPI_DMAStop(&hspi1); // Stop any ongoing DMA
+        //SPI1_STATUS = 0; // Idle
     }
 
     if (hspi1.Instance->SR & (SPI_SR_OVR | SPI_SR_MODF | SPI_SR_UDR)) {
@@ -51,6 +58,7 @@ void InterBoardCom_ActivateReceive(void) {
         // They are caused by transmitions from the master when not listening
         InterBoardCom_ClearSPIErrors();
     }
+
 
     if(CircBuffer_Pop(&txCircBuffer, &transmitBuffer) == 0) { // Get next packet to transmit, if none available a packet with ID 0 will be sent
         transmitBuffer.InterBoardPacket_ID = 0; //The data will be ignored by the master
@@ -180,8 +188,6 @@ DataPacket_t InterBoardCom_UnpackPacket(InterBoardPacket_t packet) {
     return dataPacket;
 }
 
-uint32_t valid_packets;
-uint32_t invalid_packets;
 DataPacket_t attitudeTransmitPacket;
 void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
     //This function is used to parse the received packet
@@ -190,6 +196,8 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
     DataPacket_t dataPacket = InterBoardCom_UnpackPacket(packet);
 
     bool valid_crc = InterBoard_CheckCRC(&dataPacket); //Check CRC
+
+    packets_dropped_rate = (1 - ((float)(valid_packets + invalid_packets) / (float)packets_sent_to_self)) * 100.0f;
 
     if (valid_crc) {
         valid_packets++;
@@ -212,7 +220,7 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
             }
 
             if ((Interboard_Target & INTERBOARD_TARGET_FLASH) == INTERBOARD_TARGET_FLASH) {
-                W25Q_AddFlashBufferPacket(&dataPacket);
+                //W25Q_AddFlashBufferPacket(&dataPacket);
             }
 
             if ((Interboard_Target & INTERBOARD_TARGET_RADIO) == INTERBOARD_TARGET_RADIO) {

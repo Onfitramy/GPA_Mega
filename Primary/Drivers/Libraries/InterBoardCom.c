@@ -124,18 +124,10 @@ void InterBoardCom_ProcessTxBuffer(void) {
     // Get next packet from buffer
     if (InterBoardBuffer_Pop(&txCircBuffer, &transmitBuffer)) {
         // Send the packet
-        if (InterBoardBuffer_Count(&txCircBuffer) != 0) {
-            // Packets to follow, set top bit InterBoardPACKET_ID to 1
-            transmitBuffer.InterBoardPacket_ID |= 0x80;
-        }
-
-        // Add small delay (10-100 microseconds) to let slave prepare
-        for(volatile uint32_t delay = 0; delay < 1000; delay++) {
-            __NOP(); // No operation - creates small delay
-        }
-
         SPI1_State = 1; // Mark SPI as busy
         HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET); // Pull CS low
+        // Add small delay (10-100 microseconds) to let slave prepare
+        delay_us(3); //10: 0.3% dropped 50: 0.3% dropped
         HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)&transmitBuffer, SPI1_DMA_Rx_Buffer, sizeof(InterBoardPacket_t));
     }
 }
