@@ -240,6 +240,9 @@ static void CoastEntry(StateMachine_t *sm) {
 }
 static void UnbrakedDescendEntry(StateMachine_t *sm) {
     DeployDrogue();
+
+    tim14_target_ms = 5000;
+    HAL_TIM_Base_Start_IT(&htim14);
     // TODO:
     // deplody drogue
 }

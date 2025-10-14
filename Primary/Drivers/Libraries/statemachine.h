@@ -80,6 +80,8 @@ extern StatusPayload_t status_data;
 
 extern TIM_HandleTypeDef htim7;
 extern uint32_t tim7_target_ms;
+extern TIM_HandleTypeDef htim14;
+extern uint32_t tim14_target_ms;
 
 /* --- Function declarations --- */
 void StateMachine_Init(StateMachine_t *sm, flight_state_t initialState);

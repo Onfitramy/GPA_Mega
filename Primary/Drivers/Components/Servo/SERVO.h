@@ -27,6 +27,9 @@ typedef struct {
 	uint16_t       MaxPeriod;
     uint16_t       MaxAngle;
 } SERVO_CfgType;
+
+extern TIM_HandleTypeDef htim13;
+extern uint32_t tim13_target_ms;
  
 /*-----[ Prototypes For All Functions ]-----*/
  

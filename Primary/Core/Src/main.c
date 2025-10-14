@@ -57,6 +57,15 @@ extern bool is_groundstation;
 
 volatile uint32_t tim7_ms = 0;
 uint32_t tim7_target_ms;
+volatile uint32_t tim13_ms = 0;
+uint32_t tim13_target_ms;
+volatile uint32_t tim14_ms = 0;
+uint32_t tim14_target_ms;
+volatile uint32_t tim16_ms = 0;
+uint32_t tim16_target_ms;
+volatile uint32_t tim17_ms = 0;
+uint32_t tim17_target_ms;
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -141,6 +150,10 @@ int main(void)
   MX_TIM5_Init();
   MX_TIM7_Init();
   MX_TIM8_Init();
+  MX_TIM13_Init();
+  MX_TIM14_Init();
+  MX_TIM16_Init();
+  MX_TIM17_Init();
   MX_DTS_Init();
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
@@ -386,6 +399,39 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       }
     }
   }
+  else if (htim->Instance == TIM13) {
+    tim13_ms++;
+    if (tim13_ms >= tim13_target_ms) {
+      tim13_ms = 0;
+      HAL_TIM_Base_Stop_IT(&htim13);
+
+      SERVO_MoveToAngle(DROGUE_SERVO, DROGUE_NEUTRAL_ANGLE);
+    }
+  }
+  else if (htim->Instance == TIM14) {
+    tim14_ms++;
+    if (tim14_ms >= tim14_target_ms) {
+      tim14_ms = 0;
+      HAL_TIM_Base_Stop_IT(&htim14);
+
+      DeployMain();
+    }
+  }
+  else if (htim->Instance == TIM16) {
+    tim16_ms++;
+    if (tim16_ms >= tim16_target_ms) {
+      tim16_ms = 0;
+      HAL_TIM_Base_Stop_IT(&htim16);
+    }
+  }
+  else if (htim->Instance == TIM17) {
+    tim17_ms++;
+    if (tim17_ms >= tim17_target_ms) {
+      tim17_ms = 0;
+      HAL_TIM_Base_Stop_IT(&htim17);
+    }
+  }
+  
   /* USER CODE END Callback 1 */
 }
 

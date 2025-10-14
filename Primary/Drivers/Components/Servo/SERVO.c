@@ -114,9 +114,8 @@ void SERVO_ZeroAll() {
 void DeployDrogue() {
     SERVO_MoveToAngle(DROGUE_SERVO, DROGUE_DEPLOY_ANGLE);
 
-    HAL_Delay(DROGUE_MOVE_DELAY_MS);
-
-    SERVO_MoveToAngle(DROGUE_SERVO, DROGUE_NEUTRAL_ANGLE);
+    tim13_target_ms = DROGUE_MOVE_DELAY_MS;
+    HAL_TIM_Base_Start_IT(&htim13);
 }
 
 void DeployMain() {
