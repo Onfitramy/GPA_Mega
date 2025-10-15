@@ -4,8 +4,9 @@
 #include "stm32f4xx_hal.h"
 #include "packets.h"
 
-uint8_t SD_SaveBuffer(void);
+uint8_t SD_SaveBuffer(char *filename);
 uint8_t SD_AppendDataPacketToBuffer(DataPacket_t* packet);
+void SD_ResetBufferIndex();
 
 uint8_t SD_Mount(void);
 uint8_t SD_Unmount(void);

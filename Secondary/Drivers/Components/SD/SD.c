@@ -16,7 +16,7 @@ uint8_t sd_buffer2[BUFFER_SIZE]; // Using double buffering
 uint8_t* sd_buffer = sd_buffer1; // Pointer to current buffer
 uint32_t sd_buffer_index = 0; // Current index in the buffer
 
-uint8_t SD_SaveBuffer(void){
+uint8_t SD_SaveBuffer(char *filename){
   uint32_t write_size = sd_buffer_index;
   sd_buffer_index = 0; // Reset buffer index
   uint8_t* save_buffer =  sd_buffer; // Pointer to current buffer, which will be saved
@@ -25,14 +25,14 @@ uint8_t SD_SaveBuffer(void){
   if (write_size == 0) {
     return 1; // Nothing to save
   }
-  SD_Open("LOG.txt", FA_WRITE | FA_OPEN_APPEND);
+  SD_Open(filename, FA_WRITE | FA_OPEN_APPEND);
   SD_Write(save_buffer, write_size);
   SD_Close();
   return 0; // Success
 }
 
 uint8_t SD_AppendDataPacketToBuffer(DataPacket_t* packet) {
-    char text_buffer[128] = {0}; // Temporary buffer for saving SD text
+    char text_buffer[256] = {0}; // Temporary buffer for saving SD text
     uint32_t text_size = 0;
 
     if (packet == NULL) {
@@ -78,7 +78,7 @@ uint8_t SD_AppendDataPacketToBuffer(DataPacket_t* packet) {
                 packet->Data.temperature.PU_bat, packet->Data.temperature.pressure);
         text_size = strlen(text_buffer);
         break;
-      
+
       case PACKET_ID_ATTITUDE:
         sprintf(text_buffer, "\nID:%d, TS:%lu, phi:%f, theta:%f, psi:%f",
                 packet->Packet_ID, packet->timestamp,
@@ -113,6 +113,10 @@ uint8_t SD_AppendDataPacketToBuffer(DataPacket_t* packet) {
     sd_buffer_index += text_size;
 
     return 0; // Success
+}
+
+void SD_ResetBufferIndex() {
+  sd_buffer_index = 0;
 }
 
 uint8_t SD_Mount(void)

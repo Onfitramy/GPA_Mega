@@ -8,6 +8,7 @@
 #include "W25Q1.h"
 #include "string.h"
 #include "FreeRTOS.h"
+#include "SD.h"
 #include "semphr.h"
 #include "task.h"
 
@@ -94,12 +95,12 @@ void W25Q_LoadFromLog(uint8_t *data, uint32_t size, uint32_t log_page, uint32_t 
 	W25Q_Read(log_page, log_offset, size, data);
 }
 
-void csLOW(void) 
+void csLOW(void)
 {
     HAL_GPIO_WritePin(FLASH_CS_GPIO_Port, FLASH_CS_Pin, GPIO_PIN_RESET);
 }
 
-void csHIGH(void) 
+void csHIGH(void)
 {
     HAL_GPIO_WritePin(FLASH_CS_GPIO_Port, FLASH_CS_Pin, GPIO_PIN_SET);
 }
@@ -125,7 +126,7 @@ void W25Q1_Reset(void)
     HAL_SPI_Transmit(&W25Q1_SPI , &tData[0], 1, 1000);
     HAL_SPI_Transmit(&W25Q1_SPI , &tData[1], 1, 1000);
     csHIGH();
-	
+
     vTaskDelay(20); // Wait for the chip to reset
 }
 
@@ -159,7 +160,7 @@ void W25Q_Read (uint32_t startPage, uint8_t offset, uint32_t size, uint8_t *rDat
     {
         HAL_SPI_Transmit(&W25Q1_SPI , tData, 4, 100);
     }
-    
+
     HAL_SPI_Receive(&W25Q1_SPI, rData, size, 100);
     csHIGH();
 }
@@ -491,7 +492,7 @@ void W25Q_Chip_Erase (void)
     tData[0] = 0xC7;    //Chip erase
 	W25Q_FLASH_CONFIG.curr_logPage = LOG_PAGE;	//Reset Log offset to zero
 	W25Q_FLASH_CONFIG.curr_logOffset = 0;
-    
+
     enable_write();
     csLOW();
     HAL_SPI_Transmit(&W25Q1_SPI, tData, 1, 100);
@@ -540,6 +541,25 @@ void W25Q_GetConfig() {
 	} else {
 		// If the ID does not match, save the default config
 		W25Q_WriteConfig();
+	}
+}
+
+void W25Q_CopyLogsToSD() {
+	uint32_t size = FLASH_BUFFER_SIZE * sizeof(DataPacket_t);
+	uint8_t buffer[size];
+
+	for (uint32_t page = LOG_PAGE; page < W25Q_FLASH_CONFIG.curr_logPage; page += PAGES_PER_SECTOR) {
+		W25Q_LoadFromLog(buffer, size, page, 0);
+
+		DataPacket_t *packets = (DataPacket_t *) buffer;
+
+		for (uint32_t i = 0; i < FLASH_BUFFER_SIZE; ++i) {
+			if (SD_AppendDataPacketToBuffer(packets + i) != 0) {
+				SD_SaveBuffer("FLASH_LOG.txt");
+				SD_ResetBufferIndex();
+				SD_AppendDataPacketToBuffer(packets + i);
+			}
+		}
 	}
 }
 

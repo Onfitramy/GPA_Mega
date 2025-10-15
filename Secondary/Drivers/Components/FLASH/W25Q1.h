@@ -7,9 +7,9 @@ extern SPI_HandleTypeDef hspi2;
 #define numBLOCK 256 //256 Blocks in the 128Mbit FLASH
 #define PAGE_SIZE 256
 #define SECTOR_SIZE 4096
-#define PAGES_PER_SECTOR 16
+#define PAGES_PER_SECTOR (SECTOR_SIZE / PAGE_SIZE)
 
-#define CONFIG_PAGE 16 //Start of the configuration page, ends at 127->32KB
+#define CONFIG_PAGE 32 //Start of the configuration page, ends at 127->32KB
 #define GPS_ASSIST_PAGE 256 //Start of the GPS assist data page, ends at 767->128KB
 #define LOG_PAGE 1024 //Start of the log page, runs till the end of the flash memory ~16MB
 
@@ -63,3 +63,4 @@ void W25Q_AddFlashBufferPacket(const DataPacket_t *data_packet);
 void W25Q_WriteFlashBuffer();
 void W25Q_LoadFromLog(uint8_t *data, uint32_t size, uint32_t log_page, uint32_t log_offset);
 void W25Q_GetConfig();
+void W25Q_CopyLogsToSD();
