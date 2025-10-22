@@ -41,3 +41,4 @@ void arm_quaternion_product_f32(float32_t *qA, float32_t *qB, float32_t *qOut);
 void arm_quaternion_normalize_f32(float32_t *q);
 void arm_quaternion_conjugate_f32(float32_t *q);
 
+float fconstrain(float variable, float min, float max);

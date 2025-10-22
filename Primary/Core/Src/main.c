@@ -419,6 +419,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   }
   else if (htim->Instance == TIM16) {
     tim16_ms++;
+
+    SERVO_MoveToAngle(MAIN_SERVO, MAIN_DEPLOY_ANGLE - tim16_ms / 100.f);
+
     if (tim16_ms >= tim16_target_ms) {
       tim16_ms = 0;
       HAL_TIM_Base_Stop_IT(&htim16);

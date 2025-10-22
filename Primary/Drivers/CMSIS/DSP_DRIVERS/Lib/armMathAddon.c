@@ -260,3 +260,13 @@ void arm_quaternion_rotate_vec3_f32(float *q, float *vec, float *vecOut) {
   vecOut[1] = qVec[2];
   vecOut[2] = qVec[3];
 }*/
+
+float fconstrain(float variable, float min, float max) {
+    if(variable > max) {
+        return max;
+    } else if(variable < min) {
+        return min;
+    } else {
+        return variable;
+    }
+}

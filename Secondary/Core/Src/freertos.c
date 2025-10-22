@@ -109,9 +109,9 @@ uint32_t Counter_10Hz = 0;
 health_t health;
 health_t health_filtered;
 
-//uint64_t XBee_transmit_addr = 0x0013a200426e530e; // XBee  1 transmit address (to groundstation)
+uint64_t XBee_transmit_addr = 0x0013a200426e530e; // XBee  1 transmit address (to groundstation)
 //uint64_t XBee_transmit_addr = 0x0013a200426b848b; // XBee 2 transmit address (to flight controller)
-uint64_t XBee_transmit_addr = 0x0013a200426e52e7; // XBee 3 transmit address (to flight controller)
+//uint64_t XBee_transmit_addr = 0x0013a200426e52e7; // XBee 3 transmit address (to flight controller)
 /* USER CODE END Variables */
 
 /* Private function prototypes -----------------------------------------------*/

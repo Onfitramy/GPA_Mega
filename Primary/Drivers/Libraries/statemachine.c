@@ -31,6 +31,7 @@ static flight_state_t AlignGNCHandler(flight_event_t event) {
     switch (event) {
         case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
         case EVENT_FLIGHT_FILTER_CONVERGED:     return STATE_FLIGHT_CHECKOUTS;
+        case EVENT_TEST_MODE_ENTER:             return STATE_TEST_INIT;
         default: return STATE_FLIGHT_GNC_ALIGN;
     }
 }
@@ -241,7 +242,7 @@ static void CoastEntry(StateMachine_t *sm) {
 static void UnbrakedDescendEntry(StateMachine_t *sm) {
     DeployDrogue();
 
-    tim14_target_ms = 5000;
+    tim14_target_ms = 45000;
     HAL_TIM_Base_Start_IT(&htim14);
     // TODO:
     // deplody drogue
@@ -259,7 +260,11 @@ static void LandedEntry(StateMachine_t *sm) {
     // slow xBee and NRF data rate down to save power
     // enable buzzer
 }
-static void TestInitEntry(StateMachine_t *sm) {}
+static void TestInitEntry(StateMachine_t *sm) {
+    SERVO_MoveToAngle(MAIN_SERVO, MAIN_DEPLOY_ANGLE);
+    tim16_target_ms = 9000;
+    HAL_TIM_Base_Start_IT(&htim16);
+}
 static void TestCalibEntry(StateMachine_t *sm) {}
 
 /* --- Do actions --- */
@@ -321,9 +326,7 @@ static void AlignGNCDo(StateMachine_t *sm, uint16_t freq) {
     // TODO: proper GNC alignment algorithm
 }
 static void CheckoutsDo(StateMachine_t *sm, uint16_t freq) {
-    // Skip Checkouts Phase for now
-    if (freq != 10) return;
-    StateMachine_Dispatch(sm, EVENT_FLIGHT_CHECKOUTS_COMPLETE);
+    // checkouts complete is confirmed by ground station
 }
 static void ArmedDo(StateMachine_t *sm, uint16_t freq) {
     // Check liftoff with 1000 Hz

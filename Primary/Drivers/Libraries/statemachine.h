@@ -11,7 +11,7 @@
 #define MIN_DELAY_UNTIL_LAUNCH_DETECTED     500
 #define MIN_DELAY_UNTIL_BURNOUT_DETECTED    4000
 #define MIN_DELAY_UNTIL_APOGEE_DETECTED     15000
-#define MIN_DELAY_UNTIL_TOUCHDOWN           15000
+#define MIN_DELAY_UNTIL_TOUCHDOWN           50000
 
 /* --- Define maximum Event delay times in ms --- */
 #define MAX_DELAY_UNTIL_BURNOUT_DETECTED    6000
@@ -82,6 +82,8 @@ extern TIM_HandleTypeDef htim7;
 extern uint32_t tim7_target_ms;
 extern TIM_HandleTypeDef htim14;
 extern uint32_t tim14_target_ms;
+extern TIM_HandleTypeDef htim16;
+extern uint32_t tim16_target_ms;
 
 /* --- Function declarations --- */
 void StateMachine_Init(StateMachine_t *sm, flight_state_t initialState);
