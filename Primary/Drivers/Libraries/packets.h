@@ -41,6 +41,31 @@ typedef enum __attribute__((packed)){
     COMMAND_TARGET_ACK = 0x10,
 } CommandTarget_t;
 
+typedef enum __attribute__((packed)){
+    COMMAND_ID_PRIMARY_RESET = 0x00,
+    COMMAND_ID_SECONDARY_RESET = 0x01,
+
+    COMMAND_ID_CAMERA_POWER = 0x00,
+    COMMAND_ID_CAMERA_RECORD = 0x01,
+    COMMAND_ID_CAMERA_SKIPDATE = 0x02,
+    COMMAND_ID_CAMERA_WIFI = 0x03,
+
+    COMMAND_ID_STATE_FORCE = 0x04,
+    COMMAND_ID_STATE_SIMULATE_EVENT = 0x05,
+
+    COMMAND_ID_SPARK_SET_ANGLE = 0x00,
+    COMMAND_ID_SPARK_SET_SPEED = 0x01,
+    COMMAND_ID_SPARK_EXIT_MODE = 0x02,
+    COMMAND_ID_SPARK_ZERO_STEPPER = 0x03,
+    COMMAND_ID_SPARK_FIND_MAX = 0x04,
+    COMMAND_ID_SPARK_MODE_TARGET_POSITION = 0x05,
+    COMMAND_ID_SPARK_MODE_TARGET_SPEED = 0x06,
+
+    COMMAND_ID_PU_POWER_CAM = 0x00,
+    COMMAND_ID_PU_POWER_RECOVERY = 0x01,
+    COMMAND_ID_PU_POWER_ACS = 0x02,
+} CommandID_t;
+
 /* Packet and Payload structure definitions */
 /* Each Payload has to be exactly 26 bytes */
 #pragma pack(push, 1)

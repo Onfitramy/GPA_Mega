@@ -158,28 +158,6 @@ int main(void)
 
   XBee_Init();
   //HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 3);
-
-  //PU_enableRecovery();
-  //PU_enableCamera();
-  //PU_enableACS();
-  /*
-
-  HAL_Delay(1000);
-
-  Camera_SwitchOn();
-
-  HAL_Delay(4000);
-
-  Camera_WifiOn();
-
-  HAL_Delay(2000);
-
-  Camera_WifiOff();
-  //Camera_SkipDate();
-
-  HAL_Delay(1000);
-
-  Camera_SwitchOff();*/
   
   /* USER CODE END 2 */
 
@@ -192,13 +170,6 @@ int main(void)
   osKernelStart();
 
   /* We should never get here as control is now taken by the scheduler */
-
-  //Set_LED(0, 255, 0, 0);
-  //Set_Brightness(45);
-  //WS2812_Send();
-
-  //buzzerInit();
-  //playMelody();
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */

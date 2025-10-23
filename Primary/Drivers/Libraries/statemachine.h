@@ -11,7 +11,7 @@
 #define MIN_DELAY_UNTIL_LAUNCH_DETECTED     500
 #define MIN_DELAY_UNTIL_BURNOUT_DETECTED    4000
 #define MIN_DELAY_UNTIL_APOGEE_DETECTED     15000
-#define MIN_DELAY_UNTIL_TOUCHDOWN           50000
+#define MIN_DELAY_UNTIL_TOUCHDOWN           15000
 
 /* --- Define maximum Event delay times in ms --- */
 #define MAX_DELAY_UNTIL_BURNOUT_DETECTED    6000

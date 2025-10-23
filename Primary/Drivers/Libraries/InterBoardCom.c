@@ -180,22 +180,22 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
             // No target specified, possibly log or ignore
             break;
         case COMMAND_TARGET_SPECIAL:
-            if (dataPacket->Data.command.command_id == 0x00) {
+            if (dataPacket->Data.command.command_id == COMMAND_ID_PRIMARY_RESET) {
                 // Special command 0x00: Reset the primary board
                 HAL_NVIC_SystemReset();
                 // No Acknowledgment possible, as we reset immediately
-            } else if (dataPacket->Data.command.command_id == 0x01) {
+            } else if (dataPacket->Data.command.command_id == COMMAND_ID_SECONDARY_RESET) {
                 // Special command 0x01: Reset the secondary board
                 // We never get here
             }
             break;
         case COMMAND_TARGET_STATE:
             // Handle state-related commands
-            if (dataPacket->Data.command.command_id == 0x04) {
+            if (dataPacket->Data.command.command_id == COMMAND_ID_STATE_FORCE) {
                 // State command 0x04: Force State
                 StateMachine_ForceState(&flight_sm, (flight_state_t)dataPacket->Data.command.params[0]);
                 InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
-            } else if (dataPacket->Data.command.command_id == 0x05) {
+            } else if (dataPacket->Data.command.command_id == COMMAND_ID_STATE_SIMULATE_EVENT) {
                 // State command 0x05: Simulate Event
                 StateMachine_Dispatch(&flight_sm, (flight_event_t)dataPacket->Data.command.params[0]);
                 InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);

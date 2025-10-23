@@ -372,9 +372,6 @@ void Start10HzTask(void *argument) {
 
     GPS_ReadSensorData(&gps_data);
 
-    CreateCommandPacket(&Spark_CommandPacket, HAL_GetTick(), COMMAND_TARGET_SPARK, 0x00, NULL, 0); // Example command to test
-    spark_sendCommand(&Spark_CommandPacket);
-
     //GPS_RequestSensorData(); // Request GPS data
 
     UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &average_imu_data, &mag_data);

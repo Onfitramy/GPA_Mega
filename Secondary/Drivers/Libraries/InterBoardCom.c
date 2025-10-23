@@ -278,10 +278,10 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
             // No target specified, possibly log or ignore
             break;
         case COMMAND_TARGET_SPECIAL:
-            if (dataPacket->Data.command.command_id == 0x00) {
+            if (dataPacket->Data.command.command_id == COMMAND_ID_PRIMARY_RESET) {
                 // Special command 0x00: Reset the primary board
                 InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_MCU, dataPacket); // Forward command to main board
-            } else if (dataPacket->Data.command.command_id == 0x01) {
+            } else if (dataPacket->Data.command.command_id == COMMAND_ID_SECONDARY_RESET) {
                 // Special command 0x01: Reset the secondary board
                 NVIC_SystemReset();
                 // No ACK possible as the board resets immediately
@@ -310,7 +310,7 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
             }
             break;
         case COMMAND_TARGET_CAMERA:
-            if (dataPacket->Data.command.command_id == 0x00) {
+            if (dataPacket->Data.command.command_id == COMMAND_ID_CAMERA_POWER) {
                 // Camera command 0x00: Power On/Off
                 if (dataPacket->Data.command.params[0] == 0x01) {
                     Camera_SwitchOn(); // Power On
@@ -319,7 +319,7 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
                     Camera_SwitchOff(); // Power Off
                     InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
                 }
-            } else if (dataPacket->Data.command.command_id == 0x01) {
+            } else if (dataPacket->Data.command.command_id == COMMAND_ID_CAMERA_RECORD) {
                 // Camera command 0x01: Start/Stop recording
                 if (dataPacket->Data.command.params[0] == 0x01) {
                     Camera_StartRecording();
@@ -328,11 +328,11 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
                     Camera_StopRecording();
                     InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
                 }
-            } else if (dataPacket->Data.command.command_id == 0x02) {
+            } else if (dataPacket->Data.command.command_id == COMMAND_ID_CAMERA_SKIPDATE) {
                 // Camera command 0x02: Skip Date
                 Camera_SkipDate();
                 InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
-            } else if (dataPacket->Data.command.command_id == 0x03) {
+            } else if (dataPacket->Data.command.command_id == COMMAND_ID_CAMERA_WIFI) {
                 // Camera command 0x03: Wifi On/Off
                 if (dataPacket->Data.command.params[0] == 0x01) {
                     Camera_WifiOn(); // Wifi On
@@ -351,11 +351,11 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
             InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_MCU, dataPacket);
             break;
         case COMMAND_TARGET_POWERUNIT:
-            if (dataPacket->Data.command.command_id == 0) {
+            if (dataPacket->Data.command.command_id == COMMAND_ID_PU_POWER_CAM) {
                 HAL_GPIO_WritePin(CAMS_GPIO_Port, CAMS_Pin, dataPacket->Data.command.params[0]);
-            } else if (dataPacket->Data.command.command_id == 1) {
+            } else if (dataPacket->Data.command.command_id == COMMAND_ID_PU_POWER_RECOVERY) {
                 HAL_GPIO_WritePin(Recovery_GPIO_Port, Recovery_Pin, dataPacket->Data.command.params[0]);
-            } else if (dataPacket->Data.command.command_id == 2) {
+            } else if (dataPacket->Data.command.command_id == COMMAND_ID_PU_POWER_ACS) {
                 HAL_GPIO_WritePin(ACS_GPIO_Port, ACS_Pin, dataPacket->Data.command.params[0]);
             }
             break;

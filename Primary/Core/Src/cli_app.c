@@ -104,7 +104,7 @@ BaseType_t cmd_resetPrimary(char *pcWriteBuffer, size_t xWriteBufferLen, const c
     (void)xWriteBufferLen;
 
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPECIAL, 0, NULL, 0);
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPECIAL, COMMAND_ID_PRIMARY_RESET, NULL, 0);
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
@@ -120,7 +120,7 @@ BaseType_t cmd_resetSecondary(char *pcWriteBuffer, size_t xWriteBufferLen, const
     (void)xWriteBufferLen;
 
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPECIAL, 1, NULL, 0);
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPECIAL, COMMAND_ID_SECONDARY_RESET, NULL, 0);
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
@@ -149,11 +149,14 @@ BaseType_t cmd_Camera_Power(char *pcWriteBuffer, size_t xWriteBufferLen, const c
     parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
 
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, 0, parameters, sizeof(parameters));
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, COMMAND_ID_CAMERA_POWER, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
-    snprintf(pcWriteBuffer, 30, "Toggling Camera Power...\r\n");
+    if (parameters[0] == 0)
+        snprintf(pcWriteBuffer, 30, "Turning Camera OFF...\r\n");
+    else
+        snprintf(pcWriteBuffer, 30, "Turning Camera ON...\r\n");
 
     return pdFALSE;
 }
@@ -178,11 +181,14 @@ BaseType_t cmd_Camera_Recording(char *pcWriteBuffer, size_t xWriteBufferLen, con
     parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
 
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, 1, parameters, sizeof(parameters));
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, COMMAND_ID_CAMERA_RECORD, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
-    snprintf(pcWriteBuffer, 30, "Toggling Camera Recording...\r\n");
+    if (parameters[0] == 0)
+        snprintf(pcWriteBuffer, 30, "Stopping Video Recording...\r\n");
+    else
+        snprintf(pcWriteBuffer, 30, "Starting Video Recording...\r\n");
 
     return pdFALSE;
 }
@@ -194,7 +200,7 @@ BaseType_t cmd_Camera_SkipDate(char *pcWriteBuffer, size_t xWriteBufferLen, cons
     (void)xWriteBufferLen;
     
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, 2, NULL, 0);
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, COMMAND_ID_CAMERA_SKIPDATE, NULL, 0);
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
@@ -223,11 +229,14 @@ BaseType_t cmd_Camera_Wifi(char *pcWriteBuffer, size_t xWriteBufferLen, const ch
     parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
 
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, 3, parameters, sizeof(parameters));
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, COMMAND_ID_CAMERA_WIFI, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
-    snprintf(pcWriteBuffer, 30, "Toggling Camera WiFi...\r\n");
+    if (parameters[0] == 0)
+        snprintf(pcWriteBuffer, 30, "Turning Camera WiFi OFF...\r\n");
+    else
+        snprintf(pcWriteBuffer, 30, "Turning Camera WiFi ON...\r\n");
 
     return pdFALSE;
 }
@@ -252,17 +261,17 @@ BaseType_t cmd_State_Force(char *pcWriteBuffer, size_t xWriteBufferLen, const ch
     parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
 
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STATE, 4, parameters, sizeof(parameters));
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STATE, COMMAND_ID_STATE_FORCE, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
-    snprintf(pcWriteBuffer, 30, "Forcing State...\r\n");
+    snprintf(pcWriteBuffer, 30, "Forcing Flight State %d...\r\n", parameters[0]);
 
     return pdFALSE;
 }
 
 //*****************************************************************************
-BaseType_t cmd_State_SimulateEvent(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+BaseType_t cmd_SimulateEvent(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {
     (void)pcCommandString;
     (void)xWriteBufferLen;
@@ -281,11 +290,11 @@ BaseType_t cmd_State_SimulateEvent(char *pcWriteBuffer, size_t xWriteBufferLen, 
     parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
 
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STATE, 5, parameters, sizeof(parameters));
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STATE, COMMAND_ID_STATE_SIMULATE_EVENT, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
-    snprintf(pcWriteBuffer, 30, "Simulating Event...\r\n");
+    snprintf(pcWriteBuffer, 30, "Simulating Flight Event %d...\r\n", parameters[0]);
 
     return pdFALSE;
 }
@@ -314,23 +323,10 @@ BaseType_t cmd_Logging_FlightDataOut(char *pcWriteBuffer, size_t xWriteBufferLen
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
-    snprintf(pcWriteBuffer, 50, "Toggling Flight Data Output Logging...\r\n");
-
-    return pdFALSE;
-}
-
-//*****************************************************************************
-BaseType_t cmd_SPARK_ZeroStepper(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
-{
-    (void)pcCommandString;
-    (void)xWriteBufferLen;
-
-    DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, 1, NULL, 0);
-    sendcmdToTarget(&packet);
-
-    /* Write the response to the buffer */
-    snprintf(pcWriteBuffer, 30, "Activating SPARK Stepper Zero function...\r\n");
+    if (parameters[0] == 0)
+        snprintf(pcWriteBuffer, 50, "Turning Flight Data Output Logging OFF...\r\n");
+    else
+        snprintf(pcWriteBuffer, 50, "Turning Flight Data Output Logging ON...\r\n");
 
     return pdFALSE;
 }
@@ -357,11 +353,74 @@ BaseType_t cmd_SPARK_SetAngle(char *pcWriteBuffer, size_t xWriteBufferLen, const
     memcpy(parameters, &parameter, sizeof(float));
 
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, 2, parameters, sizeof(parameters));
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_SET_ANGLE, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
-    snprintf(pcWriteBuffer, 30, "Setting SPARK Target Angle...\r\n");
+    snprintf(pcWriteBuffer, 50, "Setting SPARK Target Angle to %.0f°...\r\n", parameter);
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_SPARK_SetSpeed(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    float parameter;
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+    parameter = strtof(pcParameter, &endPtr);
+    uint8_t parameters[sizeof(float)];
+    memcpy(parameters, &parameter, sizeof(float));
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_SET_SPEED, parameters, sizeof(parameters));
+    sendcmdToTarget(&packet);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 50, "Setting SPARK Target Speed to %.0f°/s...\r\n", parameter);
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_SPARK_ExitMode(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_EXIT_MODE, NULL, 0);
+    sendcmdToTarget(&packet);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 30, "Exiting current mode...\r\n");
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_SPARK_ZeroStepper(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_ZERO_STEPPER, NULL, 0);
+    sendcmdToTarget(&packet);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 30, "Activating SPARK Stepper Zero function...\r\n");
 
     return pdFALSE;
 }
@@ -386,14 +445,14 @@ BaseType_t cmd_PU_toggleCAMPower(char *pcWriteBuffer, size_t xWriteBufferLen, co
     parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
 
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, 0, parameters, sizeof(parameters));
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, COMMAND_ID_PU_POWER_CAM, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
-    if (parameters[0] == 1)
-        snprintf(pcWriteBuffer, 50, "Turning Camera power ON...\r\n");
-    else
+    if (parameters[0] == 0)
         snprintf(pcWriteBuffer, 50, "Turning Camera power OFF...\r\n");
+    else
+        snprintf(pcWriteBuffer, 50, "Turning Camera power ON...\r\n");
 
     return pdFALSE;
 }
@@ -418,14 +477,14 @@ BaseType_t cmd_PU_toggleRECPower(char *pcWriteBuffer, size_t xWriteBufferLen, co
     parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
 
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, 1, parameters, sizeof(parameters));
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, COMMAND_ID_PU_POWER_RECOVERY, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
-    if (parameters[0] == 1)
-        snprintf(pcWriteBuffer, 50, "Turning Recovery power ON...\r\n");
-    else
+    if (parameters[0] == 0)
         snprintf(pcWriteBuffer, 50, "Turning Recovery power OFF...\r\n");
+    else
+        snprintf(pcWriteBuffer, 50, "Turning Recovery power ON...\r\n");
 
     return pdFALSE;
 }
@@ -450,14 +509,14 @@ BaseType_t cmd_PU_toggleACSPower(char *pcWriteBuffer, size_t xWriteBufferLen, co
     parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
 
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, 2, parameters, sizeof(parameters));
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, COMMAND_ID_PU_POWER_ACS, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
-    if (parameters[0] == 1)
-        snprintf(pcWriteBuffer, 50, "Turning ACS power ON...\r\n");
-    else
+    if (parameters[0] == 0)
         snprintf(pcWriteBuffer, 50, "Turning ACS power OFF...\r\n");
+    else
+        snprintf(pcWriteBuffer, 50, "Turning ACS power ON...\r\n");
 
     return pdFALSE;
 }
@@ -575,9 +634,9 @@ const CLI_Command_Definition_t xCommandList[] = {
         .cExpectedNumberOfParameters = 1
     },
     {
-        .pcCommand = "State_SimulateEvent", /* The command string to type. */
-        .pcHelpString = "State_SimulateEvent <event>: Simulate state event <event>\r\n\r\n",
-        .pxCommandInterpreter = cmd_State_SimulateEvent, /* The function to run. */
+        .pcCommand = "SimulateEvent", /* The command string to type. */
+        .pcHelpString = "SimulateEvent <event>: Simulate state machine event <event>\r\n\r\n",
+        .pxCommandInterpreter = cmd_SimulateEvent, /* The function to run. */
         .cExpectedNumberOfParameters = 1
     },
     {
@@ -587,16 +646,28 @@ const CLI_Command_Definition_t xCommandList[] = {
         .cExpectedNumberOfParameters = 1
     },
     {
+        .pcCommand = "SPARK_SetAngle", /* The command string to type. */
+        .pcHelpString = "SPARK_SetAngle <float>: Sets target angle of the stepper motor\r\n\r\n",
+        .pxCommandInterpreter = cmd_SPARK_SetAngle, /* The function to run. */
+        .cExpectedNumberOfParameters = 1
+    },
+    {
+        .pcCommand = "SPARK_SetSpeed", /* The command string to type. */
+        .pcHelpString = "SPARK_SetSpeed <float>: Sets target speed of the stepper motor\r\n\r\n",
+        .pxCommandInterpreter = cmd_SPARK_SetSpeed, /* The function to run. */
+        .cExpectedNumberOfParameters = 1
+    },
+    {
+        .pcCommand = "SPARK_ExitMode", /* The command string to type. */
+        .pcHelpString = "SPARK_ExitMode: Exits the current target mode\r\n\r\n",
+        .pxCommandInterpreter = cmd_SPARK_ExitMode, /* The function to run. */
+        .cExpectedNumberOfParameters = 0
+    },
+    {
         .pcCommand = "SPARK_ZeroStepper", /* The command string to type. */
         .pcHelpString = "SPARK_ZeroStepper: Resets the stepper motor position\r\n\r\n",
         .pxCommandInterpreter = cmd_SPARK_ZeroStepper, /* The function to run. */
         .cExpectedNumberOfParameters = 0
-    },
-    {
-        .pcCommand = "SPARK_SetAngle", /* The command string to type. */
-        .pcHelpString = "SPARK_SetAngle <float>: Sets the angle of the stepper motor\r\n\r\n",
-        .pxCommandInterpreter = cmd_SPARK_SetAngle, /* The function to run. */
-        .cExpectedNumberOfParameters = 1
     },
     {
         .pcCommand = "PU_setCAMPower", /* The command string to type. */
