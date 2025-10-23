@@ -65,6 +65,8 @@ DMA_HandleTypeDef hdma_spi1_tx;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim7;
+TIM_HandleTypeDef htim10;
+TIM_HandleTypeDef htim11;
 DMA_HandleTypeDef hdma_tim2_ch2_ch4;
 
 UART_HandleTypeDef huart1;
@@ -81,6 +83,11 @@ volatile uint32_t tim7_ms = 0;
 uint32_t tim7_target_ms;
 uint8_t tim7_event_number = 0;
 tim_delay_task_t tim7_task;
+volatile uint32_t tim10_ms = 0;
+uint32_t tim10_target1_ms;
+uint32_t tim10_target2_ms;
+volatile uint32_t tim11_ms = 0;
+uint32_t tim11_target_ms;
 
 /* USER CODE BEGIN PV */
 
@@ -101,6 +108,8 @@ static void MX_USART1_UART_Init(void);
 static void MX_ADC2_Init(void);
 static void MX_I2C2_Init(void);
 static void MX_TIM7_Init(void);
+static void MX_TIM10_Init(void);
+static void MX_TIM11_Init(void);
 
 /* USER CODE BEGIN PFP */
 
@@ -153,12 +162,16 @@ int main(void)
   MX_I2C2_Init();
   MX_FATFS_Init();
   MX_TIM7_Init();
+  MX_TIM10_Init();
+  MX_TIM11_Init();
   /* USER CODE BEGIN 2 */
   uint32_t flashid = W25Q1_ReadID(); //Check if the FLASH works, flashid = 0xEF4017
 
   XBee_Init();
   //HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 3);
-  
+
+  buzzerInit();
+  //buzzerEnablePeriodicMode("C5", 100, 900);
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -489,7 +502,7 @@ static void MX_SPI2_Init(void)
   hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_128; //SD Card starts slow, switch to fast later
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_128;
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -689,6 +702,68 @@ static void MX_TIM7_Init(void)
 }
 
 /**
+  * @brief TIM10 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM10_Init(void)
+{
+
+  /* USER CODE BEGIN TIM10_Init 0 */
+
+  /* USER CODE END TIM10_Init 0 */
+
+  /* USER CODE BEGIN TIM10_Init 1 */
+
+  /* USER CODE END TIM10_Init 1 */
+  htim10.Instance = TIM10;
+  htim10.Init.Prescaler = 167;
+  htim10.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim10.Init.Period = 999;
+  htim10.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim10.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim10) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM10_Init 2 */
+
+  /* USER CODE END TIM10_Init 2 */
+
+}
+
+/**
+  * @brief TIM11 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM11_Init(void)
+{
+
+  /* USER CODE BEGIN TIM11_Init 0 */
+
+  /* USER CODE END TIM11_Init 0 */
+
+  /* USER CODE BEGIN TIM11_Init 1 */
+
+  /* USER CODE END TIM11_Init 1 */
+  htim11.Instance = TIM11;
+  htim11.Init.Prescaler = 167;
+  htim11.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim11.Init.Period = 999;
+  htim11.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim11.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim11) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM11_Init 2 */
+
+  /* USER CODE END TIM11_Init 2 */
+
+}
+
+/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -820,6 +895,7 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pin = F4_INT_Pin/*|NRF24_CE_Pin*/;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : ACS_Pin CAMS_Pin Recovery_Pin NRF24_CS_Pin
@@ -871,7 +947,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 0 */
 
   /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM6) {
+  if (htim->Instance == TIM6)
+  {
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
@@ -960,8 +1037,32 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
             tim7_task = none;
           }
           break;
-
       }
+    }
+  }
+  else if (htim->Instance == TIM10) {
+    tim10_ms++;
+    if ((tim10_ms >= tim10_target1_ms) && (buzzerActivePeriod || !buzzerPeriodicMode)) {
+      tim10_ms = 0;
+      buzzerStop();
+      if (!buzzerPeriodicMode) {
+        HAL_TIM_Base_Stop_IT(&htim10);
+      }
+    } else if ((tim10_ms >= tim10_target2_ms) && !buzzerActivePeriod && buzzerPeriodicMode) {
+      tim10_ms = 0;
+      buzzerStart();
+    }
+
+    // start off time delay if in periodic mode
+    if (buzzerPeriodicMode) {
+      HAL_TIM_Base_Start_IT(&htim10);
+    }
+  }
+  else if (htim->Instance == TIM11) {
+    tim11_ms++;
+    if (tim11_ms >= tim11_target_ms) {
+      tim11_ms = 0;
+      HAL_TIM_Base_Stop_IT(&htim11);
     }
   }
   /* USER CODE END Callback 1 */

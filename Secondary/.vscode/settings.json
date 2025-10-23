@@ -14,7 +14,9 @@
         "freertos.h": "c",
         "xbee.h": "c",
         "packets.h": "c",
-        "limits": "c"
+        "limits": "c",
+        "buzzer.h": "c",
+        "stdbool.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

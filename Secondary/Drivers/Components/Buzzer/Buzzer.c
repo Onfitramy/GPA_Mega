@@ -1,31 +1,57 @@
 #include "Buzzer.h"
-#include "main.h"
-#include <string.h>
 
 #define TIM_FREQ 84000000
 
-int presForFrequency(int frequency) {
+bool buzzerPeriodicMode = false;
+bool buzzerActivePeriod = false;
+
+static int prescalerForFrequency(float frequency) {
 	if (frequency == 0) return 0;
-	return ((TIM_FREQ/(1000*frequency))-1);  // 1 is added in the register
+	return (TIM_FREQ / (1000.f * frequency)) - 0.5f;
 }
 
 void buzzerInit() {
-	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
 	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 250);
 }
 
-void buzzerSetFreq(int frequency) {
-	__HAL_TIM_SET_PRESCALER(&htim3, presForFrequency(frequency));
+static void buzzerSetFreq(float frequency) {
+	__HAL_TIM_SET_PRESCALER(&htim3, prescalerForFrequency(frequency));
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
+}
+
+void buzzerStop() {
+    buzzerActivePeriod = false;
+    HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_2);
+}
+
+void buzzerStart() {
+    buzzerActivePeriod = true;
+    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
 }
 
 /*Set any note between C0 and B8 (C2 - B6 recommended, unless you want to be annoying)*/
 void buzzerPlayNote(char *note, uint32_t duration_ms) {
+    buzzerPeriodicMode = false;
+    HAL_TIM_Base_Stop_IT(&htim10);
+
 	float frequency = get_frequency(note);
 	buzzerSetFreq(frequency);
-    //HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin);
-    HAL_Delay(duration_ms);
-    buzzerSetFreq(0);
+
+    tim10_target1_ms = duration_ms;
+    HAL_TIM_Base_Start_IT(&htim10);
+}
+
+void buzzerEnablePeriodicMode(char *note, uint32_t duration_on_ms, uint32_t duration_off_ms) {
+    buzzerPeriodicMode = true;
+    buzzerActivePeriod = true;
+    HAL_TIM_Base_Stop_IT(&htim10);
+
+    float frequency = get_frequency(note);
+	buzzerSetFreq(frequency);
+
+    tim10_target1_ms = duration_on_ms;
+    tim10_target2_ms = duration_off_ms;
+    HAL_TIM_Base_Start_IT(&htim10);
 }
 
 // Define the frequency for each note
