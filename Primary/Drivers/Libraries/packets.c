@@ -236,7 +236,7 @@ void PU_setCAM(bool on) {
     // Create and send command packet to Power Unit to toggle Camera Power
     DataPacket_t packet;
     uint8_t params[1] = {on};
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, 0, params, sizeof(params));
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_PU_POWER_CAM, params, sizeof(params));
     sendcmdToTarget(&packet);
 }
 
@@ -244,7 +244,7 @@ void PU_setREC(bool on) {
     // Create and send command packet to Power Unit to toggle Recovery Power
     DataPacket_t packet;
     uint8_t params[1] = {on};
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, 1, params, sizeof(params));
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_PU_POWER_RECOVERY, params, sizeof(params));
     sendcmdToTarget(&packet);
 }
 
@@ -252,6 +252,46 @@ void PU_setACS(bool on) {
     // Create and send command packet to Power Unit to toggle ACS Power
     DataPacket_t packet;
     uint8_t params[1] = {on};
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, 2, params, sizeof(params));
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_PU_POWER_ACS, params, sizeof(params));
+    sendcmdToTarget(&packet);
+}
+
+void Buzzer_PlayNote(char *note, uint32_t duration_ms) {
+    uint8_t parameters[6];
+    uint8_t length = strnlen(note, sizeof(note));
+    
+    parameters[0] = (uint8_t)(duration_ms >> 8);
+    parameters[1] = (uint8_t)duration_ms;
+    parameters[2] = length;
+    parameters[3] = note[0];
+    parameters[4] = note[1];
+    if (length == 3) {
+        parameters[5] = note[2];
+    }
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_BUZZER_PLAYNOTE, parameters, sizeof(parameters));
+    sendcmdToTarget(&packet);
+}
+
+void Buzzer_PlaySong(uint8_t song_num) {
+    uint8_t parameters[1];
+
+    parameters[0] = song_num;
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_BUZZER_PLAYSONG, parameters, sizeof(parameters));
+    sendcmdToTarget(&packet);
+}
+
+void Buzzer_PlaySongRepeat(uint8_t song_num, uint16_t period_ms) {
+    uint8_t parameters[3];
+    
+    parameters[0] = (uint8_t)(period_ms >> 8);
+    parameters[1] = (uint8_t)period_ms;
+    parameters[2] = song_num;
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_BUZZER_PLAYSONGREPEAT, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
 }

@@ -171,7 +171,6 @@ int main(void)
   //HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 3);
 
   buzzerInit();
-  //buzzerEnablePeriodicMode("C5", 100, 900);
   /* USER CODE END 2 */
 
   /* Init scheduler */
@@ -1042,27 +1041,46 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   }
   else if (htim->Instance == TIM10) {
     tim10_ms++;
-    if ((tim10_ms >= tim10_target1_ms) && (buzzerActivePeriod || !buzzerPeriodicMode)) {
-      tim10_ms = 0;
-      buzzerStop();
-      if (!buzzerPeriodicMode) {
-        HAL_TIM_Base_Stop_IT(&htim10);
-      }
-    } else if ((tim10_ms >= tim10_target2_ms) && !buzzerActivePeriod && buzzerPeriodicMode) {
-      tim10_ms = 0;
-      buzzerStart();
-    }
+    switch (buzzerPattern) {
+      case 0:
+        if ((tim10_ms >= tim10_target1_ms) && (buzzerActivePeriod || !buzzerPeriodicMode)) {
+          tim10_ms = 0;
+          buzzerStop();
+          if (!buzzerPeriodicMode) {
+            HAL_TIM_Base_Stop_IT(&htim10);
+          }
+        } else if ((tim10_ms >= tim10_target2_ms) && !buzzerActivePeriod && buzzerPeriodicMode) {
+          tim10_ms = 0;
+          buzzerStart();
+        }
 
-    // start off time delay if in periodic mode
-    if (buzzerPeriodicMode) {
-      HAL_TIM_Base_Start_IT(&htim10);
+        // start off time delay if in periodic mode
+        if (buzzerPeriodicMode) {
+          HAL_TIM_Base_Start_IT(&htim10);
+        }
+        break;
+
+      case 1:
+        if (tim10_ms >= tim10_target1_ms) {
+          tim10_ms = 0;
+          ASESongTable(buzzerEventNumber);
+          buzzerEventNumber++;
+        }
+        break;
+      case 2:
+        if (tim10_ms >= tim10_target1_ms) {
+          tim10_ms = 0;
+          FailureSongTable(buzzerEventNumber);
+          buzzerEventNumber++;
+        }
     }
+    
   }
   else if (htim->Instance == TIM11) {
     tim11_ms++;
     if (tim11_ms >= tim11_target_ms) {
       tim11_ms = 0;
-      HAL_TIM_Base_Stop_IT(&htim11);
+      buzzerPlayPattern(buzzerPattern);
     }
   }
   /* USER CODE END Callback 1 */

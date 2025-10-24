@@ -54,7 +54,8 @@
         "sam-m8q.h": "c",
         "ptot.h": "c",
         "spark.h": "c",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "freertos_cli.h": "c"
     },
     "cortex-debug.variableUseNaturalFormat": true
 }

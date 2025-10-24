@@ -357,7 +357,7 @@ BaseType_t cmd_SPARK_SetAngle(char *pcWriteBuffer, size_t xWriteBufferLen, const
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
-    snprintf(pcWriteBuffer, 50, "Setting SPARK Target Angle to %.0f°...\r\n", parameter);
+    snprintf(pcWriteBuffer, 50, "Setting SPARK Target Angle to %.2f°...\r\n", parameter);
 
     return pdFALSE;
 }
@@ -388,7 +388,7 @@ BaseType_t cmd_SPARK_SetSpeed(char *pcWriteBuffer, size_t xWriteBufferLen, const
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
-    snprintf(pcWriteBuffer, 50, "Setting SPARK Target Speed to %.0f°/s...\r\n", parameter);
+    snprintf(pcWriteBuffer, 50, "Setting SPARK Target Speed to %.2f°/s...\r\n", parameter);
 
     return pdFALSE;
 }
@@ -445,7 +445,7 @@ BaseType_t cmd_PU_toggleCAMPower(char *pcWriteBuffer, size_t xWriteBufferLen, co
     parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
 
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, COMMAND_ID_PU_POWER_CAM, parameters, sizeof(parameters));
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_PU_POWER_CAM, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
@@ -477,7 +477,7 @@ BaseType_t cmd_PU_toggleRECPower(char *pcWriteBuffer, size_t xWriteBufferLen, co
     parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
 
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, COMMAND_ID_PU_POWER_RECOVERY, parameters, sizeof(parameters));
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_PU_POWER_RECOVERY, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
@@ -509,7 +509,7 @@ BaseType_t cmd_PU_toggleACSPower(char *pcWriteBuffer, size_t xWriteBufferLen, co
     parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
 
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_POWERUNIT, COMMAND_ID_PU_POWER_ACS, parameters, sizeof(parameters));
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_PU_POWER_ACS, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
@@ -517,6 +517,136 @@ BaseType_t cmd_PU_toggleACSPower(char *pcWriteBuffer, size_t xWriteBufferLen, co
         snprintf(pcWriteBuffer, 50, "Turning ACS power OFF...\r\n");
     else
         snprintf(pcWriteBuffer, 50, "Turning ACS power ON...\r\n");
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_Buzzer_PlayNote(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter1;
+    const char *pcParameter2;
+    BaseType_t xParameterStringLength1;
+    BaseType_t xParameterStringLength2;
+    char *endPtr;  // Pointer to track invalid characters
+
+    uint8_t parameters[6];
+
+    pcParameter1 = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength1);
+    pcParameter2 = FreeRTOS_CLIGetParameter(pcCommandString, 2, &xParameterStringLength2);
+    if (pcParameter1 == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+    if (pcParameter2 == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 2\r\n");
+        return pdFALSE;
+    }
+
+    uint16_t delay_ms = (uint32_t)strtoul(pcParameter2, &endPtr, 10);
+    parameters[0] = (uint8_t)(delay_ms >> 8);
+    parameters[1] = (uint8_t)delay_ms;
+    parameters[2] = xParameterStringLength1;
+    parameters[3] = pcParameter1[0];
+    parameters[4] = pcParameter1[1];
+    if (xParameterStringLength1 == 3) {
+        parameters[5] = pcParameter1[2];
+    }
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_BUZZER_PLAYNOTE, parameters, sizeof(parameters));
+    sendcmdToTarget(&packet);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 50, "Playing Note %c%c for %.3f seconds...\r\n", parameters[0], parameters[1], (float)delay_ms / 1000.f);
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_Buzzer_PlaySong(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    uint8_t parameters[1];
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+    parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_BUZZER_PLAYSONG, parameters, sizeof(parameters));
+    sendcmdToTarget(&packet);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 30, "Playing Song %d...\r\n", parameters[0]);
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_Buzzer_PlaySongRepeat(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter1;
+    const char *pcParameter2;
+    BaseType_t xParameterStringLength1;
+    BaseType_t xParameterStringLength2;
+    char *endPtr;  // Pointer to track invalid characters
+
+    uint8_t parameters[3];
+
+    pcParameter1 = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength1);
+    pcParameter2 = FreeRTOS_CLIGetParameter(pcCommandString, 2, &xParameterStringLength2);
+    if (pcParameter1 == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+    if (pcParameter2 == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 2\r\n");
+        return pdFALSE;
+    }
+
+    uint16_t delay_ms = (uint32_t)strtoul(pcParameter2, &endPtr, 10);
+    parameters[0] = (uint8_t)(delay_ms >> 8);
+    parameters[1] = (uint8_t)delay_ms;
+    parameters[2] = (uint32_t)strtoul(pcParameter1, &endPtr, 10);
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_BUZZER_PLAYSONGREPEAT, parameters, sizeof(parameters));
+    sendcmdToTarget(&packet);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 50, "Playing Song %d ON REPEAT every %.2f seconds!!!\r\n", parameters[2], (float)delay_ms / 1000.f);
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_Buzzer_Stop(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+    
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_BUZZER_STOPALL, NULL, 0);
+    sendcmdToTarget(&packet);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 50, "Stopping annoying buzzing activities...\r\n");
 
     return pdFALSE;
 }
@@ -686,6 +816,30 @@ const CLI_Command_Definition_t xCommandList[] = {
         .pcHelpString = "PU_setACSPower <1/0>: toggles ACS power\r\n\r\n",
         .pxCommandInterpreter = cmd_PU_toggleACSPower, /* The function to run. */
         .cExpectedNumberOfParameters = 1
+    },
+    {
+        .pcCommand = "Buzzer_PlayNote", /* The command string to type. */
+        .pcHelpString = "Buzzer_PlayNote <Note> <duration>: Plays Note from C0 to B8\r\n\r\n",
+        .pxCommandInterpreter = cmd_Buzzer_PlayNote, /* The function to run. */
+        .cExpectedNumberOfParameters = 2
+    },
+    {
+        .pcCommand = "Buzzer_PlaySong", /* The command string to type. */
+        .pcHelpString = "Buzzer_PlaySong <Song>: Plays Song from Playlist\r\n\r\n",
+        .pxCommandInterpreter = cmd_Buzzer_PlaySong, /* The function to run. */
+        .cExpectedNumberOfParameters = 1
+    },
+    {
+        .pcCommand = "Buzzer_PlaySongRepeat", /* The command string to type. */
+        .pcHelpString = "Buzzer_PlaySong <Song> <Period>: Plays Song from Playlist on repeat each period\r\n\r\n",
+        .pxCommandInterpreter = cmd_Buzzer_PlaySongRepeat, /* The function to run. */
+        .cExpectedNumberOfParameters = 2
+    },
+    {
+        .pcCommand = "Buzzer_Stop", /* The command string to type. */
+        .pcHelpString = "Buzzer_Stop: Stops annoying buzzing activities\r\n\r\n",
+        .pxCommandInterpreter = cmd_Buzzer_Stop, /* The function to run. */
+        .cExpectedNumberOfParameters = 0
     },
     {
         .pcCommand = NULL /* simply used as delimeter for end of array*/

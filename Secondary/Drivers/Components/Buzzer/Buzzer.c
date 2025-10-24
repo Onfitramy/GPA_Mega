@@ -4,6 +4,8 @@
 
 bool buzzerPeriodicMode = false;
 bool buzzerActivePeriod = false;
+uint8_t buzzerPattern = 0;
+uint8_t buzzerEventNumber = 0;
 
 static int prescalerForFrequency(float frequency) {
 	if (frequency == 0) return 0;
@@ -29,19 +31,37 @@ void buzzerStart() {
     HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
 }
 
+void buzzerStopPeriodic() {
+    HAL_TIM_Base_Stop_IT(&htim10);
+    buzzerStop();
+}
+
+void buzzerStartPeriodic() {
+    HAL_TIM_Base_Start_IT(&htim10);
+    buzzerStart();
+}
+
 /*Set any note between C0 and B8 (C2 - B6 recommended, unless you want to be annoying)*/
 void buzzerPlayNote(char *note, uint32_t duration_ms) {
     buzzerPeriodicMode = false;
     HAL_TIM_Base_Stop_IT(&htim10);
 
-	float frequency = get_frequency(note);
+    float frequency;
+	if ((frequency = get_frequency(note)) == -1) return;
 	buzzerSetFreq(frequency);
 
     tim10_target1_ms = duration_ms;
     HAL_TIM_Base_Start_IT(&htim10);
 }
 
-void buzzerEnablePeriodicMode(char *note, uint32_t duration_on_ms, uint32_t duration_off_ms) {
+void buzzerDelay(uint32_t duration_ms) {
+    buzzerStop();
+    tim10_target1_ms = duration_ms;
+    HAL_TIM_Base_Start_IT(&htim10);
+}
+
+void buzzerEnablePeriodicMode1(char *note, uint32_t duration_on_ms, uint32_t duration_off_ms) {
+    buzzerPattern = 0;
     buzzerPeriodicMode = true;
     buzzerActivePeriod = true;
     HAL_TIM_Base_Stop_IT(&htim10);
@@ -51,6 +71,22 @@ void buzzerEnablePeriodicMode(char *note, uint32_t duration_on_ms, uint32_t dura
 
     tim10_target1_ms = duration_on_ms;
     tim10_target2_ms = duration_off_ms;
+    HAL_TIM_Base_Start_IT(&htim10);
+}
+
+void buzzerEnablePeriodicMode2(uint8_t pattern, uint32_t period_ms) {
+    tim11_target_ms = period_ms;
+    buzzerPattern = pattern;
+    HAL_TIM_Base_Start_IT(&htim11);
+}
+
+void buzzerPlayPattern(uint8_t pattern) {
+    buzzerPattern = pattern;
+    buzzerPeriodicMode = false;
+    buzzerEventNumber = 0;
+    HAL_TIM_Base_Stop_IT(&htim10);
+
+    tim10_target1_ms = 0;
     HAL_TIM_Base_Start_IT(&htim10);
 }
 
@@ -189,48 +225,142 @@ float get_frequency(const char *note_name) {
     return -1.0f;  // Return -1 if the note isn't found
 }
 
-void playMelody() {
-    buzzerPlayNote("B3", 200);
-    HAL_Delay(10);
-    buzzerPlayNote("B3", 200);
-    HAL_Delay(10);
-    buzzerPlayNote("A#3", 200);
-    HAL_Delay(10);
-    buzzerPlayNote("B3", 200);
-    HAL_Delay(10);
-    buzzerPlayNote("G#3", 200);
-    HAL_Delay(10);
-    buzzerPlayNote("G#3", 200);
-    HAL_Delay(10);
-    buzzerPlayNote("G#3", 200);
-    HAL_Delay(10);
-    buzzerPlayNote("G#3", 200);
-    HAL_Delay(10);
-    buzzerPlayNote("G#3", 200);
-    HAL_Delay(10);
-    buzzerPlayNote("D#4", 200);
-    HAL_Delay(10);
-    buzzerPlayNote("C#4", 200);
-    HAL_Delay(10);
-    buzzerPlayNote("B3", 200);
-    HAL_Delay(10);
-    buzzerPlayNote("C#4", 600);
-    HAL_Delay(10);
-    buzzerPlayNote("C#4", 200);
-    HAL_Delay(10);
-    buzzerPlayNote("C#4", 200);
-    HAL_Delay(10);
-    buzzerPlayNote("C#4", 200);
-    HAL_Delay(10);
-    buzzerPlayNote("C#4", 200);
-    HAL_Delay(10);
-    buzzerPlayNote("C#4", 400);
-    HAL_Delay(10);
-    buzzerPlayNote("C#4", 200);
-    HAL_Delay(10);
-    buzzerPlayNote("D#4", 200);
-    HAL_Delay(10);
-    buzzerPlayNote("A#3", 200);
-    HAL_Delay(10);
-    buzzerPlayNote("B3", 400);
+void FailureSongTable(uint8_t event_num) {
+    if (event_num == 0) {
+        buzzerPlayNote("C4", 200);
+    } else if (event_num == 1) {
+        buzzerDelay(10);
+    } else if (event_num == 2) {
+        buzzerPlayNote("C4", 200);
+    } else if (event_num == 3) {
+        buzzerDelay(10);
+    } else if (event_num == 4) {
+        buzzerPlayNote("A4", 410);
+    } else if (event_num == 5) {
+        buzzerDelay(10);
+    } else if (event_num == 6) {
+        buzzerPlayNote("A4", 410);
+    } else if (event_num == 7) {
+        buzzerDelay(10);
+    } else if (event_num == 8) {
+        buzzerPlayNote("F4", 410);
+    } else if (event_num == 9) {
+        buzzerDelay(10);
+    } else if (event_num == 10) {
+        buzzerPlayNote("C4", 200);
+    } else if (event_num == 11) {
+        buzzerDelay(10);
+    } else if (event_num == 12) {
+        buzzerPlayNote("C4", 200);
+    } else if (event_num == 13) {
+        buzzerDelay(10);
+    } else if (event_num == 14) {
+        buzzerPlayNote("E4", 410);
+    } else if (event_num == 15) {
+        buzzerDelay(10);
+    } else if (event_num == 16) {
+        buzzerPlayNote("F4", 410);
+    } else if (event_num == 17) {
+        buzzerDelay(10);
+    } else if (event_num == 18) {
+        buzzerPlayNote("E4", 830);
+    } else if (event_num == 19) {
+        buzzerDelay(10);
+    } else if (event_num == 20) {
+        buzzerPlayNote("D4", 830);
+    } else {
+        buzzerStopPeriodic();
+    }   
+}
+
+void ASESongTable(uint8_t event_num) {
+    if (event_num == 0) {
+        buzzerPlayNote("B3", 200);
+    } else if (event_num == 1) {
+        buzzerDelay(10);
+    } else if (event_num == 2) {
+        buzzerPlayNote("B3", 200);
+    } else if (event_num == 3) {
+        buzzerDelay(10);
+    } else if (event_num == 4) {
+        buzzerPlayNote("A#3", 200);
+    } else if (event_num == 5) {
+        buzzerDelay(10);
+    } else if (event_num == 6) {
+        buzzerPlayNote("B3", 200);
+    } else if (event_num == 7) {
+        buzzerDelay(10);
+    } else if (event_num == 8) {
+        buzzerPlayNote("G#3", 200);
+    } else if (event_num == 9) {
+        buzzerDelay(10);
+    } else if (event_num == 10) {
+        buzzerPlayNote("G#3", 200);
+    } else if (event_num == 11) {
+        buzzerDelay(10);
+    } else if (event_num == 12) {
+        buzzerPlayNote("G#3", 200);
+    } else if (event_num == 13) {
+        buzzerDelay(10);
+    } else if (event_num == 14) {
+        buzzerPlayNote("G#3", 200);
+    } else if (event_num == 15) {
+        buzzerDelay(10);
+    } else if (event_num == 16) {
+        buzzerPlayNote("G#3", 200);
+    } else if (event_num == 17) {
+        buzzerDelay(10);
+    } else if (event_num == 18) {
+        buzzerPlayNote("D#4", 200);
+    } else if (event_num == 19) {
+        buzzerDelay(10);
+    } else if (event_num == 20) {
+        buzzerPlayNote("C#4", 200);
+    } else if (event_num == 21) {
+        buzzerDelay(10);
+    } else if (event_num == 22) {
+        buzzerPlayNote("B3", 200);
+    } else if (event_num == 23) {
+        buzzerDelay(10);
+    } else if (event_num == 24) {
+        buzzerPlayNote("C#4", 620);
+    } else if (event_num == 25) {
+        buzzerDelay(10);
+    } else if (event_num == 26) {
+        buzzerPlayNote("C#4", 200);
+    } else if (event_num == 27) {
+        buzzerDelay(10);
+    } else if (event_num == 28) {
+        buzzerPlayNote("C#4", 200);
+    } else if (event_num == 29) {
+        buzzerDelay(10);
+    } else if (event_num == 30) {
+        buzzerPlayNote("C#4", 200);
+    } else if (event_num == 31) {
+        buzzerDelay(10);
+    } else if (event_num == 32) {
+        buzzerPlayNote("C#4", 200);
+    } else if (event_num == 33) {
+        buzzerDelay(10);
+    } else if (event_num == 34) {
+        buzzerPlayNote("C#4", 410);
+    } else if (event_num == 35) {
+        buzzerDelay(10);
+    } else if (event_num == 36) {
+        buzzerPlayNote("C#4", 200);
+    } else if (event_num == 37) {
+        buzzerDelay(10);
+    } else if (event_num == 38) {
+        buzzerPlayNote("D#4", 200);
+    } else if (event_num == 39) {
+        buzzerDelay(10);
+    } else if (event_num == 40) {
+        buzzerPlayNote("A#3", 200);
+    } else if (event_num == 41) {
+        buzzerDelay(10);
+    } else if (event_num == 42) {
+        buzzerPlayNote("B3", 410);
+    } else {
+        buzzerStopPeriodic();
+    }   
 }

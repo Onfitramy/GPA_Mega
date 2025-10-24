@@ -3,6 +3,7 @@
 
 #include "stm32f4xx_hal.h"
 #include "packets.h"
+#include "Buzzer.h"
 
 #define INTERBOARD_BUFFER_SIZE 32
 

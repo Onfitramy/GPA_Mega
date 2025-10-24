@@ -32,7 +32,7 @@ typedef enum __attribute__((packed)){
     COMMAND_TARGET_STORAGE = 0x06,
     COMMAND_TARGET_GROUNDSTATION = 0x07,
     COMMAND_TARGET_LOGGING = 0x08,
-    COMMAND_TARGET_POWERUNIT = 0x09,
+    COMMAND_TARGET_SECONDARY = 0x09,
     COMMAND_TARGET_ACK = 0x10,
 } CommandTarget_t;
 
@@ -59,6 +59,11 @@ typedef enum __attribute__((packed)){
     COMMAND_ID_PU_POWER_CAM = 0x00,
     COMMAND_ID_PU_POWER_RECOVERY = 0x01,
     COMMAND_ID_PU_POWER_ACS = 0x02,
+
+    COMMAND_ID_BUZZER_PLAYNOTE = 0x03,
+    COMMAND_ID_BUZZER_PLAYSONG = 0x04,
+    COMMAND_ID_BUZZER_PLAYSONGREPEAT = 0x05,
+    COMMAND_ID_BUZZER_STOPALL = 0x06
 } CommandID_t;
 
 /* Packet and Payload structure definitions */

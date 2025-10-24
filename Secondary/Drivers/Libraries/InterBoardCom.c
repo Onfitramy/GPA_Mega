@@ -350,13 +350,36 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
             // Logging commands are on the main board, forward command
             InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_MCU, dataPacket);
             break;
-        case COMMAND_TARGET_POWERUNIT:
+        case COMMAND_TARGET_SECONDARY:
             if (dataPacket->Data.command.command_id == COMMAND_ID_PU_POWER_CAM) {
                 HAL_GPIO_WritePin(CAMS_GPIO_Port, CAMS_Pin, dataPacket->Data.command.params[0]);
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_PU_POWER_RECOVERY) {
                 HAL_GPIO_WritePin(Recovery_GPIO_Port, Recovery_Pin, dataPacket->Data.command.params[0]);
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_PU_POWER_ACS) {
                 HAL_GPIO_WritePin(ACS_GPIO_Port, ACS_Pin, dataPacket->Data.command.params[0]);
+            } else if (dataPacket->Data.command.command_id == COMMAND_ID_BUZZER_PLAYNOTE) {
+                uint16_t playtime_ms = 0;
+                playtime_ms = dataPacket->Data.command.params[0] << 8;
+                playtime_ms |= dataPacket->Data.command.params[1];
+                uint8_t length = dataPacket->Data.command.params[2];
+                char note[length+1];
+                for (uint8_t i = 0; i < length; i++) {
+                    note[i] = dataPacket->Data.command.params[3+i];
+                }
+                note[length] = '\0';
+                buzzerPlayNote(note, playtime_ms);
+            } else if (dataPacket->Data.command.command_id == COMMAND_ID_BUZZER_PLAYSONG) {
+                buzzerPlayPattern(dataPacket->Data.command.params[0]);
+            } else if (dataPacket->Data.command.command_id == COMMAND_ID_BUZZER_PLAYSONGREPEAT) {
+                uint16_t repeattime_ms = 0;
+                repeattime_ms = dataPacket->Data.command.params[0] << 8;
+                repeattime_ms |= dataPacket->Data.command.params[1];
+                uint8_t song_pattern = dataPacket->Data.command.params[2];
+                buzzerPlayPattern(song_pattern);
+                buzzerEnablePeriodicMode2(song_pattern, repeattime_ms);
+            } else if (dataPacket->Data.command.command_id == COMMAND_ID_BUZZER_STOPALL) {
+                buzzerStopPeriodic();
+                HAL_TIM_Base_Stop_IT(&htim11);
             }
             break;
         case COMMAND_TARGET_ACK:

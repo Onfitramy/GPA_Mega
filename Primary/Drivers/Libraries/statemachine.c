@@ -119,6 +119,7 @@ static void AbortEntry(StateMachine_t *sm) {
     PU_setACS(DISABLE);
     PU_setREC(DISABLE);
     PU_setCAM(DISABLE);
+    Buzzer_PlaySong(2);
 }
 static void StartupEntry(StateMachine_t *sm) {
     /* --- Initialize sensors --- */
@@ -175,6 +176,7 @@ static void StartupEntry(StateMachine_t *sm) {
     EKFCorrectionInit(EKF3, &EKF3_corr1, corr1_type, 6, &H3_corr1, &K3_corr1, &R3_corr1, &S3_corr1, &S3_inv_corr1, z3_corr1, h3_corr1, v3_corr1);
 }
 static void InitEntry(StateMachine_t *sm) {
+    Buzzer_PlayNote("A4", 100);
     /* --- Read sensor data for EKF initialization --- */
     imu1_status.hal_status |= IMU_Update(&imu1_data);
     imu2_status.hal_status |= IMU_Update(&imu2_data);
@@ -258,7 +260,8 @@ static void LandedEntry(StateMachine_t *sm) {
     // switch off LEDs
     // stop data logging
     // slow xBee and NRF data rate down to save power
-    // enable buzzer
+
+    Buzzer_PlaySongRepeat(1, 20000);
 }
 static void TestInitEntry(StateMachine_t *sm) {
     SERVO_MoveToAngle(MAIN_SERVO, MAIN_DEPLOY_ANGLE);
