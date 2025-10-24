@@ -78,11 +78,14 @@ void ShowStatus(int8_t status, float freq_cycle, float freq_call) {
         case STATE_FLIGHT_COAST:
             SetLED_color(COLOR_CYAN);
             break;
-        case STATE_FLIGHT_DESCEND_UNBRAKED:
+        case STATE_FLIGHT_AWAIT_DROGUE:
             SetLED_slide(COLOR_CYAN, COLOR_PINK);
             break;
         case STATE_FLIGHT_DESCEND_DROGUE:
             SetLED_pulse(COLOR_LIME);
+            break;
+        case STATE_FLIGHT_AWAIT_MAIN:
+            SetLED_slide(COLOR_LIME, COLOR_PINK);
             break;
         case STATE_FLIGHT_DESCEND_MAIN:
             SetLED_slide(COLOR_LIME, COLOR_BLUE);

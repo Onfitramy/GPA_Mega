@@ -389,11 +389,13 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       tim7_ms = 0;
       HAL_TIM_Base_Stop_IT(&htim7);
 
+      // handle max state timer elapsed
       switch (flight_sm.currentFlightState) {
         case STATE_FLIGHT_BURN:             StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_BURNOUT_DETECTED); break;
-        case STATE_FLIGHT_COAST:            StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_APOGEE_DETECTED); break;
-        case STATE_FLIGHT_DESCEND_UNBRAKED:
-        case STATE_FLIGHT_DESCEND_DROGUE: 
+        case STATE_FLIGHT_COAST:            StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_DROGUE_COMMANDED); break;
+        case STATE_FLIGHT_AWAIT_DROGUE:     StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_TOUCHDOWN); break;
+        case STATE_FLIGHT_DESCEND_DROGUE:   StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_MAIN_COMMANDED); break;
+        case STATE_FLIGHT_AWAIT_MAIN:       StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_TOUCHDOWN); break;
         case STATE_FLIGHT_DESCEND_MAIN:     StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_TOUCHDOWN); break;
         default: break; // error?
       }

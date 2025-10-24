@@ -63,26 +63,33 @@ static flight_state_t BurnHandler(flight_event_t event) {
 static flight_state_t CoastHandler(flight_event_t event) {
     switch (event) {
         case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
-        case EVENT_FLIGHT_APOGEE_DETECTED:      return STATE_FLIGHT_DESCEND_UNBRAKED;
+        case EVENT_FLIGHT_DROGUE_COMMANDED:     return STATE_FLIGHT_AWAIT_DROGUE;
         default: return STATE_FLIGHT_COAST;
     }
 }
 
-static flight_state_t UnbrakedDescendHandler(flight_event_t event) {
+static flight_state_t AwaitDrogueHandler(flight_event_t event) {
     switch (event) {
         case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
-        case EVENT_FLIGHT_DROGUE_DEPLOY:        return STATE_FLIGHT_DESCEND_DROGUE;
-        case EVENT_FLIGHT_TOUCHDOWN:            return STATE_FLIGHT_LANDED; // :(
-        default: return STATE_FLIGHT_DESCEND_UNBRAKED;
+        case EVENT_FLIGHT_DROGUE_CONFIRMED:     return STATE_FLIGHT_DESCEND_DROGUE;
+        case EVENT_FLIGHT_TOUCHDOWN:            return STATE_FLIGHT_LANDED;
+        default: return STATE_FLIGHT_AWAIT_DROGUE;
     }
 }
 
 static flight_state_t DrogueDescendHandler(flight_event_t event) {
     switch (event) {
         case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
-        case EVENT_FLIGHT_MAIN_DEPLOY:          return STATE_FLIGHT_DESCEND_MAIN;
-        case EVENT_FLIGHT_TOUCHDOWN:            return STATE_FLIGHT_LANDED; // :/
+        case EVENT_FLIGHT_MAIN_COMMANDED:       return STATE_FLIGHT_AWAIT_MAIN;
         default: return STATE_FLIGHT_DESCEND_DROGUE;
+    }
+}
+
+static flight_state_t AwaitMainHandler(flight_event_t event) {
+    switch (event) {
+        case EVENT_FLIGHT_TOUCHDOWN:            return STATE_FLIGHT_LANDED;
+        case EVENT_FLIGHT_MAIN_CONFIRMED:       return STATE_FLIGHT_DESCEND_MAIN;
+        default:                                return STATE_FLIGHT_AWAIT_MAIN;
     }
 }
 
@@ -249,7 +256,9 @@ static void UnbrakedDescendEntry(StateMachine_t *sm) {
     // TODO:
     // deplody drogue
 }
+static void AwaitDrogueEntry(StateMachine_t *sm) {}
 static void DrogueDescendEntry(StateMachine_t *sm) {}
+static void AwaitMainEntry(StateMachine_t *sm) {}
 static void MainDescendEntry(StateMachine_t *sm) {}
 static void LandedEntry(StateMachine_t *sm) {
     PU_setACS(DISABLE);
@@ -349,8 +358,9 @@ static void ArmedDo(StateMachine_t *sm, uint16_t freq) {
 }
 static void BurnDo(StateMachine_t *sm, uint16_t freq) {}
 static void CoastDo(StateMachine_t *sm, uint16_t freq) {}
-static void UnbrakedDescendDo(StateMachine_t *sm, uint16_t freq) {}
+static void AwaitDrogueDo(StateMachine_t *sm, uint16_t freq) {}
 static void DrogueDescendDo(StateMachine_t *sm, uint16_t freq) {}
+static void AwaitMainDo(StateMachine_t *sm, uint16_t freq) {}
 static void MainDescendDo(StateMachine_t *sm, uint16_t freq) {}
 static void LandedDo(StateMachine_t *sm, uint16_t freq) {}
 static void TestInitDo(StateMachine_t *sm, uint16_t freq) {}
@@ -371,8 +381,9 @@ static void CheckoutsExit(StateMachine_t *sm) {}
 static void ArmedExit(StateMachine_t *sm) {}
 static void BurnExit(StateMachine_t *sm) {}
 static void CoastExit(StateMachine_t *sm) {}
-static void UnbrakedDescendExit(StateMachine_t *sm) {}
+static void AwaitDrogueExit(StateMachine_t *sm) {}
 static void DrogueDescendExit(StateMachine_t *sm) {}
+static void AwaitMainExit(StateMachine_t *sm) {}
 static void MainDescendExit(StateMachine_t *sm) {}
 static void LandedExit(StateMachine_t *sm) {}
 static void TestInitExit(StateMachine_t *sm) {}
@@ -388,8 +399,9 @@ static StateHandler_t stateHandlerTable[STATE_MAX] = {
     ArmedHandler,
     BurnHandler,
     CoastHandler,
-    UnbrakedDescendHandler,
+    AwaitDrogueHandler,
     DrogueDescendHandler,
+    AwaitMainHandler,
     MainDescendHandler,
     LandedHandler,
     TestInitHandler,
@@ -405,8 +417,9 @@ static StateEntry_t stateEntryTable[STATE_MAX] = {
     ArmedEntry,
     BurnEntry,
     CoastEntry,
-    UnbrakedDescendEntry,
+    AwaitDrogueEntry,
     DrogueDescendEntry,
+    AwaitMainEntry,
     MainDescendEntry,
     LandedEntry,
     TestInitEntry,
@@ -422,8 +435,9 @@ static StateDo_t stateDoTable[STATE_MAX] = {
     ArmedDo,
     BurnDo,
     CoastDo,
-    UnbrakedDescendDo,
+    AwaitDrogueDo,
     DrogueDescendDo,
+    AwaitMainDo,
     MainDescendDo,
     LandedDo,
     TestInitDo,
@@ -439,8 +453,9 @@ static StateExit_t stateExitTable[STATE_MAX] = {
     ArmedExit,
     BurnExit,
     CoastExit,
-    UnbrakedDescendExit,
+    AwaitDrogueExit,
     DrogueDescendExit,
+    AwaitMainExit,
     MainDescendExit,
     LandedExit,
     TestInitExit,
@@ -456,9 +471,10 @@ uint32_t minEventDelayTable[EVENT_MAX] = {
     MIN_DELAY_UNTIL_CHECKOUTS_COMPLETE,
     MIN_DELAY_UNTIL_LAUNCH_DETECTED,
     MIN_DELAY_UNTIL_BURNOUT_DETECTED,
-    MIN_DELAY_UNTIL_APOGEE_DETECTED,
-    0,
-    0,
+    MIN_DELAY_UNTIL_DROGUE_COMMANDED,
+    MIN_DELAY_UNTIL_DROGUE_CONFIRMED,
+    MIN_DELAY_UNTIL_MAIN_COMMANDED,
+    MIN_DELAY_UNTIL_MAIN_CONFIRMED,
     MIN_DELAY_UNTIL_TOUCHDOWN,
     0,
     0,
@@ -473,10 +489,12 @@ uint32_t maxEventDelayTable[STATE_MAX] = {
     0,
     0,
     MAX_DELAY_UNTIL_BURNOUT_DETECTED,
-    MAX_DELAY_UNTIL_APOGEE_DETECTED,
+    MAX_DELAY_UNTIL_DROGUE_COMMANDED,
     MAX_DELAY_UNTIL_TOUCHDOWN_BAD,
+    MAX_DELAY_UNTIL_MAIN_COMMANDED,
     MAX_DELAY_UNTIL_TOUCHDOWN_DROGUE,
     MAX_DELAY_UNTIL_TOUCHDOWN_MAIN,
+    0,
     0,
     0,
     0
