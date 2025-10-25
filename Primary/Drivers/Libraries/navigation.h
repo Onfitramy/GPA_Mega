@@ -16,6 +16,8 @@
 #define GYRO_VAR 0.3*0.3
 #define GYRO_BIAS_VAR 1e-12
 
+#define MAG_VAR 0.8*0.8
+
 #define P_VAR_ANGLE_THRESH  0.01
 #define P_VAR_BIAS_THRESH   1e-5
 #define P_NIS_EKF3_THRESH   0.1
@@ -24,6 +26,7 @@
 /* --- Height EKF Settings --- */
 #define ACCEL_VAR   0.5*0.5
 #define BARO_VAR    2*2
+#define PTOT_VAR    133*133
 #define REFERENCE_PRESSURE_VAR 1e-6
 
 #define P_VAR_HEIGHT_THRESH 0.01
@@ -40,8 +43,9 @@
 // EKF sizes
 #define x_size2 3
 #define u_size2 1
-#define z_size2_corr1 1
-#define z_size2_corr2 2
+#define z_size2_corr1 1 // static pressure
+#define z_size2_corr2 2 // gnss position & velocity
+#define z_size2_corr3 1 // total pressure
 
 #define x_size3 7
 #define u_size3 3 // NO B MATRIX THOUGH
@@ -61,7 +65,8 @@ typedef enum {
 
 typedef enum {
     corr1_type,
-    corr2_type
+    corr2_type,
+    corr3_type
 } ekf_correction_t;
 
 typedef enum {
@@ -137,8 +142,19 @@ extern arm_matrix_instance_f32 S2_corr2;
 extern arm_matrix_instance_f32 S2_inv_corr2;
 extern arm_matrix_instance_f32 K2_corr2;
 
+extern ekf_corr_data_t EKF2_corr3;
+extern float z2_corr3[z_size2_corr3];
+extern float h2_corr3[z_size2_corr3];
+extern float v2_corr3[z_size2_corr3];
+extern arm_matrix_instance_f32 H2_corr3;
+extern arm_matrix_instance_f32 R2_corr3;
+extern arm_matrix_instance_f32 S2_corr3;
+extern arm_matrix_instance_f32 S2_inv_corr3;
+extern arm_matrix_instance_f32 K2_corr3;
+
 extern float NIS_EKF2_corr1;
 extern float NIS_EKF2_corr2;
+extern float NIS_EKF2_corr3;
 
 extern ekf_data_t EKF3;
 extern float x3[x_size3];
@@ -170,13 +186,16 @@ extern arm_matrix_instance_f32 M_rot_bi;
 extern arm_matrix_instance_f32 M_rot_ib;
 extern arm_matrix_instance_f32 M_rot_q;
 
-extern float euler_from_q[3];
+extern float euler[3];
+extern float flightpath_angle;
 
 extern float a_WorldFrame[3];
 extern float a_BodyFrame[3];
 extern float a_abs;
 extern float gravity_world_vec[3];
 extern float gravity_body_vec[3];
+
+extern float vel_abs;
 
 extern float corr_acc_buf[GNSS_VELOCITY_DELAY];
 extern float corr_acc_sum;
@@ -210,6 +229,7 @@ void RotationMatrixOrientationFix(float *a_vec, float *m_vec, arm_matrix_instanc
 
 void RotationMatrixFromEuler(float phi, float theta, float psi, arm_matrix_instance_f32* M_out);
 void EulerFromRotationMatrix(arm_matrix_instance_f32 *mat, float *euler);
+void FlightPathAngleFromRotationMatrix(arm_matrix_instance_f32 *mat, float *angle);
 void RotationMatrixFromQuaternion(float *q, arm_matrix_instance_f32 *mat, direct_cosine_matrix_t dcm_type);
 void QuaternionFromRotationMatrix(arm_matrix_instance_f32 *mat, float *q);
 float QuaternionCovToSmallAngleCov(float *q, arm_matrix_instance_f32 *P_q, arm_matrix_instance_f32 *P_angle);
@@ -218,6 +238,7 @@ void DeulerMatrixFromEuler(float phi, float theta, arm_matrix_instance_f32 *mat)
 void CompensateGNSSDelay(float acc_meas, float vel_meas, float *v_corr_val, float *h_corr_val);
 void BaroPressureToHeight(float pressure, float pressure_reference, float *height);
 void BaroHeightToPressure(float height, float pressure_reference, float *pressure);
+void CalculateTotalPressure(float height, float pressure_reference, float velocity_z, float *pressure_tot);
 
 void EKFInit(ekf_data_t *ekf, ekf_instance_t kalman_type, uint8_t x_vec_size, uint8_t u_vec_size, const float dt,
              arm_matrix_instance_f32 *F_mat, arm_matrix_instance_f32 *P_mat, arm_matrix_instance_f32 *Q_mat,

@@ -273,7 +273,7 @@ void StartDefaultTask(void *argument)
       arm_mat_vec_mult_f32(&M_rot_bi, gravity_world_vec, gravity_body_vec);
       arm_vec3_sub_f32(average_imu_data.accel, gravity_body_vec, a_BodyFrame);
       a_abs = arm_vec3_length_f32(a_BodyFrame);
-      
+
       /* --- GNSS DELAY COMPENSATION TESTING --- */
       CompensateGNSSDelay(a_WorldFrame[2], EKF2.x[1], &corr_delta_v, &corr_delta_h);
 
@@ -284,7 +284,6 @@ void StartDefaultTask(void *argument)
         // execute this if new data is available
         // correction step
         EKF2_corr1.z[0] = bmp_data.pressure;
-        arm_mat_set_entry_f32(EKF2_corr1.R, 0, 0, BARO_VAR);
         EKFCorrectionStep(&EKF2, &EKF2_corr1);
         EKFgetNIS(&EKF2, &EKF2_corr1, &NIS_EKF2_corr1);
       }
@@ -292,6 +291,10 @@ void StartDefaultTask(void *argument)
       //Dont activate this and the SPARK communication at the same time, because they use the same SPI
       if (ptot_readData(&ptot_data.pressure, &ptot_data.temperature)) {
         // execute this if new data is available
+        // correction step
+        EKF2_corr3.z[0] = ptot_data.pressure;
+        EKFCorrectionStep(&EKF2, &EKF2_corr3);
+        EKFgetNIS(&EKF2, &EKF2_corr3, &NIS_EKF2_corr3);
       }
 
       // KALMAN FILTER, QUATERNION
@@ -302,8 +305,11 @@ void StartDefaultTask(void *argument)
       RotationMatrixFromQuaternion(x3, &M_rot_ib, DCM_ib_BodyToWorld);
 
       // Conversion to Euler
-      EulerFromRotationMatrix(&M_rot_bi, euler_from_q);
+      EulerFromRotationMatrix(&M_rot_bi, euler);
       VAR_vec3_abs = QuaternionCovToSmallAngleCov(x3, &P3, &P3_angle);
+      FlightPathAngleFromRotationMatrix(&M_rot_bi, &flightpath_angle);
+
+      vel_abs = EKF2.x[1] / arm_mat_get_entry_f32(&M_rot_bi, 2, 2);
     }
 
     dt_1000Hz = TimeMeasureStop();
@@ -328,13 +334,13 @@ void Start100HzTask(void *argument) {
       UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &imu1_data, &mag_data);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_LOAD_REQUEST | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);
 
-      UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler_from_q[0], euler_from_q[1], euler_from_q[2]);
+      UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler[0], euler[1], euler[2]);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_LOAD_REQUEST | INTERBOARD_TARGET_RADIO, &Attitude_DataPacket);
     } else {
       UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &imu1_data, &mag_data);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, &IMU_DataPacket);
 
-      UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler_from_q[0], euler_from_q[1], euler_from_q[2]);
+      UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler[0], euler[1], euler[2]);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, &Attitude_DataPacket);
     }
 
@@ -375,7 +381,7 @@ void Start10HzTask(void *argument) {
     //GPS_RequestSensorData(); // Request GPS data
 
     UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &average_imu_data, &mag_data);
-    UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler_from_q[0], euler_from_q[1], euler_from_q[2]);
+    UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler[0], euler[1], euler[2]);
     UpdateGPSDataPacket(&GPS_DataPacket, HAL_GetTick(), &gps_data);
 
     if (is_groundstation) { //Groundstation requests data from secondary board

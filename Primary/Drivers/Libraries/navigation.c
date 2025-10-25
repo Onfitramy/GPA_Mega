@@ -13,6 +13,7 @@ const double R_const = 287.05;      // J/(kgK)
 const double T0_const = 288.15;     // K
 const double L_const = -0.0065;     // K/m
 const double g0_const = 9.80665;    // m/s²
+const double kappa = 1.4;
 
 // time step
 const float dt = 0.001;
@@ -61,8 +62,24 @@ arm_matrix_instance_f32 S2_inv_corr2 = {z_size2_corr2, z_size2_corr2, S2_inv_cor
 float K2_corr2_data[x_size2*z_size2_corr2];
 arm_matrix_instance_f32 K2_corr2 = {x_size2, z_size2_corr2, K2_corr2_data};
 
+ekf_corr_data_t EKF2_corr3;
+float z2_corr3[z_size2_corr3] = {0};
+float h2_corr3[z_size2_corr3] = {0};
+float v2_corr3[z_size2_corr3] = {0};
+float H2_corr3_data[z_size2_corr3*x_size2] = {0};
+arm_matrix_instance_f32 H2_corr3 = {z_size2_corr3, x_size2, H2_corr3_data};
+float R2_corr3_data[z_size2_corr3*z_size2_corr3] = {0};
+arm_matrix_instance_f32 R2_corr3 = {z_size2_corr3, z_size2_corr3, R2_corr3_data};
+float S2_corr3_data[z_size2_corr3*z_size2_corr3] = {0};
+arm_matrix_instance_f32 S2_corr3 = {z_size2_corr3, z_size2_corr3, S2_corr3_data};
+float S2_inv_corr3_data[z_size2_corr3*z_size2_corr3] = {0};
+arm_matrix_instance_f32 S2_inv_corr3 = {z_size2_corr3, z_size2_corr3, S2_inv_corr3_data};
+float K2_corr3_data[x_size2*z_size2_corr3];
+arm_matrix_instance_f32 K2_corr3 = {x_size2, z_size2_corr3, K2_corr3_data};
+
 float NIS_EKF2_corr1;
 float NIS_EKF2_corr2;
+float NIS_EKF2_corr3;
 
 // Quaternion EKF variables
 ekf_data_t EKF3;
@@ -112,7 +129,8 @@ arm_matrix_instance_f32 M_rot_ib = {3, 3, M_rot_ib_data};
 float M_rot_q_data[9];
 arm_matrix_instance_f32 M_rot_q = {3, 3, M_rot_q_data};
 
-float euler_from_q[3] = {0};
+float euler[3] = {0};
+float flightpath_angle = 0;
 
 // vectors
 float a_WorldFrame[3] = {0}; // Acceleration
@@ -120,6 +138,8 @@ float a_BodyFrame[3] = {0};
 float a_abs;
 float gravity_world_vec[3] = {0, 0, 9.8};
 float gravity_body_vec[3];
+
+float vel_abs;
 
 // GNSS delay compensation
 float corr_acc_buf[GNSS_VELOCITY_DELAY] = {0};
@@ -193,10 +213,10 @@ void WGS84toECEF(double *WGS84, double *ECEF) {
     double lon_rad = WGS84[1] * PI / 180.;
 
     // transform WGS84 to ECEF
-    double N = a / sqrt(1 - e2 * sin(lat_rad) * sin(lat_rad));
-    ECEF[0] = (N + WGS84[2]) * cos(lat_rad) * cos(lon_rad);
-    ECEF[1] = (N + WGS84[2]) * cos(lat_rad) * sin(lon_rad);
-    ECEF[2] = (N * (1 - e2) + WGS84[2]) * sin(lat_rad);
+    double N = a / sqrt(1 - e2 * sinf(lat_rad) * sinf(lat_rad));
+    ECEF[0] = (N + WGS84[2]) * cosf(lat_rad) * cosf(lon_rad);
+    ECEF[1] = (N + WGS84[2]) * cosf(lat_rad) * sinf(lon_rad);
+    ECEF[2] = (N * (1 - e2) + WGS84[2]) * sinf(lat_rad);
 }
 
 // convert ECEF (Earth Centered Earth Fixed) coordinates to ENU (East North Up) coordinates
@@ -211,9 +231,9 @@ void ECEFtoENU(double *WGS84_ref, double *ECEF_ref, double *ECEF, double *ENU) {
     double lon_rad = WGS84_ref[1] * PI / 180.;
 
     // transform difference to ENU frame
-    ENU[0] = -sin(lon_rad) * dx + cos(lon_rad) * dy;                                                    // East
-    ENU[1] = -sin(lat_rad) * cos(lon_rad) * dx - sin(lat_rad) * sin(lon_rad) * dy + cos(lat_rad) * vt;  // North
-    ENU[2] =  cos(lat_rad) * cos(lon_rad) * dx + cos(lat_rad) * sin(lon_rad) * dy + sin(lat_rad) * vt;  // Up
+    ENU[0] = -sinf(lon_rad) * dx + cosf(lon_rad) * dy;                                                    // East
+    ENU[1] = -sinf(lat_rad) * cosf(lon_rad) * dx - sinf(lat_rad) * sinf(lon_rad) * dy + cosf(lat_rad) * vt;  // North
+    ENU[2] =  cosf(lat_rad) * cosf(lon_rad) * dx + cosf(lat_rad) * sinf(lon_rad) * dy + sinf(lat_rad) * vt;  // Up
 }
 
 // attitude estimation using magnetometer and accelerometer
@@ -234,9 +254,9 @@ void EulerOrientationFix(float *a_vec, float *m_vec, float *output_angles) {
     arm_vec3_cross_product_f32(base_zi, base_xi, base_yi);
 
     // calculate fix angles
-    output_angles[0] = atan2(base_zi[1], base_zi[2]);
-    output_angles[1] = asin(-base_zi[0]);
-    output_angles[2] = atan2(base_yi[0], base_xi[0]);
+    output_angles[0] = atan2f(base_zi[1], base_zi[2]);
+    output_angles[1] = asinf(-base_zi[0]);
+    output_angles[2] = atan2f(base_yi[0], base_xi[0]);
 }
 
 // attitude estimation using magnetometer and accelerometer | World To Body, DCMbi
@@ -274,12 +294,12 @@ void RotationMatrixFromEuler(float phi, float theta, float psi, arm_matrix_insta
     float cos_vec[3]; // vector containing cosines
     float c1[3], c2[3], c3[3];
     
-    sin_vec[0] = sin(phi);
-    sin_vec[1] = sin(theta);
-    sin_vec[2] = sin(psi);
-    cos_vec[0] = cos(phi);
-    cos_vec[1] = cos(theta);
-    cos_vec[2] = cos(psi);
+    sin_vec[0] = sinf(phi);
+    sin_vec[1] = sinf(theta);
+    sin_vec[2] = sinf(psi);
+    cos_vec[0] = cosf(phi);
+    cos_vec[1] = cosf(theta);
+    cos_vec[2] = cosf(psi);
 
     c2[0] = sin_vec[2] * cos_vec[1];
     c2[1] = sin_vec[2] * sin_vec[1] * sin_vec[0] + cos_vec[2] * cos_vec[0];
@@ -296,10 +316,14 @@ void RotationMatrixFromEuler(float phi, float theta, float psi, arm_matrix_insta
     arm_mat_set_column_f32(mat, 2, c3);
 }
 
-void EulerFromRotationMatrix(arm_matrix_instance_f32 *mat, float *euler) {
-    euler[0] = atan2(arm_mat_get_entry_f32(mat, 1, 2), arm_mat_get_entry_f32(mat, 2, 2));
-    euler[1] = asin(-arm_mat_get_entry_f32(mat, 0, 2));
-    euler[2] = atan2(arm_mat_get_entry_f32(mat, 0, 1), arm_mat_get_entry_f32(mat, 0, 0));
+void EulerFromRotationMatrix(arm_matrix_instance_f32 *mat_bi, float *euler) {
+    euler[0] = atan2f(arm_mat_get_entry_f32(mat_bi, 1, 2), arm_mat_get_entry_f32(mat_bi, 2, 2));
+    euler[1] = asinf(-arm_mat_get_entry_f32(mat_bi, 0, 2));
+    euler[2] = atan2f(arm_mat_get_entry_f32(mat_bi, 0, 1), arm_mat_get_entry_f32(mat_bi, 0, 0));
+}
+
+void FlightPathAngleFromRotationMatrix(arm_matrix_instance_f32 *mat_bi, float *angle) {
+    *angle = acosf(arm_mat_get_entry_f32(mat_bi, 2, 2));
 }
 
 // create rotation matrix from quaternion
@@ -378,10 +402,10 @@ void DeulerMatrixFromEuler(float phi, float theta, arm_matrix_instance_f32 *mat)
     float sin_vec[2]; // vector containing sines
     float cos_vec[2]; // vector containing cosines
     
-    sin_vec[0] = sin(phi);
-    sin_vec[1] = sin(theta);
-    cos_vec[0] = cos(phi);
-    cos_vec[1] = cos(theta);
+    sin_vec[0] = sinf(phi);
+    sin_vec[1] = sinf(theta);
+    cos_vec[0] = cosf(phi);
+    cos_vec[1] = cosf(theta);
     
     arm_mat_set_entry_f32(mat, 0, 0, 1);
     arm_mat_set_entry_f32(mat, 0, 1, sin_vec[0]*sin_vec[1]/cos_vec[1]);
@@ -426,10 +450,21 @@ void BaroPressureToHeight(float pressure, float pressure_reference, float *heigh
 
 // calculate barometric pressure from height
 void BaroHeightToPressure(float height, float pressure_reference, float *pressure) {
-    double buffer;
-    buffer = pow(L_const / T0_const * height + 1., -g0_const / L_const / R_const) * pressure_reference;
+    double buffer = pow(L_const / T0_const * height + 1., -g0_const / L_const / R_const) * pressure_reference;
     *pressure = (float)buffer;
 }
+
+// calculate total pressure from height and velocity
+void CalculateTotalPressure(float height, float pressure_reference, float velocity_z, float *pressure_tot) {
+    float p_static;
+    BaroHeightToPressure(height, pressure_reference, &p_static);
+    float velocity_abs = velocity_z / cosf(flightpath_angle);
+    float T_static = T0_const + L_const * height;
+
+    double buffer = pow((kappa-1)/(2*kappa*R_const*T_static)*velocity_abs*velocity_abs+1., kappa/(kappa-1));
+    *pressure_tot = (float)p_static * buffer;
+}
+
 
 void MagnetometerCalibration() {
     
@@ -521,12 +556,17 @@ void EKFCorrectionInit(ekf_data_t ekf, ekf_corr_data_t *ekf_corr, ekf_correction
 
     } else if (ekf.type == EKF2_type) {
         // configure height EKF correction matrices
-
+        if (corr_type == corr1_type) {
+            arm_mat_set_entry_f32(ekf_corr->R, 0, 0, BARO_VAR);
+        } else if (corr_type == corr2_type) {
+            
+        } else if (corr_type == corr3_type) {
+            arm_mat_set_entry_f32(ekf_corr->R, 0, 0, PTOT_VAR);
+        }
     } else if (ekf.type == EKF3_type) {
         // configure Quaternion EKF correction matrices
-        arm_mat_set_diag_f32(ekf_corr->R, 0, 0, 3, 0.5*0.5);  // accelerometer variance (noise)
-        arm_mat_set_diag_f32(ekf_corr->R, 3, 3, 3, 0.8*0.8);  // magnetometer variance (noise)
-
+        arm_mat_set_diag_f32(ekf_corr->R, 0, 0, 3, ACCEL_VAR);  // accelerometer variance (noise)
+        arm_mat_set_diag_f32(ekf_corr->R, 3, 3, 3, MAG_VAR);  // magnetometer variance (noise)
     }
 }
 
@@ -628,6 +668,9 @@ void EKFPredictMeasurement(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
             // measurement prediction of type 2 correction step
             ekf_corr->h[0] = ekf->x[0];
             ekf_corr->h[1] = ekf->x[1];
+        } else if (ekf_corr->type == corr3_type) {
+            // measurement predicition of type 3 correction step
+            CalculateTotalPressure(ekf->x[0], ekf->x[2], ekf->x[1], ekf_corr->h);
         }
 
     } else if (ekf->type == EKF3_type) {
@@ -640,7 +683,7 @@ void EKFPredictMeasurement(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
 
         // define expected vectors in ENU frame
         float g_vec_enu[3] = {0, 0, 1};
-        float m_vec_enu[3] = {0, cos(magnetic_dip_angle * PI / 180.f), -sin(magnetic_dip_angle * PI / 180.f)};
+        float m_vec_enu[3] = {0, cosf(magnetic_dip_angle * PI / 180.f), -sinf(magnetic_dip_angle * PI / 180.f)};
 
         // this section could be optimized (g and m contain zeroes)
         RotationMatrixFromQuaternion(q, &DCMbi, DCM_bi_WorldToBody);
@@ -769,19 +812,24 @@ void EKFGetObservationJacobian(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
     if (ekf->type == EKF1_type) {
         return;
     } else if (ekf->type == EKF2_type) {
+        float T_static = T0_const + L_const * ekf->x[0];
         if(ekf_corr->type == corr1_type) {
-            arm_mat_set_entry_f32(ekf_corr->H, 0, 0, (-g0_const * ekf_corr->h[0]) / (R_const * (T0_const + L_const * ekf->x[0])));
+            arm_mat_set_entry_f32(ekf_corr->H, 0, 0, (-g0_const * ekf_corr->h[0]) / (R_const * T_static));
             arm_mat_set_entry_f32(ekf_corr->H, 0, 2, ekf_corr->h[0] / ekf->x[2]);
 
         } else if (ekf_corr->type == corr2_type) {
             arm_mat_set_diag_f32(ekf_corr->H, 0, 0, 2, 1);
+        } else if (ekf_corr->type == corr3_type) {
+            arm_mat_set_entry_f32(ekf_corr->H, 0, 0, ekf_corr->h[0]/T_static*(g0_const/R_const+kappa*L_const*vel_abs*vel_abs/((kappa-1)*vel_abs*vel_abs+2*kappa*R_const*T_static)));
+            arm_mat_set_entry_f32(ekf_corr->H, 0, 1, vel_abs*ekf_corr->h[0]/(R_const*T_static*cosf(flightpath_angle)));
+            arm_mat_set_entry_f32(ekf_corr->H, 0, 2, ekf_corr->h[0] / ekf->x[2]);
         }
 
     } else if (ekf->type == EKF3_type) {
         float *q = ekf->x;
 
         //float g_vec_enu[3] = {0, 0, 1};
-        float m_vec_enu[3] = {0, cos(magnetic_dip_angle * PI / 180.f), -sin(magnetic_dip_angle * PI / 180.f)};
+        float m_vec_enu[3] = {0, cosf(magnetic_dip_angle * PI / 180.f), -sinf(magnetic_dip_angle * PI / 180.f)};
 
         arm_mat_set_entry_f32(ekf_corr->H, 0, 0, -2*q[2]);
         arm_mat_set_entry_f32(ekf_corr->H, 0, 1,  2*q[3]);

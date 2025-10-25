@@ -177,6 +177,7 @@ static void StartupEntry(StateMachine_t *sm) {
     EKFInit(&EKF2, EKF2_type, x_size2, u_size2, 0.001, &F2, &P2, &Q2, NULL, x2, &a_WorldFrame[2]);
     EKFCorrectionInit(EKF2, &EKF2_corr1, corr1_type, 1, &H2_corr1, &K2_corr1, &R2_corr1, &S2_corr1, &S2_inv_corr1, z2_corr1, h2_corr1, v2_corr1); // baro
     EKFCorrectionInit(EKF2, &EKF2_corr2, corr2_type, 2, &H2_corr2, &K2_corr2, &R2_corr2, &S2_corr2, &S2_inv_corr2, z2_corr2, h2_corr2, v2_corr2); // GNSS
+    EKFCorrectionInit(EKF2, &EKF2_corr3, corr3_type, 1, &H2_corr3, &K2_corr3, &R2_corr3, &S2_corr3, &S2_inv_corr3, z2_corr3, h2_corr3, v2_corr3); // ptot
 
     // define Kalman Filter dimensions and pointers for Quaternion EKF
     EKFInit(&EKF3, EKF3_type, x_size3, u_size3, 0.001, &F3, &P3, &Q3, NULL, x3, average_imu_data.gyro);
@@ -230,7 +231,6 @@ static void CheckoutsEntry(StateMachine_t *sm) {
     PU_setCAM(ENABLE);
     // TODO:
     // notify ground station that it now needs to command the checkouts
-
 }
 static void ArmedEntry(StateMachine_t *sm) {
     PU_setACS(ENABLE);
