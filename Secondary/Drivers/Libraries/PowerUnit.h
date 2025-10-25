@@ -43,6 +43,8 @@ HAL_StatusTypeDef INA219_readPower(float *power);
 HAL_StatusTypeDef INA219_readCurrent(float *current);
 
 HAL_StatusTypeDef INA219_init();
+HAL_StatusTypeDef INA219_readAll(health_t *health_struct);
+bool INA219_SelfTest();
 
 #define INA219_I2C_ADDR (0x40 << 1)
 

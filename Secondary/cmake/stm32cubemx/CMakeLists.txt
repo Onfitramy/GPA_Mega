@@ -97,6 +97,7 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/Libraries/status.c
     ../../Drivers/Libraries/PowerUnit.c
     ../../Drivers/Libraries/packets.c
+    ../../Drivers/Libraries/statemachine.c
 )
 
 target_link_directories(stm32cubemx INTERFACE

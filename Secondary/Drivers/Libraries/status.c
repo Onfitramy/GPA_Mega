@@ -53,26 +53,23 @@ void ShowStatus(int8_t status, float freq_cycle, float freq_call) {
     else LED_blink = !LED_blink;
 
     switch(status) {
-        case -5: // Critically low battery condition
-            SetLED_blink(COLOR_ORANGE);
-            break;
-        case -4: // Low battery condition
-            SetLED_pulse(COLOR_ORANGE);
-            break;
-        case -3: // Error, other
-            SetLED_blink(COLOR_RED);
-            break;
-        case -2: // Fatal Error
-            SetLED_color(COLOR_RED);
-            break;
-        case -1: // Sensor Error
+        case STATE_FAULT:
             SetLED_pulse(COLOR_RED);
             break;
-        case 0: // Init
+        case STATE_STARTUP:
             SetLED_pulse(COLOR_MAGENTA);
             break;
-        case 1: // Normal operations
+        case STATE_INIT:
             SetLED_pulse(COLOR_BLUE);
+            break;
+        case STATE_OPERATIONAL:
+            SetLED_pulse(COLOR_GREEN);
+            break;
+        case STATE_BATTERY_LOW:
+            SetLED_pulse(COLOR_ORANGE);
+            break;
+        case STATE_BATTERY_CRITICAL:
+            SetLED_blink(COLOR_ORANGE);
             break;
     }
 }

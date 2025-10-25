@@ -32,11 +32,11 @@
 #include "ws2812.h"
 #include "W25Q1.h"
 #include "xBee.h"
-#include "VoltageReader.h"
 #include "InterBoardCom.h"
 #include "status.h"
-#include "PowerUnit.h"
 #include "SD.h"
+#include "PowerUnit.h"
+#include "statemachine.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -101,7 +101,6 @@ const osThreadAttr_t SDTask_attributes = {
 };
 
 uint8_t XBee_Temp;
-int8_t secondary_status = 0;
 
 uint32_t Counter_100Hz = 0;
 uint32_t Counter_10Hz = 0;
@@ -186,9 +185,10 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;) {
     Counter_100Hz++;
-    // show low battery level
 
-    ShowStatus(secondary_status, 1, 100);
+    StateMachine_DoActions(&pu_sm, 100);
+
+    ShowStatus(pu_sm.currentState, 1, 100);
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }
 
@@ -203,58 +203,14 @@ void Start10HzTask(void *argument){
   /* Infinite loop */
   for(;;) {
     Counter_10Hz++;
-    switch(secondary_status) {
-      // critically low battery condition
-      case -5:
-        if(INA219_readBusVoltage(&health.voltage.bus_pu_bat) != HAL_OK) secondary_status = -1;
-        if(health.voltage.bus_pu_bat > 6.2) secondary_status = -4;
-        break;
-
-      // low battery condition
-      case -4:
-        if(INA219_readBusVoltage(&health.voltage.bus_pu_bat) != HAL_OK) secondary_status = -1;
-        if(health.voltage.bus_pu_bat < 6) secondary_status = -5;
-        if(health.voltage.bus_pu_bat > 6.8) secondary_status = 1;
-        break;
-
-      // PU connection loss fault
-      case -1:
-
-      // init
-      case 0:
-        if(INA219_init() == HAL_OK) {
-          secondary_status = 1;
-          break;
-        }
-        // read first values
-        health_filtered.temperature.reg_3V3 = readTemperature(1);
-        health_filtered.voltage.bus_5V = readVoltage(1) * (10 + 10) / 10;
-        health_filtered.voltage.bus_gpa_bat = readVoltage(2) * (10 + 2.2) / 2.2;
-        health_filtered.temperature.battery = readTemperature(2);
-        if(INA219_readBusVoltage(&health_filtered.voltage.bus_pu_bat) != HAL_OK) break;
-        if(INA219_readShuntVoltage(&health_filtered.voltage.shunt_pu) != HAL_OK) break;
-        if(INA219_readPower(&health_filtered.power.out_pu) != HAL_OK) break;
-        if(INA219_readCurrent(&health_filtered.current.out_pu) != HAL_OK) break;
-        secondary_status = 1;
-        break;
-
-      // normal operations
-      case 1:
-        health.temperature.battery = readTemperature(2);
-        if(INA219_readBusVoltage(&health.voltage.bus_pu_bat) != HAL_OK) secondary_status = -1;
-        if(INA219_readShuntVoltage(&health.voltage.shunt_pu) != HAL_OK) secondary_status = -1;
-        if(INA219_readPower(&health.power.out_pu) != HAL_OK) secondary_status = -1;
-        if(INA219_readCurrent(&health.current.out_pu) != HAL_OK) secondary_status = -1;
-        
-        if(health.voltage.bus_pu_bat < 6.6) secondary_status = -4;
-        break;
-
-    }
 
     health.temperature.reg_3V3 = readTemperature(1);
+    health.temperature.battery = readTemperature(2);
     health.voltage.bus_5V = readVoltage(1) * (10 + 10) / 10;
     health.voltage.bus_gpa_bat = readVoltage(2) * (10 + 2.2) / 2.2;
-    FilterLP(&health, &health_filtered);
+    //FilterLP(&health, &health_filtered);
+
+    StateMachine_DoActions(&pu_sm, 10);
 
     XBee_TransmitQueue(XBee_transmit_addr); // Transmit data at 10Hz
 

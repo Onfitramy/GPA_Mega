@@ -16,7 +16,10 @@
         "packets.h": "c",
         "limits": "c",
         "buzzer.h": "c",
-        "stdbool.h": "c"
+        "stdbool.h": "c",
+        "powerunit.h": "c",
+        "queue.h": "c",
+        "statemachine.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

@@ -27,12 +27,12 @@
 /* USER CODE BEGIN Includes */
 #include "Buzzer.h"
 #include "ws2812.h"
-#include "VoltageReader.h"
+#include "PowerUnit.h"
 #include "InterBoardCom.h"
 #include "W25Q1.h"
-#include "PowerUnit.h"
 #include "SD.h"
 #include "xBee.h"
+#include "statemachine.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -165,12 +165,9 @@ int main(void)
   MX_TIM10_Init();
   MX_TIM11_Init();
   /* USER CODE BEGIN 2 */
-  uint32_t flashid = W25Q1_ReadID(); //Check if the FLASH works, flashid = 0xEF4017
-
-  XBee_Init();
   //HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 3);
 
-  buzzerInit();
+  StateMachine_Init(&pu_sm, STATE_STARTUP);
   /* USER CODE END 2 */
 
   /* Init scheduler */

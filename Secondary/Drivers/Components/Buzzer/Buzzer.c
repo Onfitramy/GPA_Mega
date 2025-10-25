@@ -362,5 +362,5 @@ void ASESongTable(uint8_t event_num) {
         buzzerPlayNote("B3", 410);
     } else {
         buzzerStopPeriodic();
-    }   
+    }
 }
