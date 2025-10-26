@@ -7,17 +7,22 @@
 typedef struct {
     float pressure;
     float temperature;
+    bool connected;
 } ptotcb_handle_t;
 
 extern SPI_HandleTypeDef hspi2;
 
 extern ptotcb_handle_t ptot_data;
 
-#define OUTPUT_MAX      14745
-#define OUTPUT_MIN      1638
-#define PRESSURE_MAX    160000
-#define PRESSURE_MIN    0
+extern HAL_StatusTypeDef PtotCB_SPI_status;
+
+#define OUTPUT_MAX      14745.f
+#define OUTPUT_MIN      1638.f
+#define PRESSURE_MAX    160000.f
+#define PRESSURE_MIN    0.f
 
 bool ptot_readData(float *pressure, float *temperature);
+bool ptot_readDataCheckConnection(ptotcb_handle_t *PtotCB);
+bool ptot_SelfTest(ptotcb_handle_t *PtotCB);
 
 #endif

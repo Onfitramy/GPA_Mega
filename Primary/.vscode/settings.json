@@ -55,7 +55,8 @@
         "ptot.h": "c",
         "spark.h": "c",
         "stdio.h": "c",
-        "freertos_cli.h": "c"
+        "freertos_cli.h": "c",
+        "servo_cfg.h": "c"
     },
     "cortex-debug.variableUseNaturalFormat": true
 }

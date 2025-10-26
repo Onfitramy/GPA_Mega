@@ -11,6 +11,8 @@
 #include "tim.h"
 #include "main.h"
 
+uint8_t drogue_deploy_attempts = 0;
+
 /*Initiate a Servo defined by a 16bit number */
 void SERVO_Init(uint16_t au16_SERVO_Instance, uint16_t MinPulse_us, uint16_t MaxPulse_us, uint16_t max_angle) {
     au16_SERVO_Instance--; // Convert to 0 based index
@@ -111,13 +113,31 @@ void SERVO_ZeroAll() {
     }
 }
 
-void DeployDrogue() {
-    SERVO_MoveToAngle(DROGUE_SERVO, DROGUE_DEPLOY_ANGLE);
+void DeployDrogue(float angle_deploy, float move_delay) {
+    SERVO_MoveToAngle(DROGUE_SERVO, angle_deploy);
 
-    tim13_target_ms = DROGUE_MOVE_DELAY_MS;
+    tim13_target_ms = move_delay;
     HAL_TIM_Base_Start_IT(&htim13);
 }
 
 void DeployMain() {
     SERVO_MoveToAngle(MAIN_SERVO, MAIN_DEPLOY_ANGLE);
+}
+
+void RetractDrogue() {
+    SERVO_MoveToAngle(DROGUE_SERVO, DROGUE_NEUTRAL_ANGLE);
+}
+
+void RetractMain(uint16_t move_time_ms) {
+    if (move_time_ms == 0) {
+        SERVO_MoveToAngle(MAIN_SERVO, MAIN_NEUTRAL_ANGLE);
+        return;
+    }
+    SERVO_MoveToAngle(MAIN_SERVO, MAIN_DEPLOY_ANGLE);
+    tim16_target_ms = move_time_ms;
+    HAL_TIM_Base_Start_IT(&htim16);
+}
+
+void RetractMainHandler(uint32_t tick_tim16) {
+    SERVO_MoveToAngle(MAIN_SERVO, MAIN_DEPLOY_ANGLE * (1.f - tick_tim16 / tim16_target_ms) + MAIN_NEUTRAL_ANGLE);
 }

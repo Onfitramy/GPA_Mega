@@ -248,17 +248,13 @@ static void CoastEntry(StateMachine_t *sm) {
     // extend ACS to pre-defined position
     // enable MPC
 }
-static void UnbrakedDescendEntry(StateMachine_t *sm) {
-    DeployDrogue();
-
-    tim14_target_ms = 45000;
-    HAL_TIM_Base_Start_IT(&htim14);
-    // TODO:
-    // deplody drogue
+static void AwaitDrogueEntry(StateMachine_t *sm) {
+    DeployDrogue(DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
 }
-static void AwaitDrogueEntry(StateMachine_t *sm) {}
 static void DrogueDescendEntry(StateMachine_t *sm) {}
-static void AwaitMainEntry(StateMachine_t *sm) {}
+static void AwaitMainEntry(StateMachine_t *sm) {
+    DeployMain();
+}
 static void MainDescendEntry(StateMachine_t *sm) {}
 static void LandedEntry(StateMachine_t *sm) {
     PU_setACS(DISABLE);
@@ -273,9 +269,7 @@ static void LandedEntry(StateMachine_t *sm) {
     Buzzer_PlaySongRepeat(1, 20000);
 }
 static void TestInitEntry(StateMachine_t *sm) {
-    SERVO_MoveToAngle(MAIN_SERVO, MAIN_DEPLOY_ANGLE);
-    tim16_target_ms = 9000;
-    HAL_TIM_Base_Start_IT(&htim16);
+    RetractMain(9000);
 }
 static void TestCalibEntry(StateMachine_t *sm) {}
 
@@ -313,13 +307,18 @@ static void StartupDo(StateMachine_t *sm, uint16_t freq) {
         selftest_tries += 1;
 
         status_data.sensor_status_flags |= IMU_SelfTest(&imu1_data);
-        status_data.sensor_status_flags |= (IMU_SelfTest(&imu2_data)<<1);
-        status_data.sensor_status_flags |= (MAG_SelfTest()<<2);
-        status_data.sensor_status_flags |= (BMP_SelfTest()<<3);
+        status_data.sensor_status_flags |= (IMU_SelfTest(&imu2_data) << 1);
+        status_data.sensor_status_flags |= (MAG_SelfTest() << 2);
+        status_data.sensor_status_flags |= (BMP_SelfTest() << 3);
 
         // Excluding GPS check for now, as the first message cant be relaibly received by this function
         //status_data.sensor_status_flags |= (GPS_VER_CHECK()<<4); //Check if GPS is connected and working
-        status_data.sensor_status_flags |= (1<<4);
+
+        // GPA Mega won't pass self test if no PtotCB is connected
+        //status_data.sensor_status_flags |= (ptot_SelfTest(&ptot_data) << 5);
+
+        // TODO: XBEE, PU, Comms, SPARK SelfTest
+        status_data.sensor_status_flags |= (1 << 4);
     }
 }
 static void InitDo(StateMachine_t *sm, uint16_t freq) {
@@ -358,7 +357,21 @@ static void ArmedDo(StateMachine_t *sm, uint16_t freq) {
 }
 static void BurnDo(StateMachine_t *sm, uint16_t freq) {}
 static void CoastDo(StateMachine_t *sm, uint16_t freq) {}
-static void AwaitDrogueDo(StateMachine_t *sm, uint16_t freq) {}
+static void AwaitDrogueDo(StateMachine_t *sm, uint16_t freq) {
+    // drogue deploy handler
+    if (freq != 100) return;
+    uint32_t elapsed_time = uwTick - sm->timestamp_us;
+
+    // if nosecone is still attached, attempt second deployment attempt
+    if (ptot_data.connected) {
+        if ((drogue_deploy_attempts == 0) && (elapsed_time >= 4 * DROGUE_MOVE_DELAY_MS)) {
+            DeployDrogue(DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
+            drogue_deploy_attempts++;
+        }
+    }
+
+    // check if drogue has been deployed
+}
 static void DrogueDescendDo(StateMachine_t *sm, uint16_t freq) {}
 static void AwaitMainDo(StateMachine_t *sm, uint16_t freq) {}
 static void MainDescendDo(StateMachine_t *sm, uint16_t freq) {}

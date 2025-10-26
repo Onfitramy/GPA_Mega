@@ -383,6 +383,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
+  // Timer for handling maximum event delay times of StateMachine
   else if (htim->Instance == TIM7) {
     tim7_ms++;
     if (tim7_ms >= tim7_target_ms) {
@@ -401,34 +402,36 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       }
     }
   }
+  // Timer for handling drogue deploy servo signal
   else if (htim->Instance == TIM13) {
     tim13_ms++;
     if (tim13_ms >= tim13_target_ms) {
       tim13_ms = 0;
       HAL_TIM_Base_Stop_IT(&htim13);
 
-      SERVO_MoveToAngle(DROGUE_SERVO, DROGUE_NEUTRAL_ANGLE);
+      RetractDrogue();
     }
   }
+  // Timer for handling general delay
   else if (htim->Instance == TIM14) {
     tim14_ms++;
     if (tim14_ms >= tim14_target_ms) {
       tim14_ms = 0;
       HAL_TIM_Base_Stop_IT(&htim14);
-
-      DeployMain();
     }
   }
+  // Timer for handling main deploy servo retraction
   else if (htim->Instance == TIM16) {
     tim16_ms++;
 
-    SERVO_MoveToAngle(MAIN_SERVO, MAIN_DEPLOY_ANGLE - tim16_ms / 100.f);
+    RetractMainHandler(tim16_ms);
 
     if (tim16_ms >= tim16_target_ms) {
       tim16_ms = 0;
       HAL_TIM_Base_Stop_IT(&htim16);
     }
   }
+  // Timer for handling general delay
   else if (htim->Instance == TIM17) {
     tim17_ms++;
     if (tim17_ms >= tim17_target_ms) {

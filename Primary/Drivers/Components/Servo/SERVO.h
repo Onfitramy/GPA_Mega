@@ -9,13 +9,13 @@
 #define SERVO_NUM  8
 
 #define DROGUE_SERVO            1
-#define DROGUE_NEUTRAL_ANGLE    0
-#define DROGUE_DEPLOY_ANGLE     35
+#define DROGUE_NEUTRAL_ANGLE    0.f
+#define DROGUE_DEPLOY_ANGLE     35.f
 #define DROGUE_MOVE_DELAY_MS    300
 
 #define MAIN_SERVO              2
-#define MAIN_NEUTRAL_ANGLE      0
-#define MAIN_DEPLOY_ANGLE       90
+#define MAIN_NEUTRAL_ANGLE      0.f
+#define MAIN_DEPLOY_ANGLE       90.f
 
 typedef struct {
     TIM_TypeDef*   TIM_Instance;
@@ -30,6 +30,8 @@ typedef struct {
 
 extern TIM_HandleTypeDef htim13;
 extern uint32_t tim13_target_ms;
+
+extern uint8_t drogue_deploy_attempts;
  
 /*-----[ Prototypes For All Functions ]-----*/
  
@@ -43,8 +45,14 @@ void SERVO_Test(uint8_t Servo, uint8_t Zero_val, int8_t angle, uint8_t dt);
 
 void SERVO_ZeroAll();
 
-void DeployDrogue();
+void DeployDrogue(float angle_deploy, float move_delay);
 
 void DeployMain();
+
+void RetractDrogue();
+
+void RetractMain(uint16_t move_time_ms);
+
+void RetractMainHandler(uint32_t tick_tim16);
 
 #endif /* SERVO_H_ */
