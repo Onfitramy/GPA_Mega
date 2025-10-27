@@ -21,8 +21,6 @@ extern HAL_StatusTypeDef PtotCB_SPI_status;
 #define PRESSURE_MAX    160000.f
 #define PRESSURE_MIN    0.f
 
-bool ptot_readData(float *pressure, float *temperature);
-bool ptot_readDataCheckConnection(ptotcb_handle_t *PtotCB);
-bool ptot_SelfTest(ptotcb_handle_t *PtotCB);
+bool ptot_readData(ptotcb_handle_t *PtotCB);
 
 #endif

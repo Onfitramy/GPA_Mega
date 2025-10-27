@@ -289,18 +289,12 @@ void StartDefaultTask(void *argument)
       }
 
       // Don't activate this and the SPARK communication at the same time, because they use the same SPI
-      if (ptot_readData(&ptot_data.pressure, &ptot_data.temperature)) {
+      if (ptot_readData(&ptot_data)) {
         // execute this if new data is available
         // correction step
         EKF2_corr3.z[0] = ptot_data.pressure;
         EKFCorrectionStep(&EKF2, &EKF2_corr3);
         EKFgetNIS(&EKF2, &EKF2_corr3, &NIS_EKF2_corr3);
-      }
-      // if SPI communication is working, Nosecone is *probably* still attached
-      if (PtotCB_SPI_status == HAL_OK) {
-        ptot_data.connected = true;
-      } else {
-        ptot_data.connected = false;
       }
 
       // KALMAN FILTER, QUATERNION

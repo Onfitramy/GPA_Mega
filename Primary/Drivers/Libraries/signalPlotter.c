@@ -271,9 +271,9 @@ void signalPlotter_sendAll(void) {
   #ifdef SIGNAL_PLOTTER_OUT_3 // signal plotter outputs quaternion ekf testing
   signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
   signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
-  signalPlotter_sendData(2, euler_from_q[0]);
-  signalPlotter_sendData(3, euler_from_q[1]);
-  signalPlotter_sendData(4, euler_from_q[2]);
+  signalPlotter_sendData(2, euler[0]);
+  signalPlotter_sendData(3, euler[1]);
+  signalPlotter_sendData(4, euler[2]);
   signalPlotter_sendData(5, h3_corr1[0]);
   signalPlotter_sendData(6, h3_corr1[1]);
   signalPlotter_sendData(7, h3_corr1[2]);
@@ -305,9 +305,9 @@ void signalPlotter_sendAll(void) {
   #ifdef SIGNAL_PLOTTER_OUT_4 // signal plotter outputs height ekf testing
   signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
   signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
-  signalPlotter_sendData(2, euler_from_q[0]);
-  signalPlotter_sendData(3, euler_from_q[1]);
-  signalPlotter_sendData(4, euler_from_q[2]);
+  signalPlotter_sendData(2, euler[0]);
+  signalPlotter_sendData(3, euler[1]);
+  signalPlotter_sendData(4, euler[2]);
   signalPlotter_sendData(5, average_imu_data.accel[0]);
   signalPlotter_sendData(6, average_imu_data.accel[1]);
   signalPlotter_sendData(7, average_imu_data.accel[2]);
