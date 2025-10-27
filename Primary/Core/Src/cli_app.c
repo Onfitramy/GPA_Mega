@@ -98,6 +98,37 @@ BaseType_t cmd_switchCLIMode(char *pcWriteBuffer, size_t xWriteBufferLen, const 
 }
 
 //*****************************************************************************
+BaseType_t cmd_switchSerialData(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    uint8_t parameters[1];
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+    parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
+
+    /* Write the response to the buffer */
+    if (parameters[0] == 0) {
+        snprintf(pcWriteBuffer, 50, "Turning Signal Plotter Data OFF...\r\n");
+        signalPlotterSend = false;
+    }
+    else {
+        snprintf(pcWriteBuffer, 50, "Turning Signal Plotter Data ON...\r\n");
+        signalPlotterSend = true;
+    }
+    return pdFALSE;
+}
+
+//*****************************************************************************
 BaseType_t cmd_resetPrimary(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {
     (void)pcCommandString;
@@ -719,6 +750,12 @@ const CLI_Command_Definition_t xCommandList[] = {
         .pcCommand = "switchCLIMode", /* The command string to type. */
         .pcHelpString = "switchCLIMode <mode>: Switches the CLI mode (internal/external)\r\n\r\n",
         .pxCommandInterpreter = cmd_switchCLIMode, /* The function to run. */
+        .cExpectedNumberOfParameters = 1 /* One parameter is expected. */
+    },
+    {
+        .pcCommand = "switchSerialData", /* The command string to type. */
+        .pcHelpString = "switchSerialData <1/0>: Switches the Serial Plotter data stream (on/off)\r\n\r\n",
+        .pxCommandInterpreter = cmd_switchSerialData, /* The function to run. */
         .cExpectedNumberOfParameters = 1 /* One parameter is expected. */
     },
     {

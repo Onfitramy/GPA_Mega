@@ -328,13 +328,13 @@ static void InitDo(StateMachine_t *sm, uint16_t freq) {
     if ((gps_data.gpsFix == 3)) {
         StateMachine_Dispatch(sm, EVENT_FLIGHT_GNSS_FIX);
     }
+    // TODO: grab ptot and bmp data, calculate offset
 }
 static void AlignGNCDo(StateMachine_t *sm, uint16_t freq) {
     if (freq != 10) return;
     if (EKFisAligned(&EKF2) && EKFisAligned(&EKF3)) {
         StateMachine_Dispatch(sm, EVENT_FLIGHT_FILTER_CONVERGED);
     }
-    // TODO: proper GNC alignment algorithm
 }
 static void CheckoutsDo(StateMachine_t *sm, uint16_t freq) {
     // checkouts complete is confirmed by ground station

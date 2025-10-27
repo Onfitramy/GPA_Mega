@@ -346,7 +346,7 @@ void Start100HzTask(void *argument) {
 
     InterBoardCom_ProcessTxBuffer();
 
-    signalPlotter_sendAll();
+    if (signalPlotterSend) signalPlotter_sendAll();
 
     // Quaternion EKF correction step
     arm_vecN_concatenate_f32(3, average_imu_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector

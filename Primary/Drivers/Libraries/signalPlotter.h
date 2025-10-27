@@ -2,6 +2,7 @@
 #define signalPlotter_H_
 
 #include "stm32h7xx_hal.h"
+#include <stdbool.h>
 
 //#define SIGNAL_PLOTTER_OUT_1 // imu testing
 //#define SIGNAL_PLOTTER_OUT_2 // raw sensor data
@@ -11,6 +12,8 @@
 //#define SIGNAL_PLOTTER_OUT_GROUND // ground station data
 
 extern uint32_t dt_1000Hz;
+
+extern bool signalPlotterSend;
 
 // actually performs send operation to signal plotter
 // (is done automatically)

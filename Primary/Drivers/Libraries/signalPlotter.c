@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <string.h>
 
+bool signalPlotterSend = true;
+
 typedef struct {
   float value;
   uint8_t sendFlag;
