@@ -56,6 +56,8 @@ static int32_t DTS_Temperature;
 extern ADC_HandleTypeDef hadc3;
 uint32_t ADC_Temperature, ADC_V_Ref;
 
+uint8_t hil_mode = 0; // Hardware In the Loop mode flag
+
 GPA_Mega gpa_mega;
 
 bool is_groundstation = false;
@@ -241,9 +243,9 @@ void StartDefaultTask(void *argument)
 
     // Run 1000 Hz Do Actions
     StateMachine_DoActions(&flight_sm, 1000);
-
+  
     HAL_DTS_GetTemperature(&hdts, &DTS_Temperature);
-
+    
     ReadInternalADC(&ADC_Temperature, &ADC_V_Ref); // 7us
 
     SensorStatus_Reset(&imu1_status);
