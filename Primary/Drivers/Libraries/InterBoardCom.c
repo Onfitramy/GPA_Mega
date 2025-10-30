@@ -18,6 +18,8 @@ extern SPI_HandleTypeDef hspi1;
 
 extern DMA_HandleTypeDef hdma_spi1_rx;
 
+extern DataPacket_t powerData; //For receiving power data from secondary
+
 InterBoardCircularBuffer_t txCircBuffer; // outgoing buffer
 
 InterBoardPacket_t receiveBuffer;
@@ -264,6 +266,13 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t *packet) {
             }
             break;
         // Add cases for other packet IDs as needed
+
+        case (INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU): { //Receive Data Packet for use on MCU
+            if (((DataPacket_t *)packet->Data)->Packet_ID == PACKET_ID_POWER) {
+                powerData = *((DataPacket_t *)packet->Data);
+            }
+            break;
+        }
 
         case (INTERBOARD_OP_CMD | INTERBOARD_TARGET_MCU): {
             DataPacket_t *cmd = (DataPacket_t *)packet->Data;

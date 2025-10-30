@@ -212,6 +212,21 @@ void Start10HzTask(void *argument){
 
     StateMachine_DoActions(&pu_sm, 10);
 
+    DataPacket_t powerData;
+    powerData.Packet_ID = PACKET_ID_POWER; // Power Packet ID
+
+    UpdatePowerPacket(&powerData,
+                      xTaskGetTickCount() * portTICK_PERIOD_MS,
+                      health.voltage.bus_pu_bat,
+                      health.power.out_pu,
+                      health.current.out_pu,
+                      health.voltage.bus_5V,
+                      health.voltage.bus_gpa_bat);
+
+    InterBoardPacket_t powerPacket = InterBoardCom_CreatePacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU);
+    InterBoardCom_FillData(&powerPacket, &powerData);
+    InterBoardCom_SendPacket(&powerPacket);
+
     XBee_TransmitQueue(XBee_transmit_addr); // Transmit data at 10Hz
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz

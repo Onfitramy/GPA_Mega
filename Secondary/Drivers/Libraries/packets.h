@@ -174,6 +174,8 @@ typedef struct {
 
 DataPacket_t CreateDataPacket(PacketType_t Packet_ID);
 
+void UpdatePowerPacket(DataPacket_t *power_packet, uint32_t timestamp, float PU_bat_volt, float PU_out_pow, float PU_out_curr, float M2_bus_5V, float M2_bus_GPA_bat_volt);
+
 void DataCircBuffer_Init(DataCircularBuffer_t* cb);
 uint8_t DataCircBuffer_Push(DataCircularBuffer_t* cb, DataPacket_t* packet);
 uint8_t DataCircBuffer_Pop(DataCircularBuffer_t* cb, DataPacket_t* packet);

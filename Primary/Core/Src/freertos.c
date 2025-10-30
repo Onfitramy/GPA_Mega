@@ -60,6 +60,8 @@ uint8_t hil_mode = 0; // Hardware In the Loop mode flag
 
 GPA_Mega gpa_mega;
 
+DataPacket_t powerData;
+
 bool is_groundstation = false;
 
 void SensorStatus_Reset(SensorStatus *sensor_status) {
