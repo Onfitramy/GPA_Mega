@@ -63,6 +63,7 @@ GPA_Mega gpa_mega;
 DataPacket_t powerData;
 
 bool is_groundstation = false;
+bool groundStationSend = true;
 
 void SensorStatus_Reset(SensorStatus *sensor_status) {
   sensor_status->hal_status = HAL_OK;
@@ -388,7 +389,7 @@ void Start10HzTask(void *argument) {
     UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler[0], euler[1], euler[2]);
     UpdateGPSDataPacket(&GPS_DataPacket, HAL_GetTick(), &gps_data);
 
-    if (is_groundstation) { //Groundstation requests data from secondary board
+    if (is_groundstation && groundStationSend) { //Groundstation requests data from secondary board
       USB_QueueDataPacket(&IMU_DataPacket);
       USB_QueueDataPacket(&Attitude_DataPacket);
 

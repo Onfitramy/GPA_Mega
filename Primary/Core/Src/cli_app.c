@@ -24,6 +24,8 @@
 
 extern uint8_t hil_mode;
 
+extern bool groundStationSend;
+
 char cOutputBuffer[configCOMMAND_INT_MAX_OUTPUT_SIZE], pcInputString[MAX_INPUT_LENGTH];
 extern const CLI_Command_Definition_t xCommandList[];
 extern StreamBufferHandle_t xStreamBuffer;
@@ -126,6 +128,37 @@ BaseType_t cmd_switchSerialData(char *pcWriteBuffer, size_t xWriteBufferLen, con
     else {
         snprintf(pcWriteBuffer, 50, "Turning Signal Plotter Data ON...\r\n");
         signalPlotterSend = true;
+    }
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_switchGroundData(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    uint8_t parameters[1];
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+    parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
+
+    /* Write the response to the buffer */
+    if (parameters[0] == 0) {
+        snprintf(pcWriteBuffer, 50, "Turning Ground Station Data OFF...\r\n");
+        groundStationSend = false;
+    }
+    else {
+        snprintf(pcWriteBuffer, 50, "Turning Ground Station Data ON...\r\n");
+        groundStationSend = true;
     }
     return pdFALSE;
 }
@@ -459,6 +492,54 @@ BaseType_t cmd_SPARK_ZeroStepper(char *pcWriteBuffer, size_t xWriteBufferLen, co
 }
 
 //*****************************************************************************
+BaseType_t cmd_SPARK_FindMax(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_FIND_MAX, NULL, 0);
+    sendcmdToTarget(&packet);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 50, "Activating SPARK Stepper Find Max function...\r\n");
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_SPARK_TargetPositionMode(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_MODE_TARGET_POSITION, NULL, 0);
+    sendcmdToTarget(&packet);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 50, "Activating SPARK Target Position mode...\r\n");
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_SPARK_TargetSpeedMode(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_MODE_TARGET_SPEED, NULL, 0);
+    sendcmdToTarget(&packet);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 50, "Activating SPARK Target Speed mode...\r\n");
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
 BaseType_t cmd_PU_toggleCAMPower(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {
     (void)pcCommandString;
@@ -787,6 +868,12 @@ const CLI_Command_Definition_t xCommandList[] = {
         .cExpectedNumberOfParameters = 1 /* One parameter is expected. */
     },
     {
+        .pcCommand = "switchGroundData", /* The command string to type. */
+        .pcHelpString = "switchGroundData <1/0>: Switches the Ground Station data stream (on/off)\r\n\r\n",
+        .pxCommandInterpreter = cmd_switchGroundData, /* The function to run. */
+        .cExpectedNumberOfParameters = 1 /* One parameter is expected. */
+    },
+    {
         .pcCommand = "RESET_PRIMARY", /* The command string to type. */
         .pcHelpString = "RESET_PRIMARY: Resets the Primary MCU on the flight computer\r\n\r\n",
         .pxCommandInterpreter = cmd_resetPrimary, /* The function to run. */
@@ -860,8 +947,26 @@ const CLI_Command_Definition_t xCommandList[] = {
     },
     {
         .pcCommand = "SPARK_ZeroStepper", /* The command string to type. */
-        .pcHelpString = "SPARK_ZeroStepper: Resets the stepper motor position\r\n\r\n",
+        .pcHelpString = "SPARK_ZeroStepper: Finds minimum position of Stepper\r\n\r\n",
         .pxCommandInterpreter = cmd_SPARK_ZeroStepper, /* The function to run. */
+        .cExpectedNumberOfParameters = 0
+    },
+    {
+        .pcCommand = "SPARK_FindMax", /* The command string to type. */
+        .pcHelpString = "SPARK_FindMax: Finds maximum position of Stepper\r\n\r\n",
+        .pxCommandInterpreter = cmd_SPARK_FindMax, /* The function to run. */
+        .cExpectedNumberOfParameters = 0
+    },
+    {
+        .pcCommand = "SPARK_TargetPositionMode", /* The command string to type. */
+        .pcHelpString = "SPARK_TargetPositionMode: SPARK enters Target Position mode\r\n\r\n",
+        .pxCommandInterpreter = cmd_SPARK_TargetPositionMode, /* The function to run. */
+        .cExpectedNumberOfParameters = 0
+    },
+    {
+        .pcCommand = "SPARK_TargetSpeedMode", /* The command string to type. */
+        .pcHelpString = "SPARK_TargetSpeedMode: SPARK enters Target Speed mode\r\n\r\n",
+        .pxCommandInterpreter = cmd_SPARK_TargetSpeedMode, /* The function to run. */
         .cExpectedNumberOfParameters = 0
     },
     {
@@ -896,7 +1001,7 @@ const CLI_Command_Definition_t xCommandList[] = {
     },
     {
         .pcCommand = "Buzzer_PlaySongRepeat", /* The command string to type. */
-        .pcHelpString = "Buzzer_PlaySong <Song> <Period>: Plays Song from Playlist on repeat each period\r\n\r\n",
+        .pcHelpString = "Buzzer_PlaySongRepeat <Song> <Period>: Plays Song from Playlist on repeat each period\r\n\r\n",
         .pxCommandInterpreter = cmd_Buzzer_PlaySongRepeat, /* The function to run. */
         .cExpectedNumberOfParameters = 2
     },

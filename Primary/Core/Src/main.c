@@ -169,7 +169,7 @@ int main(void)
   gpa_mega = GPA_MegaFromUID(uid);
 
   // if board is a ground station, set flag
-  if (gpa_mega == GPA_MEGA_1) {
+  if (gpa_mega == GPA_MEGA_1 || gpa_mega == GPA_MEGA_3) {
     is_groundstation = true;
     cli_target_mode = CLI_TARGET_MODE_EXTERNAL; // Groundstation always uses internal target mode
   }
