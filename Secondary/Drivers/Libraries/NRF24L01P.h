@@ -110,6 +110,8 @@ void nrf24l01p_clear_rx_dr();
 void nrf24l01p_clear_tx_ds();
 void nrf24l01p_clear_max_rt();
 void nrf24l01p_tx_irq();
+void nrf24l01_clear_irq();
+void nrf24l01p_clear_known_irqs(uint8_t status);
 
 void nrf24l01p_set_rf_channel(channel MHz);
 void nrf24l01p_set_rf_tx_output_power(output_power dBm);
@@ -123,7 +125,6 @@ void nrf24l01p_auto_retransmit_count(count cnt);
 void nrf24l01p_auto_retransmit_delay(delay us);
 
 void nrf24l01p_startListening();
-void nrf24l01p_sendOnce(uint8_t* tx_payload);
 
 void delay_us(uint32_t us);
 

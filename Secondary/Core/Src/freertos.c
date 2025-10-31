@@ -236,8 +236,10 @@ void Start10HzTask(void *argument){
     XBee_TransmitQueue(XBee_transmit_addr); // Transmit data at 10Hz
 
     // transmit data
-    uint8_t tx_buf[NRF24L01P_PAYLOAD_LENGTH];
-    tx_buf[1] = HAL_GetTick() >> 24;
+    uint8_t tx_buf[NRF24L01P_PAYLOAD_LENGTH] = {0}; // Initialize to zero
+    tx_buf[0] = 0xAA; // Packet ID or something meaningful
+    tx_buf[1] = HAL_GetTick() & 0xFF;
+    tx_buf[2] = (HAL_GetTick() >> 8) & 0xFF;
     radioSend(tx_buf);
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
@@ -273,7 +275,6 @@ uint32_t TransmissionErrors = 0;
 void StartInterruptTask(void *argument)
 {
   /* USER CODE BEGIN StartInterruptTask */
-  HAL_NVIC_EnableIRQ(EXTI2_IRQn); // Enable EXTI2 interrupt for NRF24L01
 
   QueueSetHandle_t xQueueSet = xQueueCreateSet(20); // Total items from both queues
   xQueueAddToSet(InterruptQueue, xQueueSet);
@@ -286,13 +287,10 @@ void StartInterruptTask(void *argument)
 
     if (xActivatedMember == InterruptQueue) {
       uint8_t int_pin;
+      //HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin);
       if (xQueueReceive(InterruptQueue, &int_pin, 0) == pdPASS) {
-        if(nrf_mode) {
-          nrf24l01p_tx_irq();
-        } else {
-          //HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
-          memset(rx_recieve_buf, 0, NRF24L01P_PAYLOAD_LENGTH);
-          nrf24l01p_rx_receive(rx_recieve_buf);
+        if (int_pin == NRF24_INT_Pin) {
+          nrf24l01p_read_rx_fifo(rx_recieve_buf);
         }
       }
     } else if (xActivatedMember == XBeeDataQueue) {

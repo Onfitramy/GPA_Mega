@@ -13,17 +13,18 @@ void radioSet(radio_status_t radio){
 
 void radioSend(uint8_t *tx_buf){
     if(radio_info.status == NRF_24_ACTIVE){
-        nrf24l01p_write_tx_fifo(tx_buf);
+        uint8_t status = nrf24l01p_write_tx_fifo(tx_buf);
+        nrf24l01p_clear_known_irqs(status);
 
         if(radio_info.mode != RADIO_MODE_TRANSMITTER){
             nrf24l01p_txMode();
-            delay_us(500);
-            nrf24l01p_rxMode();
+            radio_info.mode = RADIO_MODE_TRANSMITTER;
         }
     }
 }
 
 void radioSetMode(radio_mode_t mode){
+    if (radio_info.mode == mode) return;
     radio_info.mode = mode;
     if(radio_info.status == NRF_24_ACTIVE){
         if(mode == RADIO_MODE_TRANSMITTER){

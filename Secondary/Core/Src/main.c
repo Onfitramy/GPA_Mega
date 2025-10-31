@@ -178,7 +178,8 @@ int main(void)
   // set NRF24L01 frequency and data rate
   nrf24l01p_init(2462, _1Mbps);
   radioSet(NRF_24_ACTIVE);
-  radioSetMode(RADIO_MODE_TRANSCEIVER);
+  //radioSetMode(RADIO_MODE_TRANSCEIVER);
+  radioSetMode(RADIO_MODE_TRANSMITTER);
 
   StateMachine_Init(&pu_sm, STATE_STARTUP);
   /* USER CODE END 2 */
@@ -254,10 +255,16 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
   /*Handle NRF24_INT by sending Queue to FreeRTOS funktion*/
   if (GPIO_Pin == NRF24_INT_Pin) {
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    uint8_t sendData = (uint8_t)NRF24_INT_Pin;
-    xQueueSendFromISR(InterruptQueue, &sendData, &xHigherPriorityTaskWoken);
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin);
+    uint8_t status = nrf24l01p_get_status();
+    nrf24l01p_clear_known_irqs(status);
+    if (status & 0x40) { // Data Ready RX FIFO interrupt
+      // Send notification to Task via Queue
+      BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+      uint8_t sendData = (uint8_t)NRF24_INT_Pin;
+      xQueueSendFromISR(InterruptQueue, &sendData, &xHigherPriorityTaskWoken);
+      portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
   }
   if (GPIO_Pin == F4_INT_Pin) {
     // Handle the interrupt from F4
@@ -982,7 +989,6 @@ static void MX_GPIO_Init(void)
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI2_IRQn, 5, 0);
-  //HAL_NVIC_EnableIRQ(EXTI2_IRQn);
 
   HAL_NVIC_SetPriority(EXTI4_IRQn, 5, 0);
 

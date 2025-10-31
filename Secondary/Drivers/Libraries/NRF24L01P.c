@@ -78,6 +78,7 @@ void nrf24l01p_init(channel MHz, air_data_rate bps) {
     nrf24l01p_power_up();
 
     HAL_Delay(5);
+    HAL_NVIC_EnableIRQ(EXTI2_IRQn); //Enable IRQ 
 
     nrf24l01p_rx_set_payload_widths_P0(NRF24L01P_PAYLOAD_LENGTH);
     write_register(NRF24L01P_REG_EN_AA, 0x3F); //Activate Auto Acknowledgement
@@ -105,6 +106,7 @@ void nrf24l01p_init(channel MHz, air_data_rate bps) {
     //rx = read_register(0x00);
 
     ce_low();
+    
     //Goes into standby 1
 
     nrf_mode = 0;
@@ -132,6 +134,31 @@ void nrf24l01p_tx_irq() {
     else {
         // MAX_RT
         nrf24l01p_clear_max_rt();
+    }
+}
+
+void nrf24l01_clear_irq() {
+    uint8_t status = nrf24l01p_get_status();
+    if(status & 0x20) {
+        nrf24l01p_clear_tx_ds();
+    }
+    if(status & 0x10) {
+        nrf24l01p_clear_rx_dr();
+    }
+    if(status & 0x40) {
+        nrf24l01p_clear_max_rt();
+    }
+}
+
+void nrf24l01p_clear_known_irqs(uint8_t status) {
+    if(status & 0x20) {
+        nrf24l01p_clear_tx_ds();
+    }
+    if(status & 0x10) {
+        nrf24l01p_clear_max_rt();
+    }
+    if(status & 0x40) {
+        nrf24l01p_clear_rx_dr();
     }
 }
 
@@ -194,17 +221,14 @@ void nrf24l01p_txMode(void){
 
     ce_low();
 
-    write_register(NRF24L01P_REG_EN_AA, 0x3F);
-
     uint8_t config = read_register(NRF24L01P_REG_CONFIG);
     config &= ~(1 << 0);  // PRIM_TX
     write_register(NRF24L01P_REG_CONFIG, config);
 
     ce_high();
-    delay_us(15);
+    delay_us(15); //Tx Switching time
 
-    delay_us(150);
-    ce_low();
+    delay_us(150); //Tx Settling time
 }
 
 void nrf24l01p_rxMode(void){
@@ -212,13 +236,12 @@ void nrf24l01p_rxMode(void){
 
     ce_low();
 
-    write_register(NRF24L01P_REG_EN_AA, 0x3F);
-
     uint8_t config = read_register(NRF24L01P_REG_CONFIG);
     config |= (1 << 0);   // PRIM_RX
     write_register(NRF24L01P_REG_CONFIG, config);
 
     ce_high();
+    delay_us(15); //Rx Switching time
 
     delay_us(150);
 
@@ -232,9 +255,12 @@ uint8_t nrf24l01p_write_tx_fifo(uint8_t* tx_payload) {
     uint8_t rx[1 + NRF24L01P_PAYLOAD_LENGTH];
     uint8_t tx[1 + NRF24L01P_PAYLOAD_LENGTH];
     tx[0] = command;
-    for (uint8_t i=1; i < (1+NRF24L01P_PAYLOAD_LENGTH); i++){ tx[i] = tx_payload[i];}
+    // Copy payload
+    for (uint8_t i=0; i < NRF24L01P_PAYLOAD_LENGTH; i++) { 
+        tx[i+1] = tx_payload[i];
+    }
     cs_low();
-    HAL_SPI_TransmitReceive(&NRF_SPI, tx, rx, sizeof tx, 2000);
+    HAL_SPI_TransmitReceive(&NRF_SPI, tx, rx, sizeof(tx), 2000);
     cs_high();
     uint8_t status = rx[0];
 
@@ -430,32 +456,7 @@ void nrf24l01p_startListening() {
     delay_us(150);
 
     nrf24l01p_flush_rx_fifo();
-}
-
-void nrf24l01p_sendOnce(uint8_t* tx_payload) {
-    nrf_mode = 1;
-    
-    ce_low();
-
-    write_register(NRF24L01P_REG_EN_AA, 0x3F);
-
-    write_register(NRF24L01P_REG_FEATURE, 0x01);
-
-    uint8_t config = read_register(NRF24L01P_REG_CONFIG);
-    //config |= (1 << 1);   // PWR_UP (can skip if always set)
-    config &= ~(1 << 0);  // PRIM_TX
-    //config |= (1 << 3);   // EN_CRC = 1
-    //config &= 0xFB;       // CRCO = 1 byte
-    write_register(NRF24L01P_REG_CONFIG, config);
-
-    nrf24l01p_write_tx_fifo(tx_payload);
-
-    ce_high();
-    delay_us(15);
-    ce_low();
-
-    delay_us(150);
-}
+}   
 
 void delay_us(uint32_t us) { //TODO: Deal with Overflow as this could massivly increase Delay
     uint32_t start_time = HAL_GetTickUS();
