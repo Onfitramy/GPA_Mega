@@ -274,6 +274,7 @@ void StartInterBoardComTask(void *argument)
 uint8_t transmitStatus;
 uint32_t XBEE_TransmittedReceived = 0;
 uint32_t TransmissionErrors = 0;
+uint16_t radioTime = 0;
 void StartInterruptTask(void *argument)
 {
   /* USER CODE BEGIN StartInterruptTask */
@@ -296,6 +297,7 @@ void StartInterruptTask(void *argument)
           nrf24l01p_clear_known_irqs(status);
           if (status & 0x40) { // Data Ready RX FIFO interrupt
             nrf24l01p_read_rx_fifo(rx_recieve_buf);
+            radioTime = (rx_recieve_buf[1] << 8) | rx_recieve_buf[2];
           } else if (status & 0x20) { // Data Sent TX FIFO interrupt
             uint8_t fifo_status = nrf24l01p_get_fifo_status();
             if ((fifo_status & 0x10) && radio_info.mode == RADIO_MODE_TRANSCEIVER) { // TX FIFO empty

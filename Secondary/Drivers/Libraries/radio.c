@@ -13,10 +13,13 @@ void radioSet(radio_status_t radio){
 
 void radioSend(uint8_t *tx_buf){
     if(radio_info.status == NRF_24_ACTIVE){
+        if (radio_info.mode == RADIO_MODE_RECEIVER){
+            return; // Cannot send in receiver mode
+        }
         uint8_t status = nrf24l01p_write_tx_fifo(tx_buf);
         nrf24l01p_clear_known_irqs(status);
 
-        if(radio_info.mode != RADIO_MODE_TRANSMITTER){
+        if(radio_info.mode == RADIO_MODE_TRANSCEIVER){
             nrf24l01p_txMode();
         }
     }
