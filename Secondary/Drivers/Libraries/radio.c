@@ -18,7 +18,6 @@ void radioSend(uint8_t *tx_buf){
 
         if(radio_info.mode != RADIO_MODE_TRANSMITTER){
             nrf24l01p_txMode();
-            radio_info.mode = RADIO_MODE_TRANSMITTER;
         }
     }
 }

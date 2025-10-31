@@ -178,8 +178,7 @@ int main(void)
   // set NRF24L01 frequency and data rate
   nrf24l01p_init(2462, _1Mbps);
   radioSet(NRF_24_ACTIVE);
-  //radioSetMode(RADIO_MODE_TRANSCEIVER);
-  radioSetMode(RADIO_MODE_TRANSMITTER);
+  radioSetMode(RADIO_MODE_TRANSCEIVER);
 
   StateMachine_Init(&pu_sm, STATE_STARTUP);
   /* USER CODE END 2 */
@@ -256,15 +255,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
   /*Handle NRF24_INT by sending Queue to FreeRTOS funktion*/
   if (GPIO_Pin == NRF24_INT_Pin) {
     HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin);
-    uint8_t status = nrf24l01p_get_status();
-    nrf24l01p_clear_known_irqs(status);
-    if (status & 0x40) { // Data Ready RX FIFO interrupt
-      // Send notification to Task via Queue
-      BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-      uint8_t sendData = (uint8_t)NRF24_INT_Pin;
-      xQueueSendFromISR(InterruptQueue, &sendData, &xHigherPriorityTaskWoken);
-      portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-    }
+    // Send notification to Task via Queue
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    uint8_t sendData = (uint8_t)NRF24_INT_Pin;
+    xQueueSendFromISR(InterruptQueue, &sendData, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
   }
   if (GPIO_Pin == F4_INT_Pin) {
     // Handle the interrupt from F4
@@ -967,16 +962,22 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : ACS_Pin CAMS_Pin Recovery_Pin NRF24_CS_Pin
                            M2_LED_Pin */
-  GPIO_InitStruct.Pin = ACS_Pin|CAMS_Pin|Recovery_Pin|NRF24_CS_Pin|NRF24_CE_Pin
-                          |M2_LED_Pin;
+  GPIO_InitStruct.Pin = ACS_Pin|CAMS_Pin|Recovery_Pin|NRF24_CS_Pin|M2_LED_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : NRF24_CE_Pin */
+  GPIO_InitStruct.Pin = NRF24_CE_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(NRF24_CE_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pin : NRF24_INT_Pin */
   GPIO_InitStruct.Pin = NRF24_INT_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(NRF24_INT_GPIO_Port, &GPIO_InitStruct);
 

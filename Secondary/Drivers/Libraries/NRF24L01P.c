@@ -240,12 +240,12 @@ void nrf24l01p_rxMode(void){
     config |= (1 << 0);   // PRIM_RX
     write_register(NRF24L01P_REG_CONFIG, config);
 
+    nrf24l01p_flush_rx_fifo();
+
     ce_high();
     delay_us(15); //Rx Switching time
 
     delay_us(150);
-
-    nrf24l01p_flush_rx_fifo();
 }
 
 uint8_t nrf24l01p_write_tx_fifo(uint8_t* tx_payload) {

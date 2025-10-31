@@ -111,6 +111,8 @@ uint32_t Counter_10Hz = 0;
 health_t health;
 health_t health_filtered;
 
+extern radio_info_t radio_info;
+
 uint8_t rx_recieve_buf[NRF24L01P_PAYLOAD_LENGTH] = {0};
 
 uint64_t XBee_transmit_addr = 0x0013a200426e530e; // XBee transmit address (to groundstation)
@@ -290,7 +292,16 @@ void StartInterruptTask(void *argument)
       //HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin);
       if (xQueueReceive(InterruptQueue, &int_pin, 0) == pdPASS) {
         if (int_pin == NRF24_INT_Pin) {
-          nrf24l01p_read_rx_fifo(rx_recieve_buf);
+          uint8_t status = nrf24l01p_get_status();
+          nrf24l01p_clear_known_irqs(status);
+          if (status & 0x40) { // Data Ready RX FIFO interrupt
+            nrf24l01p_read_rx_fifo(rx_recieve_buf);
+          } else if (status & 0x20) { // Data Sent TX FIFO interrupt
+            uint8_t fifo_status = nrf24l01p_get_fifo_status();
+            if ((fifo_status & 0x10) && radio_info.mode == RADIO_MODE_TRANSCEIVER) { // TX FIFO empty
+              nrf24l01p_rxMode(); // Switch back to RX mode
+            }
+          }
         }
       }
     } else if (xActivatedMember == XBeeDataQueue) {
