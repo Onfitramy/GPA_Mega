@@ -525,6 +525,8 @@ static void W25Q_AlignSectorOffset() {
 }
 
 void W25Q_GetConfig() {
+	vTaskDelay(20);
+
 	uint8_t tempConfig1[sizeof(W25QPage0_config_t)];
 	uint8_t tempConfig2[sizeof(W25QPage0_config_t)];
 
@@ -555,7 +557,7 @@ void W25Q_CopyLogsToSD() {
 
 		for (uint32_t i = 0; i < FLASH_BUFFER_SIZE; ++i) {
 			if (SD_AppendDataPacketToBuffer(packets + i) != 0) {
-				SD_SaveBuffer("FLASH_LOG.txt");
+				SD_SaveBuffer("log.txt");
 				SD_ResetBufferIndex();
 				SD_AppendDataPacketToBuffer(packets + i);
 			}

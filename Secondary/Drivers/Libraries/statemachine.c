@@ -1,5 +1,9 @@
 #include "statemachine.h"
 
+#include "Buzzer.h"
+#include "W25Q1.h"
+#include "xBee.h"
+
 StateMachine_t pu_sm;
 
 uint8_t status_data = 0;
@@ -211,7 +215,7 @@ void StateMachine_Dispatch(StateMachine_t *sm, sm_event_t event) {
     if (sm->currentState >= STATE_MAX) return;
 
     // TODO: store event on Flash & SD
-    
+
     // store old flight state
     sm_state_t oldState = sm->currentState;
 
@@ -223,7 +227,7 @@ void StateMachine_Dispatch(StateMachine_t *sm, sm_event_t event) {
 
     // don't update state if minimum entry time delay for event hasn't elapsed yet
     if (minEventDelayTable[event] > (uwTick - sm->timestamp_us)) return;
-    
+
     // exit old state
     StateExitHandler(sm, oldState);
 
@@ -246,13 +250,13 @@ void StateMachine_ForceState(StateMachine_t *sm, sm_state_t newState) {
     if (sm->currentState >= STATE_MAX) return;
 
     // TODO: store command on Flash & SD
-    
+
     // store old flight state
     sm_state_t oldState = sm->currentState;
 
     // prevent exit and entry actions if no state change
     if (newState == oldState || newState >= STATE_MAX) return;
-    
+
     // exit old state
     StateExitHandler(sm, oldState);
 
