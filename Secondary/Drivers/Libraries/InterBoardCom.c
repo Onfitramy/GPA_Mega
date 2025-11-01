@@ -338,6 +338,19 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
                 }
             }
             break;
+        case COMMAND_TARGET_RADIO:
+            if (dataPacket->Data.command.command_id == COMMAND_ID_RADIO_SWITCH) {
+                // Radio command 0x01: Switch radio to xbee(1) or nrf(2)
+                if(dataPacket->Data.command.params[0] == 0x01) {
+                    radioSet(XBEE_ACTIVE);
+                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
+                } else if (dataPacket->Data.command.params[0] == 0x02) {
+                    radioSet(NRF_24_ACTIVE);
+                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
+                }
+                InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
+            }
+            break;
         case COMMAND_TARGET_GROUNDSTATION:
             // Groundstation should never receive commands from other boards, only via USB from PC
             break;
@@ -387,8 +400,13 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
     }
 }
 
+bool cmd_ack_activated = 0;
 // Acknowledge a command with status of its execution as its ID (0=Success, 1=Failed, 2=Invalid)
 void InterBoardCom_command_acknowledge(uint8_t command_target, uint8_t command_id, uint8_t status) {
+    if (!cmd_ack_activated) {
+        return; // Ack not activated
+    }
+
     uint8_t params[2];
     params[0] = command_target;
     params[1] = command_id;

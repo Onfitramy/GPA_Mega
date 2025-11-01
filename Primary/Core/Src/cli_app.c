@@ -791,6 +791,42 @@ BaseType_t cmd_Set_HIL(char *pcWriteBuffer, size_t xWriteBufferLen, const char *
     return pdFALSE;
 }
 
+//*****************************************************************************
+BaseType_t cmd_Radio_Switch(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    uint8_t parameters[1];
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+
+    if (strncmp(pcParameter, "XBEE", xParameterStringLength) == 0) {
+        parameters[0] = 1;
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Switched to XBEE Mode\r\n");
+    } else if (strncmp(pcParameter, "NRF", xParameterStringLength) == 0) {
+        parameters[0] = 2;
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Switched to NRF Mode\r\n");
+    } else {
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Invalid parameter 1\r\n");
+        return pdFALSE;
+    }
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_RADIO, COMMAND_ID_RADIO_SWITCH, parameters, sizeof(parameters));
+    sendcmdToTarget(&packet);
+
+    return pdFALSE;
+}
+
 BaseType_t cmd_Flash(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {
     (void)pcCommandString;
@@ -1015,6 +1051,12 @@ const CLI_Command_Definition_t xCommandList[] = {
         .pcCommand = "Set_HIL", /* The command string to type. */
         .pcHelpString = "Set_HIL <1/0>: Enables or disables Hardware In the Loop (HIL) simulation\r\n\r\n",
         .pxCommandInterpreter = cmd_Set_HIL, /* The function to run. */
+        .cExpectedNumberOfParameters = 1
+    },
+    {
+        .pcCommand = "Radio_Switch", /* The command string to type. */
+        .pcHelpString = "Radio_Switch <NRF/XBEE>: Switch primary radio to specified radio module\r\n\r\n",
+        .pxCommandInterpreter = cmd_Radio_Switch, /* The function to run. */
         .cExpectedNumberOfParameters = 1
     },
     {
