@@ -173,6 +173,10 @@ void CreateCommandPacket(DataPacket_t *command_packet, uint32_t timestamp, Comma
         size_t copy_length = (params_length > sizeof(command_packet->Data.command.params)) ? sizeof(command_packet->Data.command.params) : params_length;
         memcpy(command_packet->Data.command.params, params, copy_length);
     }
+    // Set all unused params to 0
+    if (params_length < sizeof(command_packet->Data.command.params)) {
+        memset(command_packet->Data.command.params + params_length, 0, sizeof(command_packet->Data.command.params) - params_length);
+    }
 
     calcCRC(command_packet);
 }
