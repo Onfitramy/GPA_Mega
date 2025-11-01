@@ -20,6 +20,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32h7xx_it.h"
+#include <stdio.h>
+#include "FreeRTOS.h"
+#include "task.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 /* USER CODE END Includes */
@@ -90,6 +93,62 @@ void NMI_Handler(void)
   }
   /* USER CODE END NonMaskableInt_IRQn 1 */
 }
+/* USER CODE BEGIN PV */
+// Fault diagnostic variables
+volatile uint32_t fault_pc = 0;
+volatile uint32_t fault_lr = 0;
+volatile uint32_t fault_psr = 0;
+volatile uint32_t fault_cfsr = 0;
+volatile uint32_t fault_hfsr = 0;
+volatile uint32_t fault_bfar = 0;
+volatile uint32_t fault_mmfar = 0;
+volatile uint32_t fault_stack[8] = {0};
+volatile const char* fault_task_name = "Unknown";
+/* USER CODE END PV */
+
+/* USER CODE BEGIN PFP */
+void HardFault_Handler_C(uint32_t *stack_ptr);
+/* USER CODE END PFP */
+
+// Enhanced fault handler
+void HardFault_Handler_C(uint32_t *stack_ptr) {
+    // Capture stacked registers
+    fault_stack[0] = stack_ptr[0]; // R0
+    fault_stack[1] = stack_ptr[1]; // R1
+    fault_stack[2] = stack_ptr[2]; // R2
+    fault_stack[3] = stack_ptr[3]; // R3
+    fault_stack[4] = stack_ptr[4]; // R12
+    fault_stack[5] = stack_ptr[5]; // LR (return address)
+    fault_stack[6] = stack_ptr[6]; // PC (program counter where fault occurred)
+    fault_stack[7] = stack_ptr[7]; // PSR (status register)
+    
+    fault_pc = stack_ptr[6];  // PC
+    fault_lr = stack_ptr[5];  // LR
+    fault_psr = stack_ptr[7]; // PSR
+    
+    // Read fault status registers
+    fault_cfsr = SCB->CFSR;   // Configurable Fault Status Register
+    fault_hfsr = SCB->HFSR;   // HardFault Status Register
+    fault_bfar = SCB->BFAR;   // BusFault Address Register
+    fault_mmfar = SCB->MMFAR; // MemManage Fault Address Register
+    
+    // Get current task name (if FreeRTOS is running)
+    TaskHandle_t current_task = xTaskGetCurrentTaskHandle();
+    if (current_task != NULL) {
+        fault_task_name = pcTaskGetName(current_task);
+    }
+    
+    // Set LED to red
+    SetLED_color(COLOR_RED);
+    
+    // Trigger breakpoint if debugger attached
+    __BKPT(0);
+    
+    // Infinite loop
+    while(1) {
+    }
+}
+/* USER CODE END 0 */
 
 /**
   * @brief This function handles Hard fault interrupt.
@@ -97,13 +156,45 @@ void NMI_Handler(void)
 void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
-
+  // Determine which stack pointer was in use and call C handler
+  __asm volatile (
+    "TST LR, #4           \n"  // Test bit 2 of LR (EXC_RETURN)
+    "ITE EQ               \n"  // If-Then-Else
+    "MRSEQ R0, MSP        \n"  // Main stack pointer
+    "MRSNE R0, PSP        \n"  // Process stack pointer
+    "B HardFault_Handler_C\n"  // Jump to C handler with stack pointer in R0
+  );
   /* USER CODE END HardFault_IRQn 0 */
   while (1)
   {
     /* USER CODE BEGIN W1_HardFault_IRQn 0 */
     SetLED_color(COLOR_RED);
+    #ifdef DEBUG
+     __BKPT(0);
+    #endif
     /* USER CODE END W1_HardFault_IRQn 0 */
+  }
+}
+
+/**
+  * @brief This function handles Pre-fetch fault, memory access fault.
+  */
+void BusFault_Handler(void)
+{
+  /* USER CODE BEGIN BusFault_IRQn 0 */
+  printf("\n=== BusFault ===\n");
+  printf("CFSR: 0x%08lX\n", SCB->CFSR);
+  printf("BFAR: 0x%08lX\n", SCB->BFAR);
+  if (SCB->CFSR & (1 << 15)) {
+    printf("BusFault Address: 0x%08lX\n", SCB->BFAR);
+  }
+  SetLED_color(COLOR_RED);
+  __BKPT(0);
+  /* USER CODE END BusFault_IRQn 0 */
+  while (1)
+  {
+    /* USER CODE BEGIN W1_BusFault_IRQn 0 */
+    /* USER CODE END W1_BusFault_IRQn 0 */
   }
 }
 
@@ -119,21 +210,6 @@ void MemManage_Handler(void)
   {
     /* USER CODE BEGIN W1_MemoryManagement_IRQn 0 */
     /* USER CODE END W1_MemoryManagement_IRQn 0 */
-  }
-}
-
-/**
-  * @brief This function handles Pre-fetch fault, memory access fault.
-  */
-void BusFault_Handler(void)
-{
-  /* USER CODE BEGIN BusFault_IRQn 0 */
-
-  /* USER CODE END BusFault_IRQn 0 */
-  while (1)
-  {
-    /* USER CODE BEGIN W1_BusFault_IRQn 0 */
-    /* USER CODE END W1_BusFault_IRQn 0 */
   }
 }
 

@@ -84,7 +84,7 @@ UBX_MessageType ublox_ReadOutput(char* UBX_MessageReturn) {
   {
     HAL_StatusTypeDef status = HAL_I2C_Mem_Read(&GPS_I2C, GPS_I2C_ADDR, 0xFF, 1, buffer, length, 90);
     if (status == HAL_OK){
-        uint32_t ret = uUbxProtocolDecode((char*)buffer, length, &UBX_Message.messageClass, &UBX_Message.messageId, UBX_Message.messageBody, length, NULL);
+        uint32_t ret = uUbxProtocolDecode((char*)buffer, length, &UBX_Message.messageClass, &UBX_Message.messageId, UBX_Message.messageBody, sizeof(UBX_Message.messageBody), NULL);
         UBX_Message.status = 1; //Read Success
         for (size_t i = 0; i < length; i++) {
             buffer[i] = 0;
@@ -140,7 +140,7 @@ void GPS_Init(void){
     uint8_t MessageBody2[8] = {0x01, 0x07, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00}; //Set NAV-PVT to 10Hz
     len = uUbxProtocolEncode(0x06, 0x01, MessageBody2, 8, UBX_MessageSend);
     ublox_Write(len, UBX_MessageSend);
-    ublox_ReadOutput(UBX_MessageReturn); //Read ACK
+    ublox_ReadOutput(UBX_MessageReturn); //Read ACK //Causes Hardfault sometimes
     uUbxProtocolDecode((char*)UBX_MessageReturn, sizeof(UBX_MessageReturn), NULL, NULL, NULL, 0, NULL);
 
     /*Then set naviation rate to 10Hz*/
