@@ -422,6 +422,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     if (tim14_ms >= tim14_target_ms) {
       tim14_ms = 0;
       HAL_TIM_Base_Stop_IT(&htim14);
+
+      DeployMain();
     }
   }
   // Timer for handling main deploy servo retraction

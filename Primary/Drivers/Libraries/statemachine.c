@@ -245,6 +245,9 @@ static void CoastEntry(StateMachine_t *sm) {
 }
 static void AwaitDrogueEntry(StateMachine_t *sm) {
     DeployDrogue(DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
+
+    tim14_target_ms = 60000;
+    HAL_TIM_Base_Start_IT(&htim14);
 }
 static void DrogueDescendEntry(StateMachine_t *sm) {}
 static void AwaitMainEntry(StateMachine_t *sm) {

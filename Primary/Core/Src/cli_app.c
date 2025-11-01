@@ -540,6 +540,22 @@ BaseType_t cmd_SPARK_TargetSpeedMode(char *pcWriteBuffer, size_t xWriteBufferLen
 }
 
 //*****************************************************************************
+BaseType_t cmd_SPARK_Reset(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_RESET, NULL, 0);
+    sendcmdToTarget(&packet);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 50, "Resetting SPARK...\r\n");
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
 BaseType_t cmd_PU_toggleCAMPower(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {
     (void)pcCommandString;
@@ -1003,6 +1019,12 @@ const CLI_Command_Definition_t xCommandList[] = {
         .pcCommand = "SPARK_TargetSpeedMode", /* The command string to type. */
         .pcHelpString = "SPARK_TargetSpeedMode: SPARK enters Target Speed mode\r\n\r\n",
         .pxCommandInterpreter = cmd_SPARK_TargetSpeedMode, /* The function to run. */
+        .cExpectedNumberOfParameters = 0
+    },
+    {
+        .pcCommand = "SPARK_Reset", /* The command string to type. */
+        .pcHelpString = "SPARK_Reset: Resets SPARK MCU\r\n\r\n",
+        .pxCommandInterpreter = cmd_SPARK_Reset, /* The function to run. */
         .cExpectedNumberOfParameters = 0
     },
     {
