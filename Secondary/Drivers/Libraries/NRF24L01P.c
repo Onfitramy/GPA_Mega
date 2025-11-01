@@ -1,5 +1,7 @@
 #include "NRF24L01P.h"
 #include <string.h>
+#include "InterBoardCom.h"
+#include "packets.h"
 
 HAL_StatusTypeDef NRF_SPI_status;
 
@@ -70,6 +72,31 @@ void write_register_bytes(uint8_t reg, const uint8_t* data, uint8_t len) {
     cs_high();
 }
 
+void nrf24l01p_parseReceivedRFDataPacket(uint8_t* packetData) {
+    uint8_t packet_id =  packetData[0];
+    DataPacket_t receivedData = CreateDataPacket(packet_id);
+    memcpy(&receivedData.timestamp, &packetData[1], sizeof(uint32_t));
+    memcpy(&receivedData.Data, &packetData[5], sizeof(receivedData.Data));
+    receivedData.crc = packetData[31];
+
+    //Check CRC
+    uint8_t valid_crc = InterBoard_CheckCRC(&receivedData);
+
+    if (!valid_crc) {
+        // Handle invalid CRC
+        return;
+    }
+
+    // Handle command packet from the NRF24
+    if (receivedData.Packet_ID == PACKET_ID_COMMAND) {
+        InterBoardCom_EvaluateCommand(&receivedData);
+        // For example, you can check the command type and execute corresponding actions
+    } else {
+        //Send data packets to main board for display/logging
+        InterBoardCom_SendDataPacket(INTERBOARD_OP_DEBUG_VIEW, &receivedData);
+    }
+}
+
 /* Initializes the NRF24 into Standby 1 mode, ready for both Transmit and receive  */
 void nrf24l01p_init(channel MHz, air_data_rate bps) {
 
@@ -78,7 +105,6 @@ void nrf24l01p_init(channel MHz, air_data_rate bps) {
     nrf24l01p_power_up();
 
     HAL_Delay(5);
-    HAL_NVIC_EnableIRQ(EXTI2_IRQn); //Enable IRQ 
 
     nrf24l01p_rx_set_payload_widths_P0(NRF24L01P_PAYLOAD_LENGTH);
     write_register(NRF24L01P_REG_EN_AA, 0x3F); //Activate Auto Acknowledgement
@@ -203,7 +229,7 @@ uint8_t nrf24l01p_read_rx_fifo(uint8_t* rx_payload) {
     uint8_t rx[1 + NRF24L01P_PAYLOAD_LENGTH];
     uint8_t tx[1 + NRF24L01P_PAYLOAD_LENGTH] = { NRF24L01P_CMD_R_RX_PAYLOAD };
     cs_low();
-    HAL_SPI_TransmitReceive(&NRF_SPI, tx, rx, sizeof tx, 2000);
+    HAL_SPI_TransmitReceive(&NRF_SPI, tx, rx, sizeof(tx), 2000);
     cs_high();
     status = rx[0];
     memcpy(rx_payload, &rx[1], NRF24L01P_PAYLOAD_LENGTH);

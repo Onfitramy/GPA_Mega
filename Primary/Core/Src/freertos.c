@@ -73,8 +73,6 @@ void SensorStatus_Reset(SensorStatus *sensor_status) {
 StatusPayload_t status_data = {0};
 float F4_data_float;
 
-uint8_t selftest_tries = 0;
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -380,7 +378,7 @@ void Start10HzTask(void *argument) {
       USB_QueueDataPacket(&IMU_DataPacket);
       USB_QueueDataPacket(&Attitude_DataPacket);
 
-    } else { //Secondary board sends data to groundstation
+    } else if (!is_groundstation) { //Secondary board sends data to groundstation
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &Attitude_DataPacket);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &GPS_DataPacket);
@@ -437,7 +435,7 @@ void StartInterruptHandlerTask(void *argument)
   InterBoardCom_Init();
 
   volatile bool usb_queue_enabled = true;
-  uint32_t usb_queue_enable_time = 0;
+  uint32_t usb_queue_disabled_time = 0;
 
   // Create queue set that can hold items from both queues
   QueueSetHandle_t xQueueSet = xQueueCreateSet(20); // Total items from both queues
@@ -451,7 +449,7 @@ void StartInterruptHandlerTask(void *argument)
     // Wait on the queue set with timeout (blocks efficiently)
     QueueSetMemberHandle_t xActivatedMember = xQueueSelectFromSet(xQueueSet, portMAX_DELAY);
 
-    if (!usb_queue_enabled && HAL_GetTick() >= usb_queue_enable_time) {
+    if (!usb_queue_enabled && HAL_GetTickDiffUS(usb_queue_disabled_time) >= 100) {
       usb_queue_enabled = true;
     }
 
@@ -490,10 +488,10 @@ void StartInterruptHandlerTask(void *argument)
       DataPacket_t receivedPacket;
       if (xQueueReceive(USB_Tx_Queue, &receivedPacket, 0) == pdTRUE) {
         if (USB_OutputDataPacket(&receivedPacket) == USBD_OK) {
-          usb_queue_enable_time = HAL_GetTick() + 1; // Disable for 1ms
+          usb_queue_disabled_time = HAL_GetTickUS();
           usb_queue_enabled = false;
         } else {
-          usb_queue_enable_time = HAL_GetTick() + 1; // Disable for 1ms
+          usb_queue_disabled_time = HAL_GetTickUS();
           usb_queue_enabled = false;
           xQueueSendToFront(USB_Tx_Queue, &receivedPacket, 0);
         }

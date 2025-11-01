@@ -80,6 +80,7 @@ void HAL_MspInit(void)
   __HAL_RCC_PWR_CLK_ENABLE();
 
   /* System interrupt init*/
+  HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
   /* PendSV_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(PendSV_IRQn, 15, 0);
 
@@ -760,7 +761,6 @@ void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 
     /* USART1 interrupt Init */
     HAL_NVIC_SetPriority(USART1_IRQn, 9, 0);
-    HAL_NVIC_EnableIRQ(USART1_IRQn);
     /* USER CODE BEGIN USART1_MspInit 1 */
 
     /* USER CODE END USART1_MspInit 1 */

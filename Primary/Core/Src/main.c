@@ -66,6 +66,8 @@ uint32_t tim16_target_ms;
 volatile uint32_t tim17_ms = 0;
 uint32_t tim17_target_ms;
 
+extern bool groundStationSend;
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -171,7 +173,9 @@ int main(void)
   // if board is a ground station, set flag
   if (gpa_mega == GPA_MEGA_1 || gpa_mega == GPA_MEGA_3) {
     is_groundstation = true;
-    cli_target_mode = CLI_TARGET_MODE_EXTERNAL; // Groundstation always uses internal target mode
+    cli_target_mode = CLI_TARGET_MODE_EXTERNAL; // Groundstation always uses external target mode
+    signalPlotterSend = false; // Disable signal plotter by default on groundstation
+    groundStationSend = false; // Only used for testing groundstation software, disable by default
   }
 
   // define output signal names

@@ -8,7 +8,8 @@
 #include "W25Q1.h"
 #include "fatfs.h"
 #include "SD.h"
-#include "xBee.h"
+//#include "xBee.h"
+#include "radio.h"
 #include "PowerUnit.h"
 
 extern SPI_HandleTypeDef hspi1;
@@ -224,7 +225,7 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
             }
 
             if ((Interboard_Target & INTERBOARD_TARGET_RADIO) == INTERBOARD_TARGET_RADIO) {
-                XBee_QueueDataPacket(&dataPacket);
+                radioSend(&dataPacket);
             }
             break;
         }
@@ -233,7 +234,7 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
         case (INTERBOARD_OP_CMD): {
             //Target Radio means send the command via radio to the flight computer
             if(Interboard_Target == INTERBOARD_TARGET_RADIO) {
-                XBee_QueueDataPacket(&dataPacket);
+                radioSend(&dataPacket);
                 break;
             } else if (Interboard_Target == INTERBOARD_TARGET_MCU) {
                 if (dataPacket.Packet_ID != PACKET_ID_COMMAND) {
@@ -244,12 +245,6 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
                 }
 
             }
-            break;
-        }
-
-        //Target Radio means send the command via radio to the flight computer
-        case (INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO): {
-            XBee_QueueDataPacket(&dataPacket);
             break;
         }
 
@@ -400,7 +395,7 @@ void InterBoardCom_command_acknowledge(uint8_t command_target, uint8_t command_i
 
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_ACK, status, params, sizeof(params));
-    XBee_QueueDataPacket(&packet);
+    radioSend(&packet);
 }
 
 /**

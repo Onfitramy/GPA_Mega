@@ -30,9 +30,8 @@ typedef struct {
 }radio_info_t;
 
 void radioSet(radio_status_t radio);
-void radioSend(uint8_t *tx_buf);
+void radioSend(DataPacket_t* dataPacket);
 void radioSetMode(radio_mode_t mode);
-void radioDecode(uint8_t *original_data, uint8_t *fixed_data, uint8_t lenght);
 
 //Exportet Functions from nrf24xx.c
 void nrf24l01p_rx_receive(uint8_t* rx_payload);

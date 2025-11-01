@@ -255,14 +255,7 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t *packet) {
         case INTERBOARD_OP_DEBUG_VIEW: //Send for debugging
             if (is_groundstation) {
                 //PlotDataPacket((DataPacket_t *)packet->Data);
-                /*if (((DataPacket_t *)packet->Data)->Packet_ID == PACKET_ID_ATTITUDE) {
-                    uint8_t test_sending[64];
-                    sprintf((char *)test_sending, "%ld,%f,%f,%f\r\n", ((DataPacket_t *)packet->Data)->timestamp, ((DataPacket_t *)packet->Data)->Data.attitude.phi, ((DataPacket_t *)packet->Data)->Data.attitude.theta, ((DataPacket_t *)packet->Data)->Data.attitude.psi);
-                    CDC_Transmit_HS(test_sending, strlen((char *)test_sending));
-                }*/ //For Debug with unfinished groundstation software
-                if(packet->Data[0] == PACKET_ID_IMU) {
-                    //USB_OutputDataPacket((DataPacket_t *)packet->Data);
-                }
+                USB_QueueDataPacket((DataPacket_t *)packet->Data);
             }
             break;
         // Add cases for other packet IDs as needed
@@ -335,6 +328,10 @@ uint8_t USB_OutputDataPacket(DataPacket_t *packet) {
                     packet->Packet_ID , packet->timestamp, packet->Data.temperature.M1_ADC, packet->Data.temperature.M1_BMP,
                     packet->Data.temperature.M1_DTS, packet->Data.temperature.M1_IMU1, packet->Data.temperature.M1_MAG,
                     packet->Data.temperature.M2_3V3, packet->Data.temperature.M2_XBee);
+            break;
+        case PACKET_ID_STATUS:
+            sprintf((char *)usb_packet_buffer, "ID%d,%ld,%ld,%ld,%ld,%d\n",
+                    packet->Packet_ID , packet->timestamp, packet->Data.status.status_flags, packet->Data.status.sensor_status_flags, packet->Data.status.error_flags, packet->Data.status.State);
             break;
         default:
             return; // Unsupported packet type

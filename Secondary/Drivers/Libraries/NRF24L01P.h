@@ -95,6 +95,8 @@ uint8_t nrf24l01p_get_status();
 uint8_t nrf24l01p_get_fifo_status();
 uint8_t nrf24l01p_get_receivedPower();
 
+void nrf24l01p_parseReceivedRFDataPacket(uint8_t* packetData);
+
 // Static payload lengths
 void nrf24l01p_rx_set_payload_widths_P0(widths bytes);
 void nrf24l01p_rx_set_payload_widths_P1(widths bytes);

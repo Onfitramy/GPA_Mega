@@ -237,13 +237,6 @@ void Start10HzTask(void *argument){
 
     XBee_TransmitQueue(XBee_transmit_addr); // Transmit data at 10Hz
 
-    // transmit data
-    uint8_t tx_buf[NRF24L01P_PAYLOAD_LENGTH] = {0}; // Initialize to zero
-    tx_buf[0] = 0xAA; // Packet ID or something meaningful
-    tx_buf[1] = HAL_GetTick() & 0xFF;
-    tx_buf[2] = (HAL_GetTick() >> 8) & 0xFF;
-    radioSend(tx_buf);
-
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
   }
 
@@ -282,6 +275,9 @@ void StartInterruptTask(void *argument)
   QueueSetHandle_t xQueueSet = xQueueCreateSet(20); // Total items from both queues
   xQueueAddToSet(InterruptQueue, xQueueSet);
   xQueueAddToSet(XBeeDataQueue, xQueueSet);
+
+  HAL_NVIC_EnableIRQ(USART1_IRQn); // Enable USART1 interrupt for XBee
+  HAL_NVIC_EnableIRQ(EXTI2_IRQn); //Enable NRF24L01P interrupt, needs to be after queue set creation
   /* Infinite loop */
   for(;;) {
 
@@ -293,16 +289,20 @@ void StartInterruptTask(void *argument)
       //HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin);
       if (xQueueReceive(InterruptQueue, &int_pin, 0) == pdPASS) {
         if (int_pin == NRF24_INT_Pin) {
-          uint8_t status = nrf24l01p_get_status();
-          nrf24l01p_clear_known_irqs(status);
+          uint8_t status = nrf24l01p_get_status(); //Only clear individual interrupts after reading status and adressing them
           if (status & 0x40) { // Data Ready RX FIFO interrupt
             nrf24l01p_read_rx_fifo(rx_recieve_buf);
-            radioTime = (rx_recieve_buf[1] << 8) | rx_recieve_buf[2];
+            nrf24l01p_parseReceivedRFDataPacket(rx_recieve_buf);
+            nrf24l01p_clear_rx_dr();
           } else if (status & 0x20) { // Data Sent TX FIFO interrupt
             uint8_t fifo_status = nrf24l01p_get_fifo_status();
+            nrf24l01p_clear_tx_ds();
             if ((fifo_status & 0x10) && radio_info.mode == RADIO_MODE_TRANSCEIVER) { // TX FIFO empty
               nrf24l01p_rxMode(); // Switch back to RX mode
             }
+          } else if (status & 0x10) { // Max Retransmits interrupt
+            // Handle max retransmit event
+            nrf24l01p_clear_max_rt(); // Flush TX FIFO
           }
         }
       }
