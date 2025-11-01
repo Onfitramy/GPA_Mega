@@ -275,8 +275,8 @@ void nrf24l01p_rxMode(void){
 }
 
 uint8_t nrf24l01p_write_tx_fifo(uint8_t* tx_payload) {
-    //uint8_t command = NRF24L01P_CMD_W_TX_PAYLOAD;
-    uint8_t command = NRF24L01P_CMD_W_TX_PAYLOAD_NOACK;
+    uint8_t command = NRF24L01P_CMD_W_TX_PAYLOAD;
+    //uint8_t command = NRF24L01P_CMD_W_TX_PAYLOAD_NOACK;
 
     uint8_t rx[1 + NRF24L01P_PAYLOAD_LENGTH];
     uint8_t tx[1 + NRF24L01P_PAYLOAD_LENGTH];
