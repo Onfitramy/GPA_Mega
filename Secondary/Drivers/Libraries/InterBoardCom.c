@@ -30,6 +30,9 @@ uint32_t invalid_packets;
 uint32_t packets_dropped;
 float packets_dropped_rate; //% of packets dropped
 
+extern volatile bool saving_to_SD;
+extern W25QPage0_config_t W25Q_FLASH_CONFIG;
+
 void InterBoardCom_ClearSPIErrors(void);
 
 void InterBoardCom_Init(void) {
@@ -221,7 +224,7 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
             }
 
             if ((Interboard_Target & INTERBOARD_TARGET_FLASH) == INTERBOARD_TARGET_FLASH) {
-                //W25Q_AddFlashBufferPacket(&dataPacket);
+                W25Q_AddFlashBufferPacket(&dataPacket);
             }
 
             if ((Interboard_Target & INTERBOARD_TARGET_RADIO) == INTERBOARD_TARGET_RADIO) {
@@ -298,9 +301,20 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
             // Handle storage commands
             if (dataPacket->Data.command.command_id == 0x00) {
                 // Storage command 0x00: FlashToSD
+                W25Q_FLASH_CONFIG.write_logs = false;
+                saving_to_SD = true; // Trigger saving flash to SD in main loop
             } else if (dataPacket->Data.command.command_id == 0x01) {
                 // Storage command 0x01: FlashReset
+                W25Q_FLASH_CONFIG.write_logs = false;
                 W25Q_Chip_Erase();
+                InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
+            } else if (dataPacket->Data.command.command_id == 0x02) {
+                // Storage command 0x02: FLASH saving enable/disable
+                if (dataPacket->Data.command.params[0] == 0x01) {
+                    W25Q_FLASH_CONFIG.write_logs = true;
+                } else if (dataPacket->Data.command.params[0] == 0x00) {
+                    W25Q_FLASH_CONFIG.write_logs = false;
+                }
                 InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
             }
             break;

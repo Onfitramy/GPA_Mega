@@ -72,7 +72,10 @@ typedef enum __attribute__((packed)){
     COMMAND_ID_BUZZER_PLAYNOTE = 0x03,
     COMMAND_ID_BUZZER_PLAYSONG = 0x04,
     COMMAND_ID_BUZZER_PLAYSONGREPEAT = 0x05,
-    COMMAND_ID_BUZZER_STOPALL = 0x06
+    COMMAND_ID_BUZZER_STOPALL = 0x06,
+
+    COMMAND_ID_STORAGE_FLASHTOSD = 0x00,
+    COMMAND_ID_STORAGE_FLASHERASE = 0x01
 } CommandID_t;
 
 /* Packet and Payload structure definitions */

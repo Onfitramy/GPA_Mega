@@ -363,6 +363,8 @@ void StartInterruptTask(void *argument)
   /* USER CODE END StartInterruptTask */
 }
 
+volatile bool saving_to_SD = false;
+extern W25QPage0_config_t W25Q_FLASH_CONFIG;
 void StartSDTask(void *argument)
 {
   /* USER CODE BEGIN StartSDTask */
@@ -377,10 +379,16 @@ void StartSDTask(void *argument)
   const TickType_t xFrequency = 100; // 10 Hz
   /* Infinite loop */
   for(;;) {
-    // SD_SaveBuffer();
-
-    if (xSemaphoreTake(flashSemaphore, portMAX_DELAY) == pdTRUE) {
-      W25Q_WriteFlashBuffer();
+    //SD_SaveBuffer();
+    if(saving_to_SD){
+        W25Q_CopyLogsToSD();
+        saving_to_SD = false;
+        W25Q_FLASH_CONFIG.write_logs = true;
+    }
+    if (W25Q_FLASH_CONFIG.write_logs == true) {
+      if (xSemaphoreTake(flashSemaphore, portMAX_DELAY) == pdTRUE) {
+        W25Q_WriteFlashBuffer();
+      }
     }
   }
   /* USER CODE END StartSDTask */

@@ -18,7 +18,7 @@ W25QPage0_config_t W25Q_FLASH_CONFIG = {
 	.curr_configOffset = 0, // Start at the beginning of the configuration page
 	.curr_logPage = LOG_PAGE, // Start at the log page
 	.curr_logOffset = 0, // Start at the beginning of the log page
-	.write_logs = true,
+	.write_logs = false,
 };
 
 /**
@@ -57,7 +57,9 @@ void W25Q_SaveToLog(uint8_t *data, uint32_t size)
 
 
 uint8_t flash_buffer_index = 0;
-DataPacket_t flash_packet_buffer[FLASH_BUFFER_SIZE];
+DataPacket_t flash_packet_buffer1[FLASH_BUFFER_SIZE];
+DataPacket_t flash_packet_buffer2[FLASH_BUFFER_SIZE];
+DataPacket_t* flash_packet_buffer = flash_packet_buffer1; //Dual buffer to stop 500ms data loss when writing to flash
 extern SemaphoreHandle_t flashSemaphore;
 
 /**
@@ -71,20 +73,22 @@ void W25Q_AddFlashBufferPacket(const DataPacket_t *data_packet) {
 	}
 
 	if (flash_buffer_index >= FLASH_BUFFER_SIZE) {
+		//Switch buffer
+		flash_packet_buffer = (flash_packet_buffer == flash_packet_buffer1) ? flash_packet_buffer2 : flash_packet_buffer1;
+		flash_buffer_index = 0;
 		xSemaphoreGive(flashSemaphore);
 	}
 }
 
 void W25Q_WriteFlashBuffer() {
-	if (flash_buffer_index == FLASH_BUFFER_SIZE) {
-		W25Q_Erase_Sector(W25Q_FLASH_CONFIG.curr_logPage / PAGES_PER_SECTOR);
-		for (int i = 0; i < PAGES_PER_SECTOR; ++i) {
-			W25Q_SaveToLog((uint8_t*)(flash_packet_buffer + i * PACKETS_PER_PAGE), PACKETS_PER_PAGE * sizeof(DataPacket_t));
-		}
-
-		W25Q_WriteConfig();
-		flash_buffer_index = 0;
+	DataPacket_t* buffer_to_write = (flash_packet_buffer == flash_packet_buffer1) ? flash_packet_buffer2 : flash_packet_buffer1;
+	//W25Q_Erase_Sector(W25Q_FLASH_CONFIG.curr_logPage / PAGES_PER_SECTOR); //No need to erase, we always write to new sectors
+	for (int i = 0; i < PAGES_PER_SECTOR; ++i) {
+		W25Q_SaveToLog((uint8_t*)(buffer_to_write + i * PACKETS_PER_PAGE), PACKETS_PER_PAGE * sizeof(DataPacket_t));
 	}
+
+	W25Q_WriteConfig();
+	flash_buffer_index = 0;
 }
 
 void W25Q_LoadFromLog(uint8_t *data, uint32_t size, uint32_t log_page, uint32_t log_offset)

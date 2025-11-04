@@ -20,7 +20,8 @@
         "powerunit.h": "c",
         "queue.h": "c",
         "statemachine.h": "c",
-        "status.h": "c"
+        "status.h": "c",
+        "w25q1.h": "c"
     },
     "C_Cpp.errorSquiggles": "enabled"
 }

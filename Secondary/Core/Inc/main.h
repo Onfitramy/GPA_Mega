@@ -44,6 +44,18 @@ typedef enum {
   cam_wifi_on,
   cam_wifi_off
 } tim_delay_task_t;
+
+typedef struct {
+  uint8_t state_errors;
+  uint8_t gps_errors;
+  uint8_t imu_errors;
+  uint8_t 
+  uint8_t ib_comm_errors;
+  uint8_t xbee_errors;
+  uint8_t nrf_errors;
+  uint8_t flash_errors;
+  uint8_t sd_errors;
+} error_counter_t; //Counts individual occurrences of different errors
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
