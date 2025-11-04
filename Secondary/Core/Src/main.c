@@ -93,6 +93,8 @@ uint32_t tim10_target2_ms;
 volatile uint32_t tim11_ms = 0;
 uint32_t tim11_target_ms;
 
+error_counter_t error_counters;
+
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */

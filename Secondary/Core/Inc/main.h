@@ -49,7 +49,8 @@ typedef struct {
   uint8_t state_errors;
   uint8_t gps_errors;
   uint8_t imu_errors;
-  uint8_t 
+  uint8_t mag_errors;
+  uint8_t baro_errors;
   uint8_t ib_comm_errors;
   uint8_t xbee_errors;
   uint8_t nrf_errors;
@@ -124,6 +125,7 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN Private defines */
 #define SD_SPI_HANDLE hspi2
+extern error_counter_t error_counters;
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
