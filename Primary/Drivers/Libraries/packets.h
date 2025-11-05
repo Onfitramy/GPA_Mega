@@ -130,7 +130,7 @@ typedef struct {
     float P11, P22, P33;
     float EKF2_Heigth, EKF2_vel, EKF2_refPres;
     uint16_t unused1;
-}KalmanMatrixPayload_t;
+} KalmanMatrixPayload_t;
 
 typedef struct {
   float magAngle;      // 4 bytes
@@ -149,7 +149,7 @@ typedef struct {
 
 typedef struct {
     CommandTarget_t command_target;
-    uint8_t command_id;
+    CommandID_t command_id;
     uint8_t params[24];
 } CommandPayload_t;
 
@@ -196,5 +196,19 @@ void PU_setACS(bool on);
 void Buzzer_PlayNote(char *note, uint32_t duration_ms);
 void Buzzer_PlaySong(uint8_t song_num);
 void Buzzer_PlaySongRepeat(uint8_t song_num, uint16_t period_ms);
+
+void Camera_Power(bool enable);
+void Camera_Recording(bool enable);
+void Camera_SkipDate();
+void Camera_Wifi(bool enable);
+
+void SPARK_SetAngle(float angle_deg);
+void SPARK_SetSpeed(float speed_deg_s);
+void SPARK_ExitMode();
+void SPARK_ZeroStepper();
+void SPARK_FindMax();
+void SPARK_TargetPositionMode(uint8_t torque_16);
+void SPARK_TargetSpeedMode(uint8_t torque_16);
+void SPARK_Reset();
 
 #endif /* Packets_H_ */

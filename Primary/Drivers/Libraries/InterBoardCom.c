@@ -204,7 +204,7 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
             }
             break;
         case COMMAND_TARGET_SPARK:
-            spark_sendCommand(dataPacket);
+            SPARK_sendCommand(dataPacket);
             break;
         case COMMAND_TARGET_TESTING:
             // Handle testing commands

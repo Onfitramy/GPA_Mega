@@ -5,6 +5,7 @@
 #include "InterBoardCom.h"
 #include "signalPlotter.h"
 #include <string.h>
+#include "spark.h"
 
 int16_t float_to_int16_scaled(float value, float scale_factor);
 int32_t float_to_int32_scaled(float value, float scale_factor);
@@ -298,4 +299,92 @@ void Buzzer_PlaySongRepeat(uint8_t song_num, uint16_t period_ms) {
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_BUZZER_PLAYSONGREPEAT, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
+}
+
+void Camera_Power(bool enable) {
+    uint8_t parameters[1];
+    parameters[0] = enable;
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, COMMAND_ID_CAMERA_POWER, parameters, sizeof(parameters));
+    sendcmdToTarget(&packet);
+}
+
+void Camera_Recording(bool enable) {
+    uint8_t parameters[1];
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, COMMAND_ID_CAMERA_RECORD, parameters, sizeof(parameters));
+    sendcmdToTarget(&packet);
+    parameters[0] = enable;
+}
+
+void Camera_SkipDate() {
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, COMMAND_ID_CAMERA_SKIPDATE, NULL, 0);
+    sendcmdToTarget(&packet);
+}
+
+void Camera_Wifi(bool enable) {
+    uint8_t parameters[1];
+    parameters[0] = enable;
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, COMMAND_ID_CAMERA_WIFI, parameters, sizeof(parameters));
+    sendcmdToTarget(&packet);
+}
+
+/* SPARK Commands */
+
+void SPARK_SetAngle(float angle_deg) {
+    uint8_t parameters[sizeof(float)];
+    memcpy(parameters, &angle_deg, sizeof(float));
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_SET_ANGLE, parameters, sizeof(parameters));
+    SPARK_sendCommand(&packet);
+}
+
+void SPARK_SetSpeed(float speed_deg_s) {
+    uint8_t parameters[sizeof(float)];
+    memcpy(parameters, &speed_deg_s, sizeof(float));
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_SET_SPEED, parameters, sizeof(parameters));
+    SPARK_sendCommand(&packet);
+}
+
+void SPARK_ExitMode() {
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_EXIT_MODE, NULL, 0);
+    SPARK_sendCommand(&packet);
+}
+
+void SPARK_ZeroStepper() {
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_ZERO_STEPPER, NULL, 0);
+    SPARK_sendCommand(&packet);
+}
+
+void SPARK_FindMax() {
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_FIND_MAX, NULL, 0);
+    SPARK_sendCommand(&packet);
+}
+
+void SPARK_TargetPositionMode(uint8_t torque_16) {
+    uint8_t parameters[1];
+    parameters[0] = torque_16;
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_MODE_TARGET_POSITION, parameters, sizeof(parameters));
+    SPARK_sendCommand(&packet);
+}
+
+void SPARK_TargetSpeedMode(uint8_t torque_16) {
+    uint8_t parameters[1];
+    parameters[0] = torque_16;
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_MODE_TARGET_SPEED, parameters, sizeof(parameters));
+    SPARK_sendCommand(&packet);
+}
+
+void SPARK_Reset() {
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_RESET, NULL, 0);
+    SPARK_sendCommand(&packet);
 }

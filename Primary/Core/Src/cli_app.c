@@ -486,7 +486,7 @@ BaseType_t cmd_SPARK_ZeroStepper(char *pcWriteBuffer, size_t xWriteBufferLen, co
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
-    snprintf(pcWriteBuffer, 30, "Activating SPARK Stepper Zero function...\r\n");
+    snprintf(pcWriteBuffer, 50, "Activating SPARK Stepper Zero function...\r\n");
 
     return pdFALSE;
 }
@@ -513,12 +513,25 @@ BaseType_t cmd_SPARK_TargetPositionMode(char *pcWriteBuffer, size_t xWriteBuffer
     (void)pcCommandString;
     (void)xWriteBufferLen;
 
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    uint8_t parameters[1];
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+    parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
+
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_MODE_TARGET_POSITION, NULL, 0);
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_MODE_TARGET_POSITION, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
-    snprintf(pcWriteBuffer, 50, "Activating SPARK Target Position mode...\r\n");
+    snprintf(pcWriteBuffer, 60, "Activating SPARK Target Position mode with %d/16 TRQ...\r\n", parameters[0]);
 
     return pdFALSE;
 }
@@ -529,12 +542,25 @@ BaseType_t cmd_SPARK_TargetSpeedMode(char *pcWriteBuffer, size_t xWriteBufferLen
     (void)pcCommandString;
     (void)xWriteBufferLen;
 
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    uint8_t parameters[1];
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+    parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
+
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_MODE_TARGET_SPEED, NULL, 0);
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_MODE_TARGET_SPEED, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
-    snprintf(pcWriteBuffer, 50, "Activating SPARK Target Speed mode...\r\n");
+    snprintf(pcWriteBuffer, 60, "Activating SPARK Target Speed mode with %d/16 TRQ...\r\n", parameters[0]);
 
     return pdFALSE;
 }
@@ -1072,15 +1098,15 @@ const CLI_Command_Definition_t xCommandList[] = {
     },
     {
         .pcCommand = "SPARK_TargetPositionMode", /* The command string to type. */
-        .pcHelpString = "SPARK_TargetPositionMode: SPARK enters Target Position mode\r\n\r\n",
+        .pcHelpString = "SPARK_TargetPositionMode <int>: SPARK enters Target Position mode with x/16 torque\r\n\r\n",
         .pxCommandInterpreter = cmd_SPARK_TargetPositionMode, /* The function to run. */
-        .cExpectedNumberOfParameters = 0
+        .cExpectedNumberOfParameters = 1
     },
     {
         .pcCommand = "SPARK_TargetSpeedMode", /* The command string to type. */
-        .pcHelpString = "SPARK_TargetSpeedMode: SPARK enters Target Speed mode\r\n\r\n",
+        .pcHelpString = "SPARK_TargetSpeedMode <int>: SPARK enters Target Speed mode with x/16 torque\r\n\r\n",
         .pxCommandInterpreter = cmd_SPARK_TargetSpeedMode, /* The function to run. */
-        .cExpectedNumberOfParameters = 0
+        .cExpectedNumberOfParameters = 1
     },
     {
         .pcCommand = "SPARK_Reset", /* The command string to type. */

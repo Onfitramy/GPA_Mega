@@ -219,24 +219,30 @@ static void InitEntry(StateMachine_t *sm) {
 }
 static void AlignGNCEntry(StateMachine_t *sm) {
     EKF2_corr2.correction_state = active;
+
+    SPARK_Reset();
     // TODO:
     // begin xBee comms
 }
 static void CheckoutsEntry(StateMachine_t *sm) {
     PU_setCAM(ENABLE);
+
     // TODO:
     // notify ground station that it now needs to command the checkouts
 }
 static void ArmedEntry(StateMachine_t *sm) {
     PU_setACS(ENABLE);
     PU_setREC(ENABLE);
+    SPARK_ZeroStepper();
+    Camera_Recording(1);
     // TODO:
     // move acs to neutral position
     // lock ACS
-    // start video recording
     // start data logging
 }
-static void BurnEntry(StateMachine_t *sm) {}
+static void BurnEntry(StateMachine_t *sm) {
+    SPARK_TargetPositionMode(8);
+}
 static void CoastEntry(StateMachine_t *sm) {
     // TODO:
     // unlock ACS
@@ -244,6 +250,7 @@ static void CoastEntry(StateMachine_t *sm) {
     // enable MPC
 }
 static void AwaitDrogueEntry(StateMachine_t *sm) {
+    SPARK_ExitMode();
     DeployDrogue(DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
 
     tim14_target_ms = 60000;
@@ -257,8 +264,8 @@ static void MainDescendEntry(StateMachine_t *sm) {}
 static void LandedEntry(StateMachine_t *sm) {
     PU_setACS(DISABLE);
     PU_setREC(DISABLE);
+    Camera_Recording(0);
     // TODO:
-    // stop video recording
     // disable cams
     // switch off LEDs
     // stop data logging

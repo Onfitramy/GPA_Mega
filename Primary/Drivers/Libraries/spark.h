@@ -5,6 +5,6 @@
 
 extern SPI_HandleTypeDef hspi2;
 
-void spark_sendCommand(DataPacket_t *packet);
+void SPARK_sendCommand(DataPacket_t *packet);
 
 #endif /* SPARK_H_ */

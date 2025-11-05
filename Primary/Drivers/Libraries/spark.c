@@ -4,7 +4,7 @@ DataPacket_t spark_rx_buffer;
 
 DataPacket_t spark_data;
 
-void ProcessSparkData(DataPacket_t *packet) {
+void ProcessSPARKData(DataPacket_t *packet) {
   // Extract SPARK-specific data from the received packet
   spark_data.Packet_ID = PACKET_ID_SPARK;
   spark_data.timestamp = packet->timestamp;
@@ -17,7 +17,7 @@ void ProcessSparkData(DataPacket_t *packet) {
   spark_data.crc = packet->crc;
 }
 
-void spark_sendCommand(DataPacket_t *packet)
+void SPARK_sendCommand(DataPacket_t *packet)
 {
   // Send the command over SPI
   
@@ -29,6 +29,6 @@ void spark_sendCommand(DataPacket_t *packet)
 
   // Process the received SPARK data
   if (spark_rx_buffer.Packet_ID == PACKET_ID_SPARK) {
-    ProcessSparkData(&spark_rx_buffer);
+    ProcessSPARKData(&spark_rx_buffer);
   }
 }
