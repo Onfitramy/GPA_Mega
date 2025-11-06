@@ -231,13 +231,14 @@ static void AlignGNCEntry(StateMachine_t *sm) {
     // begin xBee comms
 }
 static void CheckoutsEntry(StateMachine_t *sm) {
+    PU_setACS(ENABLE);
+    HAL_Delay(5);
     PU_setCAM(ENABLE);
 
     // TODO:
     // notify ground station that it now needs to command the checkouts
 }
 static void ArmedEntry(StateMachine_t *sm) {
-    PU_setACS(ENABLE);
     PU_setREC(ENABLE);
     SPARK_ZeroStepper();
     Camera_Recording(1);

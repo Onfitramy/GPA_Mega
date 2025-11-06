@@ -311,10 +311,10 @@ void Camera_Power(bool enable) {
 
 void Camera_Recording(bool enable) {
     uint8_t parameters[1];
+    parameters[0] = enable;
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, COMMAND_ID_CAMERA_RECORD, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
-    parameters[0] = enable;
 }
 
 void Camera_SkipDate() {
