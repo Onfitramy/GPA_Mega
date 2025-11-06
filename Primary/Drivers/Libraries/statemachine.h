@@ -43,6 +43,8 @@ typedef enum {
     STATE_TEST_INIT,
     STATE_TEST_CALIB,
 
+    STATE_GROUNDSTATION,
+
     STATE_MAX
 } flight_state_t;
 

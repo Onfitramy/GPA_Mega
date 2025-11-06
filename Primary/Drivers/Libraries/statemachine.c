@@ -121,6 +121,12 @@ static flight_state_t TestCalibHandler(flight_event_t event) {
     }
 }
 
+static flight_state_t GroundstationHandler(flight_event_t event) {
+    switch (event) {
+        default: return STATE_GROUNDSTATION;
+    }
+}
+
 /* --- Entry actions --- */
 static void AbortEntry(StateMachine_t *sm) {
     PU_setACS(DISABLE);
@@ -277,6 +283,7 @@ static void TestInitEntry(StateMachine_t *sm) {
     RetractMain(9000);
 }
 static void TestCalibEntry(StateMachine_t *sm) {}
+static void GroundstationEntry(StateMachine_t *sm) {}
 
 /* --- Do actions --- */
 static void AbortDo(StateMachine_t *sm, uint16_t freq) {}
@@ -383,6 +390,7 @@ static void MainDescendDo(StateMachine_t *sm, uint16_t freq) {}
 static void LandedDo(StateMachine_t *sm, uint16_t freq) {}
 static void TestInitDo(StateMachine_t *sm, uint16_t freq) {}
 static void TestCalibDo(StateMachine_t *sm, uint16_t freq) {}
+static void GroundstationDo(StateMachine_t *sm, uint16_t freq) {}
 
 /* --- Exit actions --- */
 static void AbortExit(StateMachine_t *sm) {}
@@ -406,6 +414,7 @@ static void MainDescendExit(StateMachine_t *sm) {}
 static void LandedExit(StateMachine_t *sm) {}
 static void TestInitExit(StateMachine_t *sm) {}
 static void TestCalibExit(StateMachine_t *sm) {}
+static void GroundstationExit(StateMachine_t *sm) {}
 
 /* --- Lookup tables for state functions --- */
 static StateHandler_t stateHandlerTable[STATE_MAX] = {
@@ -423,7 +432,8 @@ static StateHandler_t stateHandlerTable[STATE_MAX] = {
     MainDescendHandler,
     LandedHandler,
     TestInitHandler,
-    TestCalibHandler
+    TestCalibHandler,
+    GroundstationHandler
 };
 
 static StateEntry_t stateEntryTable[STATE_MAX] = {
@@ -441,7 +451,8 @@ static StateEntry_t stateEntryTable[STATE_MAX] = {
     MainDescendEntry,
     LandedEntry,
     TestInitEntry,
-    TestCalibEntry
+    TestCalibEntry,
+    GroundstationEntry
 };
 
 static StateDo_t stateDoTable[STATE_MAX] = {
@@ -459,7 +470,8 @@ static StateDo_t stateDoTable[STATE_MAX] = {
     MainDescendDo,
     LandedDo,
     TestInitDo,
-    TestCalibDo
+    TestCalibDo,
+    GroundstationDo
 };
 
 static StateExit_t stateExitTable[STATE_MAX] = {
@@ -477,7 +489,8 @@ static StateExit_t stateExitTable[STATE_MAX] = {
     MainDescendExit,
     LandedExit,
     TestInitExit,
-    TestCalibExit
+    TestCalibExit,
+    GroundstationExit
 };
 
 /* --- Lookup tables for timing constraints --- */
@@ -512,6 +525,7 @@ uint32_t maxEventDelayTable[STATE_MAX] = {
     MAX_DELAY_UNTIL_MAIN_COMMANDED,
     MAX_DELAY_UNTIL_TOUCHDOWN_DROGUE,
     MAX_DELAY_UNTIL_TOUCHDOWN_MAIN,
+    0,
     0,
     0,
     0,

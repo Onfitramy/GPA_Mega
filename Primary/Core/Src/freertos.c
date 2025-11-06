@@ -236,12 +236,12 @@ void StartDefaultTask(void *argument)
     
     ReadInternalADC(&ADC_Temperature, &ADC_V_Ref); // 7us
 
-    SensorStatus_Reset(&imu1_status);
-    SensorStatus_Reset(&imu2_status);
-    SensorStatus_Reset(&mag_status);
-
     // after startup
-    if (flight_sm.currentFlightState != STATE_FLIGHT_STARTUP) {
+    if (flight_sm.currentFlightState != STATE_FLIGHT_STARTUP && flight_sm.currentFlightState != STATE_GROUNDSTATION) {
+      SensorStatus_Reset(&imu1_status);
+      SensorStatus_Reset(&imu2_status);
+      SensorStatus_Reset(&mag_status);
+
       imu1_status.hal_status |= IMU_Update(&imu1_data); // 70us
       imu2_status.hal_status |= IMU_Update(&imu2_data); // 70us
       imu1_status.active = imu1_data.active;
@@ -332,16 +332,16 @@ void Start100HzTask(void *argument) {
 
       UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler[0], euler[1], euler[2]);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, &Attitude_DataPacket);
+
+      // Quaternion EKF correction step
+      arm_vecN_concatenate_f32(3, average_imu_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
+      EKFCorrectionStep(&EKF3, &EKF3_corr1);
+      EKFgetNIS(&EKF3, &EKF3_corr1, &NIS_EKF3_corr1);
     }
 
     InterBoardCom_ProcessTxBuffer();
 
     if (signalPlotterSend) signalPlotter_sendAll();
-
-    // Quaternion EKF correction step
-    arm_vecN_concatenate_f32(3, average_imu_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
-    EKFCorrectionStep(&EKF3, &EKF3_corr1);
-    EKFgetNIS(&EKF3, &EKF3_corr1, &NIS_EKF3_corr1);
 
     ShowStatus(flight_sm.currentFlightState, 1, 100);
 
@@ -383,28 +383,27 @@ void Start10HzTask(void *argument) {
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &Attitude_DataPacket);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &GPS_DataPacket);
 
-    }
+      if (flight_sm.currentFlightState != STATE_FLIGHT_STARTUP && flight_sm.currentFlightState != STATE_FLIGHT_INIT) {
+        UBLOXtoWGS84(gps_data.lat, gps_data.lon, gps_data.height, WGS84);
+        WGS84toECEF(WGS84, ECEF);
 
-    if (flight_sm.currentFlightState != STATE_FLIGHT_STARTUP && flight_sm.currentFlightState != STATE_FLIGHT_INIT) {
-      UBLOXtoWGS84(gps_data.lat, gps_data.lon, gps_data.height, WGS84);
-      WGS84toECEF(WGS84, ECEF);
+        ECEFtoENU(WGS84_ref, ECEF_ref, ECEF, ENU);
 
-      ECEFtoENU(WGS84_ref, ECEF_ref, ECEF, ENU);
+        // add correction velocity to compensate GNSS delay
+        gnss_velZ_corr = gps_data.velD*(-1e-3) + corr_delta_v;
 
-      // add correction velocity to compensate GNSS delay
-      gnss_velZ_corr = gps_data.velD*(-1e-3) + corr_delta_v;
+        // add correction height to compensate GNSS delay
+        gnss_height_corr = gps_data.height*1e-3 + corr_delta_h;
 
-      // add correction height to compensate GNSS delay
-      gnss_height_corr = gps_data.height*1e-3 + corr_delta_h;
+        z2_corr2[0] = gnss_height_corr;
+        z2_corr2[1] = gnss_velZ_corr;
+        arm_mat_set_entry_f32(EKF2_corr2.R, 0, 0, (float)gps_data.vAcc*gps_data.vAcc*1e-6);
+        arm_mat_set_entry_f32(EKF2_corr2.R, 1, 1, (float)gps_data.sAcc*gps_data.sAcc*1e-6);
 
-      z2_corr2[0] = gnss_height_corr;
-      z2_corr2[1] = gnss_velZ_corr;
-      arm_mat_set_entry_f32(EKF2_corr2.R, 0, 0, (float)gps_data.vAcc*gps_data.vAcc*1e-6);
-      arm_mat_set_entry_f32(EKF2_corr2.R, 1, 1, (float)gps_data.sAcc*gps_data.sAcc*1e-6);
-
-      // Height EKF GNSS correction step
-      EKFCorrectionStep(&EKF2, &EKF2_corr2);
-      EKFgetNIS(&EKF2, &EKF2_corr2, &NIS_EKF2_corr2);
+        // Height EKF GNSS correction step
+        EKFCorrectionStep(&EKF2, &EKF2_corr2);
+        EKFgetNIS(&EKF2, &EKF2_corr2, &NIS_EKF2_corr2);
+      }
     }
 
 

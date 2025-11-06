@@ -101,6 +101,10 @@ void ShowStatus(int8_t status, float freq_cycle, float freq_call) {
         case STATE_TEST_CALIB:
             SetLED_blink(COLOR_VIOLET);
             break;
+
+        case STATE_GROUNDSTATION:
+            SetLED_pulse(COLOR_YELLOW);
+            break;
     }
 }
 

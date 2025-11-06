@@ -121,7 +121,7 @@ typedef struct {
     float P11, P22, P33;
     float EKF2_Heigth, EKF2_vel, EKF2_refPres;
     uint16_t unused1;
-}KalmanMatrixPayload_t;
+} KalmanMatrixPayload_t;
 
 typedef struct {
   float magAngle;      // 4 bytes
@@ -135,7 +135,7 @@ typedef struct {
 
 typedef struct {
     CommandTarget_t command_target;
-    uint8_t command_id;
+    CommandID_t command_id;
     uint8_t params[24];
 } CommandPayload_t;
 
