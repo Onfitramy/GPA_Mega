@@ -15,7 +15,7 @@
 #include "ws2812.h"
 #include "IMUS.h"
 #include "FreeRTOS.h"
-#include "Packets.h"
+#include "packets.h"
 #include "InterBoardCom.h"
 
 #define MAX_INPUT_LENGTH 50

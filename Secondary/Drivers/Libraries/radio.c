@@ -1,6 +1,6 @@
 #include "main.h"
 #include "packets.h"
-#include "XBee.h"
+#include "xBee.h"
 #include "radio.h"
 #include "NRF24L01P.h"
 

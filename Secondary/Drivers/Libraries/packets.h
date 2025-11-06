@@ -18,7 +18,6 @@ typedef enum __attribute__((packed)){
     PACKET_ID_ATTITUDE = 0x07, // Attitude data packet
     PACKET_ID_KALMANMATRIX = 0x08, // Kalman Matrix data packet
     PACKET_ID_SPARK = 0x09, // SPARK data packet
-
     PACKET_ID_COMMAND = 0x10, // Command packet
 } PacketType_t;
 

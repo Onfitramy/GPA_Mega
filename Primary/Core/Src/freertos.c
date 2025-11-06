@@ -34,7 +34,7 @@
 /* USER CODE BEGIN Includes */
 #include "calibration_data.h"
 #include "InterBoardCom.h"
-#include "Packets.h"
+#include "packets.h"
 #include "status.h"
 #include "radio.h"
 
@@ -307,22 +307,23 @@ void Start100HzTask(void *argument) {
   /* Infinite loop */
   DataPacket_t IMU_DataPacket = CreateDataPacket(PACKET_ID_IMU);
   DataPacket_t Attitude_DataPacket = CreateDataPacket(PACKET_ID_ATTITUDE);
+  DataPacket_t Temperature_DataPacket = CreateDataPacket(PACKET_ID_TEMPERATURE);
+
   for(;;) {
     // Run 100 Hz Do Actions
     StateMachine_DoActions(&flight_sm, 100);
     
     if (is_groundstation) {
-      UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &imu1_data, &mag_data);
+      UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &average_imu_data, &mag_data);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_LOAD_REQUEST | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);
 
       UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler[0], euler[1], euler[2]);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_LOAD_REQUEST | INTERBOARD_TARGET_RADIO, &Attitude_DataPacket);
     } else {
-      UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &imu1_data, &mag_data);
+      UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &average_imu_data, &mag_data);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, &IMU_DataPacket);
 
-      UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler[0], euler[1], euler[2]);
-      InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, &Attitude_DataPacket);
+      UpdateTemperaturePacket(&Temperature_DataPacket, HAL_GetTick(), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ptot_data.pressure);
 
       // Don't activate this and the SPARK communication at the same time, because they use the same SPI
       if (ptot_readData(&ptot_data)) {

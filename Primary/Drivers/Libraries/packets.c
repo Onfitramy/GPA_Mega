@@ -85,7 +85,7 @@ void UpdatePowerPacket(DataPacket_t *power_packet, uint32_t timestamp, float PU_
     calcCRC(power_packet);
 }
 
-void UpdateIMUDataPacket(DataPacket_t *imu_packet, uint32_t timestamp, IMU_Data_t *imu_data, LIS3MDL_Data_t *mag_data) {
+void UpdateIMUDataPacket(DataPacket_t *imu_packet, uint32_t timestamp, IMU_AverageData_t *imu_data, LIS3MDL_Data_t *mag_data) {
     imu_packet->timestamp = timestamp;
 
     // Update the IMU packet with the latest IMU data
@@ -253,7 +253,7 @@ void PU_setCAM(bool on) {
     DataPacket_t packet;
     uint8_t params[1] = {on};
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_PU_POWER_CAM, params, sizeof(params));
-    sendcmdToTarget(&packet);
+    // sendcmdToTarget(&packet);
 }
 
 void PU_setREC(bool on) {
@@ -261,7 +261,7 @@ void PU_setREC(bool on) {
     DataPacket_t packet;
     uint8_t params[1] = {on};
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_PU_POWER_RECOVERY, params, sizeof(params));
-    sendcmdToTarget(&packet);
+    // sendcmdToTarget(&packet);
 }
 
 void PU_setACS(bool on) {
@@ -269,7 +269,7 @@ void PU_setACS(bool on) {
     DataPacket_t packet;
     uint8_t params[1] = {on};
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_PU_POWER_ACS, params, sizeof(params));
-    sendcmdToTarget(&packet);
+    // sendcmdToTarget(&packet);
 }
 
 void Buzzer_PlayNote(char *note, uint32_t duration_ms) {
@@ -287,7 +287,7 @@ void Buzzer_PlayNote(char *note, uint32_t duration_ms) {
 
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_BUZZER_PLAYNOTE, parameters, sizeof(parameters));
-    sendcmdToTarget(&packet);
+    // sendcmdToTarget(&packet);
 }
 
 void Buzzer_PlaySong(uint8_t song_num) {
@@ -297,7 +297,7 @@ void Buzzer_PlaySong(uint8_t song_num) {
 
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_BUZZER_PLAYSONG, parameters, sizeof(parameters));
-    sendcmdToTarget(&packet);
+    // sendcmdToTarget(&packet);
 }
 
 void Buzzer_PlaySongRepeat(uint8_t song_num, uint16_t period_ms) {
@@ -309,7 +309,7 @@ void Buzzer_PlaySongRepeat(uint8_t song_num, uint16_t period_ms) {
 
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_BUZZER_PLAYSONGREPEAT, parameters, sizeof(parameters));
-    sendcmdToTarget(&packet);
+    // sendcmdToTarget(&packet);
 }
 
 void Camera_Power(bool enable) {
@@ -317,7 +317,7 @@ void Camera_Power(bool enable) {
     parameters[0] = enable;
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, COMMAND_ID_CAMERA_POWER, parameters, sizeof(parameters));
-    sendcmdToTarget(&packet);
+    // sendcmdToTarget(&packet);
 }
 
 void Camera_Recording(bool enable) {
@@ -325,13 +325,13 @@ void Camera_Recording(bool enable) {
     parameters[0] = enable;
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, COMMAND_ID_CAMERA_RECORD, parameters, sizeof(parameters));
-    sendcmdToTarget(&packet);
+    // sendcmdToTarget(&packet);
 }
 
 void Camera_SkipDate() {
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, COMMAND_ID_CAMERA_SKIPDATE, NULL, 0);
-    sendcmdToTarget(&packet);
+    // sendcmdToTarget(&packet);
 }
 
 void Camera_Wifi(bool enable) {
@@ -339,5 +339,5 @@ void Camera_Wifi(bool enable) {
     parameters[0] = enable;
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, COMMAND_ID_CAMERA_WIFI, parameters, sizeof(parameters));
-    sendcmdToTarget(&packet);
+    // sendcmdToTarget(&packet);
 }

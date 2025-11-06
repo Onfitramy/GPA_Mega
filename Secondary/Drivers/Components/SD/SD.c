@@ -25,9 +25,9 @@ uint8_t SD_SaveBuffer(char *filename){
   if (write_size == 0) {
     return 1; // Nothing to save
   }
-  SD_Open(filename, FA_WRITE | FA_OPEN_APPEND);
-  SD_Write(save_buffer, write_size);
-  SD_Close();
+  FRESULT open = SD_Open(filename, FA_WRITE | FA_OPEN_APPEND);
+  FRESULT write = SD_Write(save_buffer, write_size);
+  FRESULT close = SD_Close();
   return 0; // Success
 }
 

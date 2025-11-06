@@ -44,7 +44,7 @@ extern "C" {
 
 #include "signalPlotter.h"
 #include "status.h"
-#include "Packets.h"
+#include "packets.h"
 
 #include "guidance.h"
 #include "navigation.h"
