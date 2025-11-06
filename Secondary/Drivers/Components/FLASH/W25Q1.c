@@ -572,6 +572,11 @@ void W25Q_CopyLogsToSD() {
 			if (SD_AppendDataPacketToBuffer(packets + i) != 0) {
 				SD_SaveBuffer("log.txt");
 				SD_ResetBufferIndex();
+				StateData_t state_data = { .state_machine = pu_sm.currentState };
+				DataPacket_t state_packet = { .Packet_ID = PACKET_ID_STATE, .timestamp = HAL_GetTick(), .Data = (PayloadData_u) state_data, .crc = 0};
+				SD_AppendDataPacketToBuffer(&state_packet);
+				SD_SaveBuffer("log.txt");
+				SD_ResetBufferIndex();
 				SD_AppendDataPacketToBuffer(packets + i);
 			}
 		}

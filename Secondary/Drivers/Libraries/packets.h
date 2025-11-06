@@ -1,6 +1,7 @@
 #ifndef Packets_H_
 #define Packets_H_
 
+#include "statemachine.h"
 #include "stm32f4xx_hal.h"
 /*This file includes all public Packets for the differten devices and sending modes*/
 /*They are used for radio transmittion, flash/SD saving and interBoardCommunication*/
@@ -19,6 +20,7 @@ typedef enum __attribute__((packed)){
     PACKET_ID_KALMANMATRIX = 0x08, // Kalman Matrix data packet
     PACKET_ID_SPARK = 0x09, // SPARK data packet
     PACKET_ID_COMMAND = 0x10, // Command packet
+    PACKET_ID_STATE = 0x11, // Command packet
 } PacketType_t;
 
 typedef enum __attribute__((packed)){
@@ -149,6 +151,10 @@ typedef struct {
     uint16_t unused1; // 26 bytes
 } TestPayload_t;
 
+typedef struct {
+    StateMachine_t state_machine;
+} StateData_t;
+
 typedef union {
     StatusPayload_t status;
     PowerPayload_t power;
@@ -161,6 +167,7 @@ typedef union {
     SPARKPayload_t spark;
     CommandPayload_t command;
     TestPayload_t test;
+    StateData_t state;
     uint8_t raw[26];
 } PayloadData_u;
 
