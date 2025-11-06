@@ -106,7 +106,7 @@ void UpdateGPSDataPacket(DataPacket_t *gps_packet, uint32_t timestamp, UBX_NAV_P
     calcCRC(gps_packet);
 }
 
-void UpdateTemperaturePacket(DataPacket_t *temp_packet, uint32_t timestamp, int32_t M1_DTS, int32_t M1_ADC, float M1_BMP, float M1_IMU1, float M1_IMU2, float M1_MAG, float M2_3V3, uint16_t M2_XBee, float PU_bat, float pressure) {
+void UpdateTemperaturePacket(DataPacket_t *temp_packet, uint32_t timestamp, int32_t M1_DTS, int32_t M1_ADC, float M1_BMP, float M1_IMU1, float M1_IMU2, float M1_MAG, float M2_3V3, uint16_t M2_XBee, float PU_bat, float pressure_static, float pressure_total) {
     temp_packet->timestamp = timestamp;
 
     // Update the Temperature packet with the latest temperature information
@@ -119,7 +119,8 @@ void UpdateTemperaturePacket(DataPacket_t *temp_packet, uint32_t timestamp, int3
     if (M2_3V3 != INVALID_FLOAT) temp_packet->Data.temperature.M2_3V3 = float_to_int16_scaled(M2_3V3, 0.01f);
     if (M2_XBee != NULL) temp_packet->Data.temperature.M2_XBee = (int16_t)M2_XBee;
     if (PU_bat != INVALID_FLOAT) temp_packet->Data.temperature.PU_bat = float_to_int16_scaled(PU_bat, 0.01f);
-    if (pressure != INVALID_FLOAT) temp_packet->Data.temperature.pressure = pressure;
+    if (pressure_static != INVALID_FLOAT) temp_packet->Data.temperature.pressure_static = pressure_static;
+    if (pressure_total != INVALID_FLOAT) temp_packet->Data.temperature.pressure_total = pressure_total;
 
     calcCRC(temp_packet);
 }
