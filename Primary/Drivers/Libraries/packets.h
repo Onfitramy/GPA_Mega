@@ -21,7 +21,8 @@ typedef enum __attribute__((packed)){
     PACKET_ID_KALMANMATRIX = 0x08, // Kalman Matrix data packet
     PACKET_ID_SPARK = 0x09, // SPARK data packet
     PACKET_ID_COMMAND = 0x10, // Command packet
-    
+    PACKET_ID_STATE = 0x11, // Command packet
+
     // Force to 8-bit size
     PACKET_ID_FORCE_8BIT = 0xFF
 } PacketType_t;
@@ -156,6 +157,11 @@ typedef struct {
     uint8_t params[24];
 } CommandPayload_t;
 
+typedef struct {
+    uint8_t flight_state;
+    uint32_t timestamp_us;
+} StateData_t;
+
 typedef union {
     StatusPayload_t status;
     PowerPayload_t power;
@@ -168,6 +174,7 @@ typedef union {
     SPARKPayload_t spark;
     TestPayload_t test;
     CommandPayload_t command;
+    StateData_t state;
     uint8_t raw[26];
 } PayloadData_u;
 
@@ -193,6 +200,7 @@ void UpdatePositionPacket(DataPacket_t *position_packet, uint32_t timestamp, flo
 void UpdateAttitudePacket(DataPacket_t *attitude_packet, uint32_t timestamp, float phi, float theta, float psi);
 void PlotDataPacket(DataPacket_t *packet);
 void CreateCommandPacket(DataPacket_t *command_packet, uint32_t timestamp, CommandTarget_t command_target, uint8_t command_id, uint8_t *params, size_t params_length);
+void UpdateStatePacket(DataPacket_t *state_packet, uint32_t timestamp, uint8_t flight_state, uint32_t timestamp_us);
 
 void PU_setCAM(bool on);
 void PU_setREC(bool on);

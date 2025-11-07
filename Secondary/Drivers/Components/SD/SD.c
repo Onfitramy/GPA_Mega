@@ -92,6 +92,9 @@ uint8_t SD_AppendDataPacketToBuffer(DataPacket_t* packet) {
                 packet->Data.kalman.EKF2_Heigth, packet->Data.kalman.EKF2_vel, packet->Data.kalman.EKF2_refPres);
         text_size = strlen(text_buffer);
         break;
+      case PACKET_ID_STATE:
+        sprintf(text_buffer, "\nID:%d, TS:%lu, STATE:%d, STATE_TS:%ld", packet->Packet_ID, packet->timestamp, packet->Data.state.flight_state, packet->Data.state.timestamp_us);
+        break;
       default:
         return 2; // Error: Invalid Packet ID
     }

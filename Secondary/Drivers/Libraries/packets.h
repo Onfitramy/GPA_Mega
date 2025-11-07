@@ -152,7 +152,8 @@ typedef struct {
 } TestPayload_t;
 
 typedef struct {
-    StateMachine_t state_machine;
+    uint8_t flight_state;
+    uint32_t timestamp_us;
 } StateData_t;
 
 typedef union {
