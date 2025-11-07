@@ -212,6 +212,11 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
             char LogMessage[100];
             DataPacket_t dataPacket = InterBoardCom_UnpackPacket(packet);
 
+            // Write logs when in armed state
+            if (dataPacket.Packet_ID == PACKET_ID_STATE && dataPacket.Data.state.flight_state == 5) {
+                W25Q_FLASH_CONFIG.write_logs = true;
+            }
+
             if ((Interboard_Target & INTERBOARD_TARGET_SD) == INTERBOARD_TARGET_SD) {
                 SD_AppendDataPacketToBuffer(&dataPacket); // Save the data to SD card buffer
             }
