@@ -237,7 +237,6 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
     SPI1_State = 0;
     // DMA transfer complete callback for SPI1
     // Process the received data in receiveBuffer
-    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET); // Deactivate CS
     InterBoardPacket_t receivedPacket = InterBoardCom_ReceivePacket();
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     xQueueSendFromISR(InterBoardCom_Queue, &receivedPacket, &xHigherPriorityTaskWoken);

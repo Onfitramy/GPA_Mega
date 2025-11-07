@@ -52,7 +52,7 @@ void InterBoardCom_ActivateReceive(void) {
     packets_dropped = packets_sent_to_self - valid_packets - invalid_packets;
 
     if (SPI1_STATUS != 0 || hspi1.State != HAL_SPI_STATE_READY || hdma_spi1_rx.State != HAL_DMA_STATE_READY || hspi1.hdmatx->State != HAL_DMA_STATE_READY) {
-        return; // Busy
+        //return; // Busy
         //HAL_SPI_DMAStop(&hspi1); // Stop any ongoing DMA
         //SPI1_STATUS = 0; // Idle
     }
