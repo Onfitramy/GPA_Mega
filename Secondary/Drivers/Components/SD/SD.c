@@ -94,9 +94,11 @@ uint8_t SD_AppendDataPacketToBuffer(DataPacket_t* packet) {
         break;
       case PACKET_ID_STATE:
         sprintf(text_buffer, "\nID:%d, TS:%lu, STATE:%d, STATE_TS:%ld", packet->Packet_ID, packet->timestamp, packet->Data.state.flight_state, packet->Data.state.timestamp_us);
+        text_size = strlen(text_buffer);
         break;
       default:
-        return 2; // Error: Invalid Packet ID
+        break;
+        //return 2; // Error: Invalid Packet ID
     }
 
     // Check if there is enough space in the buffer

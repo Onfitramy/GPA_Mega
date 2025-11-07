@@ -369,7 +369,7 @@ void StartSDTask(void *argument)
 {
   // FRESULT x = SD_Mount();
 
-  vTaskDelay(2000);
+  vTaskDelay(100);
 
   /* USER CODE BEGIN StartSDTask */
   //if (SD_Mount() == FR_OK) {

@@ -505,7 +505,7 @@ void W25Q_Chip_Erase (void)
     HAL_SPI_Transmit(&W25Q1_SPI, tData, 1, 100);
     csHIGH();
 
-    vTaskDelay(40000); //should be 40s - 200s
+	W25Q_WaitForInstruction(0x05);
 	disable_write();
 
 	W25Q_WriteConfig();
