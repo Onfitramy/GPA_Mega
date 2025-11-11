@@ -278,15 +278,6 @@ void StartDefaultTask(void *argument)
         EKFgetNIS(&EKF2, &EKF2_corr1, &NIS_EKF2_corr1);
       }
 
-      // Don't activate this and the SPARK communication at the same time, because they use the same SPI
-      if (ptot_readData(&ptot_data)) {
-        // execute this if new data is available
-        // correction step
-        EKF2_corr3.z[0] = ptot_data.pressure;
-        EKFCorrectionStep(&EKF2, &EKF2_corr3);
-        EKFgetNIS(&EKF2, &EKF2_corr3, &NIS_EKF2_corr3);
-      }
-
       // KALMAN FILTER, QUATERNION
       // prediction step
       EKFPredictionStep(&EKF3);
@@ -332,6 +323,17 @@ void Start100HzTask(void *argument) {
 
       UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler[0], euler[1], euler[2]);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, &Attitude_DataPacket);
+
+      // Don't activate this and the SPARK communication at the same time, because they use the same SPI
+      if (ptot_readData(&ptot_data)) {
+        // execute this if new data is available
+        // correction step
+        EKF2_corr3.z[0] = ptot_data.pressure;
+        EKFCorrectionStep(&EKF2, &EKF2_corr3);
+        EKFgetNIS(&EKF2, &EKF2_corr3, &NIS_EKF2_corr3);
+      }
+
+      SPARK_ReadData();
 
       // Quaternion EKF correction step
       arm_vecN_concatenate_f32(3, average_imu_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector

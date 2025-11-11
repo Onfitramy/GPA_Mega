@@ -1,6 +1,7 @@
 #include "ws2812.h"
 
 uint8_t LED_Data[3];
+uint32_t led_skip_counter;
 
 void Set_LED (uint8_t Red, uint8_t Green, uint8_t Blue)
 {
@@ -13,8 +14,12 @@ uint16_t pwmData_RGB[24+50] = { 0 };
 
 void WS2812_Send (void)
 {
-	if (dma_waiting_ws2812)
+	if (led_skip_counter > 10)
+		dma_waiting_ws2812 = 0;
+	if (dma_waiting_ws2812) {
+		led_skip_counter++;
 		return; // If DMA is already waiting, do not start a new transfer
+	}
 
 	uint32_t indx=0;
 	uint32_t color;

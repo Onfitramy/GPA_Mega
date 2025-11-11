@@ -367,6 +367,7 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
     if (htim->Instance == TIM8 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1) {
         HAL_TIM_PWM_Stop_DMA(&htim8, TIM_CHANNEL_1);
         dma_waiting_ws2812 = 0;
+        led_skip_counter = 0;
     }
 }
 /* USER CODE END 4 */

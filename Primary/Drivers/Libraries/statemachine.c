@@ -220,13 +220,15 @@ static void InitEntry(StateMachine_t *sm) {
     EKF3.prediction_state = active;
     EKF3_corr1.correction_state = active;
 
+    // calculate stepper position for closed ACS position
+    StepperPositionFromACSAngle(0.f, &stepper_zero_position);
+    stepper_zero_position += 100.f / 360.f * ROD_SLOPE;
+    SPARK_ExitMode();
     // TODO:
     // check communications
 }
 static void AlignGNCEntry(StateMachine_t *sm) {
     EKF2_corr2.correction_state = active;
-
-    SPARK_Reset();
     // TODO:
     // begin xBee comms
 }
@@ -243,21 +245,25 @@ static void ArmedEntry(StateMachine_t *sm) {
     SPARK_ZeroStepper();
     Camera_Recording(1);
     // TODO:
-    // move acs to neutral position
     // lock ACS
     // start data logging
 }
 static void BurnEntry(StateMachine_t *sm) {
-    SPARK_TargetPositionMode(8);
+    SPARK_TargetPositionMode(16);
 }
 static void CoastEntry(StateMachine_t *sm) {
+    acs_target_angle_deg = 40.f;
+    StepperPositionFromACSAngle(acs_target_angle_deg, &stepper_target_position);
+    StepperAngleFromPosition(stepper_target_position, stepper_zero_position, &stepper_target_angle_deg);
+    SPARK_SetAngle(stepper_target_angle_deg);
     // TODO:
-    // unlock ACS
-    // extend ACS to pre-defined position
     // enable MPC
 }
 static void AwaitDrogueEntry(StateMachine_t *sm) {
-    SPARK_ExitMode();
+    // JUST FOR TESTING
+    SPARK_TargetPositionMode(8);
+    SPARK_SetAngle(0);
+
     DeployDrogue(DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
 
     tim14_target_ms = 60000;
@@ -369,11 +375,19 @@ static void ArmedDo(StateMachine_t *sm, uint16_t freq) {
     }
 }
 static void BurnDo(StateMachine_t *sm, uint16_t freq) {}
-static void CoastDo(StateMachine_t *sm, uint16_t freq) {}
+static void CoastDo(StateMachine_t *sm, uint16_t freq) {
+    if (freq != 100) return;
+
+    float elapsed_time = (uwTick - sm->timestamp_ms) * 1e-3f;
+    acs_target_angle_deg = 40.f + 10 * sinf(2 * M_PI * 0.5 * elapsed_time);
+    StepperPositionFromACSAngle(acs_target_angle_deg, &stepper_target_position);
+    StepperAngleFromPosition(stepper_target_position, stepper_zero_position, &stepper_target_angle_deg);
+    SPARK_SetAngle(stepper_target_angle_deg);
+}
 static void AwaitDrogueDo(StateMachine_t *sm, uint16_t freq) {
     // drogue deploy handler
     if (freq != 100) return;
-    uint32_t elapsed_time = uwTick - sm->timestamp_us;
+    uint32_t elapsed_time = uwTick - sm->timestamp_ms;
 
     // if nosecone is still attached, attempt second deployment attempt
     if (ptot_data.connected) {
@@ -382,6 +396,8 @@ static void AwaitDrogueDo(StateMachine_t *sm, uint16_t freq) {
             drogue_deploy_attempts++;
         }
     }
+
+    SPARK_SetAngle(0);
 
     // check if drogue has been deployed
 }
@@ -536,7 +552,7 @@ uint32_t maxEventDelayTable[STATE_MAX] = {
 /* --- Action handler functions --- */
 static void StateEntryHandler(StateMachine_t *sm, flight_state_t state) {
     // set entry timestamp
-    sm->timestamp_us = uwTick;
+    sm->timestamp_ms = uwTick;
 
     // handle entry for each state
     stateEntryTable[state](sm);
@@ -573,7 +589,7 @@ void StateMachine_Dispatch(StateMachine_t *sm, flight_event_t event) {
     if (newState == oldState || newState >= STATE_MAX) return;
 
     // don't update state if minimum entry time delay for event hasn't elapsed yet
-    if (minEventDelayTable[event] > (uwTick - sm->timestamp_us)) return;
+    if (minEventDelayTable[event] > (uwTick - sm->timestamp_ms)) return;
     
     // exit old state
     StateExitHandler(sm, oldState);

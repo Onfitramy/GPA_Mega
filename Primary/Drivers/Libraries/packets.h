@@ -62,6 +62,7 @@ typedef enum __attribute__((packed)){
     COMMAND_ID_SPARK_MODE_TARGET_POSITION = 0x05,
     COMMAND_ID_SPARK_MODE_TARGET_SPEED = 0x06,
     COMMAND_ID_SPARK_RESET = 0x07,
+    COMMAND_ID_SPARK_READ_DATA = 0x08,
 
     COMMAND_ID_RADIO_SWITCH = 0x01,
 
@@ -136,8 +137,8 @@ typedef struct {
   float magAngle;      // 4 bytes
   float posDeviation; // 8 bytes
   float voltage_driver; // 12 bytes
-  float temperature_NTC1; // 16 bytes
-  float temperature_NTC2; // 20 bytes
+  float temperature_driver; // 16 bytes
+  float temperature_converter; // 20 bytes
   uint8_t sparkStatus;  // 21 bytes
   uint8_t reserved[5];  // 26 bytes
 } SPARKPayload_t;
@@ -178,6 +179,7 @@ typedef struct {
 
 
 DataPacket_t CreateDataPacket(PacketType_t Packet_ID);
+uint8_t getCRC(DataPacket_t *packet);
 void UpdateStatusPacket(DataPacket_t *status_packet, uint32_t timestamp, int32_t status_flags, int32_t sensor_flags, int32_t error_flags, uint32_t flight_state);
 void UpdateIMUDataPacket(DataPacket_t *imu_packet, uint32_t timestamp, IMU_Data_t *imu_data, LIS3MDL_Data_t *mag_data);
 void UpdateGPSDataPacket(DataPacket_t *gps_packet, uint32_t timestamp, UBX_NAV_PVT *gps_data);
@@ -201,14 +203,5 @@ void Camera_Power(bool enable);
 void Camera_Recording(bool enable);
 void Camera_SkipDate();
 void Camera_Wifi(bool enable);
-
-void SPARK_SetAngle(float angle_deg);
-void SPARK_SetSpeed(float speed_deg_s);
-void SPARK_ExitMode();
-void SPARK_ZeroStepper();
-void SPARK_FindMax();
-void SPARK_TargetPositionMode(uint8_t torque_16);
-void SPARK_TargetSpeedMode(uint8_t torque_16);
-void SPARK_Reset();
 
 #endif /* Packets_H_ */

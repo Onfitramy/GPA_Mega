@@ -415,12 +415,8 @@ BaseType_t cmd_SPARK_SetAngle(char *pcWriteBuffer, size_t xWriteBufferLen, const
         return pdFALSE;
     }
     parameter = strtof(pcParameter, &endPtr);
-    uint8_t parameters[sizeof(float)];
-    memcpy(parameters, &parameter, sizeof(float));
 
-    DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_SET_ANGLE, parameters, sizeof(parameters));
-    sendcmdToTarget(&packet);
+    SPARK_SetAngle(parameter);
 
     /* Write the response to the buffer */
     snprintf(pcWriteBuffer, 50, "Setting SPARK Target Angle to %.2f°...\r\n", parameter);
@@ -446,12 +442,8 @@ BaseType_t cmd_SPARK_SetSpeed(char *pcWriteBuffer, size_t xWriteBufferLen, const
         return pdFALSE;
     }
     parameter = strtof(pcParameter, &endPtr);
-    uint8_t parameters[sizeof(float)];
-    memcpy(parameters, &parameter, sizeof(float));
-
-    DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_SET_SPEED, parameters, sizeof(parameters));
-    sendcmdToTarget(&packet);
+    
+    SPARK_SetSpeed(parameter);
 
     /* Write the response to the buffer */
     snprintf(pcWriteBuffer, 50, "Setting SPARK Target Speed to %.2f°/s...\r\n", parameter);
@@ -465,9 +457,7 @@ BaseType_t cmd_SPARK_ExitMode(char *pcWriteBuffer, size_t xWriteBufferLen, const
     (void)pcCommandString;
     (void)xWriteBufferLen;
 
-    DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_EXIT_MODE, NULL, 0);
-    sendcmdToTarget(&packet);
+    SPARK_ExitMode();
 
     /* Write the response to the buffer */
     snprintf(pcWriteBuffer, 30, "Exiting current mode...\r\n");
@@ -481,9 +471,7 @@ BaseType_t cmd_SPARK_ZeroStepper(char *pcWriteBuffer, size_t xWriteBufferLen, co
     (void)pcCommandString;
     (void)xWriteBufferLen;
 
-    DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_ZERO_STEPPER, NULL, 0);
-    sendcmdToTarget(&packet);
+    SPARK_ZeroStepper();
 
     /* Write the response to the buffer */
     snprintf(pcWriteBuffer, 50, "Activating SPARK Stepper Zero function...\r\n");
@@ -497,9 +485,7 @@ BaseType_t cmd_SPARK_FindMax(char *pcWriteBuffer, size_t xWriteBufferLen, const 
     (void)pcCommandString;
     (void)xWriteBufferLen;
 
-    DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_FIND_MAX, NULL, 0);
-    sendcmdToTarget(&packet);
+    SPARK_FindMax();
 
     /* Write the response to the buffer */
     snprintf(pcWriteBuffer, 50, "Activating SPARK Stepper Find Max function...\r\n");
@@ -526,9 +512,7 @@ BaseType_t cmd_SPARK_TargetPositionMode(char *pcWriteBuffer, size_t xWriteBuffer
     }
     parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
 
-    DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_MODE_TARGET_POSITION, parameters, sizeof(parameters));
-    sendcmdToTarget(&packet);
+    SPARK_TargetPositionMode(parameters[0]);
 
     /* Write the response to the buffer */
     snprintf(pcWriteBuffer, 60, "Activating SPARK Target Position mode with %d/16 TRQ...\r\n", parameters[0]);
@@ -555,9 +539,7 @@ BaseType_t cmd_SPARK_TargetSpeedMode(char *pcWriteBuffer, size_t xWriteBufferLen
     }
     parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
 
-    DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_MODE_TARGET_SPEED, parameters, sizeof(parameters));
-    sendcmdToTarget(&packet);
+    SPARK_TargetSpeedMode(parameters[0]);
 
     /* Write the response to the buffer */
     snprintf(pcWriteBuffer, 60, "Activating SPARK Target Speed mode with %d/16 TRQ...\r\n", parameters[0]);
@@ -571,9 +553,7 @@ BaseType_t cmd_SPARK_Reset(char *pcWriteBuffer, size_t xWriteBufferLen, const ch
     (void)pcCommandString;
     (void)xWriteBufferLen;
 
-    DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_RESET, NULL, 0);
-    sendcmdToTarget(&packet);
+    SPARK_Reset();
 
     /* Write the response to the buffer */
     snprintf(pcWriteBuffer, 50, "Resetting SPARK...\r\n");

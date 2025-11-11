@@ -30,6 +30,16 @@ void calcCRC(DataPacket_t *packet) {
     packet->crc = crc;
 }
 
+uint8_t getCRC(DataPacket_t *packet) {
+    // Simple XOR-based CRC calculation
+    uint8_t *data = (uint8_t *)packet;
+    uint8_t crc = 0;
+    for (size_t i = 0; i < sizeof(DataPacket_t) - 1; i++) {
+        crc ^= data[i];
+    }
+    return crc;
+}
+
 void PlotDataPacket(DataPacket_t *packet) {
     // Send the packet data to the signal plotter for visualization
     #ifdef SIGNAL_PLOTTER_OUT_GROUND
@@ -330,62 +340,4 @@ void Camera_Wifi(bool enable) {
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, COMMAND_ID_CAMERA_WIFI, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
-}
-
-/* SPARK Commands */
-
-void SPARK_SetAngle(float angle_deg) {
-    uint8_t parameters[sizeof(float)];
-    memcpy(parameters, &angle_deg, sizeof(float));
-    DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_SET_ANGLE, parameters, sizeof(parameters));
-    SPARK_sendCommand(&packet);
-}
-
-void SPARK_SetSpeed(float speed_deg_s) {
-    uint8_t parameters[sizeof(float)];
-    memcpy(parameters, &speed_deg_s, sizeof(float));
-    DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_SET_SPEED, parameters, sizeof(parameters));
-    SPARK_sendCommand(&packet);
-}
-
-void SPARK_ExitMode() {
-    DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_EXIT_MODE, NULL, 0);
-    SPARK_sendCommand(&packet);
-}
-
-void SPARK_ZeroStepper() {
-    DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_ZERO_STEPPER, NULL, 0);
-    SPARK_sendCommand(&packet);
-}
-
-void SPARK_FindMax() {
-    DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_FIND_MAX, NULL, 0);
-    SPARK_sendCommand(&packet);
-}
-
-void SPARK_TargetPositionMode(uint8_t torque_16) {
-    uint8_t parameters[1];
-    parameters[0] = torque_16;
-    DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_MODE_TARGET_POSITION, parameters, sizeof(parameters));
-    SPARK_sendCommand(&packet);
-}
-
-void SPARK_TargetSpeedMode(uint8_t torque_16) {
-    uint8_t parameters[1];
-    parameters[0] = torque_16;
-    DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_MODE_TARGET_SPEED, parameters, sizeof(parameters));
-    SPARK_sendCommand(&packet);
-}
-
-void SPARK_Reset() {
-    DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_RESET, NULL, 0);
-    SPARK_sendCommand(&packet);
 }

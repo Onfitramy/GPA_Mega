@@ -15,11 +15,17 @@
 
 #define ROD_SLOPE 8.0f
 
+extern float stepper_zero_position;
+extern float stepper_target_position;
+extern float acs_target_angle_deg;
+extern float stepper_target_angle_deg;
+
 void CircleIntersectionPoints(float x1, float y1, float r1, float x2, float y2, float r2,
                               float *xi1, float *yi1, float *xi2, float *yi2, int *num_intersections);
 
 void ACSAngleFromStepperPosition(float stepper_pos, float *acs_angle_deg);
 void StepperPositionFromACSAngle(float acs_angle_deg, float *stepper_pos);
+void StepperAngleFromPosition(float stepper_pos, float stepper_zero_pos, float *stepper_angle_deg);
 
 
 #endif // CONTROL_H

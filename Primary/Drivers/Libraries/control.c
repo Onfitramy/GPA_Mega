@@ -1,5 +1,10 @@
 #include "control.h"
 
+float stepper_zero_position;
+float stepper_target_position;
+float stepper_target_angle_deg;
+float acs_target_angle_deg;
+
 void CircleIntersectionPoints(float x1, float y1, float r1, float x2, float y2, float r2,
                               float *xi1, float *yi1, float *xi2, float *yi2, int *num_intersections)
 {
@@ -77,4 +82,9 @@ void StepperPositionFromACSAngle(float acs_angle_deg, float *stepper_pos) {
 
     // TODO: relative angle wrt stepper zero position
     *stepper_pos = Ay;
+}
+
+void StepperAngleFromPosition(float stepper_pos, float stepper_zero_pos, float *stepper_angle_deg) {
+    float stepper_pos_diff = stepper_zero_pos - stepper_pos;
+    *stepper_angle_deg = stepper_pos_diff / ROD_SLOPE * 360.f;
 }

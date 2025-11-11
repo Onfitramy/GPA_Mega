@@ -72,7 +72,7 @@ typedef enum {
 
 typedef struct {
     flight_state_t currentFlightState;  // Holds the current flight state
-    uint32_t timestamp_us;              // Holds time of entering current state
+    uint32_t timestamp_ms;              // Holds time of entering current state
 } StateMachine_t;
 
 typedef flight_state_t (*StateHandler_t)(flight_event_t event);
