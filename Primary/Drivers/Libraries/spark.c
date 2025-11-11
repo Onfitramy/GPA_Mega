@@ -13,6 +13,7 @@ void ProcessSPARKData(DataPacket_t *packet) {
     spark_data.Packet_ID = PACKET_ID_SPARK;
     spark_data.timestamp = packet->timestamp;
     spark_data.Data.spark.magAngle = packet->Data.spark.magAngle;
+    spark_data.Data.spark.magSpeed = packet->Data.spark.magSpeed;
     spark_data.Data.spark.posDeviation = packet->Data.spark.posDeviation;
     spark_data.Data.spark.voltage_driver = packet->Data.spark.voltage_driver;
     spark_data.Data.spark.temperature_driver = packet->Data.spark.temperature_driver;

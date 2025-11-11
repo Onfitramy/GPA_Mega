@@ -221,11 +221,13 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(1, "FlightState");
   signalPlotter_setSignalName(2, "Entry_Timestamp");
   signalPlotter_setSignalName(3, "magAngle");
-  signalPlotter_setSignalName(4, "posDeviation");
-  signalPlotter_setSignalName(5, "voltage_driver");
-  signalPlotter_setSignalName(6, "temperature_driver");
-  signalPlotter_setSignalName(7, "temperature_converter");
-  signalPlotter_setSignalName(8, "sparkStatus");
+  signalPlotter_setSignalName(4, "magSpeed");
+  signalPlotter_setSignalName(5, "posDeviation");
+  signalPlotter_setSignalName(6, "voltage_driver");
+  signalPlotter_setSignalName(7, "temperature_driver");
+  signalPlotter_setSignalName(8, "temperature_converter");
+  signalPlotter_setSignalName(9, "sparkStatus");
+  signalPlotter_setSignalName(10, "TargetAngle");
 
   #endif
 
@@ -370,11 +372,13 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
   signalPlotter_sendData(2, (float)flight_sm.timestamp_ms);
   signalPlotter_sendData(3, spark_data.Data.spark.magAngle);
-  signalPlotter_sendData(4, spark_data.Data.spark.posDeviation);
-  signalPlotter_sendData(5, spark_data.Data.spark.voltage_driver);
-  signalPlotter_sendData(6, spark_data.Data.spark.temperature_driver);
-  signalPlotter_sendData(7, spark_data.Data.spark.temperature_converter);
-  signalPlotter_sendData(8,(float)spark_data.Data.spark.sparkStatus);
+  signalPlotter_sendData(4, spark_data.Data.spark.magSpeed);
+  signalPlotter_sendData(5, spark_data.Data.spark.posDeviation);
+  signalPlotter_sendData(6, spark_data.Data.spark.voltage_driver);
+  signalPlotter_sendData(7, spark_data.Data.spark.temperature_driver);
+  signalPlotter_sendData(8, spark_data.Data.spark.temperature_converter);
+  signalPlotter_sendData(9, (float)spark_data.Data.spark.sparkStatus);
+  signalPlotter_sendData(10, stepper_target_angle_deg);
 
   #endif
 

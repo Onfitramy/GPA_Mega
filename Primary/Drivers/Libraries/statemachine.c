@@ -222,7 +222,7 @@ static void InitEntry(StateMachine_t *sm) {
 
     // calculate stepper position for closed ACS position
     StepperPositionFromACSAngle(0.f, &stepper_zero_position);
-    stepper_zero_position += 100.f / 360.f * ROD_SLOPE;
+    stepper_zero_position += stepper_neutral_angle / 360.f * ROD_SLOPE;
     SPARK_ExitMode();
     // TODO:
     // check communications
@@ -379,7 +379,7 @@ static void CoastDo(StateMachine_t *sm, uint16_t freq) {
     if (freq != 100) return;
 
     float elapsed_time = (uwTick - sm->timestamp_ms) * 1e-3f;
-    acs_target_angle_deg = 40.f + 10 * sinf(2 * M_PI * 0.5 * elapsed_time);
+    acs_target_angle_deg = 40.f + 10 * sinf(2 * M_PI * 0.25 * elapsed_time);
     StepperPositionFromACSAngle(acs_target_angle_deg, &stepper_target_position);
     StepperAngleFromPosition(stepper_target_position, stepper_zero_position, &stepper_target_angle_deg);
     SPARK_SetAngle(stepper_target_angle_deg);
@@ -397,7 +397,8 @@ static void AwaitDrogueDo(StateMachine_t *sm, uint16_t freq) {
         }
     }
 
-    SPARK_SetAngle(0);
+    stepper_target_angle_deg = 0;
+    SPARK_SetAngle(stepper_target_angle_deg);
 
     // check if drogue has been deployed
 }

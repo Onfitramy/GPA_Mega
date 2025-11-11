@@ -17,8 +17,9 @@
 
 extern float stepper_zero_position;
 extern float stepper_target_position;
-extern float acs_target_angle_deg;
 extern float stepper_target_angle_deg;
+extern float stepper_neutral_angle;
+extern float acs_target_angle_deg;
 
 void CircleIntersectionPoints(float x1, float y1, float r1, float x2, float y2, float r2,
                               float *xi1, float *yi1, float *xi2, float *yi2, int *num_intersections);

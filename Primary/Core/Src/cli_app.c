@@ -562,6 +562,59 @@ BaseType_t cmd_SPARK_Reset(char *pcWriteBuffer, size_t xWriteBufferLen, const ch
 }
 
 //*****************************************************************************
+BaseType_t cmd_ACS_SetAngle(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+    acs_target_angle_deg = strtof(pcParameter, &endPtr);
+
+    StepperPositionFromACSAngle(acs_target_angle_deg, &stepper_target_position);
+    StepperAngleFromPosition(stepper_target_position, stepper_zero_position, &stepper_target_angle_deg);
+    SPARK_SetAngle(stepper_target_angle_deg);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 50, "Setting ACS Target Angle to %.2f°...\r\n", acs_target_angle_deg);
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_SPARK_SetNeutralAngle(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+    stepper_neutral_angle = strtof(pcParameter, &endPtr);
+
+    StepperPositionFromACSAngle(0.f, &stepper_zero_position);
+    stepper_zero_position += stepper_neutral_angle / 360.f * ROD_SLOPE;
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 50, "Setting Stepper Neutral Angle to %.2f°...\r\n", stepper_neutral_angle);
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
 BaseType_t cmd_PU_toggleCAMPower(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {
     (void)pcCommandString;
@@ -1093,6 +1146,18 @@ const CLI_Command_Definition_t xCommandList[] = {
         .pcHelpString = "SPARK_Reset: Resets SPARK MCU\r\n\r\n",
         .pxCommandInterpreter = cmd_SPARK_Reset, /* The function to run. */
         .cExpectedNumberOfParameters = 0
+    },
+    {
+        .pcCommand = "ACS_SetAngle", /* The command string to type. */
+        .pcHelpString = "ACS_SetAngle <float>: Sets ACS Angle\r\n\r\n",
+        .pxCommandInterpreter = cmd_ACS_SetAngle, /* The function to run. */
+        .cExpectedNumberOfParameters = 1
+    },
+    {
+        .pcCommand = "SPARK_SetNeutralAngle", /* The command string to type. */
+        .pcHelpString = "SPARK_SetNeutralAngle <float>: Sets Stepper Neutral Angle\r\n\r\n",
+        .pxCommandInterpreter = cmd_SPARK_SetNeutralAngle, /* The function to run. */
+        .cExpectedNumberOfParameters = 1
     },
     {
         .pcCommand = "PU_setCAMPower", /* The command string to type. */

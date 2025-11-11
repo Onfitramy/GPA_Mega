@@ -3,6 +3,7 @@
 float stepper_zero_position;
 float stepper_target_position;
 float stepper_target_angle_deg;
+float stepper_neutral_angle = 100.f;
 float acs_target_angle_deg;
 
 void CircleIntersectionPoints(float x1, float y1, float r1, float x2, float y2, float r2,
