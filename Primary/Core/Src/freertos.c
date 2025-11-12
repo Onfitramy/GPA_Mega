@@ -333,7 +333,7 @@ void Start100HzTask(void *argument) {
         EKFgetNIS(&EKF2, &EKF2_corr3, &NIS_EKF2_corr3);
       }
 
-      SPARK_ReadData();
+      //SPARK_ReadData();
 
       // Quaternion EKF correction step
       arm_vecN_concatenate_f32(3, average_imu_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector

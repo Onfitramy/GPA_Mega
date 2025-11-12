@@ -1,4 +1,6 @@
 #include "spark.h"
+#include "cli_app.h"
+#include "InterBoardCom.h"
 
 DataPacket_t spark_rx_buffer;
 
@@ -24,6 +26,11 @@ void ProcessSPARKData(DataPacket_t *packet) {
 
 void SPARK_sendCommand(DataPacket_t *packet)
 {
+    if (cli_target_mode == CLI_TARGET_MODE_EXTERNAL) {
+        // Send command to other board via InterBoardCom
+        InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, packet);
+        return;
+    }
     // Send the command over SPI
   
     //taskENTER_CRITICAL();
@@ -100,4 +107,21 @@ void SPARK_Reset() {
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_RESET, NULL, 0);
     SPARK_sendCommand(&packet);
+}
+
+void ACS_SetAngle(float angle_deg) {
+    if (cli_target_mode == CLI_TARGET_MODE_EXTERNAL) {
+        // Forward packet with ACS target angle
+        uint8_t parameters[sizeof(float)];
+        memcpy(parameters, &angle_deg, sizeof(float));
+        DataPacket_t packet;
+        CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SPARK, COMMAND_ID_SPARK_SET_ACS_ANGLE, parameters, sizeof(parameters));
+        SPARK_sendCommand(&packet);
+        return;
+    }
+    // convert ACS angle to stepper position and set SPARK angle
+    acs_target_angle_deg = angle_deg;
+    StepperPositionFromACSAngle(acs_target_angle_deg, &stepper_target_position);
+    StepperAngleFromPosition(stepper_target_position, stepper_zero_position, &stepper_target_angle_deg);
+    SPARK_SetAngle(stepper_target_angle_deg);
 }

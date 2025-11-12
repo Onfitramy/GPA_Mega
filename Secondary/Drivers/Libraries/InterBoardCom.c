@@ -130,21 +130,14 @@ void InterBoardCom_FillRaw(InterBoardPacket_t *packet, int num, ...) {
 
 void InterBoardCom_FillData(InterBoardPacket_t *packet, DataPacket_t *data_packet) {
     // Copy the data from the DataPacket_t structure to the InterBoardPacket_t structure
-    // Calculate CRC (XOR checksum)
-    data_packet->crc = 0;
-    for (int i = 0; i < sizeof(data_packet->Data.raw); i++) {
-        data_packet->crc ^= data_packet->Data.raw[i];
-    }
+    calcCRC(data_packet);
 
     memcpy(packet->Data, data_packet, 32);
 }
 
 uint8_t InterBoard_CheckCRC(DataPacket_t *packet) {
     // Calculate CRC (XOR checksum)
-    uint8_t crc = 0;
-    for (int i = 0; i < sizeof(packet->Data.raw); i++) {
-        crc ^= packet->Data.raw[i];
-    }
+    uint8_t crc = getCRC(packet);
     return (crc == packet->crc);
 }
 

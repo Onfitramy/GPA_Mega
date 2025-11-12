@@ -578,9 +578,7 @@ BaseType_t cmd_ACS_SetAngle(char *pcWriteBuffer, size_t xWriteBufferLen, const c
     }
     acs_target_angle_deg = strtof(pcParameter, &endPtr);
 
-    StepperPositionFromACSAngle(acs_target_angle_deg, &stepper_target_position);
-    StepperAngleFromPosition(stepper_target_position, stepper_zero_position, &stepper_target_angle_deg);
-    SPARK_SetAngle(stepper_target_angle_deg);
+    ACS_SetAngle(acs_target_angle_deg);
 
     /* Write the response to the buffer */
     snprintf(pcWriteBuffer, 50, "Setting ACS Target Angle to %.2f°...\r\n", acs_target_angle_deg);

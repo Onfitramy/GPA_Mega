@@ -56,6 +56,9 @@ typedef enum __attribute__((packed)){
     COMMAND_ID_SPARK_FIND_MAX = 0x04,
     COMMAND_ID_SPARK_MODE_TARGET_POSITION = 0x05,
     COMMAND_ID_SPARK_MODE_TARGET_SPEED = 0x06,
+    COMMAND_ID_SPARK_RESET = 0x07,
+    COMMAND_ID_SPARK_READ_DATA = 0x08,
+    COMMAND_ID_SPARK_SET_ACS_ANGLE = 0x09,
 
     COMMAND_ID_RADIO_SWITCH = 0x01,
 
@@ -66,7 +69,10 @@ typedef enum __attribute__((packed)){
     COMMAND_ID_BUZZER_PLAYNOTE = 0x03,
     COMMAND_ID_BUZZER_PLAYSONG = 0x04,
     COMMAND_ID_BUZZER_PLAYSONGREPEAT = 0x05,
-    COMMAND_ID_BUZZER_STOPALL = 0x06
+    COMMAND_ID_BUZZER_STOPALL = 0x06,
+
+    COMMAND_ID_STORAGE_FLASHTOSD = 0x00,
+    COMMAND_ID_STORAGE_FLASHERASE = 0x01
 } CommandID_t;
 
 /* Packet and Payload structure definitions */
@@ -176,6 +182,9 @@ typedef struct {
 } DataCircularBuffer_t;
 
 DataPacket_t CreateDataPacket(PacketType_t Packet_ID);
+
+void calcCRC(DataPacket_t *packet);
+uint8_t getCRC(DataPacket_t *packet);
 
 void UpdatePowerPacket(DataPacket_t *power_packet, uint32_t timestamp, float PU_bat_volt, float PU_out_pow, float PU_out_curr, float M2_bus_5V, float M2_bus_GPA_bat_volt);
 

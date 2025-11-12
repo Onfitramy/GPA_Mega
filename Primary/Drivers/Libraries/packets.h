@@ -63,6 +63,7 @@ typedef enum __attribute__((packed)){
     COMMAND_ID_SPARK_MODE_TARGET_SPEED = 0x06,
     COMMAND_ID_SPARK_RESET = 0x07,
     COMMAND_ID_SPARK_READ_DATA = 0x08,
+    COMMAND_ID_SPARK_SET_ACS_ANGLE = 0x09,
 
     COMMAND_ID_RADIO_SWITCH = 0x01,
 
@@ -180,6 +181,7 @@ typedef struct {
 
 
 DataPacket_t CreateDataPacket(PacketType_t Packet_ID);
+void calcCRC(DataPacket_t *packet);
 uint8_t getCRC(DataPacket_t *packet);
 void UpdateStatusPacket(DataPacket_t *status_packet, uint32_t timestamp, int32_t status_flags, int32_t sensor_flags, int32_t error_flags, uint32_t flight_state);
 void UpdateIMUDataPacket(DataPacket_t *imu_packet, uint32_t timestamp, IMU_Data_t *imu_data, LIS3MDL_Data_t *mag_data);

@@ -261,7 +261,6 @@ static void CoastEntry(StateMachine_t *sm) {
 }
 static void AwaitDrogueEntry(StateMachine_t *sm) {
     // JUST FOR TESTING
-    SPARK_TargetPositionMode(8);
     SPARK_SetAngle(0);
 
     DeployDrogue(DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
@@ -602,7 +601,8 @@ void StateMachine_Dispatch(StateMachine_t *sm, flight_event_t event) {
     HAL_TIM_Base_Stop_IT(&htim7);
 
     // start timer to enforce maximum delay until event
-    if (tim7_target_ms = maxEventDelayTable[newState]) {
+    if ((tim7_target_ms = maxEventDelayTable[newState])) {
+        tim7_ms = 0;
         HAL_TIM_Base_Start_IT(&htim7);
     }
 
@@ -632,6 +632,7 @@ void StateMachine_ForceState(StateMachine_t *sm, flight_state_t newState) {
 
     // start timer to enforce maximum delay until event
     if ((tim7_target_ms = maxEventDelayTable[newState])) {
+        tim7_ms = 0;
         HAL_TIM_Base_Start_IT(&htim7);
     }
 

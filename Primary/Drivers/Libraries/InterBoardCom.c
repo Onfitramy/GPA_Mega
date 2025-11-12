@@ -87,11 +87,7 @@ void InterBoardCom_FillRaw(InterBoardPacket_t *packet, int num, ...) {
  */
 void InterBoardCom_FillData(InterBoardPacket_t *packet, DataPacket_t *data_packet) {
     // Copy the data from the DataPacket_t structure to the InterBoardPacket_t structure
-    // Calculate CRC (XOR checksum)
-    data_packet->crc = 0;
-    for (int i = 0; i < sizeof(data_packet->Data.raw); i++) {
-        data_packet->crc ^= data_packet->Data.raw[i];
-    }
+    calcCRC(data_packet);
 
     memcpy(packet->Data, data_packet, 32);
 }
@@ -205,7 +201,14 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
             }
             break;
         case COMMAND_TARGET_SPARK:
-            SPARK_sendCommand(dataPacket);
+            if (dataPacket->Data.command.command_id == COMMAND_ID_SPARK_SET_ACS_ANGLE) {
+                uint8_t *angle_address = dataPacket->Data.command.params;
+                float angle_target;
+                memcpy(&angle_target, angle_address, sizeof(float));
+                ACS_SetAngle(angle_target);
+            } else {
+                SPARK_sendCommand(dataPacket);
+            }
             break;
         case COMMAND_TARGET_TESTING:
             // Handle testing commands

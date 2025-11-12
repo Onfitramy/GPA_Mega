@@ -25,6 +25,16 @@ void calcCRC(DataPacket_t *packet) {
     packet->crc = crc;
 }
 
+uint8_t getCRC(DataPacket_t *packet) {
+    // Simple XOR-based CRC calculation
+    uint8_t *data = (uint8_t *)packet;
+    uint8_t crc = 0;
+    for (size_t i = 0; i < sizeof(DataPacket_t) - 1; i++) {
+        crc ^= data[i];
+    }
+    return crc;
+}
+
 void UpdateStatusPayload(StatusPayload_t *status_payload) {
     // Update the status payload with the latest status information
     // Implement the logic to fill the status_payload structure

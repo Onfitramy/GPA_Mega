@@ -88,6 +88,7 @@ extern StatusPayload_t status_data;
 
 extern TIM_HandleTypeDef htim7;
 extern uint32_t tim7_target_ms;
+extern volatile uint32_t tim7_ms;
 extern TIM_HandleTypeDef htim14;
 extern uint32_t tim14_target_ms;
 extern TIM_HandleTypeDef htim16;

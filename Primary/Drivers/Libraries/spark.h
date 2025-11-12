@@ -20,4 +20,6 @@ void SPARK_TargetPositionMode(uint8_t torque_16);
 void SPARK_TargetSpeedMode(uint8_t torque_16);
 void SPARK_Reset();
 
+void ACS_SetAngle(float angle_deg);
+
 #endif /* SPARK_H_ */
