@@ -72,8 +72,9 @@ typedef enum __attribute__((packed)){
     COMMAND_ID_BUZZER_PLAYSONGREPEAT = 0x05,
     COMMAND_ID_BUZZER_STOPALL = 0x06,
 
-    COMMAND_ID_STORAGE_FLASHTOSD = 0x00,
-    COMMAND_ID_STORAGE_FLASHERASE = 0x01
+    COMMAND_ID_STORAGE_FLASH_TO_SD = 0x00,
+    COMMAND_ID_STORAGE_FLASH_ERASE = 0x01,
+    COMMAND_ID_STORAGE_FLASH_WRITE = 0x02
 } CommandID_t;
 
 /* Packet and Payload structure definitions */

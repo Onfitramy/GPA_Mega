@@ -901,13 +901,13 @@ BaseType_t cmd_Radio_Switch(char *pcWriteBuffer, size_t xWriteBufferLen, const c
 }
 
 //*****************************************************************************
-BaseType_t cmd_Storage_FLASHtoSD(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+BaseType_t cmd_Storage_FLASH_To_SD(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {
     (void)pcCommandString;
     (void)xWriteBufferLen;
     
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STORAGE, COMMAND_ID_STORAGE_FLASHTOSD, NULL, 0);
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STORAGE, COMMAND_ID_STORAGE_FLASH_TO_SD, NULL, 0);
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
@@ -923,7 +923,7 @@ BaseType_t cmd_Storage_FLASH_Erase(char *pcWriteBuffer, size_t xWriteBufferLen, 
     (void)xWriteBufferLen;
     
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STORAGE, COMMAND_ID_STORAGE_FLASHERASE, NULL, 0);
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STORAGE, COMMAND_ID_STORAGE_FLASH_ERASE, NULL, 0);
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
@@ -933,7 +933,7 @@ BaseType_t cmd_Storage_FLASH_Erase(char *pcWriteBuffer, size_t xWriteBufferLen, 
 }
 
 //*****************************************************************************
-BaseType_t cmd_Storage_FLASH_saving(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+BaseType_t cmd_Storage_FLASH_Write(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {
     (void)pcCommandString;
     (void)xWriteBufferLen;
@@ -953,7 +953,7 @@ BaseType_t cmd_Storage_FLASH_saving(char *pcWriteBuffer, size_t xWriteBufferLen,
 
     /* Write the response to the buffer */
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STORAGE, 2, parameters, sizeof(parameters));
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STORAGE, COMMAND_ID_STORAGE_FLASH_WRITE, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
 
     snprintf(pcWriteBuffer, 50, "Flash Saving set to %d\r\n", parameters[0]);
@@ -1212,9 +1212,9 @@ const CLI_Command_Definition_t xCommandList[] = {
         .cExpectedNumberOfParameters = 1
     },
     {
-        .pcCommand = "Storage_FLASHtoSD", /* The command string to type. */
-        .pcHelpString = "Storage_FLASHtoSD: Transfers data from FLASH to SD card\r\n\r\n",
-        .pxCommandInterpreter = cmd_Storage_FLASHtoSD, /* The function to run. */
+        .pcCommand = "Storage_FLASH_To_SD", /* The command string to type. */
+        .pcHelpString = "Storage_FLASH_To_SD: Transfers data from FLASH to SD card\r\n\r\n",
+        .pxCommandInterpreter = cmd_Storage_FLASH_To_SD, /* The function to run. */
         .cExpectedNumberOfParameters = 0
     },
     {
@@ -1224,9 +1224,9 @@ const CLI_Command_Definition_t xCommandList[] = {
         .cExpectedNumberOfParameters = 0
     },
     {
-        .pcCommand = "Storage_FLASH_saving", /* The command string to type. */
-        .pcHelpString = "Storage_FLASH_saving <1/0>: Enables data saving to FLASH memory\r\n\r\n",
-        .pxCommandInterpreter = cmd_Storage_FLASH_saving, /* The function to run. */
+        .pcCommand = "Storage_FLASH_Write", /* The command string to type. */
+        .pcHelpString = "Storage_FLASH_Write <1/0>: Enables data saving to FLASH memory\r\n\r\n",
+        .pxCommandInterpreter = cmd_Storage_FLASH_Write, /* The function to run. */
         .cExpectedNumberOfParameters = 1
     },
     {

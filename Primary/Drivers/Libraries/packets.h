@@ -77,8 +77,9 @@ typedef enum __attribute__((packed)){
     COMMAND_ID_BUZZER_PLAYSONGREPEAT = 0x05,
     COMMAND_ID_BUZZER_STOPALL = 0x06,
 
-    COMMAND_ID_STORAGE_FLASHTOSD = 0x00,
-    COMMAND_ID_STORAGE_FLASHERASE = 0x01
+    COMMAND_ID_STORAGE_FLASH_TO_SD = 0x00,
+    COMMAND_ID_STORAGE_FLASH_ERASE = 0x01,
+    COMMAND_ID_STORAGE_FLASH_WRITE = 0x02
 } CommandID_t;
 
 /* Packet and Payload structure definitions */
@@ -200,7 +201,7 @@ void UpdatePositionPacket(DataPacket_t *position_packet, uint32_t timestamp, flo
 void UpdateAttitudePacket(DataPacket_t *attitude_packet, uint32_t timestamp, float phi, float theta, float psi);
 void PlotDataPacket(DataPacket_t *packet);
 void CreateCommandPacket(DataPacket_t *command_packet, uint32_t timestamp, CommandTarget_t command_target, uint8_t command_id, uint8_t *params, size_t params_length);
-void UpdateStatePacket(DataPacket_t *state_packet, uint32_t timestamp, uint8_t flight_state, uint32_t timestamp_us);
+void UpdateStatePacket(DataPacket_t *state_packet, uint32_t timestamp, uint8_t flight_state, uint32_t timestamp_ms);
 
 void PU_setCAM(bool on);
 void PU_setREC(bool on);
@@ -214,5 +215,6 @@ void Camera_Power(bool enable);
 void Camera_Recording(bool enable);
 void Camera_SkipDate();
 void Camera_Wifi(bool enable);
+void Storage_FlashSave(bool enable);
 
 #endif /* Packets_H_ */

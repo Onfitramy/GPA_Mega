@@ -6,6 +6,7 @@
 #include "signalPlotter.h"
 #include <string.h>
 #include "spark.h"
+#include "cli_app.h"
 
 int16_t float_to_int16_scaled(float value, float scale_factor);
 int32_t float_to_int32_scaled(float value, float scale_factor);
@@ -174,11 +175,11 @@ void UpdateAttitudePacket(DataPacket_t *attitude_packet, uint32_t timestamp, flo
     calcCRC(attitude_packet);
 }
 
-void UpdateStatePacket(DataPacket_t *state_packet, uint32_t timestamp, flight_state_t flight_state, uint32_t timestamp_us) {
+void UpdateStatePacket(DataPacket_t *state_packet, uint32_t timestamp, uint8_t flight_state, uint32_t timestamp_ms) {
     state_packet->Packet_ID = PACKET_ID_STATE;
     state_packet->timestamp = timestamp;
     state_packet->Data.state.flight_state = flight_state;
-    state_packet->Data.state.timestamp_us = timestamp_us;
+    state_packet->Data.state.timestamp_us = timestamp_ms;
 
     calcCRC(state_packet);
 }
@@ -262,7 +263,7 @@ void PU_setCAM(bool on) {
     DataPacket_t packet;
     uint8_t params[1] = {on};
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_PU_POWER_CAM, params, sizeof(params));
-    // sendcmdToTarget(&packet);
+    sendcmdToTarget(&packet);
 }
 
 void PU_setREC(bool on) {
@@ -270,7 +271,7 @@ void PU_setREC(bool on) {
     DataPacket_t packet;
     uint8_t params[1] = {on};
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_PU_POWER_RECOVERY, params, sizeof(params));
-    // sendcmdToTarget(&packet);
+    sendcmdToTarget(&packet);
 }
 
 void PU_setACS(bool on) {
@@ -278,7 +279,7 @@ void PU_setACS(bool on) {
     DataPacket_t packet;
     uint8_t params[1] = {on};
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_PU_POWER_ACS, params, sizeof(params));
-    // sendcmdToTarget(&packet);
+    sendcmdToTarget(&packet);
 }
 
 void Buzzer_PlayNote(char *note, uint32_t duration_ms) {
@@ -296,7 +297,7 @@ void Buzzer_PlayNote(char *note, uint32_t duration_ms) {
 
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_BUZZER_PLAYNOTE, parameters, sizeof(parameters));
-    // sendcmdToTarget(&packet);
+    sendcmdToTarget(&packet);
 }
 
 void Buzzer_PlaySong(uint8_t song_num) {
@@ -306,7 +307,7 @@ void Buzzer_PlaySong(uint8_t song_num) {
 
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_BUZZER_PLAYSONG, parameters, sizeof(parameters));
-    // sendcmdToTarget(&packet);
+    sendcmdToTarget(&packet);
 }
 
 void Buzzer_PlaySongRepeat(uint8_t song_num, uint16_t period_ms) {
@@ -318,7 +319,7 @@ void Buzzer_PlaySongRepeat(uint8_t song_num, uint16_t period_ms) {
 
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_BUZZER_PLAYSONGREPEAT, parameters, sizeof(parameters));
-    // sendcmdToTarget(&packet);
+    sendcmdToTarget(&packet);
 }
 
 void Camera_Power(bool enable) {
@@ -326,7 +327,7 @@ void Camera_Power(bool enable) {
     parameters[0] = enable;
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, COMMAND_ID_CAMERA_POWER, parameters, sizeof(parameters));
-    // sendcmdToTarget(&packet);
+    sendcmdToTarget(&packet);
 }
 
 void Camera_Recording(bool enable) {
@@ -334,13 +335,13 @@ void Camera_Recording(bool enable) {
     parameters[0] = enable;
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, COMMAND_ID_CAMERA_RECORD, parameters, sizeof(parameters));
-    // sendcmdToTarget(&packet);
+    sendcmdToTarget(&packet);
 }
 
 void Camera_SkipDate() {
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, COMMAND_ID_CAMERA_SKIPDATE, NULL, 0);
-    // sendcmdToTarget(&packet);
+    sendcmdToTarget(&packet);
 }
 
 void Camera_Wifi(bool enable) {
@@ -348,5 +349,12 @@ void Camera_Wifi(bool enable) {
     parameters[0] = enable;
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, COMMAND_ID_CAMERA_WIFI, parameters, sizeof(parameters));
-    // sendcmdToTarget(&packet);
+    sendcmdToTarget(&packet);
+}
+
+void Storage_FlashSave(bool enable) {
+    uint8_t parameters[1] = { enable };
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STORAGE, COMMAND_ID_STORAGE_FLASH_WRITE, parameters, sizeof(parameters));
+    sendcmdToTarget(&packet);
 }

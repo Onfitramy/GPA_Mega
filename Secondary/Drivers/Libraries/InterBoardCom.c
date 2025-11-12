@@ -212,11 +212,6 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
             char LogMessage[100];
             DataPacket_t dataPacket = InterBoardCom_UnpackPacket(packet);
 
-            // Write logs when in armed state
-            if (dataPacket.Packet_ID == PACKET_ID_STATE && dataPacket.Data.state.flight_state == 5) {
-                W25Q_FLASH_CONFIG.write_logs = true;
-            }
-
             if ((Interboard_Target & INTERBOARD_TARGET_SD) == INTERBOARD_TARGET_SD) {
                 SD_AppendDataPacketToBuffer(&dataPacket); // Save the data to SD card buffer
             }
@@ -297,16 +292,16 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
             break;
         case COMMAND_TARGET_STORAGE:
             // Handle storage commands
-            if (dataPacket->Data.command.command_id == 0x00) {
+            if (dataPacket->Data.command.command_id == COMMAND_ID_STORAGE_FLASH_TO_SD) {
                 // Storage command 0x00: FlashToSD
                 W25Q_FLASH_CONFIG.write_logs = false;
                 saving_to_SD = true; // Trigger saving flash to SD in main loop
-            } else if (dataPacket->Data.command.command_id == 0x01) {
+            } else if (dataPacket->Data.command.command_id == COMMAND_ID_STORAGE_FLASH_ERASE) {
                 // Storage command 0x01: FlashReset
                 W25Q_FLASH_CONFIG.write_logs = false;
                 W25Q_Chip_Erase();
                 InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
-            } else if (dataPacket->Data.command.command_id == 0x02) {
+            } else if (dataPacket->Data.command.command_id == COMMAND_ID_STORAGE_FLASH_WRITE) {
                 // Storage command 0x02: FLASH saving enable/disable
                 if (dataPacket->Data.command.params[0] == 0x01) {
                     W25Q_FLASH_CONFIG.write_logs = true;

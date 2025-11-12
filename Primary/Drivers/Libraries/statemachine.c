@@ -244,6 +244,7 @@ static void ArmedEntry(StateMachine_t *sm) {
     PU_setREC(ENABLE);
     SPARK_ZeroStepper();
     Camera_Recording(1);
+    Storage_FlashSave(true);
     // TODO:
     // lock ACS
     // start data logging
