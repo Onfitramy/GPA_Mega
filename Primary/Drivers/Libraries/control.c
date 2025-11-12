@@ -66,6 +66,12 @@ void ACSAngleFromStepperPosition(float stepper_pos, float *acs_angle_deg) {
 }
 
 void StepperPositionFromACSAngle(float acs_angle_deg, float *stepper_pos) {
+    if (acs_angle_deg > ACS_ANGLE_MAX_DEG) {
+        acs_angle_deg = ACS_ANGLE_MAX_DEG;
+    } else if (acs_angle_deg < ACS_ANGLE_MIN_DEG) {
+        acs_angle_deg = ACS_ANGLE_MIN_DEG;
+    }
+
     float AE_squared = LENGTH_AE * LENGTH_AE;
     float BD_squared = LENGTH_BD * LENGTH_BD;
 

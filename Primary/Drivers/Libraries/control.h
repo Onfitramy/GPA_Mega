@@ -3,6 +3,9 @@
 
 #include <math.h>
 
+#define ACS_ANGLE_MAX_DEG 50.f
+#define ACS_ANGLE_MIN_DEG 0.f
+
 #define LENGTH_AE 45.0f
 #define LENGTH_BE 50.0f
 #define LENGTH_BD 140.0f
