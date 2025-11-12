@@ -252,10 +252,7 @@ static void BurnEntry(StateMachine_t *sm) {
     SPARK_TargetPositionMode(16);
 }
 static void CoastEntry(StateMachine_t *sm) {
-    acs_target_angle_deg = 40.f;
-    StepperPositionFromACSAngle(acs_target_angle_deg, &stepper_target_position);
-    StepperAngleFromPosition(stepper_target_position, stepper_zero_position, &stepper_target_angle_deg);
-    SPARK_SetAngle(stepper_target_angle_deg);
+    ACS_SetAngle(40.f);
     // TODO:
     // enable MPC
 }
