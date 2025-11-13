@@ -324,11 +324,11 @@ void Start100HzTask(void *argument) {
       UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &average_imu_data, &mag_data);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, &IMU_DataPacket);
 
-      UpdateTemperaturePacket(&Temperature_DataPacket, HAL_GetTick(), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ptot_data.pressure);
-      InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, &Temperature_DataPacket);
+      //UpdateTemperaturePacket(&Temperature_DataPacket, HAL_GetTick(), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ptot_data.pressure);
+      //InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, &Temperature_DataPacket);
 
-      UpdateStatePacket(&State_DataPacket, HAL_GetTick(), flight_sm.currentFlightState, flight_sm.timestamp_ms);
-      InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, &State_DataPacket);
+      //UpdateStatePacket(&State_DataPacket, HAL_GetTick(), flight_sm.currentFlightState, flight_sm.timestamp_ms);
+      //InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, &State_DataPacket);
 
       // Don't activate this and the SPARK communication at the same time, because they use the same SPI
       if (ptot_readData(&ptot_data)) {

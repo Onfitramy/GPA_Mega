@@ -293,9 +293,12 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
         case COMMAND_TARGET_STORAGE:
             // Handle storage commands
             if (dataPacket->Data.command.command_id == COMMAND_ID_STORAGE_FLASH_TO_SD) {
+                uint16_t page;
+                memcpy(&page, dataPacket->Data.command.params, sizeof(page));
+                int x = 0;
                 // Storage command 0x00: FlashToSD
-                W25Q_FLASH_CONFIG.write_logs = false;
-                saving_to_SD = true; // Trigger saving flash to SD in main loop
+                //W25Q_FLASH_CONFIG.write_logs = false;
+                //saving_to_SD = true; // Trigger saving flash to SD in main loop
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_STORAGE_FLASH_ERASE) {
                 // Storage command 0x01: FlashReset
                 W25Q_FLASH_CONFIG.write_logs = false;

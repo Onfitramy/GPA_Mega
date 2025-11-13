@@ -905,13 +905,35 @@ BaseType_t cmd_Storage_FLASH_To_SD(char *pcWriteBuffer, size_t xWriteBufferLen, 
 {
     (void)pcCommandString;
     (void)xWriteBufferLen;
-    
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    uint8_t parameters[3];
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) { //Handle to missing Input
+        parameters[2] = 1;
+    }
+    uint32_t parameter_int = (uint32_t)strtoul(pcParameter, &endPtr, 10);
+    if (parameter_int < 1024 || parameter_int > 65535) {
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Page must me in the range between 1024 and 65535\r\n");
+        return pdFALSE;
+    }
+    uint16_t parameter_16 = (uint16_t)parameter_int;
+    memcpy(parameters, &parameter_16, sizeof(parameter_16));
+
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STORAGE, COMMAND_ID_STORAGE_FLASH_TO_SD, NULL, 0);
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STORAGE, COMMAND_ID_STORAGE_FLASH_TO_SD, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
-    snprintf(pcWriteBuffer, 50, "Transferring data from FLASH to SD card...\r\n");
+    if (parameters[2]) {
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Transferring data from FLASH to SC card up to current config page\r\n");
+    } else {
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Transferring data from FLASH to SC card up to page %d\r\n");
+    }
 
     return pdFALSE;
 }
@@ -1229,9 +1251,10 @@ const CLI_Command_Definition_t xCommandList[] = {
     },
     {
         .pcCommand = "Storage_FLASH_To_SD", /* The command string to type. */
-        .pcHelpString = "Storage_FLASH_To_SD: Transfers data from FLASH to SD card\r\n\r\n",
+        .pcHelpString = "Storage_FLASH_To_SD <?page>: Transfers data from FLASH to SD card. "
+                        "Logs are copied up to the current log page in the config, if no page is explicitly specified.\r\n\r\n",
         .pxCommandInterpreter = cmd_Storage_FLASH_To_SD, /* The function to run. */
-        .cExpectedNumberOfParameters = 0
+        .cExpectedNumberOfParameters = 1
     },
     {
         .pcCommand = "Storage_FLASH_Erase", /* The command string to type. */
