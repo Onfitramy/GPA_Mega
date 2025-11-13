@@ -1,6 +1,7 @@
 #include "statemachine.h"
 
 #include "Buzzer.h"
+#include "SD.h"
 #include "W25Q1.h"
 #include "xBee.h"
 
@@ -83,6 +84,7 @@ static void FaultDo(StateMachine_t *sm, uint16_t freq) {
     } else {
         selftest_tries++;
         status_data |= INA219_SelfTest();
+        status_data |= SD_SelfTest();
     }
 }
 static void StartupDo(StateMachine_t *sm, uint16_t freq) {
@@ -92,13 +94,14 @@ static void InitDo(StateMachine_t *sm, uint16_t freq) {
     // Selftest is called with 10 Hz
     if (freq != 10) return;
 
-    if ((status_data & 0x01) == 0x01) {
+    if ((status_data & 0b11) == 0b11) {
         // all selftests passed
         StateMachine_Dispatch(sm, EVENT_INITIALIZED);
         status_data |= (1 << 7);
     } else {
         selftest_tries++;
         status_data |= INA219_SelfTest();
+        status_data |= (SD_SelfTest() << 1);
     }
 }
 static void OperationalDo(StateMachine_t *sm, uint16_t freq) {

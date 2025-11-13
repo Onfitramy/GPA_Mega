@@ -309,6 +309,8 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
                     W25Q_FLASH_CONFIG.write_logs = false;
                 }
                 InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
+            } else if (dataPacket->Data.command.command_id == COMMAND_ID_STORAGE_SD_UNMOUNT) {
+                SD_Unmount();
             }
             break;
         case COMMAND_TARGET_CAMERA:

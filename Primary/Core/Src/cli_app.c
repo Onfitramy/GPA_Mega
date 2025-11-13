@@ -1018,6 +1018,22 @@ BaseType_t cmd_Flash(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pc
     return pdFALSE;
 }
 
+//*****************************************************************************
+BaseType_t cmd_Storage_SD_Unmount(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STORAGE, COMMAND_ID_STORAGE_SD_UNMOUNT, NULL, 0);
+    sendcmdToTarget(&packet);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 50, "Unmounting SD card...\r\n");
+
+    return pdFALSE;
+}
+
 const CLI_Command_Definition_t xCommandList[] = {
     {
         .pcCommand = "cls", /* The command string to type. */
@@ -1228,6 +1244,12 @@ const CLI_Command_Definition_t xCommandList[] = {
         .pcHelpString = "Storage_FLASH_Write <1/0>: Enables data saving to FLASH memory\r\n\r\n",
         .pxCommandInterpreter = cmd_Storage_FLASH_Write, /* The function to run. */
         .cExpectedNumberOfParameters = 1
+    },
+    {
+        .pcCommand = "Storage_SD_Unmount", /* The command string to type. */
+        .pcHelpString = "Storage_SD_Unmount: Unmounts the SD card\r\n\r\n",
+        .pxCommandInterpreter = cmd_Storage_SD_Unmount, /* The function to run. */
+        .cExpectedNumberOfParameters = 0
     },
     {
         .pcCommand = NULL /* simply used as delimeter for end of array*/

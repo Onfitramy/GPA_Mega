@@ -187,3 +187,9 @@ uint8_t SD_Close(void)
   }
   return 0;  // Success
 }
+
+uint8_t SD_SelfTest(void) {
+  FRESULT mount = SD_Mount();
+  if (mount == FR_OK) return 1; // Success
+  return 0; // Error
+}

@@ -79,7 +79,8 @@ typedef enum __attribute__((packed)){
 
     COMMAND_ID_STORAGE_FLASH_TO_SD = 0x00,
     COMMAND_ID_STORAGE_FLASH_ERASE = 0x01,
-    COMMAND_ID_STORAGE_FLASH_WRITE = 0x02
+    COMMAND_ID_STORAGE_FLASH_WRITE = 0x02,
+    COMMAND_ID_STORAGE_SD_UNMOUNT = 0x03,
 } CommandID_t;
 
 /* Packet and Payload structure definitions */
