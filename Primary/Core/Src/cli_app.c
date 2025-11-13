@@ -44,7 +44,9 @@ int _write(int file, char *data, int len)
 {
     UNUSED(file);
     // Transmit data using USB
-    while(CDC_Transmit_HS(data, len)==USBD_BUSY);
+    while(CDC_Transmit_HS(data, len)==USBD_BUSY){
+        vTaskDelay(1);
+    };
 }
 
 int sendcmdToTarget(DataPacket_t *packet) {

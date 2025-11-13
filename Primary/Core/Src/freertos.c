@@ -423,7 +423,6 @@ void Start10HzTask(void *argument) {
 /* USER CODE END InterruptHandlerTask */
 uint8_t rx_recieve_buf[NRF24L01P_PAYLOAD_LENGTH] = {0};
 uint8_t InterBoardPacket_receive_num = 0;
-uint32_t test_time = 0;
 
 void StartInterruptHandlerTask(void *argument)
 {
