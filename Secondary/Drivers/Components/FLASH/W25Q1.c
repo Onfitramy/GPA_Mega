@@ -87,8 +87,6 @@ void W25Q_WriteFlashBuffer() {
 		}
 
 		W25Q_WriteConfig();
-
-		flash_buffer_index = 0;
 	}
 }
 

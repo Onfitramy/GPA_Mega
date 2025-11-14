@@ -367,31 +367,10 @@ volatile bool saving_to_SD = false;
 extern W25QPage0_config_t W25Q_FLASH_CONFIG;
 void StartSDTask(void *argument)
 {
-  // FRESULT x = SD_Mount();
-
-  vTaskDelay(100);
-
-  /* USER CODE BEGIN StartSDTask */
-  //if (SD_Mount() == FR_OK) {
-  //// Successfully mounted SD card
-  //} else {
-  //// Failed to mount SD card
-  //// vTaskDelete(NULL); // Delete this task if SD card cannot be mounted
-  //}
-
-  // W25Q_Chip_Erase();
-
-  // for (int i = LOG_PAGE; i < 256 * PAGES_PER_SECTOR; i += PAGES_PER_SECTOR) {
-    // W25Q_Erase_Sector(i / PAGES_PER_SECTOR);
-  // }
-
-  // W25Q_CopyLogsToSD();
-
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 100; // 10 Hz
   /* Infinite loop */
   for(;;) {
-    //SD_SaveBuffer();
     // TODO: Improve
     // if(saving_to_SD){
     //     W25Q_CopyLogsToSD();
