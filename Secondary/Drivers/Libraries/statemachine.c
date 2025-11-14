@@ -72,19 +72,33 @@ static void OperationalEntry(StateMachine_t *sm) {}
 static void BatteryLowEntry(StateMachine_t *sm) {}
 static void BatteryCriticalEntry(StateMachine_t *sm) {}
 
+// Initialize with value other than 0/1
+uint8_t sd_mount_result = 42;
+
 /* --- Do actions --- */
 static void FaultDo(StateMachine_t *sm, uint16_t freq) {
     // Selftest is called with 10 Hz
     if (freq != 10) return;
 
-    if ((status_data & 0x01) == 0x01) {
+    if ((status_data & 0b11) == 0b11) {
         // all selftests passed
         StateMachine_Dispatch(sm, EVENT_FAULT_CLEARED);
         status_data |= (1 << 7);
     } else {
         selftest_tries++;
         status_data |= INA219_SelfTest();
-        status_data |= SD_SelfTest();
+
+        // Do self-test until SD card is mounted.
+        // When the power unit is not connected, the SD card would try to be mounted until the end of the universe.
+        // This however causes problems with the FLASH, because it shares the same SPI lane.
+        // Therefore, we stop doing the self-test once it succeeds.
+        if (sd_mount_result == 42 || sd_mount_result == 0) {
+            uint8_t sd_self_test = SD_SelfTest();
+            sd_mount_result = sd_self_test;
+            status_data |= (sd_self_test << 1);
+        } else {
+            status_data |= (sd_mount_result << 1);
+        }
     }
 }
 static void StartupDo(StateMachine_t *sm, uint16_t freq) {
@@ -100,8 +114,18 @@ static void InitDo(StateMachine_t *sm, uint16_t freq) {
         status_data |= (1 << 7);
     } else {
         selftest_tries++;
-        status_data |= INA219_SelfTest();
-        status_data |= (SD_SelfTest() << 1);
+
+        // Do self-test until SD card is mounted.
+        // When the power unit is not connected, the SD card would try to be mounted until the end of the universe.
+        // This however causes problems with the FLASH, because it shares the same SPI lane.
+        // Therefore, we stop doing the self-test once it succeeds.
+        if (sd_mount_result == 42 || sd_mount_result == 0) {
+            uint8_t sd_self_test = SD_SelfTest();
+            sd_mount_result = sd_self_test;
+            status_data |= (sd_self_test << 1);
+        } else {
+            status_data |= (sd_mount_result << 1);
+        }
     }
 }
 static void OperationalDo(StateMachine_t *sm, uint16_t freq) {

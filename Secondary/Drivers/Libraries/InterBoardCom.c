@@ -295,8 +295,8 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
             if (dataPacket->Data.command.command_id == COMMAND_ID_STORAGE_FLASH_TO_SD) {
                 uint16_t page;
                 memcpy(&page, dataPacket->Data.command.params, sizeof(page));
-                // TODO: Improge
-                //W25Q_CopyLogsToSD(page);
+                // TODO: Improve
+                W25Q_CopyLogsToSD(page);
                 // Storage command 0x00: FlashToSD
                 //W25Q_FLASH_CONFIG.write_logs = false;
                 //saving_to_SD = true; // Trigger saving flash to SD in main loop

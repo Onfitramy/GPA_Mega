@@ -248,7 +248,7 @@ uint16_t receivedPackets = 0;
 void StartInterBoardComTask(void *argument)
 {
   /* USER CODE BEGIN StartInterBoardComTask */
-  // W25Q_GetConfig();
+  W25Q_GetConfig();
   
   //XBee_Init();
 
@@ -378,8 +378,6 @@ void StartSDTask(void *argument)
   //// Failed to mount SD card
   //// vTaskDelete(NULL); // Delete this task if SD card cannot be mounted
   //}
-
-  FRESULT mount_result = SD_Mount();
 
   // W25Q_Chip_Erase();
 
