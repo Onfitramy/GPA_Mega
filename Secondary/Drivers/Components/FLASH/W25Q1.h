@@ -63,4 +63,4 @@ void W25Q_AddFlashBufferPacket(const DataPacket_t *data_packet);
 void W25Q_WriteFlashBuffer();
 void W25Q_LoadFromLog(uint8_t *data, uint32_t size, uint32_t log_page, uint32_t log_offset);
 void W25Q_GetConfig();
-void W25Q_CopyLogsToSD();
+void W25Q_CopyLogsToSD(uint16_t max_page);

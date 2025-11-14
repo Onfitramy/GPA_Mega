@@ -394,11 +394,12 @@ void StartSDTask(void *argument)
   /* Infinite loop */
   for(;;) {
     //SD_SaveBuffer();
-    if(saving_to_SD){
-        W25Q_CopyLogsToSD();
-        saving_to_SD = false;
-        W25Q_FLASH_CONFIG.write_logs = true;
-    }
+    // TODO: Improve
+    // if(saving_to_SD){
+    //     W25Q_CopyLogsToSD();
+    //     saving_to_SD = false;
+    //     W25Q_FLASH_CONFIG.write_logs = true;
+    // }
     if (W25Q_FLASH_CONFIG.write_logs == true) {
       if (xSemaphoreTake(flashSemaphore, portMAX_DELAY) == pdTRUE) {
         W25Q_WriteFlashBuffer();

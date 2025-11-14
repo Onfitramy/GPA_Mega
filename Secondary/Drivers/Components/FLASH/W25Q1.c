@@ -81,8 +81,6 @@ void W25Q_AddFlashBufferPacket(const DataPacket_t *data_packet) {
 }
 
 void W25Q_WriteFlashBuffer() {
-	DataPacket_t* buffer_to_write = (flash_packet_buffer == flash_packet_buffer1) ? flash_packet_buffer2 : flash_packet_buffer1;
-
 	if (W25Q_FLASH_CONFIG.write_logs) {
 		for (int i = 0; i < PAGES_PER_SECTOR; ++i) {
 			W25Q_SaveToLog((uint8_t*)(flash_packet_buffer + i * PACKETS_PER_PAGE), PACKETS_PER_PAGE * sizeof(DataPacket_t));
@@ -90,7 +88,7 @@ void W25Q_WriteFlashBuffer() {
 
 		W25Q_WriteConfig();
 
-	flash_buffer_index = 0;
+		flash_buffer_index = 0;
 	}
 }
 
@@ -554,16 +552,20 @@ void W25Q_GetConfig() {
 	}
 }
 
-void W25Q_CopyLogsToSD() {
+void W25Q_CopyLogsToSD(uint16_t max_page) {
+	if (max_page == 0) {
+		max_page = W25Q_FLASH_CONFIG.curr_logPage;
+	} else if (max_page < LOG_PAGE) {
+		return;
+	}
+
 	bool write_logs = W25Q_FLASH_CONFIG.write_logs;
 	W25Q_FLASH_CONFIG.write_logs = false;
 
 	uint32_t size = FLASH_BUFFER_SIZE * sizeof(DataPacket_t);
 	uint8_t buffer[size];
-	memset(buffer, 255, size);
 
-	for (uint32_t page = LOG_PAGE; page < 256 * PAGES_PER_SECTOR; page += PAGES_PER_SECTOR) {
-		// W25Q_Erase_Sector(page / PAGES_PER_SECTOR);
+	for (uint32_t page = LOG_PAGE; page < max_page; page += PAGES_PER_SECTOR) {
 		W25Q_LoadFromLog(buffer, size, page, 0);
 
 		DataPacket_t *packets = (DataPacket_t *) buffer;
@@ -577,9 +579,7 @@ void W25Q_CopyLogsToSD() {
 		}
 	}
 
-	if (write_logs) {
-		W25Q_FLASH_CONFIG.write_logs = true;
-	}
+	W25Q_FLASH_CONFIG.write_logs = write_logs;
 }
 
 /**

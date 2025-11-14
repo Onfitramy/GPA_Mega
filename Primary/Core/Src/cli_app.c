@@ -913,15 +913,18 @@ BaseType_t cmd_Storage_FLASH_To_SD(char *pcWriteBuffer, size_t xWriteBufferLen, 
     uint8_t parameters[3];
 
     pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    uint32_t parameter;
     if (pcParameter == NULL) { //Handle to missing Input
-        parameters[2] = 1;
+        parameter = 0;
+    } else {
+        parameter = (uint32_t)strtoul(pcParameter, &endPtr, 10);
+
+        if (parameter < 1024 || parameter > 65535) {
+            snprintf(pcWriteBuffer, xWriteBufferLen, "Page must me in the range between 1024 and 65535\r\n");
+            return pdFALSE;
+        }
     }
-    uint32_t parameter_int = (uint32_t)strtoul(pcParameter, &endPtr, 10);
-    if (parameter_int < 1024 || parameter_int > 65535) {
-        snprintf(pcWriteBuffer, xWriteBufferLen, "Page must me in the range between 1024 and 65535\r\n");
-        return pdFALSE;
-    }
-    uint16_t parameter_16 = (uint16_t)parameter_int;
+    uint16_t parameter_16 = (uint16_t)parameter;
     memcpy(parameters, &parameter_16, sizeof(parameter_16));
 
     DataPacket_t packet;
@@ -929,7 +932,7 @@ BaseType_t cmd_Storage_FLASH_To_SD(char *pcWriteBuffer, size_t xWriteBufferLen, 
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
-    if (parameters[2]) {
+    if (parameter == 0) {
         snprintf(pcWriteBuffer, xWriteBufferLen, "Transferring data from FLASH to SC card up to current config page\r\n");
     } else {
         snprintf(pcWriteBuffer, xWriteBufferLen, "Transferring data from FLASH to SC card up to page %d\r\n");
@@ -1254,7 +1257,7 @@ const CLI_Command_Definition_t xCommandList[] = {
         .pcHelpString = "Storage_FLASH_To_SD <?page>: Transfers data from FLASH to SD card. "
                         "Logs are copied up to the current log page in the config, if no page is explicitly specified.\r\n\r\n",
         .pxCommandInterpreter = cmd_Storage_FLASH_To_SD, /* The function to run. */
-        .cExpectedNumberOfParameters = 1
+        .cExpectedNumberOfParameters = -1
     },
     {
         .pcCommand = "Storage_FLASH_Erase", /* The command string to type. */
