@@ -1,6 +1,7 @@
 #ifndef Packets_H_
 #define Packets_H_
 
+#include "statemachine.h"
 #include "stm32f4xx_hal.h"
 /*This file includes all public Packets for the differten devices and sending modes*/
 /*They are used for radio transmittion, flash/SD saving and interBoardCommunication*/
@@ -18,8 +19,8 @@ typedef enum __attribute__((packed)){
     PACKET_ID_ATTITUDE = 0x07, // Attitude data packet
     PACKET_ID_KALMANMATRIX = 0x08, // Kalman Matrix data packet
     PACKET_ID_SPARK = 0x09, // SPARK data packet
-
     PACKET_ID_COMMAND = 0x10, // Command packet
+    PACKET_ID_STATE = 0x11, // Command packet
 } PacketType_t;
 
 typedef enum __attribute__((packed)){
@@ -71,8 +72,10 @@ typedef enum __attribute__((packed)){
     COMMAND_ID_BUZZER_PLAYSONGREPEAT = 0x05,
     COMMAND_ID_BUZZER_STOPALL = 0x06,
 
-    COMMAND_ID_STORAGE_FLASHTOSD = 0x00,
-    COMMAND_ID_STORAGE_FLASHERASE = 0x01
+    COMMAND_ID_STORAGE_FLASH_TO_SD = 0x00,
+    COMMAND_ID_STORAGE_FLASH_ERASE = 0x01,
+    COMMAND_ID_STORAGE_FLASH_WRITE = 0x02,
+    COMMAND_ID_STORAGE_SD_UNMOUNT = 0x03,
 } CommandID_t;
 
 /* Packet and Payload structure definitions */
@@ -150,6 +153,11 @@ typedef struct {
     uint16_t unused1; // 26 bytes
 } TestPayload_t;
 
+typedef struct {
+    uint8_t flight_state;
+    uint32_t timestamp_us;
+} StateData_t;
+
 typedef union {
     StatusPayload_t status;
     PowerPayload_t power;
@@ -162,6 +170,7 @@ typedef union {
     SPARKPayload_t spark;
     CommandPayload_t command;
     TestPayload_t test;
+    StateData_t state;
     uint8_t raw[26];
 } PayloadData_u;
 

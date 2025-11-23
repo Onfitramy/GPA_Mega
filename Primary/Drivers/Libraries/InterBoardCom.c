@@ -338,7 +338,8 @@ uint8_t USB_OutputDataPacket(DataPacket_t *packet) {
                     packet->Packet_ID , packet->timestamp, packet->Data.status.status_flags, packet->Data.status.sensor_status_flags, packet->Data.status.error_flags, packet->Data.status.State);
             break;
         default:
-            return; // Unsupported packet type
+            break;
+            // return; // Unsupported packet type
     }
     return CDC_Transmit_HS(usb_packet_buffer, strlen((char *)usb_packet_buffer));
 }
@@ -367,7 +368,7 @@ void InterBoardCom_SendDataPacket(InterBoardPacketID_t Inter_ID, DataPacket_t *p
     InterBoardCom_FillData(&newPacket, packet);
 
     // Send the packet
-    InterBoardCom_QueuePacket(&newPacket);
+    int result = InterBoardCom_QueuePacket(&newPacket);
 }
 
 /**

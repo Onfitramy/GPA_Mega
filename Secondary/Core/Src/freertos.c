@@ -244,12 +244,15 @@ void Start10HzTask(void *argument){
 }
 
 uint16_t receivedPackets = 0;
+extern W25Q_State_t W25Q_STATE;
 
 void StartInterBoardComTask(void *argument)
 {
   /* USER CODE BEGIN StartInterBoardComTask */
+  W25Q_STATE = W25Q_State_Reading;
   W25Q_GetConfig();
-  
+  W25Q_STATE = W25Q_State_Available;
+
   //XBee_Init();
 
   InterBoardCom_Init();
@@ -321,7 +324,7 @@ void StartInterruptTask(void *argument)
               // Handle error
               XBee_Temp = 255; // Invalid temperature
             }
-          
+
           //Device Identifier Response
           } else if (packet.frame_data[2] == 'S' && packet.frame_data[3] == 'L') { // DD command
             // Device Identifier Response
@@ -363,32 +366,37 @@ void StartInterruptTask(void *argument)
   /* USER CODE END StartInterruptTask */
 }
 
-volatile bool saving_to_SD = false;
-extern W25QPage0_config_t W25Q_FLASH_CONFIG;
+volatile uint16_t sd_copy_page = 0;
+extern volatile W25QPage0_config_t W25Q_FLASH_CONFIG;
+
 void StartSDTask(void *argument)
 {
-  /* USER CODE BEGIN StartSDTask */
-  if (SD_Mount() == FR_OK) {
-    // Successfully mounted SD card
-  } else {
-    // Failed to mount SD card
-    // vTaskDelete(NULL); // Delete this task if SD card cannot be mounted
-  }
-
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 100; // 10 Hz
   /* Infinite loop */
   for(;;) {
-    //SD_SaveBuffer();
-    if(saving_to_SD){
-        W25Q_CopyLogsToSD();
-        saving_to_SD = false;
-        W25Q_FLASH_CONFIG.write_logs = true;
-    }
-    if (W25Q_FLASH_CONFIG.write_logs == true) {
-      if (xSemaphoreTake(flashSemaphore, portMAX_DELAY) == pdTRUE) {
-        W25Q_WriteFlashBuffer();
-      }
+    switch (W25Q_STATE) {
+      case W25Q_State_Available:
+        if (W25Q_FLASH_CONFIG.write_logs && xSemaphoreTake(flashSemaphore, portMAX_DELAY) == pdTRUE) {
+          W25Q_STATE = W25Q_State_Writing;
+          W25Q_WriteFlashBuffer();
+          W25Q_STATE = W25Q_State_Available;
+        }
+        break;
+      case W25Q_State_Writing:
+        break;
+      case W25Q_State_Reading:
+        break;
+      case W25Q_State_Erasing:
+        W25Q_Chip_Erase();
+        W25Q_STATE = W25Q_State_Available;
+        buzzerPlayNote("C6", 50);
+        break;
+      case W25Q_State_CopyingToSD:
+        W25Q_CopyLogsToSD(sd_copy_page);
+        W25Q_STATE = W25Q_State_Available;
+        buzzerPlayNote("C6", 50);
+        break;
     }
   }
   /* USER CODE END StartSDTask */

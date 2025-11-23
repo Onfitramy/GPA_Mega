@@ -25,9 +25,9 @@ uint8_t SD_SaveBuffer(char *filename){
   if (write_size == 0) {
     return 1; // Nothing to save
   }
-  SD_Open(filename, FA_WRITE | FA_OPEN_APPEND);
-  SD_Write(save_buffer, write_size);
-  SD_Close();
+  FRESULT open = SD_Open(filename, FA_WRITE | FA_OPEN_APPEND);
+  FRESULT write = SD_Write(save_buffer, write_size);
+  FRESULT close = SD_Close();
   return 0; // Success
 }
 
@@ -92,8 +92,13 @@ uint8_t SD_AppendDataPacketToBuffer(DataPacket_t* packet) {
                 packet->Data.kalman.EKF2_Heigth, packet->Data.kalman.EKF2_vel, packet->Data.kalman.EKF2_refPres);
         text_size = strlen(text_buffer);
         break;
+      case PACKET_ID_STATE:
+        sprintf(text_buffer, "\nID:%d, TS:%lu, STATE:%d, STATE_TS:%ld", packet->Packet_ID, packet->timestamp, packet->Data.state.flight_state, packet->Data.state.timestamp_us);
+        text_size = strlen(text_buffer);
+        break;
       default:
-        return 2; // Error: Invalid Packet ID
+        break;
+        //return 2; // Error: Invalid Packet ID
     }
 
     // Check if there is enough space in the buffer
@@ -181,4 +186,10 @@ uint8_t SD_Close(void)
     return 1;  // Error
   }
   return 0;  // Success
+}
+
+uint8_t SD_SelfTest(void) {
+  FRESULT mount = SD_Mount();
+  if (mount == FR_OK) return 1; // Success
+  return 0; // Error
 }

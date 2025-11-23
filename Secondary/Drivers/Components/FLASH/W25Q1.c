@@ -12,7 +12,7 @@
 #include "semphr.h"
 #include "task.h"
 
-W25QPage0_config_t W25Q_FLASH_CONFIG = {
+volatile W25QPage0_config_t W25Q_FLASH_CONFIG = {
 	.ID = {0x41, 0x45}, // AP in hex
 	.curr_configPage = CONFIG_PAGE, // Start at the configuration page
 	.curr_configOffset = 0, // Start at the beginning of the configuration page
@@ -20,6 +20,8 @@ W25QPage0_config_t W25Q_FLASH_CONFIG = {
 	.curr_logOffset = 0, // Start at the beginning of the log page
 	.write_logs = false,
 };
+
+volatile W25Q_State_t W25Q_STATE = W25Q_State_Available;
 
 /**
  * @brief Write two configs to the flash.
@@ -33,7 +35,7 @@ void W25Q_WriteConfig() {
 //Saves the data to the log page
 void W25Q_SaveToLog(uint8_t *data, uint32_t size)
 {
-	if (size == 0 || !W25Q_FLASH_CONFIG.write_logs) return; // nothing to save
+	if (size == 0) return; // nothing to save
 
 	// Check if we have enough space in the current log page
 	if (W25Q_FLASH_CONFIG.curr_logOffset + size > 256) {
@@ -81,14 +83,13 @@ void W25Q_AddFlashBufferPacket(const DataPacket_t *data_packet) {
 }
 
 void W25Q_WriteFlashBuffer() {
-	DataPacket_t* buffer_to_write = (flash_packet_buffer == flash_packet_buffer1) ? flash_packet_buffer2 : flash_packet_buffer1;
-	//W25Q_Erase_Sector(W25Q_FLASH_CONFIG.curr_logPage / PAGES_PER_SECTOR); //No need to erase, we always write to new sectors
-	for (int i = 0; i < PAGES_PER_SECTOR; ++i) {
-		W25Q_SaveToLog((uint8_t*)(buffer_to_write + i * PACKETS_PER_PAGE), PACKETS_PER_PAGE * sizeof(DataPacket_t));
-	}
+	if (W25Q_FLASH_CONFIG.write_logs) {
+		for (int i = 0; i < PAGES_PER_SECTOR; ++i) {
+			W25Q_SaveToLog((uint8_t*)(flash_packet_buffer + i * PACKETS_PER_PAGE), PACKETS_PER_PAGE * sizeof(DataPacket_t));
+		}
 
-	W25Q_WriteConfig();
-	flash_buffer_index = 0;
+		W25Q_WriteConfig();
+	}
 }
 
 void W25Q_LoadFromLog(uint8_t *data, uint32_t size, uint32_t log_page, uint32_t log_offset)
@@ -502,7 +503,7 @@ void W25Q_Chip_Erase (void)
     HAL_SPI_Transmit(&W25Q1_SPI, tData, 1, 100);
     csHIGH();
 
-    vTaskDelay(40000); //should be 40s - 200s
+	W25Q_WaitForInstruction(0x05);
 	disable_write();
 
 	W25Q_WriteConfig();
@@ -529,7 +530,8 @@ static void W25Q_AlignSectorOffset() {
 }
 
 void W25Q_GetConfig() {
-	vTaskDelay(20);
+	// Wait for Flash to initialize
+	vTaskDelay(1000);
 
 	uint8_t tempConfig1[sizeof(W25QPage0_config_t)];
 	uint8_t tempConfig2[sizeof(W25QPage0_config_t)];
@@ -550,11 +552,20 @@ void W25Q_GetConfig() {
 	}
 }
 
-void W25Q_CopyLogsToSD() {
+void W25Q_CopyLogsToSD(uint16_t max_page) {
+	if (max_page == 0) {
+		max_page = W25Q_FLASH_CONFIG.curr_logPage;
+	} else if (max_page < LOG_PAGE) {
+		return;
+	}
+
+	bool write_logs = W25Q_FLASH_CONFIG.write_logs;
+	W25Q_FLASH_CONFIG.write_logs = false;
+
 	uint32_t size = FLASH_BUFFER_SIZE * sizeof(DataPacket_t);
 	uint8_t buffer[size];
 
-	for (uint32_t page = LOG_PAGE; page < W25Q_FLASH_CONFIG.curr_logPage; page += PAGES_PER_SECTOR) {
+	for (uint32_t page = LOG_PAGE; page < max_page; page += PAGES_PER_SECTOR) {
 		W25Q_LoadFromLog(buffer, size, page, 0);
 
 		DataPacket_t *packets = (DataPacket_t *) buffer;
@@ -567,6 +578,8 @@ void W25Q_CopyLogsToSD() {
 			}
 		}
 	}
+
+	W25Q_FLASH_CONFIG.write_logs = write_logs;
 }
 
 /**

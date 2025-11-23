@@ -6,6 +6,7 @@
 #include "signalPlotter.h"
 #include <string.h>
 #include "spark.h"
+#include "cli_app.h"
 
 int16_t float_to_int16_scaled(float value, float scale_factor);
 int32_t float_to_int32_scaled(float value, float scale_factor);
@@ -85,7 +86,7 @@ void UpdatePowerPacket(DataPacket_t *power_packet, uint32_t timestamp, float PU_
     calcCRC(power_packet);
 }
 
-void UpdateIMUDataPacket(DataPacket_t *imu_packet, uint32_t timestamp, IMU_Data_t *imu_data, LIS3MDL_Data_t *mag_data) {
+void UpdateIMUDataPacket(DataPacket_t *imu_packet, uint32_t timestamp, IMU_AverageData_t *imu_data, LIS3MDL_Data_t *mag_data) {
     imu_packet->timestamp = timestamp;
 
     // Update the IMU packet with the latest IMU data
@@ -172,6 +173,15 @@ void UpdateAttitudePacket(DataPacket_t *attitude_packet, uint32_t timestamp, flo
     attitude_packet->Data.attitude.psi = psi;
 
     calcCRC(attitude_packet);
+}
+
+void UpdateStatePacket(DataPacket_t *state_packet, uint32_t timestamp, uint8_t flight_state, uint32_t timestamp_ms) {
+    state_packet->Packet_ID = PACKET_ID_STATE;
+    state_packet->timestamp = timestamp;
+    state_packet->Data.state.flight_state = flight_state;
+    state_packet->Data.state.timestamp_us = timestamp_ms;
+
+    calcCRC(state_packet);
 }
 
 void CreateCommandPacket(DataPacket_t *command_packet, uint32_t timestamp, CommandTarget_t command_target, uint8_t command_id, uint8_t *params, size_t params_length) {
@@ -339,5 +349,12 @@ void Camera_Wifi(bool enable) {
     parameters[0] = enable;
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_CAMERA, COMMAND_ID_CAMERA_WIFI, parameters, sizeof(parameters));
+    sendcmdToTarget(&packet);
+}
+
+void Storage_FlashSave(bool enable) {
+    uint8_t parameters[1] = { enable };
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STORAGE, COMMAND_ID_STORAGE_FLASH_WRITE, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
 }

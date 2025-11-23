@@ -15,7 +15,7 @@
 #include "ws2812.h"
 #include "IMUS.h"
 #include "FreeRTOS.h"
-#include "Packets.h"
+#include "packets.h"
 #include "InterBoardCom.h"
 
 #define MAX_INPUT_LENGTH 50
@@ -903,17 +903,42 @@ BaseType_t cmd_Radio_Switch(char *pcWriteBuffer, size_t xWriteBufferLen, const c
 }
 
 //*****************************************************************************
-BaseType_t cmd_Storage_FLASHtoSD(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+BaseType_t cmd_Storage_FLASH_To_SD(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {
     (void)pcCommandString;
     (void)xWriteBufferLen;
-    
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    uint8_t parameters[3];
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    uint32_t parameter;
+    if (pcParameter == NULL) { //Handle to missing Input
+        parameter = 0;
+    } else {
+        parameter = (uint32_t)strtoul(pcParameter, &endPtr, 10);
+
+        if (parameter < 1024 || parameter > 65535) {
+            snprintf(pcWriteBuffer, xWriteBufferLen, "Page must me in the range between 1024 and 65535\r\n");
+            return pdFALSE;
+        }
+    }
+    uint16_t parameter_16 = (uint16_t)parameter;
+    memcpy(parameters, &parameter_16, sizeof(parameter_16));
+
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STORAGE, COMMAND_ID_STORAGE_FLASHTOSD, NULL, 0);
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STORAGE, COMMAND_ID_STORAGE_FLASH_TO_SD, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
-    snprintf(pcWriteBuffer, 50, "Transferring data from FLASH to SD card...\r\n");
+    if (parameter == 0) {
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Transferring data from FLASH to SC card up to current config page\r\n");
+    } else {
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Transferring data from FLASH to SC card up to page %d\r\n");
+    }
 
     return pdFALSE;
 }
@@ -925,7 +950,7 @@ BaseType_t cmd_Storage_FLASH_Erase(char *pcWriteBuffer, size_t xWriteBufferLen, 
     (void)xWriteBufferLen;
     
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STORAGE, COMMAND_ID_STORAGE_FLASHERASE, NULL, 0);
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STORAGE, COMMAND_ID_STORAGE_FLASH_ERASE, NULL, 0);
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
@@ -935,7 +960,7 @@ BaseType_t cmd_Storage_FLASH_Erase(char *pcWriteBuffer, size_t xWriteBufferLen, 
 }
 
 //*****************************************************************************
-BaseType_t cmd_Storage_FLASH_saving(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+BaseType_t cmd_Storage_FLASH_Write(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {
     (void)pcCommandString;
     (void)xWriteBufferLen;
@@ -955,7 +980,7 @@ BaseType_t cmd_Storage_FLASH_saving(char *pcWriteBuffer, size_t xWriteBufferLen,
 
     /* Write the response to the buffer */
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STORAGE, 2, parameters, sizeof(parameters));
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STORAGE, COMMAND_ID_STORAGE_FLASH_WRITE, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
 
     snprintf(pcWriteBuffer, 50, "Flash Saving set to %d\r\n", parameters[0]);
@@ -1016,6 +1041,22 @@ BaseType_t cmd_Flash(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pc
     }
 
     /* Write the response to the buffer */
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_Storage_SD_Unmount(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STORAGE, COMMAND_ID_STORAGE_SD_UNMOUNT, NULL, 0);
+    sendcmdToTarget(&packet);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 50, "Unmounting SD card...\r\n");
 
     return pdFALSE;
 }
@@ -1214,10 +1255,11 @@ const CLI_Command_Definition_t xCommandList[] = {
         .cExpectedNumberOfParameters = 1
     },
     {
-        .pcCommand = "Storage_FLASHtoSD", /* The command string to type. */
-        .pcHelpString = "Storage_FLASHtoSD: Transfers data from FLASH to SD card\r\n\r\n",
-        .pxCommandInterpreter = cmd_Storage_FLASHtoSD, /* The function to run. */
-        .cExpectedNumberOfParameters = 0
+        .pcCommand = "Storage_FLASH_To_SD", /* The command string to type. */
+        .pcHelpString = "Storage_FLASH_To_SD <?page>: Transfers data from FLASH to SD card. "
+                        "Logs are copied up to the current log page in the config, if no page is explicitly specified.\r\n\r\n",
+        .pxCommandInterpreter = cmd_Storage_FLASH_To_SD, /* The function to run. */
+        .cExpectedNumberOfParameters = -1
     },
     {
         .pcCommand = "Storage_FLASH_Erase", /* The command string to type. */
@@ -1226,10 +1268,16 @@ const CLI_Command_Definition_t xCommandList[] = {
         .cExpectedNumberOfParameters = 0
     },
     {
-        .pcCommand = "Storage_FLASH_saving", /* The command string to type. */
-        .pcHelpString = "Storage_FLASH_saving <1/0>: Enables data saving to FLASH memory\r\n\r\n",
-        .pxCommandInterpreter = cmd_Storage_FLASH_saving, /* The function to run. */
+        .pcCommand = "Storage_FLASH_Write", /* The command string to type. */
+        .pcHelpString = "Storage_FLASH_Write <1/0>: Enables data saving to FLASH memory\r\n\r\n",
+        .pxCommandInterpreter = cmd_Storage_FLASH_Write, /* The function to run. */
         .cExpectedNumberOfParameters = 1
+    },
+    {
+        .pcCommand = "Storage_SD_Unmount", /* The command string to type. */
+        .pcHelpString = "Storage_SD_Unmount: Unmounts the SD card\r\n\r\n",
+        .pxCommandInterpreter = cmd_Storage_SD_Unmount, /* The function to run. */
+        .cExpectedNumberOfParameters = 0
     },
     {
         .pcCommand = NULL /* simply used as delimeter for end of array*/

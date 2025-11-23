@@ -21,7 +21,8 @@ typedef enum __attribute__((packed)){
     PACKET_ID_KALMANMATRIX = 0x08, // Kalman Matrix data packet
     PACKET_ID_SPARK = 0x09, // SPARK data packet
     PACKET_ID_COMMAND = 0x10, // Command packet
-    
+    PACKET_ID_STATE = 0x11, // Command packet
+
     // Force to 8-bit size
     PACKET_ID_FORCE_8BIT = 0xFF
 } PacketType_t;
@@ -76,8 +77,10 @@ typedef enum __attribute__((packed)){
     COMMAND_ID_BUZZER_PLAYSONGREPEAT = 0x05,
     COMMAND_ID_BUZZER_STOPALL = 0x06,
 
-    COMMAND_ID_STORAGE_FLASHTOSD = 0x00,
-    COMMAND_ID_STORAGE_FLASHERASE = 0x01
+    COMMAND_ID_STORAGE_FLASH_TO_SD = 0x00,
+    COMMAND_ID_STORAGE_FLASH_ERASE = 0x01,
+    COMMAND_ID_STORAGE_FLASH_WRITE = 0x02,
+    COMMAND_ID_STORAGE_SD_UNMOUNT = 0x03,
 } CommandID_t;
 
 /* Packet and Payload structure definitions */
@@ -156,6 +159,11 @@ typedef struct {
     uint8_t params[24];
 } CommandPayload_t;
 
+typedef struct {
+    uint8_t flight_state;
+    uint32_t timestamp_us;
+} StateData_t;
+
 typedef union {
     StatusPayload_t status;
     PowerPayload_t power;
@@ -168,6 +176,7 @@ typedef union {
     SPARKPayload_t spark;
     TestPayload_t test;
     CommandPayload_t command;
+    StateData_t state;
     uint8_t raw[26];
 } PayloadData_u;
 
@@ -184,7 +193,7 @@ DataPacket_t CreateDataPacket(PacketType_t Packet_ID);
 void calcCRC(DataPacket_t *packet);
 uint8_t getCRC(DataPacket_t *packet);
 void UpdateStatusPacket(DataPacket_t *status_packet, uint32_t timestamp, int32_t status_flags, int32_t sensor_flags, int32_t error_flags, uint32_t flight_state);
-void UpdateIMUDataPacket(DataPacket_t *imu_packet, uint32_t timestamp, IMU_Data_t *imu_data, LIS3MDL_Data_t *mag_data);
+void UpdateIMUDataPacket(DataPacket_t *imu_packet, uint32_t timestamp, IMU_AverageData_t *imu_data, LIS3MDL_Data_t *mag_data);
 void UpdateGPSDataPacket(DataPacket_t *gps_packet, uint32_t timestamp, UBX_NAV_PVT *gps_data);
 void UpdateTemperaturePacket(DataPacket_t *temp_packet, uint32_t timestamp, int32_t M1_DTS, int32_t M1_ADC, float M1_BMP, float M1_IMU1, float M1_IMU2, float M1_MAG, float M2_3V3, uint16_t M2_XBee, float PU_bat, float pressure_static, float pressure_total);
 void UpdatePowerPacket(DataPacket_t *power_packet, uint32_t timestamp, float PU_bat_volt, float PU_out_pow, float PU_out_curr, float M2_bus_5V, float M2_bus_GPA_bat_volt);
@@ -193,6 +202,7 @@ void UpdatePositionPacket(DataPacket_t *position_packet, uint32_t timestamp, flo
 void UpdateAttitudePacket(DataPacket_t *attitude_packet, uint32_t timestamp, float phi, float theta, float psi);
 void PlotDataPacket(DataPacket_t *packet);
 void CreateCommandPacket(DataPacket_t *command_packet, uint32_t timestamp, CommandTarget_t command_target, uint8_t command_id, uint8_t *params, size_t params_length);
+void UpdateStatePacket(DataPacket_t *state_packet, uint32_t timestamp, uint8_t flight_state, uint32_t timestamp_ms);
 
 void PU_setCAM(bool on);
 void PU_setREC(bool on);
@@ -206,5 +216,6 @@ void Camera_Power(bool enable);
 void Camera_Recording(bool enable);
 void Camera_SkipDate();
 void Camera_Wifi(bool enable);
+void Storage_FlashSave(bool enable);
 
 #endif /* Packets_H_ */
