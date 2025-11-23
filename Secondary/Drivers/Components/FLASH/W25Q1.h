@@ -43,6 +43,14 @@ typedef struct {
 } W25QPage0_config_t;
 #pragma pack(pop)
 
+typedef enum {
+    W25Q_State_Available,
+    W25Q_State_Writing,
+    W25Q_State_Reading,
+    W25Q_State_Erasing,
+    W25Q_State_CopyingToSD
+} W25Q_State_t;
+
 void W25Q1_Reset(void);
 uint32_t W25Q1_ReadID(void);
 void W25Q_Erase_Sector (uint16_t numsector);

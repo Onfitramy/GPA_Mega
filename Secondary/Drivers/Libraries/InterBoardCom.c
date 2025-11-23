@@ -30,8 +30,9 @@ uint32_t invalid_packets;
 uint32_t packets_dropped;
 float packets_dropped_rate; //% of packets dropped
 
-extern volatile bool saving_to_SD;
-extern W25QPage0_config_t W25Q_FLASH_CONFIG;
+extern volatile uint16_t sd_copy_page;
+extern volatile W25QPage0_config_t W25Q_FLASH_CONFIG;
+extern volatile W25Q_State_t W25Q_STATE;
 
 void InterBoardCom_ClearSPIErrors(void);
 
@@ -293,18 +294,21 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
         case COMMAND_TARGET_STORAGE:
             // Handle storage commands
             if (dataPacket->Data.command.command_id == COMMAND_ID_STORAGE_FLASH_TO_SD) {
-                uint16_t page;
+                uint16_t page = 0;
                 memcpy(&page, dataPacket->Data.command.params, sizeof(page));
                 // TODO: Improve
-                W25Q_CopyLogsToSD(page);
                 // Storage command 0x00: FlashToSD
-                //W25Q_FLASH_CONFIG.write_logs = false;
-                //saving_to_SD = true; // Trigger saving flash to SD in main loop
+                sd_copy_page = page;
+                if (W25Q_STATE == W25Q_State_Available) {
+                    W25Q_STATE = W25Q_State_CopyingToSD; // Trigger saving flash to SD in main loop
+                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
+                }
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_STORAGE_FLASH_ERASE) {
                 // Storage command 0x01: FlashReset
-                W25Q_FLASH_CONFIG.write_logs = false;
-                W25Q_Chip_Erase();
-                InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
+                if (W25Q_STATE == W25Q_State_Available) {
+                    W25Q_STATE = W25Q_State_Erasing;
+                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
+                }
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_STORAGE_FLASH_WRITE) {
                 // Storage command 0x02: FLASH saving enable/disable
                 if (dataPacket->Data.command.params[0] == 0x01) {
@@ -314,7 +318,10 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
                 }
                 InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_STORAGE_SD_UNMOUNT) {
-                SD_Unmount();
+                if (W25Q_STATE == W25Q_State_Available) {
+                    SD_Unmount();
+                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
+                }
             }
             break;
         case COMMAND_TARGET_CAMERA:

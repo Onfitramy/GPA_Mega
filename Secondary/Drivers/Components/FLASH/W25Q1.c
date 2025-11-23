@@ -12,7 +12,7 @@
 #include "semphr.h"
 #include "task.h"
 
-W25QPage0_config_t W25Q_FLASH_CONFIG = {
+volatile W25QPage0_config_t W25Q_FLASH_CONFIG = {
 	.ID = {0x41, 0x45}, // AP in hex
 	.curr_configPage = CONFIG_PAGE, // Start at the configuration page
 	.curr_configOffset = 0, // Start at the beginning of the configuration page
@@ -20,6 +20,8 @@ W25QPage0_config_t W25Q_FLASH_CONFIG = {
 	.curr_logOffset = 0, // Start at the beginning of the log page
 	.write_logs = false,
 };
+
+volatile W25Q_State_t W25Q_STATE = W25Q_State_Available;
 
 /**
  * @brief Write two configs to the flash.
