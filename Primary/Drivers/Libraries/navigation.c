@@ -77,10 +77,6 @@ arm_matrix_instance_f32 S2_inv_corr3 = {z_size2_corr3, z_size2_corr3, S2_inv_cor
 float K2_corr3_data[x_size2*z_size2_corr3];
 arm_matrix_instance_f32 K2_corr3 = {x_size2, z_size2_corr3, K2_corr3_data};
 
-float NIS_EKF2_corr1;
-float NIS_EKF2_corr2;
-float NIS_EKF2_corr3;
-
 // Quaternion EKF variables
 ekf_data_t EKF3;
 float x3[x_size3] = {0};
@@ -108,7 +104,6 @@ arm_matrix_instance_f32 S3_inv_corr1 = {z_size3_corr1, z_size3_corr1, S3_inv_cor
 float K3_corr1_data[x_size3*z_size3_corr1];
 arm_matrix_instance_f32 K3_corr1 = {x_size3, z_size3_corr1, K3_corr1_data};
 
-float NIS_EKF3_corr1;
 float VAR_vec3_abs;
 
 
@@ -881,15 +876,18 @@ void EKFCorrectionStep(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
 
     // update covariance matrix
     EKFCorrectCovariance(ekf, ekf_corr);
+
+    // calculate Normalized Innovation Squared (NIS)
+    EKFgetNIS(ekf, ekf_corr);
 }
 
 // calculate Normalized Innovation Squared
-void EKFgetNIS(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr, float *NIS) {
+void EKFgetNIS(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
     float buffer[ekf_corr->z_size];
 
     // NIS = v' * S_inv * v
     arm_mat_vec_mult_f32(ekf_corr->S_inv, ekf_corr->v, buffer);
-    arm_vecN_dot_prod_f32(ekf_corr->z_size, ekf_corr->v, buffer, NIS);
+    arm_vecN_dot_prod_f32(ekf_corr->z_size, ekf_corr->v, buffer, &ekf_corr->NIS);
 }
 
 // returns true if predicted variance obeys thresholds
@@ -904,7 +902,7 @@ bool EKFisAligned(ekf_data_t *ekf) {
         else if (arm_mat_get_entry_f32(ekf->P, 5, 5) > P_VAR_BIAS_THRESH) return false;
         else if (arm_mat_get_entry_f32(ekf->P, 6, 6) > P_VAR_BIAS_THRESH) return false;
         else if (VAR_vec3_abs > P_VAR_ANGLE_THRESH) return false;
-        else if (NIS_EKF3_corr1 > P_NIS_EKF3_THRESH) return false;
+        else if (EKF3_corr1.NIS > P_NIS_EKF3_THRESH) return false;
         else return true;
     }
 }

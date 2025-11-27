@@ -128,6 +128,8 @@ typedef struct {
     float *v;
     float *z;
 
+    float NIS;
+
     arm_matrix_instance_f32 *H;
     arm_matrix_instance_f32 *K;
     arm_matrix_instance_f32 *R;
@@ -175,10 +177,6 @@ extern arm_matrix_instance_f32 S2_corr3;
 extern arm_matrix_instance_f32 S2_inv_corr3;
 extern arm_matrix_instance_f32 K2_corr3;
 
-extern float NIS_EKF2_corr1;
-extern float NIS_EKF2_corr2;
-extern float NIS_EKF2_corr3;
-
 extern ekf_data_t EKF3;
 extern float x3[x_size3];
 extern arm_matrix_instance_f32 F3;
@@ -196,7 +194,6 @@ extern arm_matrix_instance_f32 S3_corr1;
 extern arm_matrix_instance_f32 S3_inv_corr1;
 extern arm_matrix_instance_f32 K3_corr1;
 
-extern float NIS_EKF3_corr1;
 extern float VAR_vec3_abs;
 
 extern double WGS84[3];
@@ -286,7 +283,7 @@ void EKFGetObservationJacobian(ekf_data_t *Kalman, ekf_corr_data_t *ekf_corr);
 void EKFPredictionStep(ekf_data_t *Kalman);
 void EKFCorrectionStep(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr);
 
-void EKFgetNIS(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr, float *NIS);
+void EKFgetNIS(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr);
 bool EKFisAligned(ekf_data_t *ekf);
 
 void UpdateCircularBuffer(float *buffer, uint16_t buffer_size, uint16_t *index, float new_value);

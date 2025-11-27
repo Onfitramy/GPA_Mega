@@ -274,7 +274,6 @@ void StartDefaultTask(void *argument)
         // correction step
         EKF2_corr1.z[0] = bmp_data.pressure;
         EKFCorrectionStep(&EKF2, &EKF2_corr1);
-        EKFgetNIS(&EKF2, &EKF2_corr1, &NIS_EKF2_corr1);
       }
 
       // KALMAN FILTER, QUATERNION
@@ -335,7 +334,6 @@ void Start100HzTask(void *argument) {
         // correction step
         EKF2_corr3.z[0] = ptot_data.pressure;
         EKFCorrectionStep(&EKF2, &EKF2_corr3);
-        EKFgetNIS(&EKF2, &EKF2_corr3, &NIS_EKF2_corr3);
       }
 
       SPARK_ReadData();
@@ -343,7 +341,6 @@ void Start100HzTask(void *argument) {
       // Quaternion EKF correction step
       arm_vecN_concatenate_f32(3, average_imu_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
       EKFCorrectionStep(&EKF3, &EKF3_corr1);
-      EKFgetNIS(&EKF3, &EKF3_corr1, &NIS_EKF3_corr1);
     }
 
     InterBoardCom_ProcessTxBuffer();
@@ -409,7 +406,6 @@ void Start10HzTask(void *argument) {
 
         // Height EKF GNSS correction step
         EKFCorrectionStep(&EKF2, &EKF2_corr2);
-        EKFgetNIS(&EKF2, &EKF2_corr2, &NIS_EKF2_corr2);
       }
     }
 

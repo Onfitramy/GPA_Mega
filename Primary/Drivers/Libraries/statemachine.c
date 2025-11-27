@@ -216,12 +216,13 @@ static void InitEntry(StateMachine_t *sm) {
 
     // Activate height EKF prediction step and barometer correction step
     EKF2.prediction_state = active;
-    EKF2_corr1.correction_state = active;
-    EKF2_corr2.correction_state = inactive;
+    EKF2_corr1.correction_state = active;   // baro
+    EKF2_corr2.correction_state = inactive; // GNSS
+    EKF2_corr3.correction_state = inactive; // Ptot
 
     // Activate quaternion EKF prediction and correction step
     EKF3.prediction_state = active;
-    EKF3_corr1.correction_state = active;
+    EKF3_corr1.correction_state = active;   // mag & accel
 
     // calculate stepper position for closed ACS position
     StepperPositionFromACSAngle(0.f, &stepper_zero_position);
@@ -253,6 +254,7 @@ static void ArmedEntry(StateMachine_t *sm) {
     // start data logging
 }
 static void BurnEntry(StateMachine_t *sm) {
+    EKF3_corr1.correction_state = inactive; // mag & accel
     SPARK_TargetPositionMode(16);
 }
 static void CoastEntry(StateMachine_t *sm) {

@@ -318,7 +318,7 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(26, arm_mat_get_entry_f32(EKF3.P, 4, 4));
   signalPlotter_sendData(27, arm_mat_get_entry_f32(EKF3.P, 5, 5));
   signalPlotter_sendData(28, arm_mat_get_entry_f32(EKF3.P, 6, 6));
-  signalPlotter_sendData(29, NIS_EKF3_corr1);
+  signalPlotter_sendData(29, EKF3_corr1.NIS);
   signalPlotter_sendData(30, VAR_vec3_abs);
   #endif
 
@@ -348,8 +348,8 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(22, EKF2.x[2]);
   signalPlotter_sendData(23, gnss_height_corr);
   signalPlotter_sendData(24, gnss_velZ_corr);
-  signalPlotter_sendData(25, NIS_EKF2_corr1);
-  signalPlotter_sendData(26, NIS_EKF2_corr2);
+  signalPlotter_sendData(25, EKF2_corr1.NIS);
+  signalPlotter_sendData(26, EKF2_corr2.NIS);
   signalPlotter_sendData(27, arm_mat_get_entry_f32(EKF2.P, 0, 0));
   signalPlotter_sendData(28, arm_mat_get_entry_f32(EKF2.P, 1, 1));
   signalPlotter_sendData(29, arm_mat_get_entry_f32(EKF2.P, 2, 2));
@@ -367,7 +367,7 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(8, arm_mat_get_entry_f32(EKF3.P, 5, 5));
   signalPlotter_sendData(9, arm_mat_get_entry_f32(EKF3.P, 6, 6));
   signalPlotter_sendData(10, VAR_vec3_abs);
-  signalPlotter_sendData(11, NIS_EKF3_corr1);
+  signalPlotter_sendData(11, EKF3_corr1.NIS);
   #endif
 
   #ifdef SIGNAL_PLOTTER_OUT_6 // SPARK
