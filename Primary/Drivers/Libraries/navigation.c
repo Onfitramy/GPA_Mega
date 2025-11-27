@@ -155,8 +155,8 @@ float corr_delta_h = 0;
 float gnss_height_corr;
 float gnss_velZ_corr;
 
-// Liftoff detection
-float acc_z_buf[LIFTOFF_ACC_BUFFER_SIZE] = {0};
+// event detection
+float acc_z_buf[ACC_BUFFER_SIZE] = {0};
 uint16_t acc_z_index = 0;
 
 /* ------------------------------------------- GENERAL PURPOSE FUNCTIONS ------------------------------------------- */
@@ -418,24 +418,16 @@ void DeulerMatrixFromEuler(float phi, float theta, arm_matrix_instance_f32 *mat)
     arm_mat_set_entry_f32(mat, 2, 2, cos_vec[0]/cos_vec[1]);
 }
 
-
-
 // compensate GNSS measurement delay
 void CompensateGNSSDelay(float acc_meas, float vel_meas, float *v_corr_val, float *h_corr_val) {
     // update acceleration buffer and sum
-    corr_acc_sum -= corr_acc_buf[corr_acc_index];
-    corr_acc_buf[corr_acc_index] = acc_meas;
-    corr_acc_sum += corr_acc_buf[corr_acc_index];
-    corr_acc_index = (corr_acc_index + 1) % GNSS_VELOCITY_DELAY;
+    UpdateCircularBufferSum(corr_acc_buf, GNSS_VELOCITY_DELAY, &corr_acc_index, &corr_acc_sum, acc_meas);
 
     // calculate velocity difference between gnss delay and present
     *v_corr_val = corr_acc_sum * dt;
 
     // update velocity buffer and sum
-    corr_vel_sum -= corr_vel_buf[corr_vel_index] + 0.5 * dt * corr_acc_buf[corr_vel_index];
-    corr_vel_buf[corr_vel_index] = vel_meas;
-    corr_vel_sum += corr_vel_buf[corr_vel_index] + 0.5 * dt * corr_acc_buf[corr_vel_index];
-    corr_vel_index = (corr_vel_index + 1) % GNSS_POSITION_DELAY;
+    UpdateCircularBufferSum(corr_vel_buf, GNSS_POSITION_DELAY, &corr_vel_index, &corr_vel_sum, vel_meas);
 
     // calculate position difference between gnss delay and present
     *h_corr_val = corr_vel_sum * dt;
@@ -913,4 +905,34 @@ bool EKFisAligned(ekf_data_t *ekf) {
         else if (NIS_EKF3_corr1 > P_NIS_EKF3_THRESH) return false;
         else return true;
     }
+}
+
+void UpdateCircularBuffer(float *buffer, uint16_t buffer_size, uint16_t *index, float new_value) {
+    buffer[*index] = new_value;
+    *index = (*index + 1) % buffer_size;
+}
+
+void UpdateCircularBufferSum(float *buffer, uint16_t buffer_size, uint16_t *index, float *sum, float new_value) {
+    *sum -= buffer[*index];
+    buffer[*index] = new_value;
+    *sum += buffer[*index];
+    *index = (*index + 1) % buffer_size;
+}
+
+uint16_t GetOvershootCount(float *buffer, uint16_t size, float threshold) {
+    uint16_t overshoot_count = 0;
+    for (int i = 0; i < size; i++) {
+        if (buffer[i] > threshold)
+            overshoot_count++;
+    }
+    return overshoot_count;
+}
+
+uint16_t GetUndershootCount(float *buffer, uint16_t size, float threshold) {
+    uint16_t undershoot_count = 0;
+    for (int i = 0; i < size; i++) {
+        if (buffer[i] < threshold)
+            undershoot_count++;
+    }
+    return undershoot_count;
 }

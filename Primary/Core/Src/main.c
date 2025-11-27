@@ -171,7 +171,7 @@ int main(void)
   gpa_mega = GPA_MegaFromUID(uid);
 
   // if board is a ground station, set flag
-  if (gpa_mega == GPA_MEGA_1 || gpa_mega == GPA_MEGA_3) {
+  if (gpa_mega == GPA_MEGA_1) {
     is_groundstation = true;
     cli_target_mode = CLI_TARGET_MODE_EXTERNAL; // Groundstation always uses external target mode
     signalPlotterSend = false; // Disable signal plotter by default on groundstation
@@ -397,6 +397,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       HAL_TIM_Base_Stop_IT(&htim7);
 
       // handle max state timer elapsed
+      // TODO: maybe simplify by adding timer elapsed event?
       switch (flight_sm.currentFlightState) {
         case STATE_FLIGHT_BURN:             StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_BURNOUT_DETECTED); break;
         case STATE_FLIGHT_COAST:            StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_DROGUE_COMMANDED); break;

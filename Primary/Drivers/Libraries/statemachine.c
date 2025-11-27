@@ -4,6 +4,9 @@ StateMachine_t flight_sm;
 
 uint8_t selftest_tries = 0;
 
+// time index for event dispatch logic
+uint32_t time_index = 0;
+
 /* --- Event handlers --- */
 static flight_state_t AbortHandler(flight_event_t event) {
     switch (event) {
@@ -356,26 +359,45 @@ static void CheckoutsDo(StateMachine_t *sm, uint16_t freq) {
     // checkouts complete is confirmed by ground station
 }
 static void ArmedDo(StateMachine_t *sm, uint16_t freq) {
-    // Check liftoff with 1000 Hz
+    // Check for liftoff with 1000 Hz
     if (freq != 1000) return;
 
-    acc_z_buf[acc_z_index] = a_BodyFrame[1];
-    acc_z_index = (acc_z_index + 1) % LIFTOFF_ACC_BUFFER_SIZE;
+    // option 1
+    UpdateCircularBuffer(acc_z_buf, ACC_BUFFER_SIZE, &acc_z_index, a_BodyFrame[1]);
 
-    uint8_t high_g_count = 0;
-    for (int i = 0; i < LIFTOFF_ACC_BUFFER_SIZE; i++) {
-        if (acc_z_buf[i] > LIFTOFF_ACC_THRESHOLD)
-            high_g_count++;
+    if (GetOvershootCount(acc_z_buf, ACC_BUFFER_SIZE, LIFTOFF_ACC_THRESHOLD) >= LIFTOFF_MIN_OVERSHOOTS) {
+        StateMachine_Dispatch(sm, EVENT_FLIGHT_LAUNCH_DETECTED);
     }
-    if (high_g_count >= LIFTOFF_MIN_OVERSHOOTS) {
+
+    // option 2
+    if (a_BodyFrame[1] < LIFTOFF_ACC_THRESHOLD) {
+        time_index = HAL_GetTick();
+    } else if ((HAL_GetTick() - time_index) > LIFTOFF_MIN_DURATION) {
         StateMachine_Dispatch(sm, EVENT_FLIGHT_LAUNCH_DETECTED);
     }
 }
-static void BurnDo(StateMachine_t *sm, uint16_t freq) {}
+static void BurnDo(StateMachine_t *sm, uint16_t freq) {
+    // Check for burnout with 1000 Hz
+    if (freq != 1000) return;
+
+    // option 1
+    UpdateCircularBuffer(acc_z_buf, ACC_BUFFER_SIZE, &acc_z_index, a_BodyFrame[1]);
+
+    if (GetUndershootCount(acc_z_buf, ACC_BUFFER_SIZE, BURNOUT_ACC_THRESHOLD) >= BURNOUT_MIN_UNDERSHOOTS) {
+        StateMachine_Dispatch(sm, EVENT_FLIGHT_BURNOUT_DETECTED);
+    }
+
+    // option 2
+    if (a_BodyFrame[1] > BURNOUT_ACC_THRESHOLD) {
+        time_index = HAL_GetTick();
+    } else if ((HAL_GetTick() - time_index) > BURNOUT_MIN_DURATION) {
+        StateMachine_Dispatch(sm, EVENT_FLIGHT_BURNOUT_DETECTED);
+    }
+}
 static void CoastDo(StateMachine_t *sm, uint16_t freq) {
     if (freq != 100) return;
 
-    float elapsed_time = (uwTick - sm->timestamp_ms) * 1e-3f;
+    float elapsed_time = (HAL_GetTick() - sm->timestamp_ms) * 1e-3f;
     acs_target_angle_deg = 40.f + 10 * sinf(2 * M_PI * 0.25 * elapsed_time);
     StepperPositionFromACSAngle(acs_target_angle_deg, &stepper_target_position);
     StepperAngleFromPosition(stepper_target_position, stepper_zero_position, &stepper_target_angle_deg);
@@ -384,7 +406,7 @@ static void CoastDo(StateMachine_t *sm, uint16_t freq) {
 static void AwaitDrogueDo(StateMachine_t *sm, uint16_t freq) {
     // drogue deploy handler
     if (freq != 100) return;
-    uint32_t elapsed_time = uwTick - sm->timestamp_ms;
+    uint32_t elapsed_time = HAL_GetTick() - sm->timestamp_ms;
 
     // if nosecone is still attached, attempt second deployment attempt
     if (ptot_data.connected) {
@@ -550,7 +572,7 @@ uint32_t maxEventDelayTable[STATE_MAX] = {
 /* --- Action handler functions --- */
 static void StateEntryHandler(StateMachine_t *sm, flight_state_t state) {
     // set entry timestamp
-    sm->timestamp_ms = uwTick;
+    sm->timestamp_ms = HAL_GetTick();
 
     // handle entry for each state
     stateEntryTable[state](sm);
@@ -587,7 +609,7 @@ void StateMachine_Dispatch(StateMachine_t *sm, flight_event_t event) {
     if (newState == oldState || newState >= STATE_MAX) return;
 
     // don't update state if minimum entry time delay for event hasn't elapsed yet
-    if (minEventDelayTable[event] > (uwTick - sm->timestamp_ms)) return;
+    if (minEventDelayTable[event] > (HAL_GetTick() - sm->timestamp_ms)) return;
     
     // exit old state
     StateExitHandler(sm, oldState);
@@ -606,6 +628,7 @@ void StateMachine_Dispatch(StateMachine_t *sm, flight_event_t event) {
 
     // enter new state
     StateEntryHandler(sm, newState);
+    time_index = HAL_GetTick();
 }
 
 void StateMachine_ForceState(StateMachine_t *sm, flight_state_t newState) {
@@ -636,6 +659,7 @@ void StateMachine_ForceState(StateMachine_t *sm, flight_state_t newState) {
 
     // enter new state
     StateEntryHandler(sm, newState);
+    time_index = HAL_GetTick();
 }
 
 void StateMachine_DoActions(StateMachine_t *sm, uint16_t freq) {

@@ -35,10 +35,13 @@
 
 
 /* --- Event detection Settings --- */
-#define LIFTOFF_ACC_BUFFER_SIZE 50
-#define LIFTOFF_MIN_OVERSHOOTS  30
-#define LIFTOFF_ACC_THRESHOLD   10  // m/s²
-
+#define ACC_BUFFER_SIZE 50
+#define LIFTOFF_MIN_OVERSHOOTS  40
+#define LIFTOFF_ACC_THRESHOLD   20  // m/s²
+#define LIFTOFF_MIN_DURATION    50  // ms
+#define BURNOUT_MIN_UNDERSHOOTS 40
+#define BURNOUT_ACC_THRESHOLD   0   // m/s²
+#define BURNOUT_MIN_DURATION    50  // ms
 
 // EKF sizes
 #define x_size2 3
@@ -210,7 +213,7 @@ extern float corr_delta_h;
 extern float gnss_height_corr;
 extern float gnss_velZ_corr;
 
-extern float acc_z_buf[LIFTOFF_ACC_BUFFER_SIZE];
+extern float acc_z_buf[ACC_BUFFER_SIZE];
 extern uint16_t acc_z_index;
 
 /* --- Function declarations --- */
@@ -264,14 +267,10 @@ void EKFCorrectionStep(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr);
 void EKFgetNIS(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr, float *NIS);
 bool EKFisAligned(ekf_data_t *ekf);
 
+void UpdateCircularBuffer(float *buffer, uint16_t buffer_size, uint16_t *index, float new_value);
+void UpdateCircularBufferSum(float *buffer, uint16_t buffer_size, uint16_t *index, float *sum, float new_value);
 
-    /*float H_data[6*4] = { original observation model jacobian
-        2*(g_vec_enu[0]*q[0]+g_vec_enu[1]*q[3]-g_vec_enu[2]*q[2]), 2*(g_vec_enu[0]*q[1]+g_vec_enu[1]*q[2]+g_vec_enu[2]*q[3]), 2*(-g_vec_enu[0]*q[2]+g_vec_enu[1]*q[1]-g_vec_enu[2]*q[0]), 2*(-g_vec_enu[0]*q[3]+g_vec_enu[1]*q[0]+g_vec_enu[2]*q[1]),
-        2*(-g_vec_enu[0]*q[3]+g_vec_enu[1]*q[0]+g_vec_enu[2]*q[1]), 2*(g_vec_enu[0]*q[2]-g_vec_enu[1]*q[1]+g_vec_enu[2]*q[0]), 2*(g_vec_enu[0]*q[1]+g_vec_enu[1]*q[2]+g_vec_enu[2]*q[3]), 2*(-g_vec_enu[0]*q[0]-g_vec_enu[1]*q[3]+g_vec_enu[2]*q[2]),
-        2*(g_vec_enu[0]*q[2]-g_vec_enu[1]*q[1]+g_vec_enu[2]*q[0]), 2*(g_vec_enu[0]*q[3]-g_vec_enu[1]*q[0]-g_vec_enu[2]*q[1]), 2*(g_vec_enu[0]*q[0]+g_vec_enu[1]*q[3]-g_vec_enu[2]*q[2]), 2*(g_vec_enu[0]*q[1]+g_vec_enu[1]*q[2]+g_vec_enu[2]*q[3]),
-        2*(m_vec_enu[0]*q[0]+m_vec_enu[1]*q[3]-m_vec_enu[2]*q[2]), 2*(m_vec_enu[0]*q[1]+m_vec_enu[1]*q[2]+m_vec_enu[2]*q[3]), 2*(-m_vec_enu[0]*q[2]+m_vec_enu[1]*q[1]-m_vec_enu[2]*q[0]), 2*(-m_vec_enu[0]*q[3]+m_vec_enu[1]*q[0]+m_vec_enu[2]*q[1]),
-        2*(-m_vec_enu[0]*q[3]+m_vec_enu[1]*q[0]+m_vec_enu[2]*q[1]), 2*(m_vec_enu[0]*q[2]-m_vec_enu[1]*q[1]+m_vec_enu[2]*q[0]), 2*(m_vec_enu[0]*q[1]+m_vec_enu[1]*q[2]+m_vec_enu[2]*q[3]), 2*(-m_vec_enu[0]*q[0]-m_vec_enu[1]*q[3]+m_vec_enu[2]*q[2]),
-        2*(m_vec_enu[0]*q[2]-m_vec_enu[1]*q[1]+m_vec_enu[2]*q[0]), 2*(m_vec_enu[0]*q[3]-m_vec_enu[1]*q[0]-m_vec_enu[2]*q[1]), 2*(m_vec_enu[0]*q[0]+m_vec_enu[1]*q[3]-m_vec_enu[2]*q[2]), 2*(m_vec_enu[0]*q[1]+m_vec_enu[1]*q[2]+m_vec_enu[2]*q[3])       
-    };*/
+uint16_t GetOvershootCount(float *buffer, uint16_t size, float threshold);
+uint16_t GetUndershootCount(float *buffer, uint16_t size, float threshold);
 
 #endif // NAVIGATION_H

@@ -29,6 +29,12 @@ typedef enum __attribute__((packed)){
     INTERBOARD_OP_DEBUG_VIEW = INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_NONE, // Send for debugging to PC
 } InterBoardPacketID_t;
 
+extern SPI_HandleTypeDef hspi1;
+
+extern DMA_HandleTypeDef hdma_spi1_rx;
+
+extern DataPacket_t powerData; //For receiving power data from secondary
+
 //Wrapper for the DataPacket to be used to send via SPI1
 #pragma pack(push, 1)
 typedef struct {

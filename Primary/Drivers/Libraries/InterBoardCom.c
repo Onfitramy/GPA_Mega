@@ -14,12 +14,6 @@
 
 #define SPI1_RX_SIZE (sizeof(InterBoardPacket_t))
 
-extern SPI_HandleTypeDef hspi1;
-
-extern DMA_HandleTypeDef hdma_spi1_rx;
-
-extern DataPacket_t powerData; //For receiving power data from secondary
-
 InterBoardCircularBuffer_t txCircBuffer; // outgoing buffer
 
 InterBoardPacket_t receiveBuffer;

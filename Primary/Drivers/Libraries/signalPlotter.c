@@ -3,6 +3,7 @@
 #include "usbd_cdc_if.h"
 #include <stdint.h>
 #include <string.h>
+#include "InterBoardCom.h"
 
 bool signalPlotterSend = true;
 
@@ -228,6 +229,8 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(8, "temperature_converter");
   signalPlotter_setSignalName(9, "sparkStatus");
   signalPlotter_setSignalName(10, "TargetAngle");
+  signalPlotter_setSignalName(11, "PU current");
+  signalPlotter_setSignalName(12, "PU voltage");
 
   #endif
 
@@ -328,9 +331,9 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(5, average_imu_data.accel[0]);
   signalPlotter_sendData(6, average_imu_data.accel[1]);
   signalPlotter_sendData(7, average_imu_data.accel[2]);
-  signalPlotter_sendData(8, a_WorldFrame[0]);
-  signalPlotter_sendData(9, a_WorldFrame[1]);
-  signalPlotter_sendData(10, a_WorldFrame[2]);
+  signalPlotter_sendData(8, a_BodyFrame[0]);
+  signalPlotter_sendData(9, a_BodyFrame[1]);
+  signalPlotter_sendData(10, a_BodyFrame[2]);
   signalPlotter_sendData(11, bmp_data.pressure);
   signalPlotter_sendData(12, bmp_data.height);
   signalPlotter_sendData(13, ptot_data.pressure);
@@ -379,6 +382,8 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(8, spark_data.Data.spark.temperature_converter);
   signalPlotter_sendData(9, (float)spark_data.Data.spark.sparkStatus);
   signalPlotter_sendData(10, stepper_target_angle_deg);
+  signalPlotter_sendData(11, (float)powerData.Data.power.PU_curr*1e-3f);
+  signalPlotter_sendData(12, (float)powerData.Data.power.PU_bat_bus_volt*1e-3f);
 
   #endif
 
