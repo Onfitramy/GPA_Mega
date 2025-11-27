@@ -133,9 +133,11 @@ float euler[3] = {0};
 float flightpath_angle = 0;
 
 // vectors
-float a_WorldFrame[3] = {0}; // Acceleration
-float a_BodyFrame[3] = {0};
-float a_abs;
+float a_WorldFrame_g[3] = {0};  // World-Frame Acceleration with gravity
+float a_WorldFrame_i[3] = {0};  // World-Frame Acceleration without gravity
+float a_BodyFrame_i[3] = {0};   // Body-Frame Acceleration without gravity
+float a_abs_g;                  // Absolute Acceleration with gravity
+float a_abs_i;                  // Absolute Acceleration without gravity
 float gravity_world_vec[3] = {0, 0, 9.8};
 float gravity_body_vec[3];
 

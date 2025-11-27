@@ -178,7 +178,7 @@ static void StartupEntry(StateMachine_t *sm) {
 
     /* --- Initialize (Extended) Kalman Filters --- */
     // define Kalman Filter dimensions and pointers for velocity and position
-    EKFInit(&EKF2, EKF2_type, x_size2, u_size2, 0.001, &F2, &P2, &Q2, NULL, x2, &a_WorldFrame[2]);
+    EKFInit(&EKF2, EKF2_type, x_size2, u_size2, 0.001, &F2, &P2, &Q2, NULL, x2, &a_WorldFrame_i[2]);
     EKFCorrectionInit(EKF2, &EKF2_corr1, corr1_type, 1, &H2_corr1, &K2_corr1, &R2_corr1, &S2_corr1, &S2_inv_corr1, z2_corr1, h2_corr1, v2_corr1); // baro
     EKFCorrectionInit(EKF2, &EKF2_corr2, corr2_type, 2, &H2_corr2, &K2_corr2, &R2_corr2, &S2_corr2, &S2_inv_corr2, z2_corr2, h2_corr2, v2_corr2); // GNSS
     EKFCorrectionInit(EKF2, &EKF2_corr3, corr3_type, 1, &H2_corr3, &K2_corr3, &R2_corr3, &S2_corr3, &S2_inv_corr3, z2_corr3, h2_corr3, v2_corr3); // ptot
@@ -363,14 +363,14 @@ static void ArmedDo(StateMachine_t *sm, uint16_t freq) {
     if (freq != 1000) return;
 
     // option 1
-    UpdateCircularBuffer(acc_z_buf, ACC_BUFFER_SIZE, &acc_z_index, a_BodyFrame[1]);
+    UpdateCircularBuffer(acc_z_buf, ACC_BUFFER_SIZE, &acc_z_index, a_BodyFrame_i[1]);
 
     if (GetOvershootCount(acc_z_buf, ACC_BUFFER_SIZE, LIFTOFF_ACC_THRESHOLD) >= LIFTOFF_MIN_OVERSHOOTS) {
         StateMachine_Dispatch(sm, EVENT_FLIGHT_LAUNCH_DETECTED);
     }
 
     // option 2
-    if (a_BodyFrame[1] < LIFTOFF_ACC_THRESHOLD) {
+    if (a_BodyFrame_i[1] < LIFTOFF_ACC_THRESHOLD) {
         time_index = HAL_GetTick();
     } else if ((HAL_GetTick() - time_index) > LIFTOFF_MIN_DURATION) {
         StateMachine_Dispatch(sm, EVENT_FLIGHT_LAUNCH_DETECTED);
@@ -381,22 +381,34 @@ static void BurnDo(StateMachine_t *sm, uint16_t freq) {
     if (freq != 1000) return;
 
     // option 1
-    UpdateCircularBuffer(acc_z_buf, ACC_BUFFER_SIZE, &acc_z_index, a_BodyFrame[1]);
+    UpdateCircularBuffer(acc_z_buf, ACC_BUFFER_SIZE, &acc_z_index, a_BodyFrame_i[1]);
 
     if (GetUndershootCount(acc_z_buf, ACC_BUFFER_SIZE, BURNOUT_ACC_THRESHOLD) >= BURNOUT_MIN_UNDERSHOOTS) {
         StateMachine_Dispatch(sm, EVENT_FLIGHT_BURNOUT_DETECTED);
     }
 
     // option 2
-    if (a_BodyFrame[1] > BURNOUT_ACC_THRESHOLD) {
+    if (a_BodyFrame_i[1] > BURNOUT_ACC_THRESHOLD) {
         time_index = HAL_GetTick();
     } else if ((HAL_GetTick() - time_index) > BURNOUT_MIN_DURATION) {
         StateMachine_Dispatch(sm, EVENT_FLIGHT_BURNOUT_DETECTED);
     }
 }
 static void CoastDo(StateMachine_t *sm, uint16_t freq) {
+    // check for apogee with 1000 Hz
+    if (freq == 1000) {
+        // option 2
+        if (EKF2.x[1] > APOGEE_VEL_THRESHOLD) {
+            time_index = HAL_GetTick();
+        } else if ((HAL_GetTick() - time_index) > APOGEE_MIN_DURATION) {
+            StateMachine_Dispatch(sm, EVENT_FLIGHT_DROGUE_COMMANDED);
+        }
+    }
+
     if (freq != 100) return;
 
+    // TODO: replace with MPC
+    // this is a demonstration acs angle timeseries!
     float elapsed_time = (HAL_GetTick() - sm->timestamp_ms) * 1e-3f;
     acs_target_angle_deg = 40.f + 10 * sinf(2 * M_PI * 0.25 * elapsed_time);
     StepperPositionFromACSAngle(acs_target_angle_deg, &stepper_target_position);
@@ -404,11 +416,22 @@ static void CoastDo(StateMachine_t *sm, uint16_t freq) {
     SPARK_SetAngle(stepper_target_angle_deg);
 }
 static void AwaitDrogueDo(StateMachine_t *sm, uint16_t freq) {
+    // check for drogue with 1000 Hz
+    if (freq == 1000) {
+        // option 2
+        if ((EKF2.x[1] > -DROGUE_MIN_VELOCITY) || (EKF2.x[1] < -DROGUE_MAX_VELOCITY) || (a_abs_g < DROGUE_MIN_ACCELERATION)) {
+            time_index = HAL_GetTick();
+        } else if ((HAL_GetTick() - time_index) > DROGUE_MIN_DURATION) {
+            StateMachine_Dispatch(sm, EVENT_FLIGHT_DROGUE_CONFIRMED);
+        }
+    }
+
     // drogue deploy handler
     if (freq != 100) return;
     uint32_t elapsed_time = HAL_GetTick() - sm->timestamp_ms;
 
     // if nosecone is still attached, attempt second deployment attempt
+    // TODO: improve logic
     if (ptot_data.connected) {
         if ((drogue_deploy_attempts == 0) && (elapsed_time >= 4 * DROGUE_MOVE_DELAY_MS)) {
             DeployDrogue(DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
@@ -421,9 +444,39 @@ static void AwaitDrogueDo(StateMachine_t *sm, uint16_t freq) {
 
     // check if drogue has been deployed
 }
-static void DrogueDescendDo(StateMachine_t *sm, uint16_t freq) {}
-static void AwaitMainDo(StateMachine_t *sm, uint16_t freq) {}
-static void MainDescendDo(StateMachine_t *sm, uint16_t freq) {}
+static void DrogueDescendDo(StateMachine_t *sm, uint16_t freq) {
+    // check for main deployment height with 1000 Hz
+    if (freq == 1000) {
+        // option 2
+        if (EKF2.x[0] > MAIN_MIN_DEPLOY_HEIGHT) {
+            time_index = HAL_GetTick();
+        } else if ((HAL_GetTick() - time_index) > MAIN_MIN_DURATION) {
+            StateMachine_Dispatch(sm, EVENT_FLIGHT_MAIN_COMMANDED);
+        }
+    }
+}
+static void AwaitMainDo(StateMachine_t *sm, uint16_t freq) {
+    // check for main with 1000 Hz
+    if (freq == 1000) {
+        // option 2
+        if ((EKF2.x[1] > -MAIN_MIN_VELOCITY) || (EKF2.x[1] < -MAIN_MAX_VELOCITY) || (a_abs_g < MAIN_MIN_ACCELERATION)) {
+            time_index = HAL_GetTick();
+        } else if ((HAL_GetTick() - time_index) > MAIN_MIN_DURATION) {
+            StateMachine_Dispatch(sm, EVENT_FLIGHT_MAIN_CONFIRMED);
+        }
+    }
+}
+static void MainDescendDo(StateMachine_t *sm, uint16_t freq) {
+    // check for landing with 1000 Hz
+    if (freq == 1000) {
+        // option 2
+        if ((EKF2.x[1] < -LANDED_MAX_VELOCITY) || (a_abs_g < LANDED_MIN_ACCELERATION) || (a_abs_g) > LANDED_MAX_ACCELERATION) {
+            time_index = HAL_GetTick();
+        } else if ((HAL_GetTick() - time_index) > LANDED_MIN_DURATION) {
+            StateMachine_Dispatch(sm, EVENT_FLIGHT_TOUCHDOWN);
+        }
+    }
+}
 static void LandedDo(StateMachine_t *sm, uint16_t freq) {}
 static void TestInitDo(StateMachine_t *sm, uint16_t freq) {}
 static void TestCalibDo(StateMachine_t *sm, uint16_t freq) {}

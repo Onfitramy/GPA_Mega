@@ -215,7 +215,6 @@ void MX_FREERTOS_Init(void) {
   * @retval None
   */
 /* USER CODE END Header_StartDefaultTask */
-uint32_t diff;
 void StartDefaultTask(void *argument)
 {
   /* init code for USB_DEVICE */
@@ -255,21 +254,21 @@ void StartDefaultTask(void *argument)
       } // 7us
 
       // transform measured body acceleration to world-frame acceleration
-      uint32_t start = HAL_GetTickUS();
-      arm_mat_vec_mult_f32(&M_rot_ib, average_imu_data.accel, a_WorldFrame);
-      a_WorldFrame[2] -= gravity_world_vec[2];
+      arm_mat_vec_mult_f32(&M_rot_ib, average_imu_data.accel, a_WorldFrame_g);
+      arm_vec3_sub_f32(a_WorldFrame_g, gravity_world_vec, a_WorldFrame_i);
+      a_abs_g = arm_vec3_length_f32(a_WorldFrame_g);
+      a_abs_i = arm_vec3_length_f32(a_WorldFrame_i);
 
       // calculate acceleration w/o gravity in body frame
       arm_mat_vec_mult_f32(&M_rot_bi, gravity_world_vec, gravity_body_vec);
-      arm_vec3_sub_f32(average_imu_data.accel, gravity_body_vec, a_BodyFrame);
-      a_abs = arm_vec3_length_f32(a_BodyFrame);
+      arm_vec3_sub_f32(average_imu_data.accel, gravity_body_vec, a_BodyFrame_i);
 
       /* --- GNSS DELAY COMPENSATION TESTING --- */
-      CompensateGNSSDelay(a_WorldFrame[2], EKF2.x[1], &corr_delta_v, &corr_delta_h);
+      CompensateGNSSDelay(a_WorldFrame_i[2], EKF2.x[1], &corr_delta_v, &corr_delta_h);
 
       // KALMAN FILTER, HEIGHT
       EKFPredictionStep(&EKF2);
-      diff = HAL_GetTickDiffUS(start);
+
       if (BMP_readData(&bmp_data.pressure, &bmp_data.height, &bmp_data.temperature)) {
         // execute this if new data is available
         // correction step

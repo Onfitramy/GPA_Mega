@@ -39,9 +39,29 @@
 #define LIFTOFF_MIN_OVERSHOOTS  40
 #define LIFTOFF_ACC_THRESHOLD   20  // m/s²
 #define LIFTOFF_MIN_DURATION    50  // ms
+
 #define BURNOUT_MIN_UNDERSHOOTS 40
 #define BURNOUT_ACC_THRESHOLD   0   // m/s²
 #define BURNOUT_MIN_DURATION    50  // ms
+
+#define APOGEE_VEL_THRESHOLD    0   // m/s
+#define APOGEE_MIN_DURATION     100 // ms
+
+#define DROGUE_MAX_VELOCITY     40  // m/s
+#define DROGUE_MIN_VELOCITY     20  // m/s
+#define DROGUE_MIN_ACCELERATION 5   // m/s²
+#define DROGUE_MIN_DURATION     100 // ms
+
+#define MAIN_MIN_DEPLOY_HEIGHT  500 // m
+#define MAIN_MIN_DURATION       100 // ms
+#define MAIN_MAX_VELOCITY       15  // m/s
+#define MAIN_MIN_VELOCITY       5   // m/s
+#define MAIN_MIN_ACCELERATION   5   // m/s²
+
+#define LANDED_MAX_VELOCITY     1   // m/s
+#define LANDED_MAX_ACCELERATION 11  // m/s²
+#define LANDED_MIN_ACCELERATION 9   // m/s²
+#define LANDED_MIN_DURATION     1000    // ms
 
 // EKF sizes
 #define x_size2 3
@@ -192,9 +212,11 @@ extern arm_matrix_instance_f32 M_rot_q;
 extern float euler[3];
 extern float flightpath_angle;
 
-extern float a_WorldFrame[3];
-extern float a_BodyFrame[3];
-extern float a_abs;
+extern float a_WorldFrame_g[3];
+extern float a_WorldFrame_i[3];
+extern float a_BodyFrame_i[3];
+extern float a_abs_g;
+extern float a_abs_i;
 extern float gravity_world_vec[3];
 extern float gravity_body_vec[3];
 

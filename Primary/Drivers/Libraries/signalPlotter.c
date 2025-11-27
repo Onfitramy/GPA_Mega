@@ -331,9 +331,9 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(5, average_imu_data.accel[0]);
   signalPlotter_sendData(6, average_imu_data.accel[1]);
   signalPlotter_sendData(7, average_imu_data.accel[2]);
-  signalPlotter_sendData(8, a_BodyFrame[0]);
-  signalPlotter_sendData(9, a_BodyFrame[1]);
-  signalPlotter_sendData(10, a_BodyFrame[2]);
+  signalPlotter_sendData(8, a_WorldFrame_i[0]);
+  signalPlotter_sendData(9, a_WorldFrame_i[1]);
+  signalPlotter_sendData(10, a_WorldFrame_i[2]);
   signalPlotter_sendData(11, bmp_data.pressure);
   signalPlotter_sendData(12, bmp_data.height);
   signalPlotter_sendData(13, ptot_data.pressure);
