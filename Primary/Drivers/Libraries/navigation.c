@@ -905,6 +905,7 @@ bool EKFisAligned(ekf_data_t *ekf) {
         else if (EKF3_corr1.NIS > P_NIS_EKF3_THRESH) return false;
         else return true;
     }
+    return false;
 }
 
 void UpdateCircularBuffer(float *buffer, uint16_t buffer_size, uint16_t *index, float new_value) {

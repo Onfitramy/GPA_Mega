@@ -47,12 +47,11 @@ void ACSAngleFromStepperPosition(float stepper_pos, float *acs_angle_deg) {
     float AE_squared = LENGTH_AE * LENGTH_AE;
     float BE_squared = LENGTH_BE * LENGTH_BE;
 
-    // TODO: relative angle wrt stepper zero position
     float Ay = stepper_pos;
 
     float AB_squared = Ay * Ay + POSITION_BX * POSITION_BX;
 
-    float W_term = sqrtf(4 * AB_squared * BE_squared - powf(AB_squared - BE_squared - AE_squared, 2));
+    float W_term = sqrtf(4 * AE_squared * BE_squared - powf(AB_squared - BE_squared - AE_squared, 2));
 
     float Ex = ((AB_squared - BE_squared + AE_squared) * POSITION_BX + Ay * W_term) / (2 * AB_squared);
     float Ey = ((AB_squared + BE_squared - AE_squared) * Ay + POSITION_BX * W_term) / (2 * AB_squared);
@@ -87,7 +86,6 @@ void StepperPositionFromACSAngle(float acs_angle_deg, float *stepper_pos) {
 
     float Ay = Ey + sqrtf(AE_squared - Ex * Ex);
 
-    // TODO: relative angle wrt stepper zero position
     *stepper_pos = Ay;
 }
 
