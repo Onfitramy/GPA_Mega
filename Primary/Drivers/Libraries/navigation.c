@@ -871,14 +871,18 @@ void EKFCorrectionStep(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
     // calculate difference between predicted and actual measurement
     EKFGetInnovation(ekf, ekf_corr);
 
+    // calculate Normalized Innovation Squared (NIS)
+    EKFgetNIS(ekf, ekf_corr);
+
+    // TODO: separate logic for gnc alignment vs armed through flight states
+    // if NIS exceeds threshold, skip correction step
+    if (ekf_corr->NIS > getNISthreshold(ekf, ekf_corr)) return;
+
     // correct state vector based on innovation and Kalman Gain
     EKFCorrectStateV(ekf, ekf_corr);
 
     // update covariance matrix
     EKFCorrectCovariance(ekf, ekf_corr);
-
-    // calculate Normalized Innovation Squared (NIS)
-    EKFgetNIS(ekf, ekf_corr);
 }
 
 // calculate Normalized Innovation Squared
@@ -888,6 +892,21 @@ void EKFgetNIS(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
     // NIS = v' * S_inv * v
     arm_mat_vec_mult_f32(ekf_corr->S_inv, ekf_corr->v, buffer);
     arm_vecN_dot_prod_f32(ekf_corr->z_size, ekf_corr->v, buffer, &ekf_corr->NIS);
+}
+
+float getNISthreshold(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
+    if (ekf->type == EKF2_type) {
+        if (ekf_corr->type == corr1_type) {
+            return NIS_EKF2_BARO_THRESH;
+        } else if (ekf_corr->type == corr2_type) {
+            return NIS_EKF2_GNSS_THRESH;
+        } else if (ekf_corr->type == corr3_type) {
+            return NIS_EKF2_PTOT_THRESH;
+        }
+    } else if (ekf->type == EKF3_type) {
+        return NIS_EKF3_THRESH;
+    }
+    return 0.f;
 }
 
 // returns true if predicted variance obeys thresholds

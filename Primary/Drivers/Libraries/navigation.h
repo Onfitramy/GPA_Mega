@@ -18,6 +18,10 @@
 
 #define MAG_VAR 0.8*0.8
 
+// correction step discard threshold
+#define NIS_EKF3_THRESH 9999.f      // TODO: determine
+
+// convergence thresholds
 #define P_VAR_ANGLE_THRESH  0.01
 #define P_VAR_BIAS_THRESH   1e-5
 #define P_NIS_EKF3_THRESH   0.1
@@ -29,6 +33,13 @@
 #define PTOT_VAR    133*133
 #define REFERENCE_PRESSURE_VAR 1e-6
 
+// correction step discard threshold
+#define NIS_EKF2_BARO_THRESH 9999.f // TODO: determine
+#define NIS_EKF2_GNSS_THRESH 1000.f
+#define NIS_EKF2_PTOT_THRESH 9999.f // TODO: determine
+
+
+// convergence thresholds
 #define P_VAR_HEIGHT_THRESH 0.01
 #define P_VAR_VELZ_THRESH   0.001
 #define P_VAR_PREF_THRESH   1
