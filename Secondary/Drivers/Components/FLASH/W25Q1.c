@@ -552,19 +552,47 @@ void W25Q_GetConfig() {
 	}
 }
 
-uint8_t W25Q_LoadLastPacket(PacketType_t packet_type, DataPacket_t *packet) {
+/**
+ * @brief Load the latest packets of the given IDs from flash memory.
+ *
+ * @param packet_types IDs of the packages which should be loaded.
+ * @param packets Array to which the loaded packets will be written.
+ * @return 0 if all packages where found, else 1.
+ */
+uint8_t W25Q_LoadLastPacket(PacketType_t *packet_types, DataPacket_t *packets) {
 	uint16_t packets_size = sizeof(DataPacket_t) * PACKETS_PER_PAGE;
-	DataPacket_t packets[packets_size];
+	DataPacket_t loaded_packets[PACKETS_PER_PAGE];
 
-	// TODO: Search for multiple packets simultaneously
-	for (int page = W25Q_FLASH_CONFIG.curr_logPage - 1; page >= 0; --page) {
-		W25Q_Read(page, 0, packets_size, (uint8_t*) packets);
+	uint8_t packets_count = sizeof(packet_types) / sizeof(PacketType_t);
+	uint8_t loaded_packets_count = 0;
 
+	// iterate through all pages back to front (newest to oldest)
+	for (int page = W25Q_FLASH_CONFIG.curr_logPage - 1; page >= LOG_PAGE; --page) {
+		W25Q_Read(page, 0, packets_size, (uint8_t*) loaded_packets);
+
+		// iterate through all pages back to front (newest to oldest)
 		for (int i = PACKETS_PER_PAGE - 1; i >= 0; --i) {
-			DataPacket_t loaded_packet = packets[i];
+			DataPacket_t loaded_packet = loaded_packets[i];
 
-			if (loaded_packet.Packet_ID == packet_type) {
-				*packet = loaded_packet;
+			// find the index into the packets array for the loaded ID
+			uint8_t packet_index = 255;
+			for (uint8_t j = 0; j < packets_count; ++j) {
+				if (loaded_packet.Packet_ID == packet_types[j]) {
+					packet_index = j;
+					break;
+				}
+			}
+
+			// loaded packet ID not wanted or already found in a previous iteration
+			if (packet_index == 255 || packets[packet_index].Packet_ID == loaded_packet.Packet_ID) {
+				continue;
+			}
+
+			packets[packet_index] = loaded_packet;
+			loaded_packets_count++;
+
+			// exit if all packages where found
+			if (loaded_packets_count == packets_count) {
 				return 0;
 			}
 		}
