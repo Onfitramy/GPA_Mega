@@ -552,6 +552,27 @@ void W25Q_GetConfig() {
 	}
 }
 
+uint8_t W25Q_LoadLastPacket(PacketType_t packet_type, DataPacket_t *packet) {
+	uint16_t packets_size = sizeof(DataPacket_t) * PACKETS_PER_PAGE;
+	DataPacket_t packets[packets_size];
+
+	// TODO: Search for multiple packets simultaneously
+	for (int page = W25Q_FLASH_CONFIG.curr_logPage - 1; page >= 0; --page) {
+		W25Q_Read(page, 0, packets_size, (uint8_t*) packets);
+
+		for (int i = PACKETS_PER_PAGE - 1; i >= 0; --i) {
+			DataPacket_t loaded_packet = packets[i];
+
+			if (loaded_packet.Packet_ID == packet_type) {
+				*packet = loaded_packet;
+				return 0;
+			}
+		}
+	}
+
+	return 1;
+}
+
 void W25Q_CopyLogsToSD(uint16_t max_page) {
 	if (max_page == 0) {
 		max_page = W25Q_FLASH_CONFIG.curr_logPage;

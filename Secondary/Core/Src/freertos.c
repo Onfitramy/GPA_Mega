@@ -253,6 +253,11 @@ void StartInterBoardComTask(void *argument)
   W25Q_GetConfig();
   W25Q_STATE = W25Q_State_Available;
 
+  DataPacket_t packet;
+
+  W25Q_STATE = W25Q_State_Reading;
+  W25Q_LoadLastPacket(PACKET_ID_IMU, &packet);
+  W25Q_STATE = W25Q_State_Available;
   //XBee_Init();
 
   InterBoardCom_Init();
