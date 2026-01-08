@@ -935,9 +935,9 @@ BaseType_t cmd_Storage_FLASH_To_SD(char *pcWriteBuffer, size_t xWriteBufferLen, 
 
     /* Write the response to the buffer */
     if (parameter == 0) {
-        snprintf(pcWriteBuffer, xWriteBufferLen, "Transferring data from FLASH to SC card up to current config page\r\n");
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Transferring data from FLASH to SD card up to current config page\r\n");
     } else {
-        snprintf(pcWriteBuffer, xWriteBufferLen, "Transferring data from FLASH to SC card up to page %d\r\n");
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Transferring data from FLASH to SD card up to page %d\r\n");
     }
 
     return pdFALSE;

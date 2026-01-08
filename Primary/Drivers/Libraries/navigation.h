@@ -295,6 +295,7 @@ void EKFPredictionStep(ekf_data_t *Kalman);
 void EKFCorrectionStep(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr);
 
 void EKFgetNIS(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr);
+float getNISthreshold(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr);
 bool EKFisAligned(ekf_data_t *ekf);
 
 void UpdateCircularBuffer(float *buffer, uint16_t buffer_size, uint16_t *index, float new_value);

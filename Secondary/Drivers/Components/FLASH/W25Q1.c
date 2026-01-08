@@ -559,11 +559,10 @@ void W25Q_GetConfig() {
  * @param packets Array to which the loaded packets will be written.
  * @return 0 if all packages where found, else 1.
  */
-uint8_t W25Q_LoadLastPacket(PacketType_t *packet_types, DataPacket_t *packets) {
+uint8_t W25Q_LoadLastPacket(PacketType_t packet_types[], DataPacket_t packets[], uint8_t packet_count) {
 	uint16_t packets_size = sizeof(DataPacket_t) * PACKETS_PER_PAGE;
 	DataPacket_t loaded_packets[PACKETS_PER_PAGE];
 
-	uint8_t packets_count = sizeof(packet_types) / sizeof(PacketType_t);
 	uint8_t loaded_packets_count = 0;
 
 	// iterate through all pages back to front (newest to oldest)
@@ -576,7 +575,7 @@ uint8_t W25Q_LoadLastPacket(PacketType_t *packet_types, DataPacket_t *packets) {
 
 			// find the index into the packets array for the loaded ID
 			uint8_t packet_index = 255;
-			for (uint8_t j = 0; j < packets_count; ++j) {
+			for (uint8_t j = 0; j < packet_count; ++j) {
 				if (loaded_packet.Packet_ID == packet_types[j]) {
 					packet_index = j;
 					break;
@@ -592,7 +591,7 @@ uint8_t W25Q_LoadLastPacket(PacketType_t *packet_types, DataPacket_t *packets) {
 			loaded_packets_count++;
 
 			// exit if all packages where found
-			if (loaded_packets_count == packets_count) {
+			if (loaded_packets_count == packet_count) {
 				return 0;
 			}
 		}
@@ -626,6 +625,10 @@ void W25Q_CopyLogsToSD(uint16_t max_page) {
 				SD_AppendDataPacketToBuffer(packets + i);
 			}
 		}
+
+		// Save remaining buffer which wasn't written.
+		// Saving is triggered by the buffer being full, however packets are appended after saving the buffer.
+		SD_SaveBuffer("log.txt");
 	}
 
 	W25Q_FLASH_CONFIG.write_logs = write_logs;

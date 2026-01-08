@@ -253,12 +253,13 @@ void StartInterBoardComTask(void *argument)
   W25Q_GetConfig();
   W25Q_STATE = W25Q_State_Available;
 
+  const int packet_count = 2;
   PacketType_t packet_types[2] = { PACKET_ID_IMU, PACKET_ID_ATTITUDE };
   DataPacket_t packets[2];
-  memset(packets, 255, 2 * sizeof(DataPacket_t));
+  memset(packets, 255, packet_count * sizeof(DataPacket_t));
 
   W25Q_STATE = W25Q_State_Reading;
-  int result = W25Q_LoadLastPacket(packet_types, packets);
+  int result = W25Q_LoadLastPacket(packet_types, packets, packet_count);
   W25Q_STATE = W25Q_State_Available;
   //XBee_Init();
 
