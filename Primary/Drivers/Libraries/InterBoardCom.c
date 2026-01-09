@@ -263,11 +263,11 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t *packet) {
         case (INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU): { //Receive Data Packet for use on MCU
             // packet loaded from flash
             if (data_packet->Packet_ID & 0b10000000) {
-                data_packet->Packet_ID = data_packet->Packet_ID & 0b01111111;
+                PacketType_t packet_type = data_packet->Packet_ID & 0b01111111;
                 // TODO
             // attempted to load packet from flash, but couldn't find it
             } else if (data_packet->Packet_ID & 0b01000000) {
-                data_packet->Packet_ID = data_packet->Packet_ID & 0b10111111;
+                PacketType_t packet_type = data_packet->Packet_ID & 0b10111111;
                 // TODO
             }
 
