@@ -248,25 +248,39 @@ void InterBoardCom_command_acknowledge(uint8_t command_target, uint8_t command_i
 
 extern uint8_t is_groundstation;
 void InterBoardCom_ParsePacket(InterBoardPacket_t *packet) {
+    DataPacket_t* data_packet = (DataPacket_t*) packet->Data;
+
     // Process the received packet based on its ID
     switch (packet->InterBoardPacket_ID) {
         case INTERBOARD_OP_DEBUG_VIEW: //Send for debugging
             if (is_groundstation) {
                 //PlotDataPacket((DataPacket_t *)packet->Data);
-                USB_QueueDataPacket((DataPacket_t *)packet->Data);
+                USB_QueueDataPacket(data_packet);
             }
             break;
         // Add cases for other packet IDs as needed
 
         case (INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU): { //Receive Data Packet for use on MCU
-            if (((DataPacket_t *)packet->Data)->Packet_ID == PACKET_ID_POWER) {
-                powerData = *((DataPacket_t *)packet->Data);
+            // packet loaded from flash
+            if (data_packet->Packet_ID & 0b10000000) {
+                data_packet->Packet_ID = data_packet->Packet_ID & 0b01111111;
+                // TODO
+            // attempted to load packet from flash, but couldn't find it
+            } else if (data_packet->Packet_ID & 0b01000000) {
+                data_packet->Packet_ID = data_packet->Packet_ID & 0b10111111;
+                // TODO
+            }
+
+            if (data_packet->Packet_ID == PACKET_ID_POWER) {
+                powerData = *data_packet;
+            } else {
+                printf("ID: %d\n", data_packet->Packet_ID);
             }
             break;
         }
 
         case (INTERBOARD_OP_CMD | INTERBOARD_TARGET_MCU): {
-            DataPacket_t *cmd = (DataPacket_t *)packet->Data;
+            DataPacket_t *cmd = data_packet;
             if (cmd->Packet_ID != PACKET_ID_COMMAND) {
                 // Invalid command ID
                 return;

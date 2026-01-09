@@ -27,6 +27,7 @@ volatile W25Q_State_t W25Q_STATE = W25Q_State_Available;
  * @brief Write two configs to the flash.
  * If a power loss happens between erasing and writing data, there will always be one valid config.
  */
+// TODO: Write config when disabling `write_logs`
 void W25Q_WriteConfig() {
 	W25Q_Write_Page(0, 0, sizeof(W25QPage0_config_t), (uint8_t *)&W25Q_FLASH_CONFIG);
 	W25Q_Write_Page(PAGES_PER_SECTOR, 0, sizeof(W25QPage0_config_t), (uint8_t *)&W25Q_FLASH_CONFIG);
@@ -559,7 +560,7 @@ void W25Q_GetConfig() {
  * @param packets Array to which the loaded packets will be written.
  * @return 0 if all packages where found, else 1.
  */
-uint8_t W25Q_LoadLastPacket(PacketType_t packet_types[], DataPacket_t packets[], uint8_t packet_count) {
+uint8_t W25Q_LoadLastPackets(PacketType_t packet_types[], DataPacket_t packets[], uint8_t packet_count) {
 	uint16_t packets_size = sizeof(DataPacket_t) * PACKETS_PER_PAGE;
 	DataPacket_t loaded_packets[PACKETS_PER_PAGE];
 

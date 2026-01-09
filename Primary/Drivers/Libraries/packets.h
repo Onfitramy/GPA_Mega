@@ -5,11 +5,15 @@
 #include "IMUS.h"
 #include "LIS3MDL.h"
 #include "SAM-M8Q.h"
-/*This file includes all public Packets for the differten devices and sending modes*/
-/*They are used for radio transmittion, flash/SD saving and interBoardCommunication*/
+/*This file includes all public Packets for the different devices and sending modes*/
+/*They are used for radio transmission, flash/SD saving and interBoardCommunication*/
 
 #define INVALID_FLOAT -999.0f
 
+// If the first bit of the packet type is 1, it means the packet was loaded from the flash memory after a power-cycle.
+// If the second bit of the packet type is 1, the packet was supposed to be loaded from flash memory after a power-cycle,
+// but couldn't be found.
+// Setting the first two bits to 0 will give the packet type as specified here.
 typedef enum __attribute__((packed)){
     PACKET_ID_STATUS = 0x01, // VR data packet
     PACKET_ID_POWER = 0x02, // Power data packet
@@ -22,9 +26,6 @@ typedef enum __attribute__((packed)){
     PACKET_ID_SPARK = 0x09, // SPARK data packet
     PACKET_ID_COMMAND = 0x10, // Command packet
     PACKET_ID_STATE = 0x11, // Command packet
-
-    // Force to 8-bit size
-    PACKET_ID_FORCE_8BIT = 0xFF
 } PacketType_t;
 
 

@@ -253,17 +253,35 @@ void StartInterBoardComTask(void *argument)
   W25Q_GetConfig();
   W25Q_STATE = W25Q_State_Available;
 
-  const int packet_count = 2;
-  PacketType_t packet_types[2] = { PACKET_ID_IMU, PACKET_ID_ATTITUDE };
-  DataPacket_t packets[2];
+  const int packet_count = 3;
+  PacketType_t packet_types[3] = { PACKET_ID_IMU, PACKET_ID_ATTITUDE, PACKET_ID_POSITION };
+  DataPacket_t packets[3];
   memset(packets, 255, packet_count * sizeof(DataPacket_t));
 
   W25Q_STATE = W25Q_State_Reading;
-  int result = W25Q_LoadLastPacket(packet_types, packets, packet_count);
+  int result = W25Q_LoadLastPackets(packet_types, packets, packet_count);
   W25Q_STATE = W25Q_State_Available;
-  //XBee_Init();
 
   InterBoardCom_Init();
+
+  // wait for inter board com to initialize
+  vTaskDelay(1);
+
+  for (int i = 0; i < packet_count; i++) {
+    PacketType_t packet_type = packet_types[i];
+    DataPacket_t packet = packets[i];
+
+    if (packet.Packet_ID == 255) {
+      packet.Packet_ID = packet_type | 0b01000000;
+    } else {
+      packet.Packet_ID = packet_type | 0b10000000;
+    }
+
+    InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU, &packet);
+  }
+
+  //XBee_Init();
+
   /* Infinite loop */
   for(;;) {
     InterBoardPacket_t packet;
