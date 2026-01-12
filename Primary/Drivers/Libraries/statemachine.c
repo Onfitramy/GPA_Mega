@@ -57,7 +57,6 @@ static flight_state_t ArmedHandler(flight_event_t event) {
 
 static flight_state_t BurnHandler(flight_event_t event) {
     switch (event) {
-        case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
         case EVENT_FLIGHT_BURNOUT_DETECTED:     return STATE_FLIGHT_COAST;
         default: return STATE_FLIGHT_BURN;
     }
@@ -65,7 +64,6 @@ static flight_state_t BurnHandler(flight_event_t event) {
 
 static flight_state_t CoastHandler(flight_event_t event) {
     switch (event) {
-        case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
         case EVENT_FLIGHT_DROGUE_COMMANDED:     return STATE_FLIGHT_AWAIT_DROGUE;
         default: return STATE_FLIGHT_COAST;
     }
@@ -73,7 +71,6 @@ static flight_state_t CoastHandler(flight_event_t event) {
 
 static flight_state_t AwaitDrogueHandler(flight_event_t event) {
     switch (event) {
-        case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
         case EVENT_FLIGHT_DROGUE_CONFIRMED:     return STATE_FLIGHT_DESCEND_DROGUE;
         case EVENT_FLIGHT_TOUCHDOWN:            return STATE_FLIGHT_LANDED;
         default: return STATE_FLIGHT_AWAIT_DROGUE;
@@ -82,7 +79,6 @@ static flight_state_t AwaitDrogueHandler(flight_event_t event) {
 
 static flight_state_t DrogueDescendHandler(flight_event_t event) {
     switch (event) {
-        case EVENT_FLIGHT_ABORT:                return STATE_FLIGHT_ABORT;
         case EVENT_FLIGHT_MAIN_COMMANDED:       return STATE_FLIGHT_AWAIT_MAIN;
         default: return STATE_FLIGHT_DESCEND_DROGUE;
     }
@@ -135,7 +131,7 @@ static void AbortEntry(StateMachine_t *sm) {
     PU_setACS(DISABLE);
     PU_setREC(DISABLE);
     PU_setCAM(DISABLE);
-    Buzzer_PlaySong(2);
+    Buzzer_PlaySong(2); // when you try your best...
 }
 static void StartupEntry(StateMachine_t *sm) {
     /* --- Initialize sensors --- */
