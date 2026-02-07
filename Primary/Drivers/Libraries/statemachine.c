@@ -361,11 +361,11 @@ static void ArmedDo(StateMachine_t *sm, uint16_t freq) {
     if (freq != 1000) return;
 
     // option 1
-    UpdateCircularBuffer(acc_z_buf, ACC_BUFFER_SIZE, &acc_z_index, a_BodyFrame_i[1]);
+    /*UpdateCircularBuffer(acc_z_buf, ACC_BUFFER_SIZE, &acc_z_index, a_BodyFrame_i[1]);
 
     if (GetOvershootCount(acc_z_buf, ACC_BUFFER_SIZE, LIFTOFF_ACC_THRESHOLD) >= LIFTOFF_MIN_OVERSHOOTS) {
         StateMachine_Dispatch(sm, EVENT_FLIGHT_LAUNCH_DETECTED);
-    }
+    }*/
 
     // option 2
     if (a_BodyFrame_i[1] < LIFTOFF_ACC_THRESHOLD) {
@@ -379,11 +379,11 @@ static void BurnDo(StateMachine_t *sm, uint16_t freq) {
     if (freq != 1000) return;
 
     // option 1
-    UpdateCircularBuffer(acc_z_buf, ACC_BUFFER_SIZE, &acc_z_index, a_BodyFrame_i[1]);
+    /*UpdateCircularBuffer(acc_z_buf, ACC_BUFFER_SIZE, &acc_z_index, a_BodyFrame_i[1]);
 
     if (GetUndershootCount(acc_z_buf, ACC_BUFFER_SIZE, BURNOUT_ACC_THRESHOLD) >= BURNOUT_MIN_UNDERSHOOTS) {
         StateMachine_Dispatch(sm, EVENT_FLIGHT_BURNOUT_DETECTED);
-    }
+    }*/
 
     // option 2
     if (a_BodyFrame_i[1] > BURNOUT_ACC_THRESHOLD) {

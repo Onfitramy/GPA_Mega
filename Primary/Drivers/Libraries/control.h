@@ -2,6 +2,7 @@
 #define CONTROL_H
 
 #include <math.h>
+#include "qpSWIFT.h"
 
 #define ACS_ANGLE_MAX_DEG 50.f
 #define ACS_ANGLE_MIN_DEG 0.f

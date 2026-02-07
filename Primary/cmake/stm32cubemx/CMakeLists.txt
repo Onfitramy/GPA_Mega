@@ -38,6 +38,8 @@ target_include_directories(stm32cubemx INTERFACE
     ../../Drivers/CMSIS/DSP_DRIVERS/Include
     ../../Drivers/CMSIS/DSP_DRIVERS/Bin
     ../../Drivers/Libraries
+
+    ../../qpSWIFT/include
 )
 
 target_sources(stm32cubemx INTERFACE
@@ -130,12 +132,31 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/Libraries/packets.c
     ../../Drivers/Libraries/spark.c
     ../../Drivers/Libraries/ptot.c
+
+    ../../qpSWIFT/src/amd_1.c
+    ../../qpSWIFT/src/amd_aat.c
+    ../../qpSWIFT/src/amd_defaults.c
+    ../../qpSWIFT/src/amd_global.c
+    ../../qpSWIFT/src/amd_order.c
+    ../../qpSWIFT/src/amd_post_tree.c
+    ../../qpSWIFT/src/amd_valid.c
+    ../../qpSWIFT/src/amd_2.c
+    ../../qpSWIFT/src/amd_control.c
+    ../../qpSWIFT/src/amd_dump.c
+    ../../qpSWIFT/src/amd_info.c
+    ../../qpSWIFT/src/amd_postorder.c
+    ../../qpSWIFT/src/amd_preprocess.c
+    ../../qpSWIFT/src/ldl.c
+    ../../qpSWIFT/src/timer.c
+    ../../qpSWIFT/src/Auxilary.c
+    ../../qpSWIFT/src/qpSWIFT.c
 )
 
 target_link_directories(stm32cubemx INTERFACE
 )
 
 target_link_libraries(stm32cubemx INTERFACE
+    m
 )
 
 # Validate that STM32CubeMX code is compatible with C standard

@@ -225,7 +225,7 @@ void StartDefaultTask(void *argument)
 
   /* Infinite loop */
   for(;;) {
-    TimeMeasureStart();
+    //TimeMeasureStart();
     nrf_timeout++;
 
     // Run 1000 Hz Do Actions
@@ -291,7 +291,7 @@ void StartDefaultTask(void *argument)
       vel_abs = EKF2.x[1] / arm_mat_get_entry_f32(&M_rot_bi, 2, 2);
     }
 
-    dt_1000Hz = TimeMeasureStop();
+    //dt_1000Hz = TimeMeasureStop();
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz) Always at the end of the loop
   }
 
@@ -369,6 +369,13 @@ void Start10HzTask(void *argument) {
   for(;;) {
     // Run 10 Hz Do Actions
     StateMachine_DoActions(&flight_sm, 10);
+
+    // mpc test
+    TimeMeasureStart();
+
+    dt_1000Hz = TimeMeasureStop();
+
+
 
     GPS_ReadSensorData(&gps_data);
 
