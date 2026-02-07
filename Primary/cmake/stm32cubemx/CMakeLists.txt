@@ -40,6 +40,7 @@ target_include_directories(stm32cubemx INTERFACE
     ../../Drivers/Libraries
 
     ../../qpSWIFT/include
+    ../../qpSWIFT/demo
 )
 
 target_sources(stm32cubemx INTERFACE

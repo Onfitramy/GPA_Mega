@@ -28,6 +28,7 @@
 #include "tim.h"
 #include "gpio.h"
 #include "Pyro.h"
+#include "control.h"
 
 #include "InterBoardCom.h"
 #include <stdint.h>
@@ -184,6 +185,17 @@ int main(void)
 
   // define output signal names
   signalPlotter_init();
+
+  // mpc test
+  rho0_const = p0_const / (R_const * T0_const);
+  a0_const = sqrt(kappa*R_const*T0_const); 
+
+  initMPC(&a_mpc, PREDICTION_HORIZON, NUM_INEQUALITY_CONSTRAINTS, MPC_DELTA_T, u_star, x_star, &P_mat, &q_vec, &G_mat, h_vec);
+
+  TimeMeasureStart();
+
+
+  dt_1000Hz = TimeMeasureStop();
 
   /* USER CODE END 2 */
 

@@ -149,6 +149,15 @@ typedef struct {
 } ekf_corr_data_t;
 
 /* EKF variables, vectors and matrices */
+extern const double p0_const;
+extern const double R_const;
+extern const double T0_const;
+extern const double L_const;
+extern const double g0_const;
+extern const double kappa;
+extern double rho0_const;
+extern double a0_const;
+
 extern const float dt;
 
 extern ekf_data_t EKF2;
@@ -272,6 +281,7 @@ void CompensateGNSSDelay(float acc_meas, float vel_meas, float *v_corr_val, floa
 void BaroPressureToHeight(float pressure, float pressure_reference, float *height);
 void BaroHeightToPressure(float height, float pressure_reference, float *pressure);
 void CalculateTotalPressure(float height, float pressure_reference, float velocity_z, float *pressure_tot);
+double CalculateAirDensity(double height);
 
 void EKFInit(ekf_data_t *ekf, ekf_instance_t kalman_type, uint8_t x_vec_size, uint8_t u_vec_size, const float dt,
              arm_matrix_instance_f32 *F_mat, arm_matrix_instance_f32 *P_mat, arm_matrix_instance_f32 *Q_mat,

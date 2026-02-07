@@ -226,6 +226,7 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;) {
     //TimeMeasureStart();
+
     nrf_timeout++;
 
     // Run 1000 Hz Do Actions

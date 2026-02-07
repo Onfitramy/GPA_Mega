@@ -48,7 +48,7 @@ void arm_mat_set_row_f32(arm_matrix_instance_f32 *mat, int row, float32_t *vec) 
 }
 
 void arm_mat_fill_diag_f32(arm_matrix_instance_f32 *mat, int row_00, int col_00, float value) {
-  for (int i = 0; (i < (mat->numRows-row_00)) && (i < mat->numCols-col_00); i++) {
+  for (int i = 0; (i < (mat->numRows-row_00)) && (i < (mat->numCols-col_00)); i++) {
     arm_mat_set_entry_f32(mat, i+row_00, i+col_00, value);
   }
 }

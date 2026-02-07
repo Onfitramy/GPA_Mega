@@ -8,12 +8,14 @@ const double f = 1. / 298.257223563;
 const double e2 = 0.006694379990141317;
 
 // define atmospheric constants
-const double p0_const = 101325.;    // Pa
-const double R_const = 287.05;      // J/(kgK)
-const double T0_const = 288.15;     // K
-const double L_const = -0.0065;     // K/m
-const double g0_const = 9.80665;    // m/s²
+const double p0_const = 101325.;            // Pa
+const double R_const = 287.05;              // J/(kgK)
+const double T0_const = 288.15;             // K
+const double L_const = -0.0065;             // K/m
+const double g0_const = 9.80665;            // m/s²
 const double kappa = 1.4;
+double rho0_const;
+double a0_const;
 
 // time step
 const float dt = 0.001;
@@ -452,6 +454,10 @@ void CalculateTotalPressure(float height, float pressure_reference, float veloci
 
     double buffer = pow((kappa-1)/(2*kappa*R_const*T_static)*velocity_abs*velocity_abs+1., kappa/(kappa-1));
     *pressure_tot = (float)p_static * buffer;
+}
+
+double CalculateAirDensity(double height) {
+    return pow(L_const / T0_const * height + 1., -g0_const / L_const / R_const - 1.) * rho0_const;
 }
 
 
