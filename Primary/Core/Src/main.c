@@ -191,7 +191,7 @@ int main(void)
   a0_const = sqrt(kappa*R_const*T0_const); 
 
   TimeMeasureStart();
-  initMPC(&a_mpc, PREDICTION_HORIZON, NUM_INEQUALITY_CONSTRAINTS, MPC_DELTA_T, u_star, x_star, &P_mat, &q_vec, &G_mat, h_vec);
+  initMPC(&a_mpc, PREDICTION_HORIZON, NUM_INEQUALITY_CONSTRAINTS, MPC_DELTA_T, u_star, x_star);
   dt_1000Hz = TimeMeasureStop();
 
   TimeMeasureStart();

@@ -58,20 +58,13 @@ qp_real h_vec[NUM_INEQUALITY_CONSTRAINTS] = { 0 };
 float u_star[PREDICTION_HORIZON] = { 0 };
 float x_star[2] = { 0 };
 
-void initMPC(mpc_t *mpc, uint8_t pred_horz, uint8_t ineq_constr_num, float delta_t, float *ustar, float *xstar,
-             arm_matrix_instance_f32 *P_mat, arm_matrix_instance_f32 *q_vec, arm_matrix_instance_f32 *G_mat, qp_real *h_vec)
-{
+void initMPC(mpc_t *mpc, uint8_t pred_horz, uint8_t ineq_constr_num, float delta_t, float *ustar, float *xstar) {
     // store settings
     mpc->N = pred_horz;
     mpc->n = ineq_constr_num;
     mpc->dt = delta_t;
 
-    // link matrices and vectors
-    mpc->P = P_mat;
-    mpc->q = q_vec;
-    mpc->G = G_mat;
-    mpc->h = h_vec;
-
+    // link vectors
     mpc->u_nom = GAMMA_NOMINAL;
 
     mpc->ustar = ustar;
@@ -79,15 +72,15 @@ void initMPC(mpc_t *mpc, uint8_t pred_horz, uint8_t ineq_constr_num, float delta
 
     // fill vector of inequality constraints
     for(int i = 0; i < (int)(0.5*mpc->n); i++) {
-        h_vec[i] = ACS_ANGLE_MAX_DEG;
+        h_vec[i] = (qp_real)ACS_ANGLE_MAX_DEG;
     }
     for(int i = (int)(0.5*mpc->n); i < mpc->n; i++) {
-        h_vec[i] = ACS_ANGLE_MIN_DEG;
+        h_vec[i] = (qp_real)ACS_ANGLE_MIN_DEG;
     }
 
     // fill matrix of inequality constraints
-    arm_mat_fill_diag_f32(G_mat, 0, 0, 1);
-    arm_mat_fill_diag_f32(G_mat, (int)(0.5*mpc->n), 0, -1);
+    arm_mat_fill_diag_f32(&G_mat, 0, 0, 1);
+    arm_mat_fill_diag_f32(&G_mat, (int)(0.5*mpc->n), 0, -1);
 
     // fill D matrix
     arm_mat_fill_diag_f32(&D_mat, 0, 0, 1);
@@ -100,8 +93,8 @@ void initMPC(mpc_t *mpc, uint8_t pred_horz, uint8_t ineq_constr_num, float delta
     float DT_data[PREDICTION_HORIZON*PREDICTION_HORIZON] = { 0 };
     arm_matrix_instance_f32 DT_mat = {PREDICTION_HORIZON, PREDICTION_HORIZON, DT_data};
     arm_mat_trans_f32(&D_mat, &DT_mat);
-    arm_mat_mult_f32(&R_du_mat, &D_mat, P_mat);
-    arm_mat_scale_f32(P_mat, MPC_W_DU, &R_du_mat);
+    arm_mat_mult_f32(&R_du_mat, &D_mat, &P_mat);
+    arm_mat_scale_f32(&P_mat, MPC_W_DU, &R_du_mat);
     arm_mat_mult_f32(&DT_mat, &R_du_mat, &M1_mat);
 }
 
@@ -210,24 +203,38 @@ float runMPC(mpc_t mpc, float height, float *velocity) {
 
     arm_mat_mult_f32(&ET_mat, &CaT_mat, &ETCaT_mat);
     arm_mat_mult_f32(&Ca_mat, &E_mat, &CaE_mat);
-    arm_mat_mult_f32(&ETCaT_mat, &CaE_mat, mpc.P);
-    arm_mat_add_f32(mpc.P, &M1_mat, mpc.P); // add second term
+    arm_mat_mult_f32(&ETCaT_mat, &CaE_mat, &P_mat);
+    arm_mat_add_f32(&P_mat, &M1_mat, &P_mat); // add second term
 
     float w_u = MPC_W_U * (t_nom + mpc.N*mpc.dt) / MPC_TCOAST; // third term
     for (int i = 0; i < mpc.N; i++) {
         arm_mat_set_entry_f32(&R_u_mat, i, i, (MPC_ALPHA0+(1-MPC_ALPHA0)/(mpc.N-1)*i)*w_u);
     }
-    arm_mat_add_f32(mpc.P, &R_u_mat, mpc.P); // add third term
+    arm_mat_add_f32(&P_mat, &R_u_mat, &P_mat); // add third term
 
     /* compute q */
     arm_mat_mult_f32(&d_vec, &R_du_mat, &M2_vec);
-    arm_mat_scale_f32(&CaE_mat, MPC_W_A*(Ca_data[0]*x_N_free[0]+Ca_data[1]*x_N_free[1]-h_ref), mpc.q);
-    arm_mat_sub_f32(mpc.q, &M2_vec, mpc.q);
+    arm_mat_scale_f32(&CaE_mat, MPC_W_A*(Ca_data[0]*x_N_free[0]+Ca_data[1]*x_N_free[1]-h_ref), &q_vec);
+    arm_mat_sub_f32(&q_vec, &M2_vec, &q_vec);
 
     /* solve QP */
     QP *mpcQP;
 
-    mpcQP = QP_SETUP_dense(mpc.N, mpc.n, 0, mpc.P->pData, NULL, mpc.G->pData, mpc.q->pData, mpc.h, NULL, NULL, ROW_MAJOR_ORDERING);
+    // cast into qp_real (temporary fix)
+    qp_real P_dataQP[PREDICTION_HORIZON*PREDICTION_HORIZON];
+    for (int i = 0; i < PREDICTION_HORIZON*PREDICTION_HORIZON; i++) {
+        P_dataQP[i] = (qp_real)P_data[i];
+    }
+    qp_real q_dataQP[PREDICTION_HORIZON];
+    for (int i = 0; i < PREDICTION_HORIZON; i++) {
+        q_dataQP[i] = (qp_real)q_data[i];
+    }
+    qp_real G_dataQP[NUM_INEQUALITY_CONSTRAINTS*PREDICTION_HORIZON];
+    for (int i = 0; i < NUM_INEQUALITY_CONSTRAINTS*PREDICTION_HORIZON; i++) {
+        G_dataQP[i] = (qp_real)G_data[i];
+    }
+
+    mpcQP = QP_SETUP_dense(mpc.N, mpc.n, 0, P_dataQP, NULL, G_dataQP, q_dataQP, h_vec, NULL, NULL, ROW_MAJOR_ORDERING);
 
 	qp_int ExitCode = QP_SOLVE(mpcQP);
 

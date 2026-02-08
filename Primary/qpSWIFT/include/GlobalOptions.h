@@ -33,7 +33,7 @@ extern "C"
 #endif
 
 /*! QP Specific Varibles */
-#define qp_real float
+#define qp_real double
 
 /*! QP Specific Varibles */
 #if (defined _WIN64)
