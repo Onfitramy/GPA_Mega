@@ -40,6 +40,18 @@ arm_matrix_instance_f32 M1_mat = {PREDICTION_HORIZON, PREDICTION_HORIZON, M1_dat
 float M2_data[PREDICTION_HORIZON] = { 0 };
 arm_matrix_instance_f32 M2_vec = {1, PREDICTION_HORIZON, M2_data};
 
+float CaT_data[2] = { 0 };
+arm_matrix_instance_f32 CaT_mat = {2, 1, CaT_data};
+
+float ET_data[PREDICTION_HORIZON*2] = { 0 };
+arm_matrix_instance_f32 ET_mat = {PREDICTION_HORIZON, 2, ET_data};
+
+float ETCaT_data[PREDICTION_HORIZON] = { 0 };
+arm_matrix_instance_f32 ETCaT_mat = {PREDICTION_HORIZON, 1, ETCaT_data};
+
+float CaE_data[PREDICTION_HORIZON] = { 0 };
+arm_matrix_instance_f32 CaE_mat = {1, PREDICTION_HORIZON, CaE_data};
+
 /* Cost Function P Matrix */
 float P_data[PREDICTION_HORIZON*PREDICTION_HORIZON] = { 0 };
 arm_matrix_instance_f32 P_mat = {PREDICTION_HORIZON, PREDICTION_HORIZON, P_data};
@@ -57,6 +69,118 @@ qp_real h_vec[NUM_INEQUALITY_CONSTRAINTS] = { 0 };
 
 float u_star[PREDICTION_HORIZON] = { 0 };
 float x_star[2] = { 0 };
+
+// temporary cast fix
+qp_real P_dataQP[PREDICTION_HORIZON*PREDICTION_HORIZON];
+qp_real q_dataQP[PREDICTION_HORIZON];
+qp_real G_dataQP[NUM_INEQUALITY_CONSTRAINTS*PREDICTION_HORIZON];
+
+float ComputeAirbrakeDrag(float vel_abs, float gamma) {
+    float gam = gamma;
+    if (gamma > ACS_ANGLE_MAX_DEG)
+        gam = ACS_ANGLE_MAX_DEG;
+    else if (gamma < ACS_ANGLE_MIN_DEG)
+        gam = ACS_ANGLE_MIN_DEG;
+
+    float vel = vel_abs;
+    if (vel_abs < 0)
+        vel = -vel;
+    if (vel_abs > 300)
+        vel = 300;
+
+    float M = vel / a0_const;
+
+    return (float)cACS[0]*gam*gam+cACS[1]*gam+cACS[2]+cACS[3]*M*M+cACS[4]*M*gam+cACS[5]*M*M*gam*gam;
+}
+
+float predictApogeeFromGamma(float height, float *velocity, float Aref, float m, float gamma, float t_max, float dt, float *t_apogee) {
+    float p_ver = (float)height;
+    float v_ver = (float)velocity[2];
+    float v_hor = sqrtf(velocity[0]*velocity[0]+velocity[1]*velocity[1]);
+
+    float v_abs;
+    float rho;
+    float CD;
+    float F_hor, F_ver;
+    float a_hor, a_ver;
+
+    int8_t dir = 1;
+    if (v_ver < 0) {
+        dir = -1;
+        v_ver = -v_ver;
+    } else if (v_ver == 0) {
+        *t_apogee = 0;
+        return p_ver;
+    }
+
+    uint32_t steps = t_max / dt;
+    float t_sim = 0;
+
+    for (uint32_t i = 0; i < steps; i++) {
+        t_sim += dt * dir;
+
+        // calculate absolute velocity, air density and drag coefficient
+        v_abs = sqrt(v_ver*v_ver+v_hor*v_hor);
+        rho = CalculateAirDensity(p_ver);
+        CD = ComputeAirbrakeDrag(v_abs, gamma);
+
+        // update horizontal velocity
+        F_hor = -0.5 * Aref * CD * rho * v_abs * v_hor * dir;
+        a_hor = F_hor / m;
+        v_hor += a_hor * dt;
+
+        // update vertical velocity and position
+        F_ver = -0.5 * Aref * CD * rho * v_abs * v_ver * dir - m * g0_const;
+        a_ver = F_ver / m;
+        v_ver += a_ver * dt;
+        p_ver += v_ver * dt + 0.5 * a_ver * dt * dt;
+
+        // stop criteria
+        if (v_ver <= 0) {
+            t_sim = t_sim - v_ver / a_ver;
+            p_ver = p_ver - v_ver*v_ver/(2*a_ver);
+            break;
+        }
+    }
+
+    *t_apogee = t_sim;
+    return p_ver;
+}
+
+void predictFutureStateGamma(float height, float *velocity, float Aref, float m, float gamma, float t_max, float dt, float *h_pred, float *v_pred) {
+    float p_ver = (float)height;
+    float v_ver = (float)velocity[2];
+    float v_hor = sqrt(velocity[0]*velocity[0]+velocity[1]*velocity[1]);
+
+    float v_abs;
+    float rho;
+    float CD;
+    float F_hor, F_ver;
+    float a_hor, a_ver;
+
+    uint32_t steps = t_max / dt;
+
+    for (uint32_t i = 0; i < steps; i++) {
+        // calculate absolute velocity, air density and drag coefficient
+        v_abs = sqrt(v_ver*v_ver+v_hor*v_hor);
+        rho = CalculateAirDensity(p_ver);
+        CD = ComputeAirbrakeDrag(v_abs, gamma);
+
+        // update horizontal velocity
+        F_hor = -0.5 * Aref * CD * rho * v_abs * v_hor;
+        a_hor = F_hor / m;
+        v_hor += a_hor * dt;
+
+        // update vertical velocity and position
+        F_ver = -0.5 * Aref * CD * rho * v_abs * v_ver - m * g0_const;
+        a_ver = F_ver / m;
+        v_ver += a_ver * dt;
+        p_ver += v_ver * dt + 0.5 * a_ver * dt * dt;
+    }
+
+    *h_pred = p_ver;
+    *v_pred = v_ver;
+}
 
 void MPCInit(mpc_t *mpc, uint8_t pred_horz, uint8_t ineq_constr_num, float dt, float *ustar, float *xstar) {
     // store settings
@@ -170,7 +294,7 @@ float runMPC(mpc_t mpc, float height, float *velocity) {
     /* time between end of prediction horizon and apogee */
     v_input[2] = x_N0[1];
     float t_nom;
-    float h_nom = predictApogeeFromGamma(x_N0[0], v_input, AREF, m, mpc.u_nom, 20, 0.01, &t_nom);
+    float h_nom = predictApogeeFromGamma(x_N0[0], v_input, AREF, m, mpc.u_nom, 20, 0.1, &t_nom);
 
     float a_t = 0.5 * x_N0[1]*x_N0[1] / (h_nom - x_N0[0]);
     float h_ref = 0.5 * x_N0[1]*x_N0[1] / a_t + H_TARGET;
@@ -189,17 +313,9 @@ float runMPC(mpc_t mpc, float height, float *velocity) {
 
     /* compute P */
     // first term
-    float CaT_data[2] = { 0 };
-    arm_matrix_instance_f32 CaT_mat = {2, 1, CaT_data};
     arm_mat_trans_f32(&Ca_mat, &CaT_mat);
     arm_mat_scale_f32(&CaT_mat, MPC_W_A, &CaT_mat);
-    float ET_data[PREDICTION_HORIZON*2] = { 0 };
-    arm_matrix_instance_f32 ET_mat = {PREDICTION_HORIZON, 2, ET_data};
     arm_mat_trans_f32(&E_mat, &ET_mat);
-    float ETCaT_data[PREDICTION_HORIZON] = { 0 };
-    arm_matrix_instance_f32 ETCaT_mat = {PREDICTION_HORIZON, 1, ETCaT_data};
-    float CaE_data[PREDICTION_HORIZON] = { 0 };
-    arm_matrix_instance_f32 CaE_mat = {1, PREDICTION_HORIZON, CaE_data};
 
     arm_mat_mult_f32(&ET_mat, &CaT_mat, &ETCaT_mat);
     arm_mat_mult_f32(&Ca_mat, &E_mat, &CaE_mat);
@@ -221,15 +337,12 @@ float runMPC(mpc_t mpc, float height, float *velocity) {
     QP *mpcQP;
 
     // cast into qp_real (temporary fix)
-    qp_real P_dataQP[PREDICTION_HORIZON*PREDICTION_HORIZON];
     for (int i = 0; i < PREDICTION_HORIZON*PREDICTION_HORIZON; i++) {
         P_dataQP[i] = (qp_real)P_data[i];
     }
-    qp_real q_dataQP[PREDICTION_HORIZON];
     for (int i = 0; i < PREDICTION_HORIZON; i++) {
         q_dataQP[i] = (qp_real)q_data[i];
     }
-    qp_real G_dataQP[NUM_INEQUALITY_CONSTRAINTS*PREDICTION_HORIZON];
     for (int i = 0; i < NUM_INEQUALITY_CONSTRAINTS*PREDICTION_HORIZON; i++) {
         G_dataQP[i] = (qp_real)G_data[i];
     }
@@ -237,6 +350,8 @@ float runMPC(mpc_t mpc, float height, float *velocity) {
     mpcQP = QP_SETUP_dense(mpc.N, mpc.n, 0, P_dataQP, NULL, G_dataQP, q_dataQP, h_vec, NULL, NULL, ROW_MAJOR_ORDERING);
 
 	qp_int ExitCode = QP_SOLVE(mpcQP);
+
+    QP_CLEANUP_dense(mpcQP);
 
     if ((ExitCode == QP_OPTIMAL) || (ExitCode == QP_MAXIT)) {
         // accept solution
@@ -258,101 +373,6 @@ float runMPC(mpc_t mpc, float height, float *velocity) {
     mpc.xstar[1] = x_N_free[1] + x_sum[1];
 
     return mpc.ustar[0];
-}
-
-float ComputeAirbrakeDrag(float vel_abs, float gamma) {
-    float gam = gamma;
-    if (gamma > ACS_ANGLE_MAX_DEG)
-        gam = ACS_ANGLE_MAX_DEG;
-    else if (gamma < ACS_ANGLE_MIN_DEG)
-        gam = ACS_ANGLE_MIN_DEG;
-
-    float vel = vel_abs;
-    if (vel_abs < 0)
-        vel = -vel;
-    if (vel_abs > 300)
-        vel = 300;
-
-    float M = vel / a0_const;
-
-    return (float)cACS[0]*gam*gam+cACS[1]*gam+cACS[2]+cACS[3]*M*M+cACS[4]*M*gam+cACS[5]*M*M*gam*gam;
-}
-
-float predictApogeeFromGamma(float height, float *velocity, float Aref, float m, float gamma, float t_max, float dt, float *t_apogee) {
-    float p_ver = (float)height;
-    float v_ver = (float)velocity[2];
-    float v_hor = sqrt(velocity[0]*velocity[0]+velocity[1]*velocity[1]);
-
-    int8_t dir = 1;
-    if (v_ver < 0) {
-        dir = -1;
-        v_ver = -v_ver;
-    } else if (v_ver == 0) {
-        *t_apogee = 0;
-        return p_ver;
-    }
-
-    uint32_t steps = t_max / dt;
-    float t_sim = 0;
-
-    for (uint32_t i = 0; i < steps; i++) {
-        t_sim += dt * dir;
-
-        // calculate absolute velocity, air density and drag coefficient
-        float v_abs = sqrt(v_ver*v_ver+v_hor*v_hor);
-        float rho = CalculateAirDensity(p_ver);
-        float CD = ComputeAirbrakeDrag(v_abs, gamma);
-
-        // update horizontal velocity
-        float F_hor = -0.5 * Aref * CD * rho * v_abs * v_hor * dir;
-        float a_hor = F_hor / m;
-        v_hor += a_hor * dt;
-
-        // update vertical velocity and position
-        float F_ver = -0.5 * Aref * CD * rho * v_abs * v_ver * dir - m * g0_const;
-        float a_ver = F_ver / m;
-        v_ver += a_ver * dt;
-        p_ver += v_ver * dt + 0.5 * a_ver * dt * dt;
-
-        // stop criteria
-        if (v_ver <= 0) {
-            t_sim = t_sim - v_ver / a_ver;
-            p_ver = p_ver - v_ver*v_ver/(2*a_ver);
-            break;
-        }
-    }
-
-    *t_apogee = t_sim;
-    return p_ver;
-}
-
-void predictFutureStateGamma(float height, float *velocity, float Aref, float m, float gamma, float t_max, float dt, float *h_pred, float *v_pred) {
-    float p_ver = (float)height;
-    float v_ver = (float)velocity[2];
-    float v_hor = sqrt(velocity[0]*velocity[0]+velocity[1]*velocity[1]);
-
-    uint32_t steps = t_max / dt;
-
-    for (uint32_t i = 0; i < steps; i++) {
-        // calculate absolute velocity, air density and drag coefficient
-        float v_abs = sqrt(v_ver*v_ver+v_hor*v_hor);
-        float rho = CalculateAirDensity(p_ver);
-        float CD = ComputeAirbrakeDrag(v_abs, gamma);
-
-        // update horizontal velocity
-        float F_hor = -0.5 * Aref * CD * rho * v_abs * v_hor;
-        float a_hor = F_hor / m;
-        v_hor += a_hor * dt;
-
-        // update vertical velocity and position
-        float F_ver = -0.5 * Aref * CD * rho * v_abs * v_ver - m * g0_const;
-        float a_ver = F_ver / m;
-        v_ver += a_ver * dt;
-        p_ver += v_ver * dt + 0.5 * a_ver * dt * dt;
-    }
-
-    *h_pred = p_ver;
-    *v_pred = v_ver;
 }
 
 

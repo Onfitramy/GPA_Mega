@@ -189,6 +189,7 @@ static void StartupEntry(StateMachine_t *sm) {
 static void InitEntry(StateMachine_t *sm) {
     Buzzer_PlayNote("A4", 100);
     /* --- Read sensor data for EKF initialization --- */
+    #ifndef HIL_TESTING
     imu1_status.hal_status |= IMU_Update(&imu1_data);
     imu2_status.hal_status |= IMU_Update(&imu2_data);
     imu1_status.active = imu1_data.active;
@@ -201,7 +202,12 @@ static void InitEntry(StateMachine_t *sm) {
     arm_vec3_element_product_f32(mag_data.field, mag_data.calibration.scale, mag_data.field);
 
     BMP_readData(&bmp_data.pressure, &bmp_data.height, &bmp_data.temperature);
-
+    #else
+    HILgetIMUData(&average_imu_data);
+    HILgetMagnetometerData(&mag_data);
+    HILgetBarometerData(&bmp_data);
+    #endif
+    
     // initialize height EKF state vector
     EKF2.x[0] = bmp_data.height;
     EKF2.x[1] = 0;
@@ -237,7 +243,9 @@ static void AlignGNCEntry(StateMachine_t *sm) {
 }
 static void CheckoutsEntry(StateMachine_t *sm) {
     PU_setACS(ENABLE);
+    #ifndef HIL_TESTING
     HAL_Delay(5);
+    #endif
     PU_setCAM(ENABLE);
 
     // TODO:
@@ -620,8 +628,13 @@ uint32_t maxEventDelayTable[STATE_MAX] = {
     0,
     0,
     0,
+    #ifdef HIL_TESTING
+    2000,
+    2000,
+    #else
     0,
     0,
+    #endif
     0,
     MAX_DELAY_UNTIL_BURNOUT_DETECTED,
     MAX_DELAY_UNTIL_DROGUE_COMMANDED,
