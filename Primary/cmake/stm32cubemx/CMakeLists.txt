@@ -133,6 +133,7 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/Libraries/packets.c
     ../../Drivers/Libraries/spark.c
     ../../Drivers/Libraries/ptot.c
+    ../../Drivers/Libraries/HIL.c
 
     ../../qpSWIFT/src/amd_1.c
     ../../qpSWIFT/src/amd_aat.c

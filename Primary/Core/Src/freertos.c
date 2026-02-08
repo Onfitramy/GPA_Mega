@@ -236,8 +236,15 @@ void StartDefaultTask(void *argument)
     
     ReadInternalADC(&ADC_Temperature, &ADC_V_Ref); // 7us
 
+    #ifdef HIL_TESTING
+    if ((flight_sm.currentFlightState >= STATE_FLIGHT_ARMED) && (flight_sm.currentFlightState <= STATE_FLIGHT_LANDED)) {
+      HILupdateStates(0.001);
+    }
+    #endif
+
     // after startup
     if (flight_sm.currentFlightState != STATE_FLIGHT_STARTUP && flight_sm.currentFlightState != STATE_GROUNDSTATION) {
+      #ifndef HIL_TESTING
       SensorStatus_Reset(&imu1_status);
       SensorStatus_Reset(&imu2_status);
       SensorStatus_Reset(&mag_status);
@@ -253,6 +260,12 @@ void StartDefaultTask(void *argument)
         arm_vec3_sub_f32(mag_data.field, mag_data.calibration.offset, mag_data.field);
         arm_vec3_element_product_f32(mag_data.field, mag_data.calibration.scale, mag_data.field);
       } // 7us
+      #else
+      // calculate average_imu_data
+      HILgetIMUData(&average_imu_data);
+      // calculate mag_data.field
+      HILgetMagnetometerData(&mag_data);
+      #endif
 
       // transform measured body acceleration to world-frame acceleration
       arm_mat_vec_mult_f32(&M_rot_ib, average_imu_data.accel, a_WorldFrame_g);
@@ -265,17 +278,27 @@ void StartDefaultTask(void *argument)
       arm_vec3_sub_f32(average_imu_data.accel, gravity_body_vec, a_BodyFrame_i);
 
       /* --- GNSS DELAY COMPENSATION TESTING --- */
-      CompensateGNSSDelay(a_WorldFrame_i[2], EKF2.x[1], &corr_delta_v, &corr_delta_h);
+      #ifndef HIL_TESTING  // GPS Delay not implemented yet
+      CompensateGNSSDelay(a_WorldFrame_i[2], EKF2.x[1], &corr_delta_v, &corr_delta_h, 0.001);
+      #endif
 
       // KALMAN FILTER, HEIGHT
       EKFPredictionStep(&EKF2);
 
+      #ifndef HIL_TESTING
       if (BMP_readData(&bmp_data.pressure, &bmp_data.height, &bmp_data.temperature)) {
         // execute this if new data is available
         // correction step
         EKF2_corr1.z[0] = bmp_data.pressure;
         EKFCorrectionStep(&EKF2, &EKF2_corr1);
       }
+      #else
+      // calculate bmp_data.pressure
+      HILgetBarometerData(&bmp_data);
+
+      EKF2_corr1.z[0] = bmp_data.pressure;
+      EKFCorrectionStep(&EKF2, &EKF2_corr1);
+      #endif
 
       // KALMAN FILTER, QUATERNION
       // prediction step
@@ -330,12 +353,14 @@ void Start100HzTask(void *argument) {
       //InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, &State_DataPacket);
 
       // Don't activate this and the SPARK communication at the same time, because they use the same SPI
+      /*
       if (ptot_readData(&ptot_data)) {
         // execute this if new data is available
         // correction step
         EKF2_corr3.z[0] = ptot_data.pressure;
         EKFCorrectionStep(&EKF2, &EKF2_corr3);
       }
+      */
 
       SPARK_ReadData();
 
@@ -371,7 +396,13 @@ void Start10HzTask(void *argument) {
     // Run 10 Hz Do Actions
     StateMachine_DoActions(&flight_sm, 10);
 
+    #ifndef HIL_TESTING
     GPS_ReadSensorData(&gps_data);
+    #else
+    // calculate gps_data
+    HILgetGPSData(&gps_data);
+    #endif
+    
 
     //GPS_RequestSensorData(); // Request GPS data
 
@@ -388,15 +419,13 @@ void Start10HzTask(void *argument) {
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &Attitude_DataPacket);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &GPS_DataPacket);
 
-      if ((flight_sm.currentFlightState == STATE_FLIGHT_GNC_ALIGN) || 
-          (flight_sm.currentFlightState == STATE_FLIGHT_CHECKOUTS) ||
-          (flight_sm.currentFlightState == STATE_FLIGHT_ARMED))
-      {
+      if ((flight_sm.currentFlightState >= STATE_FLIGHT_GNC_ALIGN) && (flight_sm.currentFlightState <= STATE_FLIGHT_ARMED)) {
         // not needed for now...
         //UBLOXtoWGS84(gps_data.lat, gps_data.lon, gps_data.height, WGS84);
         //WGS84toECEF(WGS84, ECEF);
         //ECEFtoENU(WGS84_ref, ECEF_ref, ECEF, ENU);
 
+        #ifndef HIL_TESTING // GPS Delay not implemented yet
         // add correction velocity to compensate GNSS delay
         gnss_velZ_corr = gps_data.velD*(-1e-3) + corr_delta_v;
 
@@ -405,6 +434,11 @@ void Start10HzTask(void *argument) {
 
         z2_corr2[0] = gnss_height_corr;
         z2_corr2[1] = gnss_velZ_corr;
+        #else
+        z2_corr2[0] = gps_data.height*(1e-3);
+        z2_corr2[1] = gps_data.velD*(-1e-3);
+        #endif
+
         arm_mat_set_entry_f32(EKF2_corr2.R, 0, 0, (float)gps_data.vAcc*gps_data.vAcc*1e-6);
         arm_mat_set_entry_f32(EKF2_corr2.R, 1, 1, (float)gps_data.sAcc*gps_data.sAcc*1e-6);
 

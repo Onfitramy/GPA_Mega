@@ -26,6 +26,8 @@
 extern "C" {
 #endif
 
+#define HIL_TESTING
+
 /* Includes ------------------------------------------------------------------*/
 #include "stm32h7xx_hal.h"
 #include "FreeRTOS.h"
@@ -52,6 +54,10 @@ extern "C" {
 #include "statemachine.h"
 #include "spark.h"
 #include "ptot.h"
+
+#ifdef HIL_TESTING
+#include "HIL.h"
+#endif
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 /* USER CODE END Includes */

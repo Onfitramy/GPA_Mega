@@ -1,9 +1,10 @@
 #ifndef BMP390_H_
 #define BMP390_H_
 
+#include "stm32h7xx_hal.h"
 #include "stdbool.h"
 
-#include "main.h"  // Falls du Debugging per LED machst
+//#include "main.h"  // Falls du Debugging per LED machst
 
 typedef struct {
     // Original

@@ -158,8 +158,6 @@ extern const double kappa;
 extern double rho0_const;
 extern double a0_const;
 
-extern const float dt;
-
 extern ekf_data_t EKF2;
 extern float x2[x_size2];
 extern arm_matrix_instance_f32 F2;
@@ -277,7 +275,7 @@ void QuaternionFromRotationMatrix(arm_matrix_instance_f32 *mat, float *q);
 float QuaternionCovToSmallAngleCov(float *q, arm_matrix_instance_f32 *P_q, arm_matrix_instance_f32 *P_angle);
 void DeulerMatrixFromEuler(float phi, float theta, arm_matrix_instance_f32 *mat);
 
-void CompensateGNSSDelay(float acc_meas, float vel_meas, float *v_corr_val, float *h_corr_val);
+void CompensateGNSSDelay(float acc_meas, float vel_meas, float *v_corr_val, float *h_corr_val, float dt);
 void BaroPressureToHeight(float pressure, float pressure_reference, float *height);
 void BaroHeightToPressure(float height, float pressure_reference, float *pressure);
 void CalculateTotalPressure(float height, float pressure_reference, float velocity_z, float *pressure_tot);

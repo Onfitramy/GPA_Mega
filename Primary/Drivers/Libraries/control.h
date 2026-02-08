@@ -37,10 +37,10 @@ extern mpc_t a_mpc;
 extern float u_star[PREDICTION_HORIZON];
 extern float x_star[2];
 
-void MPCInit(mpc_t *mpc, uint8_t pred_horz, uint8_t ineq_constr_num, float delta_t, float *ustar, float *xstar);
+void MPCInit(mpc_t *mpc, uint8_t pred_horz, uint8_t ineq_constr_num, float dt, float *ustar, float *xstar);
 float runMPC(mpc_t mpc, float height, float *velocity);
-float predictApogeeFromGamma(float height, float *velocity, float Aref, float m, float gamma, float t_max, float delta_t, float *t_apogee);
-void predictFutureStateGamma(float height, float *velocity, float Aref, float m, float gamma, float t_max, float delta_t, float *h_pred, float *v_pred);
+float predictApogeeFromGamma(float height, float *velocity, float Aref, float m, float gamma, float t_max, float dt, float *t_apogee);
+void predictFutureStateGamma(float height, float *velocity, float Aref, float m, float gamma, float t_max, float dt, float *h_pred, float *v_pred);
 
 float ComputeAirbrakeDrag(float vel_abs, float gamma);
 

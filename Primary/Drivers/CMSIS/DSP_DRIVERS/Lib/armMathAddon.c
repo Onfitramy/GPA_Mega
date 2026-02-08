@@ -83,6 +83,14 @@ void arm_mat_extract_f32(const arm_matrix_instance_f32 *src, arm_matrix_instance
   }
 }
 
+float arm_mat_trace_f32(const arm_matrix_instance_f32 *mat) {
+  float result;
+  for (int i = 0; (i < mat->numRows) && (i < mat->numCols); i++) {
+    result += arm_mat_get_entry_f32(mat, i, i);
+  }
+  return result;
+}
+
 void arm_mat_print_f32(arm_matrix_instance_f32 *pMat) {
 
   printf("%dx%d-Matrix:\n", pMat->numRows, pMat->numCols);

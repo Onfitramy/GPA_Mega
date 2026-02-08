@@ -17,9 +17,6 @@ const double kappa = 1.4;
 double rho0_const;
 double a0_const;
 
-// time step
-const float dt = 0.001;
-
 /* ------------------------------------------- VARIABLES ------------------------------------------- */
 
 /* --- EKF vectors and matrices --- */
@@ -230,9 +227,9 @@ void ECEFtoENU(double *WGS84_ref, double *ECEF_ref, double *ECEF, double *ENU) {
     double lon_rad = WGS84_ref[1] * PI / 180.;
 
     // transform difference to ENU frame
-    ENU[0] = -sinf(lon_rad) * dx + cosf(lon_rad) * dy;                                                    // East
-    ENU[1] = -sinf(lat_rad) * cosf(lon_rad) * dx - sinf(lat_rad) * sinf(lon_rad) * dy + cosf(lat_rad) * vt;  // North
-    ENU[2] =  cosf(lat_rad) * cosf(lon_rad) * dx + cosf(lat_rad) * sinf(lon_rad) * dy + sinf(lat_rad) * vt;  // Up
+    ENU[0] = -sinf(lon_rad) * dx + cosf(lon_rad) * dy;                                                      // East
+    ENU[1] = -sinf(lat_rad) * cosf(lon_rad) * dx - sinf(lat_rad) * sinf(lon_rad) * dy + cosf(lat_rad) * vt; // North
+    ENU[2] =  cosf(lat_rad) * cosf(lon_rad) * dx + cosf(lat_rad) * sinf(lon_rad) * dy + sinf(lat_rad) * vt; // Up
 }
 
 // attitude estimation using magnetometer and accelerometer
@@ -418,7 +415,7 @@ void DeulerMatrixFromEuler(float phi, float theta, arm_matrix_instance_f32 *mat)
 }
 
 // compensate GNSS measurement delay
-void CompensateGNSSDelay(float acc_meas, float vel_meas, float *v_corr_val, float *h_corr_val) {
+void CompensateGNSSDelay(float acc_meas, float vel_meas, float *v_corr_val, float *h_corr_val, float dt) {
     // update acceleration buffer and sum
     UpdateCircularBufferSum(corr_acc_buf, GNSS_VELOCITY_DELAY, &corr_acc_index, &corr_acc_sum, acc_meas);
 

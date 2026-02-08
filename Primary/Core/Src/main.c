@@ -188,6 +188,10 @@ int main(void)
   rho0_const = p0_const / (R_const * T0_const);
   a0_const = sqrt(kappa*R_const*T0_const);
 
+  #ifdef HIL_TESTING
+  HILInit();
+  #endif
+
   /* USER CODE END 2 */
 
   /* Init scheduler */

@@ -231,7 +231,6 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(10, "TargetAngle");
   signalPlotter_setSignalName(11, "PU current");
   signalPlotter_setSignalName(12, "PU voltage");
-
   #endif
 
   #ifdef SIGNAL_PLOTTER_OUT_GROUND // ground station data
@@ -242,6 +241,25 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(4, "x_Accel");
   signalPlotter_setSignalName(5, "y_Accel");
   signalPlotter_setSignalName(6, "z_Accel");
+  #endif
+
+  #ifdef SIGNAL_PLOTTER_OUT_7 // HIL & MPC
+  signalPlotter_setSignalName(0,"delta t");
+  signalPlotter_setSignalName(1,"FlightState");
+  signalPlotter_setSignalName(2,"Entry timestamp");
+  signalPlotter_setSignalName(3,"HIL pos x");
+  signalPlotter_setSignalName(4,"HIL pos y");
+  signalPlotter_setSignalName(5,"HIL pos z");
+  signalPlotter_setSignalName(6,"HIL vel x");
+  signalPlotter_setSignalName(7,"HIL vel y");
+  signalPlotter_setSignalName(8,"HIL vel z");
+  signalPlotter_setSignalName(9,"phi");
+  signalPlotter_setSignalName(10,"theta");
+  signalPlotter_setSignalName(11,"psi");
+  signalPlotter_setSignalName(12,"EKF pos z");
+  signalPlotter_setSignalName(13,"EKF vel z");
+  signalPlotter_setSignalName(14,"gamma");
+  signalPlotter_setSignalName(15,"");
   #endif
 }
 
@@ -384,7 +402,25 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(10, stepper_target_angle_deg);
   signalPlotter_sendData(11, (float)powerData.Data.power.PU_curr*1e-3f);
   signalPlotter_sendData(12, (float)powerData.Data.power.PU_bat_bus_volt*1e-3f);
+  #endif
 
+  #ifdef SIGNAL_PLOTTER_OUT_7 // HIL & MPC
+  signalPlotter_sendData(0,(float)dt_1000Hz);
+  signalPlotter_sendData(1,(float)flight_sm.currentFlightState);
+  signalPlotter_sendData(2,(float)flight_sm.timestamp_ms);
+  signalPlotter_sendData(3,HIL.r_i[0]);
+  signalPlotter_sendData(4,HIL.r_i[1]);
+  signalPlotter_sendData(5,HIL.r_i[2]);
+  signalPlotter_sendData(6,HIL.v_i[0]);
+  signalPlotter_sendData(7,HIL.v_i[1]);
+  signalPlotter_sendData(8,HIL.v_i[2]);
+  signalPlotter_sendData(9,euler[0]);
+  signalPlotter_sendData(10,euler[1]);
+  signalPlotter_sendData(11,euler[2]);
+  signalPlotter_sendData(12,EKF2.x[0]);
+  signalPlotter_sendData(13,EKF2.x[1]);
+  signalPlotter_sendData(14,acs_target_angle_deg);
+  signalPlotter_sendData(15,0);
   #endif
 
   signalPlotter_executeTransmission(HAL_GetTick());
