@@ -182,6 +182,9 @@ static void StartupEntry(StateMachine_t *sm) {
     // define Kalman Filter dimensions and pointers for Quaternion EKF
     EKFInit(&EKF3, EKF3_type, x_size3, u_size3, 0.001, &F3, &P3, &Q3, NULL, x3, average_imu_data.gyro);
     EKFCorrectionInit(EKF3, &EKF3_corr1, corr1_type, 6, &H3_corr1, &K3_corr1, &R3_corr1, &S3_corr1, &S3_inv_corr1, z3_corr1, h3_corr1, v3_corr1);
+    
+    // initialize MPC algorithm
+    MPCInit(&a_mpc, PREDICTION_HORIZON, NUM_INEQUALITY_CONSTRAINTS, MPC_DELTA_T, u_star, x_star);
 }
 static void InitEntry(StateMachine_t *sm) {
     Buzzer_PlayNote("A4", 100);
@@ -254,9 +257,12 @@ static void BurnEntry(StateMachine_t *sm) {
     SPARK_TargetPositionMode(16);
 }
 static void CoastEntry(StateMachine_t *sm) {
-    ACS_SetAngle(40.f);
-    // TODO:
-    // enable MPC
+    // initial xstar for MPC optimizer
+    float vel_vec_input[3] = { 0 };
+    vel_vec_input[0] = gps_data.velE*(1e-3);
+    vel_vec_input[1] = gps_data.velN*(1e-3);
+    vel_vec_input[2] = EKF2.x[1];
+    predictFutureStateGamma(EKF2.x[0], vel_vec_input, AREF, DRYMASS, 0, a_mpc.dt*a_mpc.N, 0.1, &a_mpc.xstar[0], &a_mpc.xstar[1]);
 }
 static void AwaitDrogueEntry(StateMachine_t *sm) {
     // JUST FOR TESTING
@@ -403,12 +409,22 @@ static void CoastDo(StateMachine_t *sm, uint16_t freq) {
         }
     }
 
-    if (freq != 100) return;
+    if (freq != 10) return;
 
-    // TODO: replace with MPC
-    // this is a demonstration acs angle timeseries!
-    float elapsed_time = (HAL_GetTick() - sm->timestamp_ms) * 1e-3f;
-    acs_target_angle_deg = 40.f + 10 * sinf(2 * M_PI * 0.25 * elapsed_time);
+    // MPC
+    TimeMeasureStart();
+
+    // define input velocity vector
+    float vel_vec_input[3] = { 0 };
+    vel_vec_input[0] = gps_data.velE*(1e-3);
+    vel_vec_input[1] = gps_data.velN*(1e-3);
+    vel_vec_input[2] = EKF2.x[1];
+
+    // solve optimization problem
+    acs_target_angle_deg = runMPC(a_mpc, EKF2.x[0], vel_vec_input);
+    dt_1000Hz = TimeMeasureStop();
+
+    // send airbrake deflection angle command to SPARK
     StepperPositionFromACSAngle(acs_target_angle_deg, &stepper_target_position);
     StepperAngleFromPosition(stepper_target_position, stepper_zero_position, &stepper_target_angle_deg);
     SPARK_SetAngle(stepper_target_angle_deg);

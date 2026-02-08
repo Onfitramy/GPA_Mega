@@ -371,13 +371,6 @@ void Start10HzTask(void *argument) {
     // Run 10 Hz Do Actions
     StateMachine_DoActions(&flight_sm, 10);
 
-    // mpc test
-    TimeMeasureStart();
-
-    dt_1000Hz = TimeMeasureStop();
-
-
-
     GPS_ReadSensorData(&gps_data);
 
     //GPS_RequestSensorData(); // Request GPS data
@@ -395,11 +388,14 @@ void Start10HzTask(void *argument) {
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &Attitude_DataPacket);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &GPS_DataPacket);
 
-      if (flight_sm.currentFlightState != STATE_FLIGHT_STARTUP && flight_sm.currentFlightState != STATE_FLIGHT_INIT) {
-        UBLOXtoWGS84(gps_data.lat, gps_data.lon, gps_data.height, WGS84);
-        WGS84toECEF(WGS84, ECEF);
-
-        ECEFtoENU(WGS84_ref, ECEF_ref, ECEF, ENU);
+      if ((flight_sm.currentFlightState == STATE_FLIGHT_GNC_ALIGN) || 
+          (flight_sm.currentFlightState == STATE_FLIGHT_CHECKOUTS) ||
+          (flight_sm.currentFlightState == STATE_FLIGHT_ARMED))
+      {
+        // not needed for now...
+        //UBLOXtoWGS84(gps_data.lat, gps_data.lon, gps_data.height, WGS84);
+        //WGS84toECEF(WGS84, ECEF);
+        //ECEFtoENU(WGS84_ref, ECEF_ref, ECEF, ENU);
 
         // add correction velocity to compensate GNSS delay
         gnss_velZ_corr = gps_data.velD*(-1e-3) + corr_delta_v;

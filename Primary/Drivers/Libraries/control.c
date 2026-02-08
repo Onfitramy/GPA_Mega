@@ -58,7 +58,7 @@ qp_real h_vec[NUM_INEQUALITY_CONSTRAINTS] = { 0 };
 float u_star[PREDICTION_HORIZON] = { 0 };
 float x_star[2] = { 0 };
 
-void initMPC(mpc_t *mpc, uint8_t pred_horz, uint8_t ineq_constr_num, float delta_t, float *ustar, float *xstar) {
+void MPCInit(mpc_t *mpc, uint8_t pred_horz, uint8_t ineq_constr_num, float delta_t, float *ustar, float *xstar) {
     // store settings
     mpc->N = pred_horz;
     mpc->n = ineq_constr_num;
@@ -241,7 +241,7 @@ float runMPC(mpc_t mpc, float height, float *velocity) {
     if ((ExitCode == QP_OPTIMAL) || (ExitCode == QP_MAXIT)) {
         // accept solution
         for (int i = 0; i < mpc.N; i++) {
-            mpc.ustar[i] = mpcQP->x[i];
+            mpc.ustar[i] = (float)mpcQP->x[i];
         }
     } else {
         // use previous valid solution
