@@ -30,6 +30,11 @@ typedef struct {
 
     float *ustar;
     float *xstar;
+
+    float tsetup;
+    float tsolve;
+    uint8_t iterations;
+    uint8_t ExitCode;
 } mpc_t;
 
 extern mpc_t a_mpc;
@@ -41,7 +46,7 @@ float ComputeAirbrakeDrag(float vel_abs, float gamma);
 float predictApogeeFromGamma(float height, float *velocity, float Aref, float m, float gamma, float t_max, float dt, float *t_apogee);
 void predictFutureStateGamma(float height, float *velocity, float Aref, float m, float gamma, float t_max, float dt, float *h_pred, float *v_pred);
 void MPCInit(mpc_t *mpc, uint8_t pred_horz, uint8_t ineq_constr_num, float dt, float *ustar, float *xstar);
-float runMPC(mpc_t mpc, float height, float *velocity);
+float runMPC(mpc_t *mpc, float height, float *velocity);
 
 /* --- Airbrake kinematics --- */
 #define ACS_ANGLE_MAX_DEG 50.f

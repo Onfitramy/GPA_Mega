@@ -259,7 +259,10 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(12,"EKF pos z");
   signalPlotter_setSignalName(13,"EKF vel z");
   signalPlotter_setSignalName(14,"gamma");
-  signalPlotter_setSignalName(15,"");
+  signalPlotter_setSignalName(15,"QP ExitCode");
+  signalPlotter_setSignalName(16,"QP NumIterations");
+  signalPlotter_setSignalName(17,"QP setup time");
+  signalPlotter_setSignalName(18,"QP solve time");
   #endif
 }
 
@@ -405,22 +408,25 @@ void signalPlotter_sendAll(void) {
   #endif
 
   #ifdef SIGNAL_PLOTTER_OUT_7 // HIL & MPC
-  signalPlotter_sendData(0,(float)dt_1000Hz);
-  signalPlotter_sendData(1,(float)flight_sm.currentFlightState);
-  signalPlotter_sendData(2,(float)flight_sm.timestamp_ms);
-  signalPlotter_sendData(3,HIL.r_i[0]);
-  signalPlotter_sendData(4,HIL.r_i[1]);
-  signalPlotter_sendData(5,HIL.r_i[2]);
-  signalPlotter_sendData(6,HIL.v_i[0]);
-  signalPlotter_sendData(7,HIL.v_i[1]);
-  signalPlotter_sendData(8,HIL.v_i[2]);
-  signalPlotter_sendData(9,euler[0]);
-  signalPlotter_sendData(10,euler[1]);
-  signalPlotter_sendData(11,euler[2]);
-  signalPlotter_sendData(12,EKF2.x[0]);
-  signalPlotter_sendData(13,EKF2.x[1]);
-  signalPlotter_sendData(14,acs_target_angle_deg);
-  signalPlotter_sendData(15,0);
+  signalPlotter_sendData(0, (float)dt_1000Hz);
+  signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
+  signalPlotter_sendData(2, (float)flight_sm.timestamp_ms);
+  signalPlotter_sendData(3, HIL.r_i[0]);
+  signalPlotter_sendData(4, HIL.r_i[1]);
+  signalPlotter_sendData(5, HIL.r_i[2]);
+  signalPlotter_sendData(6, HIL.v_i[0]);
+  signalPlotter_sendData(7, HIL.v_i[1]);
+  signalPlotter_sendData(8, HIL.v_i[2]);
+  signalPlotter_sendData(9, euler[0]);
+  signalPlotter_sendData(10, euler[1]);
+  signalPlotter_sendData(11, euler[2]);
+  signalPlotter_sendData(12, EKF2.x[0]);
+  signalPlotter_sendData(13, EKF2.x[1]);
+  signalPlotter_sendData(14, acs_target_angle_deg);
+  signalPlotter_sendData(15, (float)a_mpc.ExitCode);
+  signalPlotter_sendData(16, (float)a_mpc.iterations);
+  signalPlotter_sendData(17, a_mpc.tsetup);
+  signalPlotter_sendData(18, a_mpc.tsolve);
   #endif
 
   signalPlotter_executeTransmission(HAL_GetTick());

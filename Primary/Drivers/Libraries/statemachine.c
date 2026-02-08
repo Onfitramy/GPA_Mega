@@ -274,6 +274,7 @@ static void CoastEntry(StateMachine_t *sm) {
 }
 static void AwaitDrogueEntry(StateMachine_t *sm) {
     // JUST FOR TESTING
+    acs_target_angle_deg = 0;
     SPARK_SetAngle(0);
 
     DeployDrogue(DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
@@ -429,7 +430,7 @@ static void CoastDo(StateMachine_t *sm, uint16_t freq) {
     vel_vec_input[2] = EKF2.x[1];
 
     // solve optimization problem
-    acs_target_angle_deg = runMPC(a_mpc, EKF2.x[0], vel_vec_input);
+    acs_target_angle_deg = runMPC(&a_mpc, EKF2.x[0], vel_vec_input);
     dt_1000Hz = TimeMeasureStop();
 
     // send airbrake deflection angle command to SPARK

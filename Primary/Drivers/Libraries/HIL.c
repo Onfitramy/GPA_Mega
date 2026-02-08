@@ -21,7 +21,7 @@ void HILInit() {
         HIL.a_b[i] = 0;
         HIL.a_i[i] = 0;
     }
-    RotationMatrixFromEuler(M_PI_2, 0, 0, HIL.DCM_bi);
+    RotationMatrixFromEuler(90/180.f*M_PI, 0, 0, HIL.DCM_bi);
     arm_mat_trans_f32(HIL.DCM_bi, HIL.DCM_ib);
 }
 
@@ -71,7 +71,8 @@ void HILupdateStates(float dt) {
     arm_mat_vec_mult_f32(HIL.DCM_bi, HIL.v_i, HIL.v_b);
 
     // update orientation
-    if ((HIL.v_i[0] != 0) || (HIL.v_i[0] != 0)) {
+    //if ((HIL.v_i[0] != 0) || (HIL.v_i[1] != 0)) {
+    if(0) {
         float HIL_DCMo_bi_data[9] = { 0 };
         arm_matrix_instance_f32 HIL_DCMo_bi = {3, 3, HIL_DCMo_bi_data};
         arm_mat_copy_f32(HIL.DCM_bi, &HIL_DCMo_bi);

@@ -222,7 +222,7 @@ void MPCInit(mpc_t *mpc, uint8_t pred_horz, uint8_t ineq_constr_num, float dt, f
     arm_mat_mult_f32(&DT_mat, &R_du_mat, &M1_mat);
 }
 
-float runMPC(mpc_t mpc, float height, float *velocity) {
+float runMPC(mpc_t *mpc, float height, float *velocity) {
 
     float m = DRYMASS;
     float buffer[2];
@@ -235,43 +235,43 @@ float runMPC(mpc_t mpc, float height, float *velocity) {
     float v_input[3];
     v_input[0] = velocity[0];
     v_input[1] = velocity[1];
-    v_input[2] = mpc.xstar[1];
+    v_input[2] = mpc->xstar[1];
     float x_N0[2];
-    predictFutureStateGamma(mpc.xstar[0], v_input, AREF, m, mpc.u_nom, mpc.dt, mpc.dt, &x_N0[0], &x_N0[1]);
+    predictFutureStateGamma(mpc->xstar[0], v_input, AREF, m, mpc->u_nom, mpc->dt, mpc->dt, &x_N0[0], &x_N0[1]);
 
     // model operating point
     float h_op = 0.5 * ((float)x_0[0] + x_N0[0]);
     float v_op = 0.5 * ((float)x_0[1] + x_N0[1]);
-    float CD_op = ComputeAirbrakeDrag((float)v_op, (float)mpc.ustar[0]);   // drag only computed from vertical velocity component! Might be worth looking into...
+    float CD_op = ComputeAirbrakeDrag((float)v_op, (float)mpc->ustar[0]);   // drag only computed from vertical velocity component! Might be worth looking into...
     float rho = CalculateAirDensity(h_op);                                 // in theory, this does not compensate the launch site altitude
 
     /* calculate linearization constants */
     float a_op = -g0_const - 0.5*rho * v_op * v_op * AREF * CD_op / m;
-    float a_v = -rho*AREF*v_op/m*(v_op*v_op*(cACS[3]+cACS[5]*mpc.ustar[0]*mpc.ustar[0])/(a0_const*a0_const)+0.5*v_op*cACS[4]*mpc.ustar[0]/a0_const+CD_op);
-    float a_g = -0.5*rho*v_op*v_op*AREF/m*(2*mpc.ustar[0]*(cACS[0]+cACS[5]*v_op*v_op/(a0_const*a0_const))+cACS[1]+cACS[4]*v_op/a0_const);
+    float a_v = -rho*AREF*v_op/m*(v_op*v_op*(cACS[3]+cACS[5]*mpc->ustar[0]*mpc->ustar[0])/(a0_const*a0_const)+0.5*v_op*cACS[4]*mpc->ustar[0]/a0_const+CD_op);
+    float a_g = -0.5*rho*v_op*v_op*AREF/m*(2*mpc->ustar[0]*(cACS[0]+cACS[5]*v_op*v_op/(a0_const*a0_const))+cACS[1]+cACS[4]*v_op/a0_const);
     float a_h = rho*v_op*v_op*AREF*CD_op*g0_const/(2*m*T0_const*R_const)*pow(1+L_const*h_op/T0_const, -g0_const/(R_const*L_const)-2);
 
-    float a_c = a_op - a_v * v_op - a_g * mpc.ustar[0] - a_h * h_op;
+    float a_c = a_op - a_v * v_op - a_g * mpc->ustar[0] - a_h * h_op;
 
     /* Fill A, B and r matrices and vectors */
-    arm_mat_set_entry_f32(&A_mat, 0, 0, 1 + 0.5 * a_h * mpc.dt * mpc.dt);
-    arm_mat_set_entry_f32(&A_mat, 0, 1, mpc.dt + 0.5 * a_v * mpc.dt * mpc.dt);
-    arm_mat_set_entry_f32(&A_mat, 1, 0, a_h * mpc.dt);
-    arm_mat_set_entry_f32(&A_mat, 1, 1, 1 + a_v * mpc.dt);
+    arm_mat_set_entry_f32(&A_mat, 0, 0, 1 + 0.5 * a_h * mpc->dt * mpc->dt);
+    arm_mat_set_entry_f32(&A_mat, 0, 1, mpc->dt + 0.5 * a_v * mpc->dt * mpc->dt);
+    arm_mat_set_entry_f32(&A_mat, 1, 0, a_h * mpc->dt);
+    arm_mat_set_entry_f32(&A_mat, 1, 1, 1 + a_v * mpc->dt);
 
-    B_vec[0] = 0.5 * a_g * mpc.dt * mpc.dt;
-    B_vec[1] = a_g * mpc.dt;
+    B_vec[0] = 0.5 * a_g * mpc->dt * mpc->dt;
+    B_vec[1] = a_g * mpc->dt;
 
-    r_vec[0] = 0.5 * a_c * mpc.dt * mpc.dt;
-    r_vec[1] = a_c * mpc.dt;
+    r_vec[0] = 0.5 * a_c * mpc->dt * mpc->dt;
+    r_vec[1] = a_c * mpc->dt;
 
     // update d vector
-    arm_mat_set_entry_f32(&d_vec, 0, 0, mpc.ustar[0]);
+    arm_mat_set_entry_f32(&d_vec, 0, 0, mpc->ustar[0]);
 
     /* calculate E */
     // handle columns 0 through N-2
-    for (int i = 0; i < mpc.N - 1; i++) {
-        int A_exponent = mpc.N - 1 - i;
+    for (int i = 0; i < mpc->N - 1; i++) {
+        int A_exponent = mpc->N - 1 - i;
         float column[2];
 
         arm_mat_vec_mult_f32(&A_mat, B_vec, buffer);
@@ -289,12 +289,12 @@ float runMPC(mpc_t mpc, float height, float *velocity) {
         }
     }
     // handle last column
-    arm_mat_set_column_f32(&E_mat, mpc.N-1, B_vec);
+    arm_mat_set_column_f32(&E_mat, mpc->N-1, B_vec);
 
     /* time between end of prediction horizon and apogee */
     v_input[2] = x_N0[1];
     float t_nom;
-    float h_nom = predictApogeeFromGamma(x_N0[0], v_input, AREF, m, mpc.u_nom, 20, 0.1, &t_nom);
+    float h_nom = predictApogeeFromGamma(x_N0[0], v_input, AREF, m, mpc->u_nom, 20, 0.1, &t_nom);
 
     float a_t = 0.5 * x_N0[1]*x_N0[1] / (h_nom - x_N0[0]);
     float h_ref = 0.5 * x_N0[1]*x_N0[1] / a_t + H_TARGET;
@@ -306,7 +306,7 @@ float runMPC(mpc_t mpc, float height, float *velocity) {
     float x_N_free[2];
     x_N_free[0] = x_0[0];
     x_N_free[1] = x_0[1];
-    for (int i = 0; i < mpc.N; i++) {
+    for (int i = 0; i < mpc->N; i++) {
         arm_mat_vec_mult_f32(&A_mat, x_N_free, buffer);
         arm_vecN_add_f32(2, buffer, r_vec, x_N_free);
     }
@@ -322,9 +322,9 @@ float runMPC(mpc_t mpc, float height, float *velocity) {
     arm_mat_mult_f32(&ETCaT_mat, &CaE_mat, &P_mat);
     arm_mat_add_f32(&P_mat, &M1_mat, &P_mat); // add second term
 
-    float w_u = MPC_W_U * (t_nom + mpc.N*mpc.dt) / MPC_TCOAST; // third term
-    for (int i = 0; i < mpc.N; i++) {
-        arm_mat_set_entry_f32(&R_u_mat, i, i, (MPC_ALPHA0+(1-MPC_ALPHA0)/(mpc.N-1)*i)*w_u);
+    float w_u = MPC_W_U * (t_nom + mpc->N*mpc->dt) / MPC_TCOAST; // third term
+    for (int i = 0; i < mpc->N; i++) {
+        arm_mat_set_entry_f32(&R_u_mat, i, i, (MPC_ALPHA0+(1-MPC_ALPHA0)/(mpc->N-1)*i)*w_u);
     }
     arm_mat_add_f32(&P_mat, &R_u_mat, &P_mat); // add third term
 
@@ -347,32 +347,39 @@ float runMPC(mpc_t mpc, float height, float *velocity) {
         G_dataQP[i] = (qp_real)G_data[i];
     }
 
-    mpcQP = QP_SETUP_dense(mpc.N, mpc.n, 0, P_dataQP, NULL, G_dataQP, q_dataQP, h_vec, NULL, NULL, ROW_MAJOR_ORDERING);
+    mpcQP = QP_SETUP_dense(mpc->N, mpc->n, 0, P_dataQP, NULL, G_dataQP, q_dataQP, h_vec, NULL, NULL, ROW_MAJOR_ORDERING);
 
-	qp_int ExitCode = QP_SOLVE(mpcQP);
+	mpc->ExitCode = (uint8_t)QP_SOLVE(mpcQP);
+
+    mpc->tsetup = (float)mpcQP->stats->tsetup;
+    mpc->tsolve = (float)mpcQP->stats->tsolve;
+    mpc->iterations = (uint8_t)mpcQP->stats->IterationCount;
 
     QP_CLEANUP_dense(mpcQP);
 
-    if ((ExitCode == QP_OPTIMAL) || (ExitCode == QP_MAXIT)) {
+    if ((mpc->ExitCode == QP_OPTIMAL) || (mpc->ExitCode == QP_MAXIT)) {
         // accept solution
-        for (int i = 0; i < mpc.N; i++) {
-            mpc.ustar[i] = (float)mpcQP->x[i];
+        for (int i = 0; i < mpc->N; i++) {
+            mpc->ustar[i] = (float)mpcQP->x[i];
         }
     } else {
         // use previous valid solution
-        for (int i = 0; i < (mpc.N-1); i++) {
-            mpc.ustar[i] = mpc.ustar[i+1];
+        for (int i = 0; i < (mpc->N-1); i++) {
+            mpc->ustar[i] = mpc->ustar[i+1];
         }
-        mpc.ustar[mpc.N-1] = mpc.u_nom;
+        mpc->ustar[mpc->N-1] = mpc->u_nom;
     }
 
     /* propagate x star */
     float x_sum[2] = {0};
-    arm_mat_vec_mult_f32(&E_mat, mpc.ustar, x_sum);
-    mpc.xstar[0] = x_N_free[0] + x_sum[0];
-    mpc.xstar[1] = x_N_free[1] + x_sum[1];
+    arm_mat_vec_mult_f32(&E_mat, mpc->ustar, x_sum);
+    mpc->xstar[0] = x_N_free[0] + x_sum[0];
+    mpc->xstar[1] = x_N_free[1] + x_sum[1];
 
-    return mpc.ustar[0];
+    if (t_nom < -1.5) {
+        return 0;
+    }
+    return mpc->ustar[0];
 }
 
 
