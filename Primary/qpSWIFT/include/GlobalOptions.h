@@ -33,7 +33,7 @@ extern "C"
 #endif
 
 /*! QP Specific Varibles */
-#define qp_real double
+#define qp_real float
 
 /*! QP Specific Varibles */
 #if (defined _WIN64)
@@ -43,7 +43,7 @@ extern "C"
 #endif
 
 /*! QP SOLVER Settings */
-#define MAXIT (100)   /*!< Maximum Number of Iterations */
+#define MAXIT (25)   /*!< Maximum Number of Iterations */
 #define RELTOL (1e-6) /*!< Residual Error Tolerances */
 #define ABSTOL (1e-6) /*!< s and z Tolerances  */
 #define SIGMA (100)   /*!< Centering Parameter */

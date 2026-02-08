@@ -100,8 +100,8 @@ void initMPC(mpc_t *mpc, uint8_t pred_horz, uint8_t ineq_constr_num, float delta
     float DT_data[PREDICTION_HORIZON*PREDICTION_HORIZON] = { 0 };
     arm_matrix_instance_f32 DT_mat = {PREDICTION_HORIZON, PREDICTION_HORIZON, DT_data};
     arm_mat_trans_f32(&D_mat, &DT_mat);
-    arm_mat_mult_f32(&R_du_mat, &D_mat, &P_mat);
-    arm_mat_scale_f32(&P_mat, MPC_W_DU, &R_du_mat);
+    arm_mat_mult_f32(&R_du_mat, &D_mat, P_mat);
+    arm_mat_scale_f32(P_mat, MPC_W_DU, &R_du_mat);
     arm_mat_mult_f32(&DT_mat, &R_du_mat, &M1_mat);
 }
 
@@ -111,11 +111,9 @@ float runMPC(mpc_t mpc, float height, float *velocity) {
     float buffer[2];
 
     // initial states
-    float h_0 = height;
-    float v_0 = velocity[2];
     float x_0[2];
-    x_0[0] = h_0;
-    x_0[1] = v_0;
+    x_0[0] = height;
+    x_0[1] = velocity[2];
 
     float v_input[3];
     v_input[0] = velocity[0];
@@ -202,8 +200,8 @@ float runMPC(mpc_t mpc, float height, float *velocity) {
     arm_matrix_instance_f32 CaT_mat = {2, 1, CaT_data};
     arm_mat_trans_f32(&Ca_mat, &CaT_mat);
     arm_mat_scale_f32(&CaT_mat, MPC_W_A, &CaT_mat);
-    float ET_data[PREDICTION_HORIZON] = { 0 };
-    arm_matrix_instance_f32 ET_mat = {1, PREDICTION_HORIZON, ET_data};
+    float ET_data[PREDICTION_HORIZON*2] = { 0 };
+    arm_matrix_instance_f32 ET_mat = {PREDICTION_HORIZON, 2, ET_data};
     arm_mat_trans_f32(&E_mat, &ET_mat);
     float ETCaT_data[PREDICTION_HORIZON] = { 0 };
     arm_matrix_instance_f32 ETCaT_mat = {PREDICTION_HORIZON, 1, ETCaT_data};
@@ -229,7 +227,7 @@ float runMPC(mpc_t mpc, float height, float *velocity) {
     /* solve QP */
     QP *mpcQP;
 
-    mpcQP = QP_SETUP_dense(mpc.N, mpc.n, 0, mpc.P->pData, NULL, mpc.G->pData, mpc.q, mpc.h, NULL, NULL, ROW_MAJOR_ORDERING);
+    mpcQP = QP_SETUP_dense(mpc.N, mpc.n, 0, mpc.P->pData, NULL, mpc.G->pData, mpc.q->pData, mpc.h, NULL, NULL, ROW_MAJOR_ORDERING);
 
 	qp_int ExitCode = QP_SOLVE(mpcQP);
 
@@ -245,6 +243,13 @@ float runMPC(mpc_t mpc, float height, float *velocity) {
         }
         mpc.ustar[mpc.N-1] = mpc.u_nom;
     }
+
+    /* propagate x star */
+    float x_sum[2] = {0};
+    arm_mat_vec_mult_f32(&E_mat, mpc.ustar, x_sum);
+    mpc.xstar[0] = x_N_free[0] + x_sum[0];
+    mpc.xstar[1] = x_N_free[1] + x_sum[1];
+
     return mpc.ustar[0];
 }
 

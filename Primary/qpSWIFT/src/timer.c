@@ -59,12 +59,12 @@ void tic(qp_timer* t)
     t->tic = DWT->CYCCNT;
 }
 
-double toc(qp_timer* t)
+qp_real toc(qp_timer* t)
 {
     uint32_t now = DWT->CYCCNT;
     uint32_t diff = now - t->tic;   // unsigned handles overflow correctly
 
-    return ((double)diff) / ((double)SystemCoreClock);
+    return ((qp_real)diff) / ((qp_real)SystemCoreClock);
 }
 
 

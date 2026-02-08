@@ -190,11 +190,17 @@ int main(void)
   rho0_const = p0_const / (R_const * T0_const);
   a0_const = sqrt(kappa*R_const*T0_const); 
 
+  TimeMeasureStart();
   initMPC(&a_mpc, PREDICTION_HORIZON, NUM_INEQUALITY_CONSTRAINTS, MPC_DELTA_T, u_star, x_star, &P_mat, &q_vec, &G_mat, h_vec);
+  dt_1000Hz = TimeMeasureStop();
 
   TimeMeasureStart();
-
-
+  float height_0 = 1947.2;
+  float vel_0[3] = {16.095, 1.445, 90.3795};
+  a_mpc.xstar[0] = 2096.4;
+  a_mpc.xstar[1] = 67.5;
+  a_mpc.ustar[0] = 14.8386;
+  float gamma = runMPC(a_mpc, height_0, vel_0);
   dt_1000Hz = TimeMeasureStop();
 
   /* USER CODE END 2 */

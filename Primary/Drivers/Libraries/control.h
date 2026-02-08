@@ -24,12 +24,12 @@
 typedef struct {
     uint8_t N;
     uint8_t n;
-    uint8_t dt;
+    float dt;
 
     arm_matrix_instance_f32 *P;
     arm_matrix_instance_f32 *G;
 
-    qp_real *q;
+    arm_matrix_instance_f32 *q;
     qp_real *h;
 
     float u_nom;
@@ -50,7 +50,7 @@ extern float x_star[2];
 
 void initMPC(mpc_t *mpc, uint8_t pred_horz, uint8_t ineq_constr_num, float delta_t, float *ustar, float *xstar,
              arm_matrix_instance_f32 *P_mat, arm_matrix_instance_f32 *q_vec, arm_matrix_instance_f32 *G_mat, qp_real *h_vec);
-
+float runMPC(mpc_t mpc, float height, float *velocity);
 float predictApogeeFromGamma(float height, float *velocity, float Aref, float m, float gamma, float t_max, float delta_t, float *t_apogee);
 void predictFutureStateGamma(float height, float *velocity, float Aref, float m, float gamma, float t_max, float delta_t, float *h_pred, float *v_pred);
 
