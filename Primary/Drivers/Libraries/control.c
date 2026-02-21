@@ -328,7 +328,7 @@ float runMPC(mpc_t *mpc, float height, float *velocity) {
     }
     arm_mat_add_f32(&P_mat, &R_u_mat, &P_mat); // add third term
 
-    /* compute q */
+    /* compute q^T */
     arm_mat_mult_f32(&d_vec, &R_du_mat, &M2_vec);
     arm_mat_scale_f32(&CaE_mat, MPC_W_A*(Ca_data[0]*x_N_free[0]+Ca_data[1]*x_N_free[1]-h_ref), &q_vec);
     arm_mat_sub_f32(&q_vec, &M2_vec, &q_vec);
@@ -382,22 +382,7 @@ float runMPC(mpc_t *mpc, float height, float *velocity) {
     return mpc->ustar[0];
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/* --- Airbrake Kinematics --- */
 
 float stepper_zero_position;
 float stepper_target_position;
