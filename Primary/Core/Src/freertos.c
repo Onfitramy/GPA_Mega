@@ -62,8 +62,11 @@ GPA_Mega gpa_mega;
 
 DataPacket_t powerData;
 
-bool is_groundstation = false;
+bool is_groundstation = true;
 bool groundStationSend = true;
+
+extern float acs_target_angle_deg;
+extern float airbreak_deflection;
 
 void SensorStatus_Reset(SensorStatus *sensor_status) {
   sensor_status->hal_status = HAL_OK;
@@ -337,11 +340,11 @@ void Start100HzTask(void *argument) {
     StateMachine_DoActions(&flight_sm, 100);
     
     if (is_groundstation) {
-      UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &average_imu_data, &mag_data);
-      InterBoardCom_SendDataPacket(INTERBOARD_OP_LOAD_REQUEST | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);
+      //UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &average_imu_data, &mag_data);
+      //InterBoardCom_SendDataPacket(INTERBOARD_OP_LOAD_REQUEST | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);
 
-      UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler[0], euler[1], euler[2]);
-      InterBoardCom_SendDataPacket(INTERBOARD_OP_LOAD_REQUEST | INTERBOARD_TARGET_RADIO, &Attitude_DataPacket);
+      //UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler[0], euler[1], euler[2]);
+      //InterBoardCom_SendDataPacket(INTERBOARD_OP_LOAD_REQUEST | INTERBOARD_TARGET_RADIO, &Attitude_DataPacket);
     } else {
       UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &average_imu_data, &mag_data);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, &IMU_DataPacket);
@@ -392,6 +395,9 @@ void Start10HzTask(void *argument) {
   DataPacket_t Temp_DataPacket = CreateDataPacket(PACKET_ID_TEMPERATURE);
   DataPacket_t IMU_DataPacket = CreateDataPacket(PACKET_ID_IMU);
   DataPacket_t Attitude_DataPacket = CreateDataPacket(PACKET_ID_ATTITUDE);
+  DataPacket_t MPC_Info_DataPacket = CreateDataPacket(PACKET_ID_MPC_INFO);
+  DataPacket_t Kalman_DataPacket = CreateDataPacket(PACKET_ID_KALMANMATRIX);
+  DataPacket_t State_DataPacket = CreateDataPacket(PACKET_ID_STATE);
   DataPacket_t Spark_CommandPacket;
 
   /* Infinite loop */
@@ -412,10 +418,16 @@ void Start10HzTask(void *argument) {
     UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &average_imu_data, &mag_data);
     UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler[0], euler[1], euler[2]);
     UpdateGPSDataPacket(&GPS_DataPacket, HAL_GetTick(), &gps_data);
+    UpdateKalmanMatrixPacket(&Kalman_DataPacket, HAL_GetTick(), arm_mat_get_entry_f32(&P2, 0, 0), arm_mat_get_entry_f32(&P2, 1, 1), arm_mat_get_entry_f32(&P2, 2, 2), EKF2.x[0], EKF2.x[1], EKF2.x[2]);
+    UpdateMPCInfoPacket(&MPC_Info_DataPacket, HAL_GetTick(), dt_1000Hz, spark_data.Data.spark.magAngle, acs_target_angle_deg);
+    UpdateStatePacket(&State_DataPacket, HAL_GetTick(), flight_sm.currentFlightState, flight_sm.timestamp_ms);
 
     if (is_groundstation && groundStationSend) { //Groundstation requests data from secondary board
       USB_QueueDataPacket(&IMU_DataPacket);
       USB_QueueDataPacket(&Attitude_DataPacket);
+      USB_QueueDataPacket(&Kalman_DataPacket);
+      USB_QueueDataPacket(&MPC_Info_DataPacket);
+      USB_QueueDataPacket(&State_DataPacket);
 
     } else if (!is_groundstation) { //Secondary board sends data to groundstation
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);

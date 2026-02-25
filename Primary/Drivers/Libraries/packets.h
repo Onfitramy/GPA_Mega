@@ -26,6 +26,7 @@ typedef enum __attribute__((packed)){
     PACKET_ID_SPARK = 0x09, // SPARK data packet
     PACKET_ID_COMMAND = 0x10, // Command packet
     PACKET_ID_STATE = 0x11, // Command packet
+    PACKET_ID_MPC_INFO = 0x12, // MPC Info packet
 } PacketType_t;
 
 
@@ -150,6 +151,14 @@ typedef struct {
 } SPARKPayload_t;
 
 typedef struct {
+    float MPC_freq;
+    float Airbreak_deflection;
+    float Target_Angle;
+    uint32_t unused1, unused2, unused3;
+    uint16_t unused4; // 26 bytes
+} MPCInfoPayload_t;
+
+typedef struct {
     float test1, test2, test3, test4, test5, test6; // 24 bytes
     uint16_t unused1; // 26 bytes
 } TestPayload_t;
@@ -174,6 +183,7 @@ typedef union {
     PositionPayload_t position;
     AttitudePayload_t attitude;
     KalmanMatrixPayload_t kalman;
+    MPCInfoPayload_t mpc_info;
     SPARKPayload_t spark;
     TestPayload_t test;
     CommandPayload_t command;
@@ -201,6 +211,7 @@ void UpdatePowerPacket(DataPacket_t *power_packet, uint32_t timestamp, float PU_
 void UpdateKalmanMatrixPacket(DataPacket_t *kalman_packet, uint32_t timestamp, float P11, float P22, float P33, float EKF2_Heigth, float EKF2_vel, float EKF2_refPres);
 void UpdatePositionPacket(DataPacket_t *position_packet, uint32_t timestamp, float posX, float posY, float posZ, float velX, float velY, float velZ);
 void UpdateAttitudePacket(DataPacket_t *attitude_packet, uint32_t timestamp, float phi, float theta, float psi);
+void UpdateMPCInfoPacket(DataPacket_t *mpc_info_packet, uint32_t timestamp, float MPC_freq, float Airbreak_deflection, float Target_Angle);
 void PlotDataPacket(DataPacket_t *packet);
 void CreateCommandPacket(DataPacket_t *command_packet, uint32_t timestamp, CommandTarget_t command_target, uint8_t command_id, uint8_t *params, size_t params_length);
 void UpdateStatePacket(DataPacket_t *state_packet, uint32_t timestamp, uint8_t flight_state, uint32_t timestamp_ms);

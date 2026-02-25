@@ -184,6 +184,17 @@ void UpdateStatePacket(DataPacket_t *state_packet, uint32_t timestamp, uint8_t f
     calcCRC(state_packet);
 }
 
+void UpdateMPCInfoPacket(DataPacket_t *mpc_info_packet, uint32_t timestamp, float MPC_freq, float Airbreak_deflection, float Target_Angle) {
+    mpc_info_packet->timestamp = timestamp;
+
+    // Update the MPC Info packet with the latest MPC information
+    mpc_info_packet->Data.mpc_info.MPC_freq = MPC_freq;
+    mpc_info_packet->Data.mpc_info.Airbreak_deflection = Airbreak_deflection;
+    mpc_info_packet->Data.mpc_info.Target_Angle = Target_Angle;
+
+    calcCRC(mpc_info_packet);
+}
+
 void CreateCommandPacket(DataPacket_t *command_packet, uint32_t timestamp, CommandTarget_t command_target, uint8_t command_id, uint8_t *params, size_t params_length) {
     command_packet->Packet_ID = PACKET_ID_COMMAND;
     command_packet->timestamp = timestamp;
