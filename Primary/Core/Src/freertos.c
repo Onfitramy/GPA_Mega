@@ -337,11 +337,11 @@ void Start100HzTask(void *argument) {
     StateMachine_DoActions(&flight_sm, 100);
     
     if (is_groundstation) {
-      //UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &average_imu_data, &mag_data);
-      //InterBoardCom_SendDataPacket(INTERBOARD_OP_LOAD_REQUEST | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);
+      UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &average_imu_data, &mag_data);
+      InterBoardCom_SendDataPacket(INTERBOARD_OP_LOAD_REQUEST | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);
 
-      //UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler[0], euler[1], euler[2]);
-      //InterBoardCom_SendDataPacket(INTERBOARD_OP_LOAD_REQUEST | INTERBOARD_TARGET_RADIO, &Attitude_DataPacket);
+      UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler[0], euler[1], euler[2]);
+      InterBoardCom_SendDataPacket(INTERBOARD_OP_LOAD_REQUEST | INTERBOARD_TARGET_RADIO, &Attitude_DataPacket);
     } else {
       UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &average_imu_data, &mag_data);
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, &IMU_DataPacket);
@@ -423,9 +423,9 @@ void Start10HzTask(void *argument) {
       USB_QueueDataPacket(&IMU_DataPacket);
       USB_QueueDataPacket(&Attitude_DataPacket);
       USB_QueueDataPacket(&GPS_DataPacket);
-      //USB_QueueDataPacket(&Kalman_DataPacket);
-      //USB_QueueDataPacket(&MPC_Info_DataPacket);
-      //USB_QueueDataPacket(&State_DataPacket);
+      USB_QueueDataPacket(&Kalman_DataPacket);
+      USB_QueueDataPacket(&MPC_Info_DataPacket);
+      USB_QueueDataPacket(&State_DataPacket);
 
     } else if (!is_groundstation) { //Secondary board sends data to groundstation
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);
