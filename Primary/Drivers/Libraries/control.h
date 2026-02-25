@@ -69,6 +69,7 @@ extern float stepper_target_position;
 extern float stepper_target_angle_deg;
 extern float stepper_neutral_angle;
 extern float acs_target_angle_deg;
+extern float acs_est_angle_deg;
 
 void CircleIntersectionPoints(float x1, float y1, float r1, float x2, float y2, float r2,
                               float *xi1, float *yi1, float *xi2, float *yi2, int *num_intersections);
@@ -76,6 +77,6 @@ void CircleIntersectionPoints(float x1, float y1, float r1, float x2, float y2, 
 void ACSAngleFromStepperPosition(float stepper_pos, float *acs_angle_deg);
 void StepperPositionFromACSAngle(float acs_angle_deg, float *stepper_pos);
 void StepperAngleFromPosition(float stepper_pos, float stepper_zero_pos, float *stepper_angle_deg);
-
+void StepperPositionFromAngle(float stepper_zero_pos, float stepper_angle_deg, float *stepper_pos);
 
 #endif // CONTROL_H

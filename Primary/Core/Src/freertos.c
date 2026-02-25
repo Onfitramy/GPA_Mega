@@ -363,6 +363,9 @@ void Start100HzTask(void *argument) {
       */
 
       SPARK_ReadData();
+      float stepper_est_position;
+      StepperPositionFromAngle(stepper_zero_position, spark_data.Data.spark.magAngle, &stepper_est_position);
+      ACSAngleFromStepperPosition(stepper_est_position, &acs_est_angle_deg);
 
       // Quaternion EKF correction step
       arm_vecN_concatenate_f32(3, average_imu_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
