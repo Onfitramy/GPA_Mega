@@ -24,9 +24,9 @@ typedef enum __attribute__((packed)){
     PACKET_ID_ATTITUDE = 0x07, // Attitude data packet
     PACKET_ID_KALMANMATRIX = 0x08, // Kalman Matrix data packet
     PACKET_ID_SPARK = 0x09, // SPARK data packet
+    PACKET_ID_MPC_INFO = 0x0A, // MPC Info packet
     PACKET_ID_COMMAND = 0x10, // Command packet
     PACKET_ID_STATE = 0x11, // Command packet
-    PACKET_ID_MPC_INFO = 0x12, // MPC Info packet
 } PacketType_t;
 
 
@@ -171,7 +171,7 @@ typedef struct {
 
 typedef struct {
     uint8_t flight_state;
-    uint32_t timestamp_us;
+    uint32_t timestamp_ms;
 } StateData_t;
 
 typedef union {

@@ -345,6 +345,18 @@ uint8_t USB_OutputDataPacket(DataPacket_t *packet) {
             sprintf((char *)usb_packet_buffer, "ID%d,%ld,%ld,%ld,%ld,%d\n",
                     packet->Packet_ID , packet->timestamp, packet->Data.status.status_flags, packet->Data.status.sensor_status_flags, packet->Data.status.error_flags, packet->Data.status.State);
             break;
+        case PACKET_ID_KALMANMATRIX:
+            sprintf((char *)usb_packet_buffer, "ID%d,%ld,%f,%f,%f,%f,%f,%f\n",
+                    packet->Packet_ID , packet->timestamp, packet->Data.kalman.P11, packet->Data.kalman.P22, packet->Data.kalman.P33, packet->Data.kalman.EKF2_Heigth, packet->Data.kalman.EKF2_vel, packet->Data.kalman.EKF2_refPres);
+            break;
+        case PACKET_ID_MPC_INFO:
+            sprintf((char *)usb_packet_buffer, "ID%d,%ld,%f,%f,%f\n",
+                    packet->Packet_ID , packet->timestamp, packet->Data.mpc_info.MPC_freq, packet->Data.mpc_info.Airbreak_deflection, packet->Data.mpc_info.Target_Angle);
+            break;
+        case PACKET_ID_STATE:
+            sprintf((char *)usb_packet_buffer, "ID%d,%ld,%d,%ld\n",
+                    packet->Packet_ID , packet->timestamp, packet->Data.state.flight_state, packet->Data.state.timestamp_ms);
+            break;
         default:
             break;
             // return; // Unsupported packet type

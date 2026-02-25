@@ -420,9 +420,9 @@ void Start10HzTask(void *argument) {
     UpdateStatePacket(&State_DataPacket, HAL_GetTick(), flight_sm.currentFlightState, flight_sm.timestamp_ms);
 
     if (is_groundstation && groundStationSend) { //Groundstation requests data from secondary board
-      USB_QueueDataPacket(&IMU_DataPacket);
-      USB_QueueDataPacket(&Attitude_DataPacket);
-      USB_QueueDataPacket(&GPS_DataPacket);
+      //USB_QueueDataPacket(&IMU_DataPacket);
+      //USB_QueueDataPacket(&Attitude_DataPacket);
+      //USB_QueueDataPacket(&GPS_DataPacket);
       USB_QueueDataPacket(&Kalman_DataPacket);
       USB_QueueDataPacket(&MPC_Info_DataPacket);
       USB_QueueDataPacket(&State_DataPacket);

@@ -179,7 +179,7 @@ void UpdateStatePacket(DataPacket_t *state_packet, uint32_t timestamp, uint8_t f
     state_packet->Packet_ID = PACKET_ID_STATE;
     state_packet->timestamp = timestamp;
     state_packet->Data.state.flight_state = flight_state;
-    state_packet->Data.state.timestamp_us = timestamp_ms;
+    state_packet->Data.state.timestamp_ms = timestamp_ms;
 
     calcCRC(state_packet);
 }
