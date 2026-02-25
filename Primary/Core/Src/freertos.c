@@ -65,9 +65,6 @@ DataPacket_t powerData;
 bool is_groundstation = true;
 bool groundStationSend = true;
 
-extern float acs_target_angle_deg;
-extern float airbreak_deflection;
-
 void SensorStatus_Reset(SensorStatus *sensor_status) {
   sensor_status->hal_status = HAL_OK;
   sensor_status->active = true;
@@ -419,15 +416,16 @@ void Start10HzTask(void *argument) {
     UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler[0], euler[1], euler[2]);
     UpdateGPSDataPacket(&GPS_DataPacket, HAL_GetTick(), &gps_data);
     UpdateKalmanMatrixPacket(&Kalman_DataPacket, HAL_GetTick(), arm_mat_get_entry_f32(&P2, 0, 0), arm_mat_get_entry_f32(&P2, 1, 1), arm_mat_get_entry_f32(&P2, 2, 2), EKF2.x[0], EKF2.x[1], EKF2.x[2]);
-    UpdateMPCInfoPacket(&MPC_Info_DataPacket, HAL_GetTick(), dt_1000Hz, spark_data.Data.spark.magAngle, acs_target_angle_deg);
+    UpdateMPCInfoPacket(&MPC_Info_DataPacket, HAL_GetTick(), dt_1000Hz, acs_est_angle_deg, acs_target_angle_deg);
     UpdateStatePacket(&State_DataPacket, HAL_GetTick(), flight_sm.currentFlightState, flight_sm.timestamp_ms);
 
     if (is_groundstation && groundStationSend) { //Groundstation requests data from secondary board
       USB_QueueDataPacket(&IMU_DataPacket);
       USB_QueueDataPacket(&Attitude_DataPacket);
-      USB_QueueDataPacket(&Kalman_DataPacket);
-      USB_QueueDataPacket(&MPC_Info_DataPacket);
-      USB_QueueDataPacket(&State_DataPacket);
+      USB_QueueDataPacket(&GPS_DataPacket);
+      //USB_QueueDataPacket(&Kalman_DataPacket);
+      //USB_QueueDataPacket(&MPC_Info_DataPacket);
+      //USB_QueueDataPacket(&State_DataPacket);
 
     } else if (!is_groundstation) { //Secondary board sends data to groundstation
       InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);
