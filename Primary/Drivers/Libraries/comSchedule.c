@@ -101,7 +101,8 @@ uint32_t comm_schedule1_frequencies[] = {100, 100, 100, 100, 100, 100, 100, 100,
 uint32_t comm_schedule2_frequencies[] = {100, 1000, 1000, 50, 500, 100, 100, 500, 1000, 1000, 1000}; // Frequencies for schedule 2 (Burn)
 uint32_t comm_schedule3_frequencies[] = {100, 200, 1000, 200, 100, 100, 100, 1000, 200, 100, 1000}; //Frequencies for schedule 3 (Coast)
 uint32_t comm_schedule4_frequencies[] = {100, 1000, 100, 1000, 1000, 500, 1000, 1000, 1000, 1000, 1000}; // Frequencies for schedule 4 (Descent)
-uint32_t comm_schedule5_frequencies[] = {1000, 0, 500, 0, 0, 0, 0, 0, 0, 0, 0}; // Frequencies for schedule 5 (Landed)
+uint32_t comm_schedule5_frequencies[] = {1000, 0, 500, 0, 0, 0, 0, 0, 0, 0, 0}; // Frequencies for schedule 5 (Landed
+uint32_t comm_schedule6_frequencies[] = {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100}; // Frequencies for schedule 6 (HIL Testing)
 //Used to set the comunication Schedule to one of the predefined schedules
 void SetComSchedule(uint8_t schedule_id) {
     switch(schedule_id) {
@@ -121,6 +122,9 @@ void SetComSchedule(uint8_t schedule_id) {
             return;
         case 5: // Landed
             UpdateComSchedule(comm_schedule5_frequencies);
+            return;
+        case 6: // HIL Testing
+            UpdateComSchedule(comm_schedule6_frequencies);
             return;
         default:
             break;

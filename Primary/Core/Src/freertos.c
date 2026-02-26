@@ -57,8 +57,6 @@ static int32_t DTS_Temperature;
 extern ADC_HandleTypeDef hadc3;
 uint32_t ADC_Temperature, ADC_V_Ref;
 
-uint8_t hil_mode = 0; // Hardware In the Loop mode flag
-
 GPA_Mega gpa_mega;
 
 DataPacket_t powerData;
@@ -337,6 +335,8 @@ void Start100HzTask(void *argument) {
   /* USER CODE BEGIN Start100HzTask */
   InitializeDataScheduler();
 
+  DataPacket_t State_DataPacket = CreateDataPacket(PACKET_ID_STATE);
+
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 10; //100 Hz
   /* Infinite loop */
@@ -345,6 +345,9 @@ void Start100HzTask(void *argument) {
     StateMachine_DoActions(&flight_sm, 100);
 
     ProcessDataSchedule(xTaskGetTickCount());
+
+    UpdateStatePacket(&State_DataPacket, HAL_GetTick(), flight_sm.currentFlightState, flight_sm.timestamp_ms);
+    InterBoardCom_QueuePacket(&State_DataPacket);
     
     if (!is_groundstation) {
       //UpdateTemperaturePacket(&Temperature_DataPacket, HAL_GetTick(), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ptot_data.pressure);

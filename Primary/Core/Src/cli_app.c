@@ -17,12 +17,11 @@
 #include "FreeRTOS.h"
 #include "packets.h"
 #include "InterBoardCom.h"
+#include "comSchedule.h"
 
 #define MAX_INPUT_LENGTH 50
 #define USING_VS_CODE_TERMINAL 0
 #define USING_OTHER_TERMINAL 1 // e.g. Putty, TerraTerm
-
-extern uint8_t hil_mode;
 
 char cOutputBuffer[configCOMMAND_INT_MAX_OUTPUT_SIZE], pcInputString[MAX_INPUT_LENGTH];
 extern const CLI_Command_Definition_t xCommandList[];
@@ -98,6 +97,36 @@ BaseType_t cmd_switchCLIMode(char *pcWriteBuffer, size_t xWriteBufferLen, const 
         return pdFALSE;
     }
 
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_switchOutputSchedule(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    uint8_t parameters[1];
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) {
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+
+    parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
+
+    /* Write the response to the buffer */
+    if (parameters[0] >= 6) {
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Invalid Schedule number\r\n");
+    } else {
+        snprintf(pcWriteBuffer, 50, "Switching to Output Schedule\r\n");
+        SetComSchedule(parameters[0]);
+    }
     return pdFALSE;
 }
 
@@ -808,32 +837,6 @@ BaseType_t cmd_Buzzer_Stop(char *pcWriteBuffer, size_t xWriteBufferLen, const ch
 }
 
 //*****************************************************************************
-BaseType_t cmd_Set_HIL(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
-{
-    (void)pcCommandString;
-    (void)xWriteBufferLen;
-
-        const char *pcParameter;
-    BaseType_t xParameterStringLength;
-    char *endPtr;  // Pointer to track invalid characters
-
-    uint8_t parameters[1];
-
-    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
-    if (pcParameter == NULL) { //Handle to missing Input
-        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
-        return pdFALSE;
-    }
-    parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
-
-    /* Write the response to the buffer */
-    hil_mode = parameters[0];
-    snprintf(pcWriteBuffer, 50, "HIL mode set to %d\r\n", hil_mode);
-
-    return pdFALSE;
-}
-
-//*****************************************************************************
 BaseType_t cmd_Radio_Switch(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {
     (void)pcCommandString;
@@ -1048,6 +1051,12 @@ const CLI_Command_Definition_t xCommandList[] = {
         .cExpectedNumberOfParameters = 1 /* One parameter is expected. */
     },
     {
+        .pcCommand = "switchOutputSchedule", /* The command string to type. */
+        .pcHelpString = "switchOutputSchedule <schedule_id>: Switches the output schedule to the given schedule_id (0-6)\r\n\r\n",
+        .pxCommandInterpreter = cmd_switchOutputSchedule, /* The function to run. */
+        .cExpectedNumberOfParameters = 1 /* One parameter is expected. */
+    },
+    {
         .pcCommand = "RESET_PRIMARY", /* The command string to type. */
         .pcHelpString = "RESET_PRIMARY: Resets the Primary MCU on the flight computer\r\n\r\n",
         .pxCommandInterpreter = cmd_resetPrimary, /* The function to run. */
@@ -1202,12 +1211,6 @@ const CLI_Command_Definition_t xCommandList[] = {
         .pcHelpString = "Buzzer_Stop: Stops annoying buzzing activities\r\n\r\n",
         .pxCommandInterpreter = cmd_Buzzer_Stop, /* The function to run. */
         .cExpectedNumberOfParameters = 0
-    },
-    {
-        .pcCommand = "Set_HIL", /* The command string to type. */
-        .pcHelpString = "Set_HIL <1/0>: Enables or disables Hardware In the Loop (HIL) simulation\r\n\r\n",
-        .pxCommandInterpreter = cmd_Set_HIL, /* The function to run. */
-        .cExpectedNumberOfParameters = 1
     },
     {
         .pcCommand = "Radio_Switch", /* The command string to type. */
