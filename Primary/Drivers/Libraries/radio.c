@@ -33,14 +33,3 @@ void radioSetMode(radio_mode_t mode){
         }
     }
 }
-
-/*  Due to a unknown error the radio data is right shifted by 1 bit(maybe CRC activation missmatch)
-    This function unshuffles this. In the process the whole 1. bit and some of the 2. bit as well as parts of the last bit get lost, they are not used for now
-*/
-void radioDecode(uint8_t *original_data, uint8_t *fixed_data, uint8_t lenght){
-
-    for (size_t i = 0; i < lenght; ++i) {
-        uint8_t next_bit = (uint8_t)((original_data[i+1] & 0x80) >> 7);
-        fixed_data[i] = (uint8_t)((original_data[i] << 1) | next_bit);
-    }
-}

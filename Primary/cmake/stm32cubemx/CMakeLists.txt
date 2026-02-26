@@ -127,6 +127,7 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/Libraries/radio.c
 
     ../../Drivers/Libraries/guidance.c
+     ../../Drivers/Libraries/comSchedule.c
     ../../Drivers/Libraries/navigation.c
     ../../Drivers/Libraries/control.c
     ../../Drivers/Libraries/statemachine.c
