@@ -59,7 +59,7 @@ void InitializeComSchedule() {
     Spark_DataPacket = CreateDataPacket(PACKET_ID_SPARK);
     MPC_Info_DataPacket = CreateDataPacket(PACKET_ID_MPC_INFO);
     State_DataPacket = CreateDataPacket(PACKET_ID_STATE);
-    
+
     // Initialize message info for each packet, starting at 1Hz
     message_info_t status_msg_info = {1000, 0, &Status_DataPacket};
     message_info_t power_msg_info = {1000, 0, &Power_DataPacket};
@@ -91,6 +91,22 @@ void InitializeComSchedule() {
     // Initialize last sent timestamps to 0
     for (int i = 0; i < messages_num; i++) {
         message_schedule[i].last_sent_tick = 0;
+    }
+}
+//                                  stat, pow, gps, imu, temp, pos, att, kalman, spark, mpc, state
+uint32_t schedule1_frequencies[] = {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100}; // Frequencies for schedule 1 (10Hz for all packets, pre-launch)
+uint32_t schedule2_frequencies[] = {100, 1000, 1000, 50, 500, 100, 100, 500, 1000, 1000, 1000}; // Frequencies for schedule 2 (Burn)
+uint32_t schedule3_frequencies[] = {100, 200, 1000, 200, 100, 100, 100, 1000, 200, 100, 1000}; //Frequencies for schedule 3 (Coast)
+//Used to set the comunication Schedule to one of the predefined schedules
+void SetComSchedule(uint8_t schedule_id) {
+    switch(schedule_id) {
+        case 0: // Default schedule
+            break;
+        case 1: // 10Hz frequency schedule
+            UpdateComSchedule(schedule1_frequencies);
+            return;
+        default:
+            break;
     }
 }
 

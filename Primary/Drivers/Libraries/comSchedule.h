@@ -21,6 +21,7 @@ typedef struct {
 }message_info_t;
 
 void InitializeComSchedule();
+void SetComSchedule(uint8_t schedule_id);
 void UpdateComSchedule(uint32_t* new_frequencies);
 void ProcessComSchedule(uint32_t current_tick);
 

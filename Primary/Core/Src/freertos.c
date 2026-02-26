@@ -64,7 +64,6 @@ GPA_Mega gpa_mega;
 DataPacket_t powerData;
 
 bool is_groundstation = true;
-bool groundStationSend = true;
 
 void SensorStatus_Reset(SensorStatus *sensor_status) {
   sensor_status->hal_status = HAL_OK;
