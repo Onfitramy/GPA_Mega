@@ -94,16 +94,30 @@ void InitializeComSchedule() {
     }
 }
 //                                  stat, pow, gps, imu, temp, pos, att, kalman, spark, mpc, state
-uint32_t schedule1_frequencies[] = {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100}; // Frequencies for schedule 1 (10Hz for all packets, pre-launch)
-uint32_t schedule2_frequencies[] = {100, 1000, 1000, 50, 500, 100, 100, 500, 1000, 1000, 1000}; // Frequencies for schedule 2 (Burn)
-uint32_t schedule3_frequencies[] = {100, 200, 1000, 200, 100, 100, 100, 1000, 200, 100, 1000}; //Frequencies for schedule 3 (Coast)
+uint32_t comm_schedule1_frequencies[] = {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100}; // Frequencies for schedule 1 (10Hz for all packets, pre-launch)
+uint32_t comm_schedule2_frequencies[] = {100, 1000, 1000, 50, 500, 100, 100, 500, 1000, 1000, 1000}; // Frequencies for schedule 2 (Burn)
+uint32_t comm_schedule3_frequencies[] = {100, 200, 1000, 200, 100, 100, 100, 1000, 200, 100, 1000}; //Frequencies for schedule 3 (Coast)
+uint32_t comm_schedule4_frequencies[] = {100, 1000, 100, 1000, 1000, 500, 1000, 1000, 1000, 1000, 1000}; // Frequencies for schedule 4 (Descent)
+uint32_t comm_schedule5_frequencies[] = {1000, 0, 500, 0, 0, 0, 0, 0, 0, 0, 0}; // Frequencies for schedule 5 (Landed)
 //Used to set the comunication Schedule to one of the predefined schedules
 void SetComSchedule(uint8_t schedule_id) {
     switch(schedule_id) {
         case 0: // Default schedule
             break;
-        case 1: // 10Hz frequency schedule
+        case 1: // Pre-Launch
             UpdateComSchedule(schedule1_frequencies);
+            return;
+        case 2: // Burn
+            UpdateComSchedule(schedule2_frequencies);
+            return;
+        case 3: // Coast
+            UpdateComSchedule(schedule3_frequencies);
+            return;
+        case 4: // Descent
+            UpdateComSchedule(schedule4_frequencies);
+            return;
+        case 5: // Landed
+            UpdateComSchedule(schedule5_frequencies);
             return;
         default:
             break;
@@ -121,14 +135,22 @@ void UpdateComSchedule(uint32_t* new_frequencies) {
 void ProcessComSchedule(uint32_t current_tick) {
     for (int i = 0; i < messages_num; i++) {
         if (current_tick - message_schedule[i].last_sent_tick >= message_schedule[i].period) {
-            UpdateAndSendPacket(message_schedule[i].packet);
-            message_schedule[i].last_sent_tick = current_tick;
+            if (message_schedule[i].period != 0) { // Check if the period is not 0, if it is 0, it means this message should not be sent
+                UpdatePacket(message_schedule[i].packet);
+                // After updating the packet, send it via the appropriate communication interface
+                if (communication_mode == COMM_MODE_FORWARDING || communication_mode == COMM_MODE_LOCAL) {
+                    USB_QueueDataPacket(message_schedule[i].packet); // Forward the packet to the PC via USB
+                } else if (communication_mode == COMM_MODE_REMOTE_TRANSMIT) {
+                    InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, message_schedule[i].packet); // Send the packet to the groundstation via Radio
+                }
+                message_schedule[i].last_sent_tick = current_tick;
+            }
         }
     }
 }
 
 // This function Updates the packet data based on its type and then send it via the appropriate communication interface (e.g., USB, Radio)
-void UpdateAndSendPacket(DataPacket_t *packet) {
+void UpdatePacket(DataPacket_t *packet) {
     switch(packet->Packet_ID) {
         case PACKET_ID_STATUS:
             UpdateStatusPacket(packet, HAL_GetTick(), /*status_flags*/0, /* sensor_flags */ 0, /* error_flags */ 0, /* flight_state */ 0);
@@ -162,12 +184,5 @@ void UpdateAndSendPacket(DataPacket_t *packet) {
             break;
         default:
             break; // Unsupported packet type
-    }
-
-    // After updating the packet, send it via the appropriate communication interface
-    if (communication_mode == COMM_MODE_FORWARDING || communication_mode == COMM_MODE_LOCAL) {
-        USB_QueueDataPacket(packet); // Forward the packet to the PC via USB
-    } else if (communication_mode == COMM_MODE_REMOTE_TRANSMIT) {
-        InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, packet); // Send the packet to the groundstation via Radio
     }
 }
