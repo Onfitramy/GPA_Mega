@@ -30,6 +30,8 @@ extern float euler[3];
 // Kalman data
 extern arm_matrix_instance_f32 P2;
 extern ekf_data_t EKF2;
+// Spark data
+extern DataPacket_t spark_data;
 // MPC data
 extern uint32_t dt_1000Hz;
 extern float acs_est_angle_deg;
@@ -37,9 +39,9 @@ extern float acs_target_angle_deg;
 // State machine data
 extern StateMachine_t flight_sm;
 
-void UpdateAndSendPacket(DataPacket_t *packet);
+void UpdatePacket(DataPacket_t *packet);
 
-void InitializeComSchedule() {
+void InitializeDataScheduler() {
 
     if(is_groundstation) { // If this is the groundstation, we want to forward all data received via Radio to the PC via USB, so we use the forwarding mode
         communication_mode = COMM_MODE_FORWARDING;
@@ -61,17 +63,17 @@ void InitializeComSchedule() {
     State_DataPacket = CreateDataPacket(PACKET_ID_STATE);
 
     // Initialize message info for each packet, starting at 1Hz
-    message_info_t status_msg_info = {1000, 0, &Status_DataPacket};
-    message_info_t power_msg_info = {1000, 0, &Power_DataPacket};
-    message_info_t gps_msg_info = {1000, 0, &GPS_DataPacket};
-    message_info_t imu_msg_info = {1000, 0, &IMU_DataPacket};
-    message_info_t temperature_msg_info = {1000, 0, &Temperature_DataPacket};
-    message_info_t position_msg_info = {1000, 0, &Position_DataPacket};
-    message_info_t attitude_msg_info = {1000, 0, &Attitude_DataPacket};
-    message_info_t kalman_msg_info = {1000, 0, &Kalman_DataPacket};
-    message_info_t spark_msg_info = {1000, 0, &Spark_DataPacket};
-    message_info_t mpc_info_msg_info = {1000, 0, &MPC_Info_DataPacket};
-    message_info_t state_msg_info = {1000, 0, &State_DataPacket};
+    message_info_t status_msg_info = {1000, 0, 0, 0, &Status_DataPacket};
+    message_info_t power_msg_info = {1000, 0, 0, 0, &Power_DataPacket};
+    message_info_t gps_msg_info = {1000, 0, 0, 0, &GPS_DataPacket};
+    message_info_t imu_msg_info = {1000, 0, 0, 0, &IMU_DataPacket};
+    message_info_t temperature_msg_info = {1000, 0, 0, 0, &Temperature_DataPacket};
+    message_info_t position_msg_info = {1000, 0, 0, 0, &Position_DataPacket};
+    message_info_t attitude_msg_info = {1000, 0, 0, 0, &Attitude_DataPacket};
+    message_info_t kalman_msg_info = {1000, 0, 0, 0, &Kalman_DataPacket};
+    message_info_t spark_msg_info = {1000, 0, 0, 0, &Spark_DataPacket};
+    message_info_t mpc_info_msg_info = {1000, 0, 0, 0, &MPC_Info_DataPacket};
+    message_info_t state_msg_info = {1000, 0, 0, 0, &State_DataPacket};
 
     // Add message info to the list
     message_schedule[0] = status_msg_info;
@@ -88,9 +90,10 @@ void InitializeComSchedule() {
 
     messages_num = 11; // Update the number of messages in the schedule
 
-    // Initialize last sent timestamps to 0
+    // Initialize last sent timestamps and last saved timestamps to 0
     for (int i = 0; i < messages_num; i++) {
         message_schedule[i].last_sent_tick = 0;
+        message_schedule[i].last_saved_tick = 0;
     }
 }
 //                                  stat, pow, gps, imu, temp, pos, att, kalman, spark, mpc, state
@@ -105,19 +108,19 @@ void SetComSchedule(uint8_t schedule_id) {
         case 0: // Default schedule
             break;
         case 1: // Pre-Launch
-            UpdateComSchedule(schedule1_frequencies);
+            UpdateComSchedule(comm_schedule1_frequencies);
             return;
         case 2: // Burn
-            UpdateComSchedule(schedule2_frequencies);
+            UpdateComSchedule(comm_schedule2_frequencies);
             return;
         case 3: // Coast
-            UpdateComSchedule(schedule3_frequencies);
+            UpdateComSchedule(comm_schedule3_frequencies);
             return;
         case 4: // Descent
-            UpdateComSchedule(schedule4_frequencies);
+            UpdateComSchedule(comm_schedule4_frequencies);
             return;
         case 5: // Landed
-            UpdateComSchedule(schedule5_frequencies);
+            UpdateComSchedule(comm_schedule5_frequencies);
             return;
         default:
             break;
@@ -127,26 +130,50 @@ void SetComSchedule(uint8_t schedule_id) {
 // This function changes the frequencys of the messages by passing in an array of frequencys, the order of the frequencys should be the same as the order of the messages in the message_schedule array
 void UpdateComSchedule(uint32_t* new_frequencies) {
     for (int i = 0; i < messages_num; i++) {
-        message_schedule[i].period = new_frequencies[i];
+        message_schedule[i].send_period = new_frequencies[i];
+    }
+}
+
+void UpdateSendSchedule(uint32_t* new_frequencies) {
+    for (int i = 0; i < messages_num; i++) {
+        message_schedule[i].save_period = new_frequencies[i];
     }
 }
 
 // This function should be called in the 100Hz loop, it checks if any messages are due to be sent and sends them if necessary
-void ProcessComSchedule(uint32_t current_tick) {
+void ProcessDataSchedule(uint32_t current_tick) {
     for (int i = 0; i < messages_num; i++) {
-        if (current_tick - message_schedule[i].last_sent_tick >= message_schedule[i].period) {
-            if (message_schedule[i].period != 0) { // Check if the period is not 0, if it is 0, it means this message should not be sent
-                UpdatePacket(message_schedule[i].packet);
-                // After updating the packet, send it via the appropriate communication interface
-                if (communication_mode == COMM_MODE_FORWARDING || communication_mode == COMM_MODE_LOCAL) {
-                    USB_QueueDataPacket(message_schedule[i].packet); // Forward the packet to the PC via USB
-                } else if (communication_mode == COMM_MODE_REMOTE_TRANSMIT) {
-                    InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, message_schedule[i].packet); // Send the packet to the groundstation via Radio
-                }
-                message_schedule[i].last_sent_tick = current_tick;
-            }
+        uint8_t is_send, is_save = 0;
+        if ((current_tick - message_schedule[i].last_sent_tick >= message_schedule[i].send_period) && (message_schedule[i].send_period != 0)) {
+            is_send = 1;
         }
-    }
+        if ((current_tick - message_schedule[i].last_saved_tick >= message_schedule[i].save_period) && (message_schedule[i].save_period != 0)) {
+            is_save = 1;
+        }
+
+        if (is_send || is_save){
+            UpdatePacket(message_schedule[i].packet);
+        }
+        
+        if (is_send && !is_save) {
+            // After updating the packet, send it via the appropriate communication interface
+            if (communication_mode == COMM_MODE_FORWARDING || communication_mode == COMM_MODE_LOCAL) {
+                USB_QueueDataPacket(message_schedule[i].packet); // Forward the packet to the PC via USB
+            } else if (communication_mode == COMM_MODE_REMOTE_TRANSMIT) {
+                InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, message_schedule[i].packet); // Send the packet to the groundstation via Radio
+            }
+            message_schedule[i].last_sent_tick = current_tick;
+        } else if (!is_send && is_save) {
+            // After updating the packet, save it to flash or SD card
+            InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, message_schedule[i].packet);
+            message_schedule[i].last_saved_tick = current_tick;
+        } else if (is_send && is_save) {
+            // If the packet is due for both sending and saving, we can combine the operations to save time and resources
+            InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO | INTERBOARD_TARGET_FLASH, message_schedule[i].packet); // Send the packet to the groundstation via Radio and indicate that it should also be saved to flash or SD card
+            message_schedule[i].last_sent_tick = current_tick;
+            message_schedule[i].last_saved_tick = current_tick;
+        }
+    }   
 }
 
 // This function Updates the packet data based on its type and then send it via the appropriate communication interface (e.g., USB, Radio)
@@ -178,6 +205,9 @@ void UpdatePacket(DataPacket_t *packet) {
             break;
         case PACKET_ID_MPC_INFO:
             UpdateMPCInfoPacket(packet, HAL_GetTick(), dt_1000Hz, acs_est_angle_deg, acs_target_angle_deg);
+            break;
+        case PACKET_ID_SPARK:
+            packet = &spark_data; // Assuming spark_data is already updated with the latest data, we can just point to it here
             break;
         case PACKET_ID_STATE:
             UpdateStatePacket(packet, HAL_GetTick(), flight_sm.currentFlightState, flight_sm.timestamp_ms);

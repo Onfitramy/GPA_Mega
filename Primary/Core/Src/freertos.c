@@ -335,7 +335,7 @@ void StartDefaultTask(void *argument)
 
 void Start100HzTask(void *argument) {
   /* USER CODE BEGIN Start100HzTask */
-  InitializeComSchedule();
+  InitializeDataScheduler();
 
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 10; //100 Hz
@@ -344,7 +344,7 @@ void Start100HzTask(void *argument) {
     // Run 100 Hz Do Actions
     StateMachine_DoActions(&flight_sm, 100);
 
-    ProcessComSchedule(xTaskGetTickCount());
+    ProcessDataSchedule(xTaskGetTickCount());
     
     if (!is_groundstation) {
       //UpdateTemperaturePacket(&Temperature_DataPacket, HAL_GetTick(), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ptot_data.pressure);

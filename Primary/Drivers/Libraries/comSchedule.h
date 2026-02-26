@@ -15,12 +15,14 @@ typedef enum {
 } CommunicationMode_t;
 
 typedef struct {
-    uint32_t period; // in ms, how often the packet should be sent, max x. Zero means it should never be sent
+    uint32_t send_period; // in ms, how often the packet should be sent, max x. Zero means it should never be sent
     uint32_t last_sent_tick; // xTaskGetTickCount() value of the last time this packet was sent
+    uint32_t save_period; // in ms, how often the packet should be saved to flash, max x. Zero means it should never be saved
+    uint32_t last_saved_tick; // xTaskGetTickCount() value of the last time this packet was saved to flash
     DataPacket_t *packet; //Pointer to the DataPacket_t packet that holds the data to be sent, this allows the update function to directly modify the packet data
 }message_info_t;
 
-void InitializeComSchedule();
+void InitializeDataScheduler();
 void SetComSchedule(uint8_t schedule_id);
 void UpdateComSchedule(uint32_t* new_frequencies);
 void ProcessComSchedule(uint32_t current_tick);
