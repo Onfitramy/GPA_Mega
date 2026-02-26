@@ -126,6 +126,11 @@ static void InitDo(StateMachine_t *sm, uint16_t freq) {
         } else {
             status_data |= (sd_mount_result << 1);
         }
+
+        // skip if no sd card
+        if (selftest_tries > 100) {
+            StateMachine_Dispatch(sm, EVENT_INITIALIZED);
+        }
     }
 }
 static void OperationalDo(StateMachine_t *sm, uint16_t freq) {

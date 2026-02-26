@@ -237,7 +237,7 @@ void StartDefaultTask(void *argument)
     ReadInternalADC(&ADC_Temperature, &ADC_V_Ref); // 7us
 
     #ifdef HIL_TESTING
-    if ((flight_sm.currentFlightState >= STATE_FLIGHT_ARMED) && (flight_sm.currentFlightState <= STATE_FLIGHT_LANDED)) {
+    if ((flight_sm.currentFlightState >= STATE_FLIGHT_BURN) && (flight_sm.currentFlightState <= STATE_FLIGHT_LANDED)) {
       HILupdateStates(0.001);
     }
     #endif
