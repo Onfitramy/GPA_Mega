@@ -347,7 +347,7 @@ void Start100HzTask(void *argument) {
     ProcessDataSchedule(xTaskGetTickCount());
 
     UpdateStatePacket(&State_DataPacket, HAL_GetTick(), flight_sm.currentFlightState, flight_sm.timestamp_ms);
-    InterBoardCom_QueuePacket(&State_DataPacket);
+    InterBoardCom_QueuePacket(&State_DataPacket); //Needed to keep Primary and Secondary syncronized
     
     if (!is_groundstation) {
       //UpdateTemperaturePacket(&Temperature_DataPacket, HAL_GetTick(), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ptot_data.pressure);

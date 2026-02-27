@@ -131,6 +131,18 @@ void SetComSchedule(uint8_t schedule_id) {
     }
 }
 
+//                                  stat, pow, gps, imu, temp, pos, att, kalman, spark, mpc, state
+uint32_t save_schedule1_frequencies[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+void SetSaveSchedule(uint8_t schedule_id) {
+    switch(schedule_id) {
+        case 0: //Default
+            UpdateSendSchedule(save_schedule1_frequencies);
+            return;
+        default:
+            break;
+    }
+}
+
 // This function changes the frequencys of the messages by passing in an array of frequencys, the order of the frequencys should be the same as the order of the messages in the message_schedule array
 void UpdateComSchedule(uint32_t* new_frequencies) {
     for (int i = 0; i < messages_num; i++) {
