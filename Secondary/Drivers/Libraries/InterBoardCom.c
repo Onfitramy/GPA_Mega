@@ -145,7 +145,10 @@ uint8_t InterBoard_CheckCRC(DataPacket_t *packet) {
 static uint8_t rx_dummy[sizeof(InterBoardPacket_t)];
 void InterBoardCom_SendPacket(InterBoardPacket_t *packet) {
     //Push the packet to the transmit buffer
-    CircBuffer_Push(&txCircBuffer, packet);
+    if (!CircBuffer_Push(&txCircBuffer, packet)) {
+        // Buffer overflow, packet dropped
+        uint8_t packet_id = packet->InterBoardPacket_ID & 0x7F; // Extract packet ID without flags
+    }
 }
 
 InterBoardPacket_t TestPacket;

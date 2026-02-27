@@ -236,6 +236,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
   }
 }
 
+extern osThreadId_t InterruptHandlerTaskHandle;
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
   if (hspi->Instance == SPI1) {
     SPI1_State = 0;
@@ -243,7 +244,11 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
     // Process the received data in receiveBuffer
     InterBoardPacket_t receivedPacket = InterBoardCom_ReceivePacket();
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    xQueueSendFromISR(InterBoardCom_Queue, &receivedPacket, &xHigherPriorityTaskWoken);
+    if (receivedPacket.InterBoardPacket_ID != 0) {
+        xQueueSendFromISR(InterBoardCom_Queue, &receivedPacket, &xHigherPriorityTaskWoken);
+        // Always notify task, even if queue was already full
+        xTaskNotifyFromISR(InterruptHandlerTaskHandle, 0, eNoAction, &xHigherPriorityTaskWoken);
+    }
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
   }
 }

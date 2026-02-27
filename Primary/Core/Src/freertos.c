@@ -63,6 +63,8 @@ DataPacket_t powerData;
 
 bool is_groundstation = false;
 
+extern volatile uint8_t ib_queue_ready_flag;
+
 void SensorStatus_Reset(SensorStatus *sensor_status) {
   sensor_status->hal_status = HAL_OK;
   sensor_status->active = true;
@@ -190,7 +192,7 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_QUEUES */
   InterruptQueue = xQueueCreate(10, sizeof(uint8_t)); // Queue for 10 bytes
-  InterBoardCom_Queue = xQueueCreate(10, sizeof(InterBoardPacket_t));
+  InterBoardCom_Queue = xQueueCreate(50, sizeof(InterBoardPacket_t));
   USB_Tx_Queue = xQueueCreate(20, sizeof(InterBoardPacket_t));
   /* USER CODE END RTOS_QUEUES */
 
@@ -461,49 +463,21 @@ void StartInterruptHandlerTask(void *argument)
   char GPS_Buffer[100]; // Buffer for GPS data
   InterBoardCom_Init();
 
-  // Create queue set that can hold items from both queues
-  QueueSetHandle_t xQueueSet = xQueueCreateSet(20); // Total items from both queues
-
-  // Add both queues to the set
-  xQueueAddToSet(InterruptQueue, xQueueSet);
-  xQueueAddToSet(InterBoardCom_Queue, xQueueSet);
-
   /* Infinite loop */
   for(;;)
   {
-    // Wait on the queue set with timeout (blocks efficiently)
-    QueueSetMemberHandle_t xActivatedMember = xQueueSelectFromSet(xQueueSet, portMAX_DELAY);
-
-    if (xActivatedMember == InterruptQueue) {
-      if (xQueueReceive(InterruptQueue, &receivedData, 0) == pdTRUE) {
-        if(receivedData == 0x10) { // Handle GPS interrupt
-          //GPS_ReadNavPVT(&gps_data);
-        } else if (receivedData == 0x11) { //Handle NRF interrupt
-          if(nrf_mode) {
-            nrf24l01p_tx_irq();
-          } else {
-            //HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
-            memset(rx_recieve_buf, 0, NRF24L01P_PAYLOAD_LENGTH);
-            nrf24l01p_rx_receive(rx_recieve_buf);
-          }
-        }
-      }
+    while (xQueueReceive(InterBoardCom_Queue, &InterBoardCom_Packet, 0) == pdTRUE) {
+      InterBoardPacket_receive_num += 1;
+      InterBoardCom_ProcessTxBuffer(); // Check if more packets to send and send them
+      HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
+      // Process received InterBoardCom_Packet
+      InterBoardCom_ParsePacket(&InterBoardCom_Packet);
     }
-    else if (xActivatedMember == InterBoardCom_Queue) {
-      if (xQueueReceive(InterBoardCom_Queue, &InterBoardCom_Packet, 0) == pdTRUE) {
-        uint8_t Packet_ID = InterBoardCom_Packet.InterBoardPacket_ID;
-        InterBoardPacket_receive_num += 1;
-        DataPacket_t receivedPacket;
-        memcpy(&receivedPacket, InterBoardCom_Packet.Data, sizeof(DataPacket_t));
 
-        InterBoardCom_ProcessTxBuffer(); // Check if more packets to send and send them
-        HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
-        // Process received InterBoardCom_Packet
-        InterBoardCom_ParsePacket(&InterBoardCom_Packet);
-      }
-    }
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);  // Wait for ISR notification
   }
 }
+
 
 void StartUSBTask(void *argument) {
   /* USER CODE BEGIN StartUSBTask */
