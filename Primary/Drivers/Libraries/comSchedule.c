@@ -95,13 +95,15 @@ void InitializeDataScheduler() {
         message_schedule[i].last_sent_tick = 0;
         message_schedule[i].last_saved_tick = 0;
     }
+
+    SetComSchedule(1); // Set the initial communication schedule to schedule 1 (pre-launch)
 }
 //                                  stat, pow, gps, imu, temp, pos, att, kalman, spark, mpc, state
 uint32_t comm_schedule1_frequencies[] = {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100}; // Frequencies for schedule 1 (10Hz for all packets, pre-launch)
 uint32_t comm_schedule2_frequencies[] = {100, 1000, 1000, 50, 500, 100, 100, 500, 1000, 1000, 1000}; // Frequencies for schedule 2 (Burn)
 uint32_t comm_schedule3_frequencies[] = {100, 200, 1000, 200, 100, 100, 100, 1000, 200, 100, 1000}; //Frequencies for schedule 3 (Coast)
 uint32_t comm_schedule4_frequencies[] = {100, 1000, 100, 1000, 1000, 500, 1000, 1000, 1000, 1000, 1000}; // Frequencies for schedule 4 (Descent)
-uint32_t comm_schedule5_frequencies[] = {1000, 0, 500, 0, 0, 0, 0, 0, 0, 0, 0}; // Frequencies for schedule 5 (Landed
+uint32_t comm_schedule5_frequencies[] = {1000, 0, 500, 0, 0, 0, 0, 0, 0, 0, 0}; // Frequencies for schedule 5 (Landed)
 uint32_t comm_schedule6_frequencies[] = {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100}; // Frequencies for schedule 6 (HIL Testing)
 //Used to set the comunication Schedule to one of the predefined schedules
 void SetComSchedule(uint8_t schedule_id) {
