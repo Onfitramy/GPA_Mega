@@ -42,6 +42,7 @@
 #include "navigation.h"
 #include "control.h"
 #include "statemachine.h"
+#include "comSchedule.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -56,14 +57,11 @@ static int32_t DTS_Temperature;
 extern ADC_HandleTypeDef hadc3;
 uint32_t ADC_Temperature, ADC_V_Ref;
 
-uint8_t hil_mode = 0; // Hardware In the Loop mode flag
-
 GPA_Mega gpa_mega;
 
 DataPacket_t powerData;
 
 bool is_groundstation = true;
-bool groundStationSend = true;
 
 void SensorStatus_Reset(SensorStatus *sensor_status) {
   sensor_status->hal_status = HAL_OK;
@@ -124,6 +122,14 @@ const osThreadAttr_t InterruptHandlerTask_attributes = {
   .priority = (osPriority_t) osPriorityNormal,
 };
 
+/*Tiny low priority USB thread*/
+osThreadId_t USBTaskHandle;
+const osThreadAttr_t USBTask_attributes = {
+  .name = "USBTask",
+  .stack_size = 128 * 12,
+  .priority = (osPriority_t) osPriorityLow,
+};
+
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
 void ReadInternalADC(uint32_t* temperature, uint32_t* v_ref);
@@ -136,6 +142,8 @@ void StartInterruptHandlerTask(void *argument);
 void Start10HzTask(void *argument);
 
 void Start100HzTask(void *argument);
+
+void StartUSBTask(void *argument);
 
 extern void MX_USB_DEVICE_Init(void);
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
@@ -183,7 +191,7 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_QUEUES */
   InterruptQueue = xQueueCreate(10, sizeof(uint8_t)); // Queue for 10 bytes
   InterBoardCom_Queue = xQueueCreate(10, sizeof(InterBoardPacket_t));
-  USB_Tx_Queue = xQueueCreate(10, sizeof(InterBoardPacket_t));
+  USB_Tx_Queue = xQueueCreate(20, sizeof(InterBoardPacket_t));
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -197,6 +205,7 @@ void MX_FREERTOS_Init(void) {
   if (InterruptHandlerTaskHandle == NULL) {
     InterruptHandlerTaskHandle = NULL;
   }
+  USBTaskHandle = osThreadNew(StartUSBTask, NULL, &USBTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -324,33 +333,24 @@ void StartDefaultTask(void *argument)
 
 void Start100HzTask(void *argument) {
   /* USER CODE BEGIN Start100HzTask */
+  InitializeDataScheduler();
+
+  DataPacket_t State_DataPacket = CreateDataPacket(PACKET_ID_STATE);
+
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 10; //100 Hz
   /* Infinite loop */
-  DataPacket_t IMU_DataPacket = CreateDataPacket(PACKET_ID_IMU);
-  DataPacket_t Attitude_DataPacket = CreateDataPacket(PACKET_ID_ATTITUDE);
-  DataPacket_t Temperature_DataPacket = CreateDataPacket(PACKET_ID_TEMPERATURE);
-  DataPacket_t State_DataPacket = CreateDataPacket(PACKET_ID_STATE);
-
   for(;;) {
     // Run 100 Hz Do Actions
     StateMachine_DoActions(&flight_sm, 100);
+
+    ProcessDataSchedule(xTaskGetTickCount());
+
+    UpdateStatePacket(&State_DataPacket, HAL_GetTick(), flight_sm.currentFlightState, flight_sm.timestamp_ms);
+    InterBoardCom_QueuePacket(&State_DataPacket); //Needed to keep Primary and Secondary syncronized
     
-    if (is_groundstation) {
-      UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &average_imu_data, &mag_data);
-      InterBoardCom_SendDataPacket(INTERBOARD_OP_LOAD_REQUEST | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);
-
-      UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler[0], euler[1], euler[2]);
-      InterBoardCom_SendDataPacket(INTERBOARD_OP_LOAD_REQUEST | INTERBOARD_TARGET_RADIO, &Attitude_DataPacket);
-    } else {
-      UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &average_imu_data, &mag_data);
-      InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, &IMU_DataPacket);
-
+    if (!is_groundstation) {
       //UpdateTemperaturePacket(&Temperature_DataPacket, HAL_GetTick(), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ptot_data.pressure);
-      //InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, &Temperature_DataPacket);
-
-      //UpdateStatePacket(&State_DataPacket, HAL_GetTick(), flight_sm.currentFlightState, flight_sm.timestamp_ms);
-      //InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, &State_DataPacket);
 
       // Don't activate this and the SPARK communication at the same time, because they use the same SPI
       /*
@@ -388,14 +388,6 @@ void Start10HzTask(void *argument) {
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 100; //10 Hz
   GPS_Init(); //Initialize the GPS module
-  DataPacket_t GPS_DataPacket = CreateDataPacket(PACKET_ID_GPS);
-  DataPacket_t Temp_DataPacket = CreateDataPacket(PACKET_ID_TEMPERATURE);
-  DataPacket_t IMU_DataPacket = CreateDataPacket(PACKET_ID_IMU);
-  DataPacket_t Attitude_DataPacket = CreateDataPacket(PACKET_ID_ATTITUDE);
-  DataPacket_t MPC_Info_DataPacket = CreateDataPacket(PACKET_ID_MPC_INFO);
-  DataPacket_t Kalman_DataPacket = CreateDataPacket(PACKET_ID_KALMANMATRIX);
-  DataPacket_t State_DataPacket = CreateDataPacket(PACKET_ID_STATE);
-  DataPacket_t Spark_CommandPacket;
 
   /* Infinite loop */
   for(;;) {
@@ -409,28 +401,9 @@ void Start10HzTask(void *argument) {
     HILgetGPSData(&gps_data);
     #endif
     
-
     //GPS_RequestSensorData(); // Request GPS data
 
-    UpdateIMUDataPacket(&IMU_DataPacket, HAL_GetTick(), &average_imu_data, &mag_data);
-    UpdateAttitudePacket(&Attitude_DataPacket, HAL_GetTick(), euler[0], euler[1], euler[2]);
-    UpdateGPSDataPacket(&GPS_DataPacket, HAL_GetTick(), &gps_data);
-    UpdateKalmanMatrixPacket(&Kalman_DataPacket, HAL_GetTick(), arm_mat_get_entry_f32(&P2, 0, 0), arm_mat_get_entry_f32(&P2, 1, 1), arm_mat_get_entry_f32(&P2, 2, 2), EKF2.x[0], EKF2.x[1], EKF2.x[2]);
-    UpdateMPCInfoPacket(&MPC_Info_DataPacket, HAL_GetTick(), dt_1000Hz, acs_est_angle_deg, acs_target_angle_deg);
-    UpdateStatePacket(&State_DataPacket, HAL_GetTick(), flight_sm.currentFlightState, flight_sm.timestamp_ms);
-
-    if (is_groundstation && groundStationSend) { //Groundstation requests data from secondary board
-      //USB_QueueDataPacket(&IMU_DataPacket);
-      //USB_QueueDataPacket(&Attitude_DataPacket);
-      //USB_QueueDataPacket(&GPS_DataPacket);
-      USB_QueueDataPacket(&Kalman_DataPacket);
-      USB_QueueDataPacket(&MPC_Info_DataPacket);
-      USB_QueueDataPacket(&State_DataPacket);
-
-    } else if (!is_groundstation) { //Secondary board sends data to groundstation
-      InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &IMU_DataPacket);
-      InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &Attitude_DataPacket);
-      InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO, &GPS_DataPacket);
+    if (!is_groundstation) { //Secondary board sends data to groundstation
 
       if ((flight_sm.currentFlightState >= STATE_FLIGHT_GNC_ALIGN) && (flight_sm.currentFlightState <= STATE_FLIGHT_ARMED)) {
         // not needed for now...
@@ -486,24 +459,18 @@ void StartInterruptHandlerTask(void *argument)
   char GPS_Buffer[100]; // Buffer for GPS data
   InterBoardCom_Init();
 
-  volatile bool usb_queue_enabled = true;
-  uint32_t usb_queue_disabled_time = 0;
-
   // Create queue set that can hold items from both queues
   QueueSetHandle_t xQueueSet = xQueueCreateSet(20); // Total items from both queues
 
   // Add both queues to the set
   xQueueAddToSet(InterruptQueue, xQueueSet);
   xQueueAddToSet(InterBoardCom_Queue, xQueueSet);
-  
+
+  /* Infinite loop */
   for(;;)
   {
     // Wait on the queue set with timeout (blocks efficiently)
     QueueSetMemberHandle_t xActivatedMember = xQueueSelectFromSet(xQueueSet, portMAX_DELAY);
-
-    if (!usb_queue_enabled && HAL_GetTickDiffUS(usb_queue_disabled_time) >= 100) {
-      usb_queue_enabled = true;
-    }
 
     if (xActivatedMember == InterruptQueue) {
       if (xQueueReceive(InterruptQueue, &receivedData, 0) == pdTRUE) {
@@ -533,23 +500,25 @@ void StartInterruptHandlerTask(void *argument)
         InterBoardCom_ParsePacket(&InterBoardCom_Packet);
       }
     }
+  }
+}
 
-    if (!usb_queue_enabled) {
-      continue; // Skip processing if USB queue is disabled
-    } else {
-      DataPacket_t receivedPacket;
-      if (xQueueReceive(USB_Tx_Queue, &receivedPacket, 0) == pdTRUE) {
-        if (USB_OutputDataPacket(&receivedPacket) == USBD_OK) {
-          usb_queue_disabled_time = HAL_GetTickUS();
-          usb_queue_enabled = false;
-        } else {
-          usb_queue_disabled_time = HAL_GetTickUS();
-          usb_queue_enabled = false;
-          xQueueSendToFront(USB_Tx_Queue, &receivedPacket, 0);
-        }
+void StartUSBTask(void *argument) {
+  /* USER CODE BEGIN StartUSBTask */
+
+  /* Infinite loop */
+  for(;;)
+  {
+    DataPacket_t receivedPacket;
+    if (xQueueReceive(USB_Tx_Queue, &receivedPacket, 0) == pdTRUE) {
+      if (USB_OutputDataPacket(&receivedPacket) == USBD_OK) {
+        //USB transmission successful, do nothing
+      } else {
+        xQueueSendToFront(USB_Tx_Queue, &receivedPacket, 0); // Re-queue the packet for the next attempt
       }
     }
   }
+  /* USER CODE END StartUSBTask */
 }
 
 /* Private application code --------------------------------------------------*/

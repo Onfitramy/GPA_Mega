@@ -66,8 +66,6 @@ uint32_t tim16_target_ms;
 volatile uint32_t tim17_ms = 0;
 uint32_t tim17_target_ms;
 
-extern bool groundStationSend;
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -175,7 +173,6 @@ int main(void)
     is_groundstation = true;
     cli_target_mode = CLI_TARGET_MODE_EXTERNAL; // Groundstation always uses external target mode
     signalPlotterSend = false; // Disable signal plotter by default on groundstation
-    groundStationSend = false; // Only used for testing groundstation software, disable by default
 
     StateMachine_Init(&flight_sm, STATE_GROUNDSTATION);
   } else {
