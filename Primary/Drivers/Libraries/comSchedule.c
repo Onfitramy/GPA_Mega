@@ -39,6 +39,16 @@ extern float acs_target_angle_deg;
 // State machine data
 extern StateMachine_t flight_sm;
 
+//                                  stat, pow, gps, imu, temp, pos, att, kalman, spark, mpc, state
+uint32_t comm_schedule_groundstation[] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // Frequencies for the groundstation (High speed sending of status packet to secondary to act as requests for all data arriving via radio)
+uint32_t comm_schedule0_frequencies[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint32_t comm_schedule1_frequencies[] = {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100}; // Frequencies for schedule 1 (10Hz for all packets, pre-launch)
+uint32_t comm_schedule2_frequencies[] = {100, 1000, 1000, 50, 500, 100, 100, 500, 1000, 1000, 1000}; // Frequencies for schedule 2 (Burn)
+uint32_t comm_schedule3_frequencies[] = {100, 200, 1000, 200, 100, 100, 100, 1000, 200, 100, 1000}; //Frequencies for schedule 3 (Coast)
+uint32_t comm_schedule4_frequencies[] = {100, 1000, 100, 1000, 1000, 500, 1000, 1000, 1000, 1000, 1000}; // Frequencies for schedule 4 (Descent)
+uint32_t comm_schedule5_frequencies[] = {1000, 0, 500, 0, 0, 0, 0, 0, 0, 0, 0}; // Frequencies for schedule 5 (Landed)
+uint32_t comm_schedule6_frequencies[] = {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100}; // Frequencies for schedule 6 (HIL Testing)
+
 void UpdatePacket(DataPacket_t *packet);
 
 void InitializeDataScheduler() {
@@ -96,20 +106,19 @@ void InitializeDataScheduler() {
         message_schedule[i].last_saved_tick = 0;
     }
 
-    SetComSchedule(1); // Set the initial communication schedule to schedule 1 (pre-launch)
+    if(is_groundstation){
+        SetComSchedule(0); // Set the communication schedule for the groundstation
+    } else {
+        SetComSchedule(1); // Set the initial communication schedule to schedule 1 (pre-launch)
+    }
 }
-//                                  stat, pow, gps, imu, temp, pos, att, kalman, spark, mpc, state
-uint32_t comm_schedule1_frequencies[] = {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100}; // Frequencies for schedule 1 (10Hz for all packets, pre-launch)
-uint32_t comm_schedule2_frequencies[] = {100, 1000, 1000, 50, 500, 100, 100, 500, 1000, 1000, 1000}; // Frequencies for schedule 2 (Burn)
-uint32_t comm_schedule3_frequencies[] = {100, 200, 1000, 200, 100, 100, 100, 1000, 200, 100, 1000}; //Frequencies for schedule 3 (Coast)
-uint32_t comm_schedule4_frequencies[] = {100, 1000, 100, 1000, 1000, 500, 1000, 1000, 1000, 1000, 1000}; // Frequencies for schedule 4 (Descent)
-uint32_t comm_schedule5_frequencies[] = {1000, 0, 500, 0, 0, 0, 0, 0, 0, 0, 0}; // Frequencies for schedule 5 (Landed)
-uint32_t comm_schedule6_frequencies[] = {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100}; // Frequencies for schedule 6 (HIL Testing)
+
 //Used to set the comunication Schedule to one of the predefined schedules
 void SetComSchedule(uint8_t schedule_id) {
     switch(schedule_id) {
         case 0: // Default schedule
-            break;
+            UpdateComSchedule(comm_schedule0_frequencies);
+            return;
         case 1: // Pre-Launch
             UpdateComSchedule(comm_schedule1_frequencies);
             return;
@@ -161,7 +170,8 @@ void UpdateSendSchedule(uint32_t* new_frequencies) {
 // This function should be called in the 100Hz loop, it checks if any messages are due to be sent and sends them if necessary
 void ProcessDataSchedule(uint32_t current_tick) {
     for (int i = 0; i < messages_num; i++) {
-        uint8_t is_send, is_save = 0;
+        uint8_t is_send = 0;
+        uint8_t is_save = 0;
         if ((current_tick - message_schedule[i].last_sent_tick >= message_schedule[i].send_period) && (message_schedule[i].send_period != 0)) {
             is_send = 1;
         }

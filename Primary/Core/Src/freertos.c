@@ -61,7 +61,7 @@ GPA_Mega gpa_mega;
 
 DataPacket_t powerData;
 
-bool is_groundstation = true;
+bool is_groundstation = false;
 
 void SensorStatus_Reset(SensorStatus *sensor_status) {
   sensor_status->hal_status = HAL_OK;
@@ -232,6 +232,8 @@ void StartDefaultTask(void *argument)
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 1; //1000 Hz
 
+  DataPacket_t State_DataPacket = CreateDataPacket(PACKET_ID_STATE);
+
   /* Infinite loop */
   for(;;) {
     //TimeMeasureStart();
@@ -275,6 +277,13 @@ void StartDefaultTask(void *argument)
       // calculate mag_data.field
       HILgetMagnetometerData(&mag_data);
       #endif
+
+      ProcessDataSchedule(xTaskGetTickCount());
+
+      if(is_groundstation) {
+        UpdateStatePacket(&State_DataPacket, HAL_GetTick(), flight_sm.currentFlightState, flight_sm.timestamp_ms);
+        InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_NONE, &State_DataPacket); //Needed to keep Primary and Secondary syncronized
+      }
 
       // transform measured body acceleration to world-frame acceleration
       arm_mat_vec_mult_f32(&M_rot_ib, average_imu_data.accel, a_WorldFrame_g);
@@ -335,19 +344,12 @@ void Start100HzTask(void *argument) {
   /* USER CODE BEGIN Start100HzTask */
   InitializeDataScheduler();
 
-  DataPacket_t State_DataPacket = CreateDataPacket(PACKET_ID_STATE);
-
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 10; //100 Hz
   /* Infinite loop */
   for(;;) {
     // Run 100 Hz Do Actions
     StateMachine_DoActions(&flight_sm, 100);
-
-    ProcessDataSchedule(xTaskGetTickCount());
-
-    UpdateStatePacket(&State_DataPacket, HAL_GetTick(), flight_sm.currentFlightState, flight_sm.timestamp_ms);
-    InterBoardCom_QueuePacket(&State_DataPacket); //Needed to keep Primary and Secondary syncronized
     
     if (!is_groundstation) {
       //UpdateTemperaturePacket(&Temperature_DataPacket, HAL_GetTick(), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ptot_data.pressure);

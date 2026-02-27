@@ -25,6 +25,7 @@ typedef struct {
 void InitializeDataScheduler();
 void SetComSchedule(uint8_t schedule_id);
 void UpdateComSchedule(uint32_t* new_frequencies);
+void UpdateSendSchedule(uint32_t* new_frequencies);
 void ProcessDataSchedule(uint32_t current_tick);
 
 #endif // COMSCHEDULE_H
