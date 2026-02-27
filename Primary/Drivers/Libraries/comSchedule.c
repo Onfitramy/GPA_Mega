@@ -46,7 +46,7 @@ void InitializeDataScheduler() {
     if(is_groundstation) { // If this is the groundstation, we want to forward all data received via Radio to the PC via USB, so we use the forwarding mode
         communication_mode = COMM_MODE_FORWARDING;
     } else {
-        communication_mode = COMM_MODE_LOCAL;
+        communication_mode = COMM_MODE_REMOTE_TRANSMIT;
     }
 
     //Initialize the packets with their IDs
