@@ -63,6 +63,7 @@ float runMPC(mpc_t *mpc, float height, float *velocity);
 #define F_DIST 6.0f
 
 #define ROD_SLOPE 8.0f
+#define STEPPER_NEUTRAL_ANGLE 190.f
 
 extern float stepper_zero_position;
 extern float stepper_target_position;

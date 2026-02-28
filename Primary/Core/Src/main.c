@@ -176,6 +176,7 @@ int main(void)
 
     StateMachine_Init(&flight_sm, STATE_GROUNDSTATION);
   } else {
+    is_groundstation = false;
     StateMachine_Init(&flight_sm, STATE_FLIGHT_STARTUP);
   }
 

@@ -387,7 +387,7 @@ float runMPC(mpc_t *mpc, float height, float *velocity) {
 float stepper_zero_position;
 float stepper_target_position;
 float stepper_target_angle_deg;
-float stepper_neutral_angle = 100.f;
+float stepper_neutral_angle = STEPPER_NEUTRAL_ANGLE;
 float acs_target_angle_deg;
 float acs_est_angle_deg;
 
