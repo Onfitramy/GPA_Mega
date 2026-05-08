@@ -26,7 +26,7 @@
 extern "C" {
 #endif
 
-#define HIL_TESTING
+//#define HIL_TESTING
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32h7xx_hal.h"

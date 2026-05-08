@@ -1,4 +1,5 @@
 #include "bmp390.h"
+#include "navigation.h"
 
 HAL_StatusTypeDef BMP_I2C_status;
 
