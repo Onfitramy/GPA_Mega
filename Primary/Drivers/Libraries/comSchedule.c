@@ -48,6 +48,7 @@ uint32_t comm_schedule3_frequencies[] = {100, 200, 1000, 200, 100, 100, 100, 100
 uint32_t comm_schedule4_frequencies[] = {100, 1000, 100, 1000, 1000, 500, 1000, 1000, 1000, 1000, 1000}; // Frequencies for schedule 4 (Descent)
 uint32_t comm_schedule5_frequencies[] = {1000, 0, 500, 0, 0, 0, 0, 0, 0, 0, 0}; // Frequencies for schedule 5 (Landed)
 uint32_t comm_schedule6_frequencies[] = {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100}; // Frequencies for schedule 6 (HIL Testing)
+uint32_t comm_schedule_no_data_frequencies[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // Frequencies for schedule "no data" (for testing the effect of sending no data at all)
 
 void UpdatePacket(DataPacket_t *packet);
 
@@ -106,11 +107,8 @@ void InitializeDataScheduler() {
         message_schedule[i].last_saved_tick = 0;
     }
 
-    if(is_groundstation){
-        SetComSchedule(0); // Set the communication schedule for the groundstation
-    } else {
-        SetComSchedule(1); // Set the initial communication schedule to schedule 1 (pre-launch)
-    }
+    SetComSchedule(7); // Send no data
+    SetSaveSchedule(0); // Save no data
 }
 
 //Used to set the comunication Schedule to one of the predefined schedules
@@ -137,17 +135,29 @@ void SetComSchedule(uint8_t schedule_id) {
         case 6: // HIL Testing
             UpdateComSchedule(comm_schedule6_frequencies);
             return;
+        case 7: // No Data
+            UpdateComSchedule(comm_schedule_no_data_frequencies);
+            return;
         default:
             break;
     }
 }
 
-//                                  stat, pow, gps, imu, temp, pos, att, kalman, spark, mpc, state
+//                                      stat, pow, gps, imu, temp, pos, att, kalman, spark, mpc, state
 uint32_t save_schedule1_frequencies[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint32_t save_schedule2_frequencies[] = {1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 0, 0, 0}; // preflight save schedule frequencies
+uint32_t save_schedule3_frequencies[] = {100, 50, 20, 20, 100, 20, 20, 200, 100, 0, 0}; // flight save schedule frequencies
+
 void SetSaveSchedule(uint8_t schedule_id) {
     switch(schedule_id) {
         case 0: //Default
             UpdateSendSchedule(save_schedule1_frequencies);
+            return;
+        case 1: // Pre-Flight
+            UpdateSendSchedule(save_schedule2_frequencies);
+            return;
+        case 2: // Flight            
+            UpdateSendSchedule(save_schedule3_frequencies);
             return;
         default:
             break;

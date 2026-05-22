@@ -247,6 +247,7 @@ static void CheckoutsEntry(StateMachine_t *sm) {
     HAL_Delay(5);
     #endif
     PU_setCAM(ENABLE);
+    SetSaveSchedule(1); // start saving pre-flight data to flash
 
     // TODO:
     // notify ground station that it now needs to command the checkouts
@@ -263,6 +264,7 @@ static void ArmedEntry(StateMachine_t *sm) {
 static void BurnEntry(StateMachine_t *sm) {
     EKF3_corr1.correction_state = inactive; // mag & accel
     SPARK_TargetPositionMode(16);
+    SetSaveSchedule(2); // start saving flight data to flash
 }
 static void CoastEntry(StateMachine_t *sm) {
     // initial xstar for MPC optimizer
