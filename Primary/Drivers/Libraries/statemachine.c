@@ -634,9 +634,9 @@ uint32_t maxEventDelayTable[STATE_MAX] = {
     #ifdef HIL_TESTING
     2000,   // Filter converged
     #else
-    0,      // Filter converged
+    60000,      // Filter converged
     #endif
-    0,      // GCS command
+    5000,      // GCS command
     0,      // Liftoff; LEAVE AT ZERO
     MAX_DELAY_UNTIL_BURNOUT_DETECTED,
     MAX_DELAY_UNTIL_DROGUE_COMMANDED,

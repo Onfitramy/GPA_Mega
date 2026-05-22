@@ -136,8 +136,6 @@ static void InitDo(StateMachine_t *sm, uint16_t freq) {
 static void OperationalDo(StateMachine_t *sm, uint16_t freq) {
     if (freq != 10) return;
 
-    if (INA219_readAll(&health) != HAL_OK) StateMachine_Dispatch(&pu_sm, EVENT_FAULT);
-    if (health.voltage.bus_pu_bat < 6.6) StateMachine_Dispatch(&pu_sm, EVENT_BATTERY_LOW);
 }
 static void BatteryLowDo(StateMachine_t *sm, uint16_t freq) {
     if (freq != 10) return;
