@@ -293,6 +293,8 @@ static void LandedEntry(StateMachine_t *sm) {
     PU_setACS(DISABLE);
     PU_setREC(DISABLE);
     Camera_Recording(0);
+    SetSaveSchedule(0); // stop saving data to flash
+    Storage_FlashSave(false);
     // TODO:
     // disable cams
     // switch off LEDs
