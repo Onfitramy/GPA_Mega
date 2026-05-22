@@ -247,6 +247,7 @@ static void CheckoutsEntry(StateMachine_t *sm) {
     HAL_Delay(5);
     #endif
     PU_setCAM(ENABLE);
+    Storage_FlashSave(true);
     SetSaveSchedule(1); // start saving pre-flight data to flash
 
     // TODO:
@@ -256,7 +257,6 @@ static void ArmedEntry(StateMachine_t *sm) {
     PU_setREC(ENABLE);
     SPARK_ZeroStepper();
     Camera_Recording(1);
-    Storage_FlashSave(true);
     // TODO:
     // lock ACS
     // start data logging
