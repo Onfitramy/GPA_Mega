@@ -224,7 +224,7 @@ void UpdatePacket(DataPacket_t *packet) {
             UpdatePowerPacket(packet, HAL_GetTick(), /* PU_bat_volt */ 0, /* PU_out_pow */ 0, /* PU_out_curr */ 0, /* M2_bus_5V */ 0, /* M2_bus_GPA_bat_volt */ 0);
             break;
         case PACKET_ID_GPS:
-            UpdateGPSDataPacket(packet, HAL_GetTick(), &gps_data);
+            UpdateGPSDataPacket(packet, HAL_GetTick(), &gps_data, bmp_data.pressure);
             break;
         case PACKET_ID_IMU:
             UpdateIMUDataPacket(packet, HAL_GetTick(), &average_imu_data, &mag_data);
