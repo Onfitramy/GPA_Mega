@@ -76,7 +76,7 @@ void InterBoardCom_ActivateReceive(void) {
 void InterBoardCom_ClearSPIErrors(void) {
     // Stop any ongoing DMA
     HAL_SPI_DMAStop(&hspi1);
-    
+
     // Clear DMA flags
     __HAL_DMA_CLEAR_FLAG(&hdma_spi1_rx, DMA_FLAG_TEIF0_4 | DMA_FLAG_FEIF0_4 | DMA_FLAG_DMEIF0_4 | DMA_FLAG_HTIF0_4 | DMA_FLAG_TCIF0_4);
     __HAL_DMA_CLEAR_FLAG(&hdma_spi1_tx, DMA_FLAG_TEIF3_7 | DMA_FLAG_FEIF3_7 | DMA_FLAG_DMEIF3_7 | DMA_FLAG_HTIF3_7 | DMA_FLAG_TCIF3_7);
@@ -85,18 +85,18 @@ void InterBoardCom_ClearSPIErrors(void) {
     while (__HAL_SPI_GET_FLAG(&hspi1, SPI_FLAG_RXNE)) {
         (void)hspi1.Instance->DR;
     }
-    
+
     // Clear SPI error flags by reading SR and DR
     __HAL_SPI_CLEAR_OVRFLAG(&hspi1);
 
     if (__HAL_SPI_GET_FLAG(&hspi1, SPI_FLAG_MODF)) {
     __HAL_SPI_CLEAR_MODFFLAG(&hspi1); // macro handles SR read + CR1 write
     }
-    
+
     // Reset SPI state
     hspi1.State = HAL_SPI_STATE_READY;
     hspi1.ErrorCode = HAL_SPI_ERROR_NONE;
-    
+
     SPI1_STATUS = 0; // Idle
 }
 
@@ -225,7 +225,7 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
             }
 
             if ((Interboard_Target & INTERBOARD_TARGET_RADIO) == INTERBOARD_TARGET_RADIO) {
-                //radioSend(&dataPacket);
+                radioSend(&dataPacket);
             }
             break;
         }
@@ -234,7 +234,7 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
         case (INTERBOARD_OP_CMD): {
             //Target Radio means send the command via radio to the flight computer
             if(Interboard_Target == INTERBOARD_TARGET_RADIO) {
-                //radioSend(&dataPacket);
+                radioSend(&dataPacket);
                 break;
             } else if (Interboard_Target == INTERBOARD_TARGET_MCU) {
                 if (dataPacket.Packet_ID != PACKET_ID_COMMAND) {
@@ -302,10 +302,11 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
                 // TODO: Improve
                 // Storage command 0x00: FlashToSD
                 sd_copy_page = page;
-                if (W25Q_STATE == W25Q_State_Available) {
-                    W25Q_STATE = W25Q_State_CopyingToSD; // Trigger saving flash to SD in main loop
-                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
-                }
+
+                while (W25Q_STATE != W25Q_State_Available) {}
+
+                W25Q_STATE = W25Q_State_CopyingToSD; // Trigger saving flash to SD in main loop
+                InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_STORAGE_FLASH_ERASE) {
                 // Storage command 0x01: FlashReset
                 if (W25Q_STATE == W25Q_State_Available) {
@@ -436,7 +437,7 @@ void InterBoardCom_command_acknowledge(uint8_t command_target, uint8_t command_i
 
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_ACK, status, params, sizeof(params));
-    //radioSend(&packet);
+    radioSend(&packet);
 }
 
 /**
@@ -459,19 +460,19 @@ uint8_t CircBuffer_Push(CircularBuffer_t* cb, InterBoardPacket_t* packet) {
     if (cb->count >= INTERBOARD_BUFFER_SIZE) {
         return 0; // Buffer is full
     }
-    
+
     // Disable interrupts to ensure atomic operation
     __disable_irq();
-    
+
     // Copy packet to buffer
     memcpy(&cb->buffer[cb->head], packet, sizeof(InterBoardPacket_t));
-    
+
     // Update head pointer
     cb->head = (cb->head + 1) % INTERBOARD_BUFFER_SIZE;
     cb->count++;
-    
+
     __enable_irq();
-    
+
     return 1; // Success
 }
 
@@ -485,19 +486,19 @@ uint8_t CircBuffer_Pop(CircularBuffer_t* cb, InterBoardPacket_t* packet) {
     if (cb->count == 0) {
         return 0; // Buffer is empty
     }
-    
+
     // Disable interrupts to ensure atomic operation
     __disable_irq();
-    
+
     // Copy packet from buffer
     memcpy(packet, &cb->buffer[cb->tail], sizeof(InterBoardPacket_t));
-    
+
     // Update tail pointer
     cb->tail = (cb->tail + 1) % INTERBOARD_BUFFER_SIZE;
     cb->count--;
-    
+
     __enable_irq();
-    
+
     return 1; // Success
 }
 
