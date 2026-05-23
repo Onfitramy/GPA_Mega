@@ -295,6 +295,7 @@ static void LandedEntry(StateMachine_t *sm) {
     Camera_Recording(0);
     SetSaveSchedule(0); // stop saving data to flash
     Storage_FlashSave(false);
+    vTaskDelay(20);
     Storage_SDCardSave(); // save data to SD card
 
     // TODO:
