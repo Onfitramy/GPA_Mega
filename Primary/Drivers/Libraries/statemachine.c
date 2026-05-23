@@ -634,11 +634,11 @@ uint32_t minEventDelayTable[EVENT_MAX] = {
 uint32_t maxEventDelayTable[STATE_MAX] = {
     0,      // Abort Exit; LEAVE AT ZERO
     0,      // Startup complete
-    0,      // GNSS Fix
+    5000,      // GNSS Fix
     #ifdef HIL_TESTING
     2000,   // Filter converged
     #else
-    60000,      // Filter converged
+    5000, //60000,      // Filter converged
     #endif
     5000,      // GCS command
     0,      // Liftoff; LEAVE AT ZERO
