@@ -117,7 +117,7 @@ void HILgetIMUData(IMU_AverageData_t *HIL_imu_data) {
 }
 
 void HILgetMagnetometerData(LIS3MDL_Data_t *HIL_mag_data) {
-    arm_mat_vec_mult_f32(HIL.DCM_bi, magfield, &HIL_mag_data->field);
+    arm_mat_vec_mult_f32(HIL.DCM_bi, magfield, HIL_mag_data->field);
 }
 
 void HILgetBarometerData(bmp390_data_t *HIL_bmp_data) {

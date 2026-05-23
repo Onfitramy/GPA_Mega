@@ -31,7 +31,7 @@ typedef enum __attribute__((packed)){
 //Wrapper for the DataPacket to be used to send via SPI1
 #pragma pack(push, 1)
 typedef struct {
-    uint8_t InterBoardPacket_ID;
+    InterBoardPacketID_t InterBoardPacket_ID;
     uint8_t Data[32];
 } InterBoardPacket_t;
 #pragma pack(pop)

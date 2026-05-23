@@ -3,6 +3,8 @@
 #include "usbd_cdc_if.h"
 #include <stdint.h>
 #include <string.h>
+
+#include "HIL.h"
 #include "InterBoardCom.h"
 
 bool signalPlotterSend = true;

@@ -420,7 +420,9 @@ void StartSDTask(void *argument)
         break;
       case W25Q_State_CopyingToSD:
         W25Q_CopyLogsToSD(sd_copy_page);
+        SD_Unmount();
         W25Q_STATE = W25Q_State_Available;
+        // TODO: Use status LED
         buzzerPlayNote("C6", 50);
         break;
     }
