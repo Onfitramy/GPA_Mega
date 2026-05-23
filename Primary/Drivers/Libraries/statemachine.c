@@ -297,7 +297,6 @@ static void LandedEntry(StateMachine_t *sm) {
     Storage_FlashSave(false);
     Storage_SDCardSave(); // save data to SD card
 
-    
     // TODO:
     // disable cams
     // switch off LEDs

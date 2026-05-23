@@ -100,7 +100,9 @@ typedef struct {
 
 typedef struct {
     int32_t latitude, longitude, altitude;
-    int16_t speed, course, unused1, unused2, unused3, unused4, unused5;
+    int16_t speed, course; 
+    float pressure;
+    int16_t unused1, unused2, unused3;
 } GPSPayload_t;
 
 typedef struct {
