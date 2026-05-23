@@ -225,7 +225,7 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
             }
 
             if ((Interboard_Target & INTERBOARD_TARGET_RADIO) == INTERBOARD_TARGET_RADIO) {
-                radioSend(&dataPacket);
+                //radioSend(&dataPacket);
             }
             break;
         }
@@ -234,7 +234,7 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
         case (INTERBOARD_OP_CMD): {
             //Target Radio means send the command via radio to the flight computer
             if(Interboard_Target == INTERBOARD_TARGET_RADIO) {
-                radioSend(&dataPacket);
+                //radioSend(&dataPacket);
                 break;
             } else if (Interboard_Target == INTERBOARD_TARGET_MCU) {
                 if (dataPacket.Packet_ID != PACKET_ID_COMMAND) {
@@ -436,7 +436,7 @@ void InterBoardCom_command_acknowledge(uint8_t command_target, uint8_t command_i
 
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_ACK, status, params, sizeof(params));
-    radioSend(&packet);
+    //radioSend(&packet);
 }
 
 /**

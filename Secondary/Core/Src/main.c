@@ -178,9 +178,9 @@ int main(void)
   XBee_Init();
   
   // set NRF24L01 frequency and data rate
-  nrf24l01p_init(2462, _1Mbps);
-  radioSet(NRF_24_ACTIVE);
-  radioSetMode(RADIO_MODE_TRANSCEIVER);
+  //nrf24l01p_init(2462, _1Mbps);
+  radioSet(RADIO_MODE_NONE);
+  radioSetMode(RADIO_MODE_NONE);
 
   StateMachine_Init(&pu_sm, STATE_STARTUP);
   /* USER CODE END 2 */
