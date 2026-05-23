@@ -229,5 +229,6 @@ void Camera_Recording(bool enable);
 void Camera_SkipDate();
 void Camera_Wifi(bool enable);
 void Storage_FlashSave(bool enable);
+void Storage_SDCardSave();
 
 #endif /* Packets_H_ */

@@ -369,3 +369,10 @@ void Storage_FlashSave(bool enable) {
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STORAGE, COMMAND_ID_STORAGE_FLASH_WRITE, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
 }
+
+void Storage_SDCardSave() {
+    uint8_t parameters[1] = 0; // 0 = copy whole flash to SD card
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STORAGE, COMMAND_ID_STORAGE_FLASH_TO_SD, parameters, sizeof(parameters));
+    sendcmdToTarget(&packet);
+}
