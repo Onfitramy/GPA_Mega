@@ -247,6 +247,8 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     InterBoardPacket_t packet = InterBoardCom_ReceivePacket();
 
+    HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin);
+
     xQueueSendFromISR(InterBoardPacketQueue, &packet, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     //Pass the received packet to a que to be processed by the task

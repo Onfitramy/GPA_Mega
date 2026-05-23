@@ -409,6 +409,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       // handle max state timer elapsed
       // TODO: maybe simplify by adding timer elapsed event?
       switch (flight_sm.currentFlightState) {
+        case STATE_FLIGHT_INIT:             StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_GNSS_FIX); break;
         case STATE_FLIGHT_GNC_ALIGN:        StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_FILTER_CONVERGED); break;
         case STATE_FLIGHT_CHECKOUTS:        StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_CHECKOUTS_COMPLETE); break;
         case STATE_FLIGHT_BURN:             StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_BURNOUT_DETECTED); break;

@@ -244,7 +244,7 @@ static void AlignGNCEntry(StateMachine_t *sm) {
 static void CheckoutsEntry(StateMachine_t *sm) {
     PU_setACS(ENABLE);
     #ifndef HIL_TESTING
-    HAL_Delay(5);
+    //HAL_Delay(5);
     #endif
     PU_setCAM(ENABLE);
     Storage_FlashSave(true);
@@ -639,7 +639,7 @@ uint32_t maxEventDelayTable[STATE_MAX] = {
     #ifdef HIL_TESTING
     2000,   // Filter converged
     #else
-    5000, //60000,      // Filter converged
+    10000, //60000,      // Filter converged
     #endif
     5000,      // GCS command
     0,      // Liftoff; LEAVE AT ZERO
