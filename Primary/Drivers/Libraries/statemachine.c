@@ -290,9 +290,6 @@ static void AwaitMainEntry(StateMachine_t *sm) {
 }
 static void MainDescendEntry(StateMachine_t *sm) {}
 static void LandedEntry(StateMachine_t *sm) {
-    PU_setACS(DISABLE);
-    PU_setREC(DISABLE);
-    Camera_Recording(0);
     SetSaveSchedule(0); // stop saving data to flash
     Storage_FlashSave(false);
     Storage_SDCardSave(); // save data to SD card
