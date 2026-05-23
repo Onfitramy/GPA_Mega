@@ -48,7 +48,7 @@
 /* --- Event detection Settings --- */
 #define ACC_BUFFER_SIZE 50
 #define LIFTOFF_MIN_OVERSHOOTS  40
-#define LIFTOFF_ACC_THRESHOLD   20  // m/s²
+#define LIFTOFF_ACC_THRESHOLD   15  // m/s²
 #define LIFTOFF_MIN_DURATION    50  // ms
 
 #define BURNOUT_MIN_UNDERSHOOTS 40
@@ -58,8 +58,8 @@
 #define APOGEE_VEL_THRESHOLD    0   // m/s
 #define APOGEE_MIN_DURATION     100 // ms
 
-#define DROGUE_MAX_VELOCITY     40  // m/s
-#define DROGUE_MIN_VELOCITY     20  // m/s
+#define DROGUE_MAX_VELOCITY     25  // m/s
+#define DROGUE_MIN_VELOCITY     5  // m/s
 #define DROGUE_MIN_ACCELERATION 5   // m/s²
 #define DROGUE_MIN_DURATION     100 // ms
 

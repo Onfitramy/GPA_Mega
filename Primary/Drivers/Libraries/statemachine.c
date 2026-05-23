@@ -291,8 +291,10 @@ static void AwaitMainEntry(StateMachine_t *sm) {
 static void MainDescendEntry(StateMachine_t *sm) {}
 static void LandedEntry(StateMachine_t *sm) {
     SetSaveSchedule(0); // stop saving data to flash
-    Storage_FlashSave(false);
-    Storage_SDCardSave(); // save data to SD card
+
+    tim7_target_ms = 5000;
+    tim7_ms = 0;
+    HAL_TIM_Base_Start_IT(&htim7);
 
     // TODO:
     // disable cams
@@ -300,7 +302,7 @@ static void LandedEntry(StateMachine_t *sm) {
     // stop data logging
     // slow xBee and NRF data rate down to save power
 
-    Buzzer_PlaySongRepeat(1, 20000);
+    //Buzzer_PlaySongRepeat(1, 20000);
 }
 static void TestInitEntry(StateMachine_t *sm) {
     RetractMain(9000);
@@ -631,13 +633,13 @@ uint32_t minEventDelayTable[EVENT_MAX] = {
 uint32_t maxEventDelayTable[STATE_MAX] = {
     0,      // Abort Exit; LEAVE AT ZERO
     0,      // Startup complete
-    5000,      // GNSS Fix
+    0,      // GNSS Fix
     #ifdef HIL_TESTING
     2000,   // Filter converged
     #else
-    10000, //60000,      // Filter converged
+    150000,      // Filter converged
     #endif
-    5000,      // GCS command
+    30000,      // GCS command
     0,      // Liftoff; LEAVE AT ZERO
     MAX_DELAY_UNTIL_BURNOUT_DETECTED,
     MAX_DELAY_UNTIL_DROGUE_COMMANDED,

@@ -418,6 +418,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
         case STATE_FLIGHT_DESCEND_DROGUE:   StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_MAIN_COMMANDED); break;
         case STATE_FLIGHT_AWAIT_MAIN:       StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_TOUCHDOWN); break;
         case STATE_FLIGHT_DESCEND_MAIN:     StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_TOUCHDOWN); break;
+        case STATE_FLIGHT_LANDED:
+          Storage_FlashSave(false);
+          Storage_SDCardSave(); // save data to SD card
+          break;
         default: break; // error?
       }
     }
