@@ -54,6 +54,7 @@ extern "C" {
 #include "statemachine.h"
 #include "spark.h"
 #include "ptot.h"
+#include "comSchedule.h"
 
 #ifdef HIL_TESTING
 #include "HIL.h"

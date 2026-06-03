@@ -104,7 +104,7 @@ void UpdateIMUDataPacket(DataPacket_t *imu_packet, uint32_t timestamp, IMU_Avera
     calcCRC(imu_packet);
 }
 
-void UpdateGPSDataPacket(DataPacket_t *gps_packet, uint32_t timestamp, UBX_NAV_PVT *gps_data) {
+void UpdateGPSDataPacket(DataPacket_t *gps_packet, uint32_t timestamp, UBX_NAV_PVT *gps_data, float pressure) {
     gps_packet->timestamp = timestamp;
 
     // Update the GPS packet with the latest GPS data
@@ -113,6 +113,7 @@ void UpdateGPSDataPacket(DataPacket_t *gps_packet, uint32_t timestamp, UBX_NAV_P
     gps_packet->Data.gps.altitude = gps_data->height; // Altitude in mm
     gps_packet->Data.gps.speed = (int16_t)(gps_data->gSpeed / 100); // Speed over ground in cm/s
     gps_packet->Data.gps.course =  (int16_t)gps_data->headMot; // Course over ground °*1e-5
+    gps_packet->Data.gps.pressure = pressure;
 
     calcCRC(gps_packet);
 }
@@ -367,5 +368,12 @@ void Storage_FlashSave(bool enable) {
     uint8_t parameters[1] = { enable };
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STORAGE, COMMAND_ID_STORAGE_FLASH_WRITE, parameters, sizeof(parameters));
+    sendcmdToTarget(&packet);
+}
+
+void Storage_SDCardSave() {
+    uint8_t parameters[3] = {0}; // 0 = copy whole flash to SD card
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STORAGE, COMMAND_ID_STORAGE_FLASH_TO_SD, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
 }

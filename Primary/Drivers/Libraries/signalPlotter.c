@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "InterBoardCom.h"
+#include "HIL.h"
 
 bool signalPlotterSend = true;
 

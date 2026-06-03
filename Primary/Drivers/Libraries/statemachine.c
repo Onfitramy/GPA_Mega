@@ -246,10 +246,11 @@ static void AlignGNCEntry(StateMachine_t *sm) {
 static void CheckoutsEntry(StateMachine_t *sm) {
     PU_setACS(ENABLE);
     #ifndef HIL_TESTING
-    HAL_Delay(5);
+    //HAL_Delay(5);
     #endif
     PU_setCAM(ENABLE);
-
+    Storage_FlashSave(true);
+    SetSaveSchedule(1); // start saving pre-flight data to flash
     // TODO:
     // notify ground station that it now needs to command the checkouts
 }
@@ -257,7 +258,7 @@ static void ArmedEntry(StateMachine_t *sm) {
     PU_setREC(ENABLE);
     SPARK_ZeroStepper();
     Camera_Recording(1);
-    Storage_FlashSave(true);
+    SetSaveSchedule(2);
     // TODO:
     // lock ACS
     // start data logging
@@ -293,6 +294,8 @@ static void LandedEntry(StateMachine_t *sm) {
     PU_setACS(DISABLE);
     PU_setREC(DISABLE);
     Camera_Recording(0);
+    SetSaveSchedule(0);
+
     // TODO:
     // disable cams
     // switch off LEDs
