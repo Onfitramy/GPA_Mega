@@ -181,7 +181,8 @@ static void StartupEntry(StateMachine_t *sm) {
 
     // define Kalman Filter dimensions and pointers for Quaternion EKF
     EKFInit(&EKF3, EKF3_type, x_size3, u_size3, 0.001, &F3, &P3, &Q3, NULL, x3, average_imu_data.gyro);
-    EKFCorrectionInit(EKF3, &EKF3_corr1, corr1_type, 6, &H3_corr1, &K3_corr1, &R3_corr1, &S3_corr1, &S3_inv_corr1, z3_corr1, h3_corr1, v3_corr1);
+    EKFCorrectionInit(EKF3, &EKF3_corr1, corr1_type, 3, &H3_corr1, &K3_corr1, &R3_corr1, &S3_corr1, &S3_inv_corr1, z3_corr1, h3_corr1, v3_corr1); // mag
+    EKFCorrectionInit(EKF3, &EKF3_corr2, corr2_type, 3, &H3_corr2, &K3_corr2, &R3_corr2, &S3_corr2, &S3_inv_corr2, z3_corr2, h3_corr2, v3_corr2); // accel
     
     // initialize MPC algorithm
     MPCInit(&a_mpc, PREDICTION_HORIZON, NUM_INEQUALITY_CONSTRAINTS, MPC_DELTA_T, u_star, x_star);
@@ -227,7 +228,8 @@ static void InitEntry(StateMachine_t *sm) {
 
     // Activate quaternion EKF prediction and correction step
     EKF3.prediction_state = active;
-    EKF3_corr1.correction_state = active;   // mag & accel
+    EKF3_corr1.correction_state = active;   // mag
+    EKF3_corr2.correction_state = active;   // accel
 
     // calculate stepper position for closed ACS position
     StepperPositionFromACSAngle(0.f, &stepper_zero_position);

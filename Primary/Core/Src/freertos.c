@@ -371,9 +371,18 @@ void Start100HzTask(void *argument) {
       StepperPositionFromAngle(stepper_zero_position, spark_data.Data.spark.magAngle, &stepper_est_position);
       ACSAngleFromStepperPosition(stepper_est_position, &acs_est_angle_deg);
 
-      // Quaternion EKF correction step
-      arm_vecN_concatenate_f32(3, average_imu_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
+      // Quaternion EKF magnetometer correction step
+      // project magnetometer readings onto horizontal plane
+      float mag_enu[3];
+      float mag_b_tilde[3];
+      arm_mat_vec_mult_f32(&M_rot_ib, mag_data.field, mag_enu);
+      mag_enu[2] = 0;
+      arm_mat_vec_mult_f32(&M_rot_bi, mag_enu, EKF3_corr1.z);
       EKFCorrectionStep(&EKF3, &EKF3_corr1);
+
+      // Quaternion EKF accelerometer correction step
+      arm_vec3_copy_f32(average_imu_data.accel, EKF3_corr2.z);
+      EKFCorrectionStep(&EKF3, &EKF3_corr2);
     }
 
     InterBoardCom_ProcessTxBuffer();

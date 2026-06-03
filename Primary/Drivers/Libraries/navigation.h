@@ -11,7 +11,7 @@
 
 
 /* --- Quaternion EKF Settings --- */
-#define magnetic_dip_angle 66.0f
+#define magnetic_declination 2.0f
 
 #define GYRO_VAR 0.3*0.3
 #define GYRO_BIAS_VAR 1e-12
@@ -19,7 +19,8 @@
 #define MAG_VAR 0.8*0.8
 
 // correction step discard threshold
-#define NIS_EKF3_THRESH 9999.f      // TODO: determine
+#define NIS_EKF3_MAG_THRESH 1.0f
+#define NIS_EKF3_ACC_THRESH 10.0f
 
 // convergence thresholds
 #define P_VAR_ANGLE_THRESH  0.01
@@ -83,7 +84,8 @@
 
 #define x_size3 7
 #define u_size3 3 // NO B MATRIX THOUGH
-#define z_size3_corr1 6
+#define z_size3_corr1 3
+#define z_size3_corr2 3
 
 // DCM rotation type
 typedef enum {
@@ -211,6 +213,16 @@ extern arm_matrix_instance_f32 R3_corr1;
 extern arm_matrix_instance_f32 S3_corr1;
 extern arm_matrix_instance_f32 S3_inv_corr1;
 extern arm_matrix_instance_f32 K3_corr1;
+
+extern ekf_corr_data_t EKF3_corr2;
+extern float z3_corr2[z_size3_corr2];
+extern float h3_corr2[z_size3_corr2];
+extern float v3_corr2[z_size3_corr2];
+extern arm_matrix_instance_f32 H3_corr2;
+extern arm_matrix_instance_f32 R3_corr2;
+extern arm_matrix_instance_f32 S3_corr2;
+extern arm_matrix_instance_f32 S3_inv_corr2;
+extern arm_matrix_instance_f32 K3_corr2;
 
 extern float VAR_vec3_abs;
 

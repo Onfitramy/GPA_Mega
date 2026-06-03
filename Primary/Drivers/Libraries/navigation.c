@@ -103,6 +103,21 @@ arm_matrix_instance_f32 S3_inv_corr1 = {z_size3_corr1, z_size3_corr1, S3_inv_cor
 float K3_corr1_data[x_size3*z_size3_corr1];
 arm_matrix_instance_f32 K3_corr1 = {x_size3, z_size3_corr1, K3_corr1_data};
 
+ekf_corr_data_t EKF3_corr2;
+float z3_corr2[z_size3_corr2] = {0};
+float h3_corr2[z_size3_corr2] = {0};
+float v3_corr2[z_size3_corr2] = {0};
+float H3_corr2_data[z_size3_corr2*x_size3] = {0};
+arm_matrix_instance_f32 H3_corr2 = {z_size3_corr2, x_size3, H3_corr2_data};
+float R3_corr2_data[z_size3_corr2*z_size3_corr2] = {0};
+arm_matrix_instance_f32 R3_corr2 = {z_size3_corr2, z_size3_corr2, R3_corr2_data};
+float S3_corr2_data[z_size3_corr2*z_size3_corr2] = {0};
+arm_matrix_instance_f32 S3_corr2 = {z_size3_corr2, z_size3_corr2, S3_corr2_data};
+float S3_inv_corr2_data[z_size3_corr2*z_size3_corr2] = {0};
+arm_matrix_instance_f32 S3_inv_corr2 = {z_size3_corr2, z_size3_corr2, S3_inv_corr2_data};
+float K3_corr2_data[x_size3*z_size3_corr2];
+arm_matrix_instance_f32 K3_corr2 = {x_size3, z_size3_corr2, K3_corr2_data};
+
 float VAR_vec3_abs;
 
 
@@ -134,6 +149,9 @@ float a_abs_g;                  // Absolute Acceleration with gravity
 float a_abs_i;                  // Absolute Acceleration without gravity
 float gravity_world_vec[3] = {0, 0, 9.8};
 float gravity_body_vec[3];
+
+float g_pred_enu[3] = {0};
+float m_pred_enu[3] = {0};
 
 float vel_abs;
 
@@ -551,14 +569,17 @@ void EKFCorrectionInit(ekf_data_t ekf, ekf_corr_data_t *ekf_corr, ekf_correction
         if (corr_type == corr1_type) {
             arm_mat_set_entry_f32(ekf_corr->R, 0, 0, BARO_VAR);
         } else if (corr_type == corr2_type) {
-            
+            // from GNSS readings
         } else if (corr_type == corr3_type) {
             arm_mat_set_entry_f32(ekf_corr->R, 0, 0, PTOT_VAR);
         }
     } else if (ekf.type == EKF3_type) {
         // configure Quaternion EKF correction matrices
-        arm_mat_set_diag_f32(ekf_corr->R, 0, 0, 3, ACCEL_VAR);  // accelerometer variance (noise)
-        arm_mat_set_diag_f32(ekf_corr->R, 3, 3, 3, MAG_VAR);  // magnetometer variance (noise)
+        if (corr_type == corr1_type) {
+            arm_mat_set_diag_f32(ekf_corr->R, 0, 0, 3, MAG_VAR);  // magnetometer variance (noise)
+        } else if (corr_type == corr2_type) {
+            arm_mat_set_diag_f32(ekf_corr->R, 0, 0, 3, ACCEL_VAR);  // accelerometer variance (noise)
+        }
     }
 }
 
@@ -667,46 +688,33 @@ void EKFPredictMeasurement(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
 
     } else if (ekf->type == EKF3_type) {
         // predict expected accelerometer and magnetometer readings (z vector)
-        float *q = ekf->x;
-
         // Calculate expected a and m vectors from quaternion
+        float *q = ekf->x;
         float DCMbi_data[9];
         arm_matrix_instance_f32 DCMbi = {3, 3, DCMbi_data};
-
-        // define expected vectors in ENU frame
-        float g_vec_enu[3] = {0, 0, 1};
-        float m_vec_enu[3] = {0, cosf(magnetic_dip_angle * PI / 180.f), -sinf(magnetic_dip_angle * PI / 180.f)};
-
-        // this section could be optimized (g and m contain zeroes)
         RotationMatrixFromQuaternion(q, &DCMbi, DCM_bi_WorldToBody);
-        arm_mat_vec_mult_f32(&DCMbi, g_vec_enu, ekf_corr->h);
-        arm_mat_vec_mult_f32(&DCMbi, m_vec_enu, &ekf_corr->h[3]);
 
+        if (ekf_corr->type == corr1_type) {
+            // define expected vector in ENU frame
+            m_pred_enu[0] = arm_vec3_length_f32(ekf_corr->z) * sinf(magnetic_declination * PI / 180.f);
+            m_pred_enu[1] = arm_vec3_length_f32(ekf_corr->z) * cosf(magnetic_declination * PI / 180.f);
+
+            // this section could be optimized (g and m contain zeroes)
+            arm_mat_vec_mult_f32(&DCMbi, m_pred_enu, ekf_corr->h);
+
+        } else if (ekf_corr->type == corr2_type) {
+            // define expected vector in ENU frame
+            g_pred_enu[2] = g0_const;
+
+            // this section could be optimized (g and m contain zeroes)
+            arm_mat_vec_mult_f32(&DCMbi, g_pred_enu, ekf_corr->h);
+        }
     }
 }
 
 // calculate innovation v(t) = z(t) - h(q^(t))
 void EKFGetInnovation(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
-    if (ekf->type == EKF1_type || ekf->type == EKF2_type) {
-        arm_vecN_sub_f32(ekf_corr->z_size, ekf_corr->z, ekf_corr->h, ekf_corr->v);
-
-    } else if (ekf->type == EKF3_type) {
-        float *vt = ekf_corr->v;
-
-        float a_norm_vec[3];
-        float m_norm_vec[3];
-
-        arm_vec3_copy_f32(&ekf_corr->z[0], a_norm_vec);
-        arm_vec3_copy_f32(&ekf_corr->z[3], m_norm_vec);
-        arm_vec3_normalize_f32(a_norm_vec);
-        arm_vec3_normalize_f32(m_norm_vec);
-    
-        for (int i = 0; i < 3; i++) {
-            vt[i]   = a_norm_vec[i] - ekf_corr->h[i];
-            vt[i+3] = m_norm_vec[i] - ekf_corr->h[i+3];
-        }
-
-    }
+    arm_vecN_sub_f32(ekf_corr->z_size, ekf_corr->z, ekf_corr->h, ekf_corr->v);
 }
 
 // update ekf Gain
@@ -819,34 +827,33 @@ void EKFGetObservationJacobian(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
 
     } else if (ekf->type == EKF3_type) {
         float *q = ekf->x;
-
-        //float g_vec_enu[3] = {0, 0, 1};
-        float m_vec_enu[3] = {0, cosf(magnetic_dip_angle * PI / 180.f), -sinf(magnetic_dip_angle * PI / 180.f)};
-
-        arm_mat_set_entry_f32(ekf_corr->H, 0, 0, -2*q[2]);
-        arm_mat_set_entry_f32(ekf_corr->H, 0, 1,  2*q[3]);
-        arm_mat_set_entry_f32(ekf_corr->H, 0, 2, -2*q[0]);
-        arm_mat_set_entry_f32(ekf_corr->H, 0, 3,  2*q[1]);
-        arm_mat_set_entry_f32(ekf_corr->H, 1, 0,  2*q[1]);
-        arm_mat_set_entry_f32(ekf_corr->H, 1, 1,  2*q[0]);
-        arm_mat_set_entry_f32(ekf_corr->H, 1, 2,  2*q[3]);
-        arm_mat_set_entry_f32(ekf_corr->H, 1, 3,  2*q[2]);
-        arm_mat_set_entry_f32(ekf_corr->H, 2, 0,  2*q[0]);
-        arm_mat_set_entry_f32(ekf_corr->H, 2, 1, -2*q[1]);
-        arm_mat_set_entry_f32(ekf_corr->H, 2, 2, -2*q[2]);
-        arm_mat_set_entry_f32(ekf_corr->H, 2, 3,  2*q[3]);
-        arm_mat_set_entry_f32(ekf_corr->H, 3, 0,  2*(m_vec_enu[1]*q[3]-m_vec_enu[2]*q[2]));
-        arm_mat_set_entry_f32(ekf_corr->H, 3, 1,  2*(m_vec_enu[1]*q[2]+m_vec_enu[2]*q[3]));
-        arm_mat_set_entry_f32(ekf_corr->H, 3, 2,  2*(m_vec_enu[1]*q[1]-m_vec_enu[2]*q[0]));
-        arm_mat_set_entry_f32(ekf_corr->H, 3, 3,  2*(m_vec_enu[1]*q[0]+m_vec_enu[2]*q[1]));
-        arm_mat_set_entry_f32(ekf_corr->H, 4, 0,  2*(m_vec_enu[1]*q[0]+m_vec_enu[2]*q[1]));
-        arm_mat_set_entry_f32(ekf_corr->H, 4, 1, -2*(m_vec_enu[1]*q[1]-m_vec_enu[2]*q[0]));
-        arm_mat_set_entry_f32(ekf_corr->H, 4, 2,  2*(m_vec_enu[1]*q[2]+m_vec_enu[2]*q[3]));
-        arm_mat_set_entry_f32(ekf_corr->H, 4, 3, -2*(m_vec_enu[1]*q[3]-m_vec_enu[2]*q[2]));
-        arm_mat_set_entry_f32(ekf_corr->H, 5, 0, -2*(m_vec_enu[1]*q[1]-m_vec_enu[2]*q[0]));
-        arm_mat_set_entry_f32(ekf_corr->H, 5, 1, -2*(m_vec_enu[1]*q[0]+m_vec_enu[2]*q[1]));
-        arm_mat_set_entry_f32(ekf_corr->H, 5, 2,  2*(m_vec_enu[1]*q[3]-m_vec_enu[2]*q[2]));
-        arm_mat_set_entry_f32(ekf_corr->H, 5, 3,  2*(m_vec_enu[1]*q[2]+m_vec_enu[2]*q[3]));
+        if (ekf_corr->type == corr1_type) {
+            arm_mat_set_entry_f32(ekf_corr->H, 0, 0,  2*( m_pred_enu[0]*q[0]+m_pred_enu[1]*q[3])); //-m_pred_enu[2]*q[2]));
+            arm_mat_set_entry_f32(ekf_corr->H, 0, 1,  2*( m_pred_enu[0]*q[1]+m_pred_enu[1]*q[2])); //+m_pred_enu[2]*q[3]));
+            arm_mat_set_entry_f32(ekf_corr->H, 0, 2,  2*(-m_pred_enu[0]*q[2]+m_pred_enu[1]*q[1])); //-m_pred_enu[2]*q[0]));
+            arm_mat_set_entry_f32(ekf_corr->H, 0, 3,  2*(-m_pred_enu[0]*q[3]+m_pred_enu[1]*q[0])); //+m_pred_enu[2]*q[1]));
+            arm_mat_set_entry_f32(ekf_corr->H, 1, 0,  2*(-m_pred_enu[0]*q[3]+m_pred_enu[1]*q[0])); //+m_pred_enu[2]*q[1]));
+            arm_mat_set_entry_f32(ekf_corr->H, 1, 1,  2*( m_pred_enu[0]*q[2]-m_pred_enu[1]*q[1])); //+m_pred_enu[2]*q[0]));
+            arm_mat_set_entry_f32(ekf_corr->H, 1, 2,  2*( m_pred_enu[0]*q[1]+m_pred_enu[1]*q[2])); //+m_pred_enu[2]*q[3]));
+            arm_mat_set_entry_f32(ekf_corr->H, 1, 3,  2*(-m_pred_enu[0]*q[0]-m_pred_enu[1]*q[3])); //+m_pred_enu[2]*q[2]));
+            arm_mat_set_entry_f32(ekf_corr->H, 2, 0,  2*( m_pred_enu[0]*q[2]-m_pred_enu[1]*q[1])); //+m_pred_enu[2]*q[0]));
+            arm_mat_set_entry_f32(ekf_corr->H, 2, 1,  2*( m_pred_enu[0]*q[3]-m_pred_enu[1]*q[0])); //-m_pred_enu[2]*q[1]));
+            arm_mat_set_entry_f32(ekf_corr->H, 2, 2,  2*( m_pred_enu[0]*q[0]+m_pred_enu[1]*q[3])); //-m_pred_enu[2]*q[2]));
+            arm_mat_set_entry_f32(ekf_corr->H, 2, 3,  2*( m_pred_enu[0]*q[1]+m_pred_enu[1]*q[2])); //+m_pred_enu[2]*q[3]));
+        } else if (ekf_corr->type == corr2_type) {
+            arm_mat_set_entry_f32(ekf_corr->H, 0, 0, -2*g_pred_enu[2]*q[2]);
+            arm_mat_set_entry_f32(ekf_corr->H, 0, 1,  2*g_pred_enu[2]*q[3]);
+            arm_mat_set_entry_f32(ekf_corr->H, 0, 2, -2*g_pred_enu[2]*q[0]);
+            arm_mat_set_entry_f32(ekf_corr->H, 0, 3,  2*g_pred_enu[2]*q[1]);
+            arm_mat_set_entry_f32(ekf_corr->H, 1, 0,  2*g_pred_enu[2]*q[1]);
+            arm_mat_set_entry_f32(ekf_corr->H, 1, 1,  2*g_pred_enu[2]*q[0]);
+            arm_mat_set_entry_f32(ekf_corr->H, 1, 2,  2*g_pred_enu[2]*q[3]);
+            arm_mat_set_entry_f32(ekf_corr->H, 1, 3,  2*g_pred_enu[2]*q[2]);
+            arm_mat_set_entry_f32(ekf_corr->H, 2, 0,  2*g_pred_enu[2]*q[0]);
+            arm_mat_set_entry_f32(ekf_corr->H, 2, 1, -2*g_pred_enu[2]*q[1]);
+            arm_mat_set_entry_f32(ekf_corr->H, 2, 2, -2*g_pred_enu[2]*q[2]);
+            arm_mat_set_entry_f32(ekf_corr->H, 2, 3,  2*g_pred_enu[2]*q[3]);
+        }
     }
 }
 
@@ -907,7 +914,11 @@ float getNISthreshold(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
             return NIS_EKF2_PTOT_THRESH;
         }
     } else if (ekf->type == EKF3_type) {
-        return NIS_EKF3_THRESH;
+        if (ekf_corr->type == corr1_type) {
+            return NIS_EKF3_MAG_THRESH;
+        } else if (ekf_corr->type == corr2_type) {
+            return NIS_EKF3_ACC_THRESH;
+        }
     }
     return 0.f;
 }

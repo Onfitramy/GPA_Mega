@@ -165,8 +165,9 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(26, "EKF gbx var");
   signalPlotter_setSignalName(27, "EKF gby var");
   signalPlotter_setSignalName(28, "EKF gbz var");
-  signalPlotter_setSignalName(29, "NIS EKF3");
-  signalPlotter_setSignalName(30, "VAR vec3 abs");
+  signalPlotter_setSignalName(29, "NIS mag EKF3");
+  signalPlotter_setSignalName(30, "NIS accel EKF3");
+  signalPlotter_setSignalName(31, "VAR vec3 abs");
   #endif
 
   #ifdef SIGNAL_PLOTTER_OUT_4 // height ekf testing
@@ -315,12 +316,12 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(2, euler[0]);
   signalPlotter_sendData(3, euler[1]);
   signalPlotter_sendData(4, euler[2]);
-  signalPlotter_sendData(5, h3_corr1[0]);
-  signalPlotter_sendData(6, h3_corr1[1]);
-  signalPlotter_sendData(7, h3_corr1[2]);
-  signalPlotter_sendData(8, h3_corr1[3]);
-  signalPlotter_sendData(9, h3_corr1[4]);
-  signalPlotter_sendData(10, h3_corr1[5]);
+  signalPlotter_sendData(5, h3_corr2[0]);
+  signalPlotter_sendData(6, h3_corr2[1]);
+  signalPlotter_sendData(7, h3_corr2[2]);
+  signalPlotter_sendData(8, h3_corr1[0]);
+  signalPlotter_sendData(9, h3_corr1[1]);
+  signalPlotter_sendData(10, h3_corr1[2]);
   signalPlotter_sendData(11, average_imu_data.accel[0]);
   signalPlotter_sendData(12, average_imu_data.accel[1]);
   signalPlotter_sendData(13, average_imu_data.accel[2]);
@@ -340,7 +341,8 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(27, arm_mat_get_entry_f32(EKF3.P, 5, 5));
   signalPlotter_sendData(28, arm_mat_get_entry_f32(EKF3.P, 6, 6));
   signalPlotter_sendData(29, EKF3_corr1.NIS);
-  signalPlotter_sendData(30, VAR_vec3_abs);
+  signalPlotter_sendData(30, EKF3_corr2.NIS);
+  signalPlotter_sendData(31, VAR_vec3_abs);
   #endif
 
   #ifdef SIGNAL_PLOTTER_OUT_4 // signal plotter outputs height ekf testing

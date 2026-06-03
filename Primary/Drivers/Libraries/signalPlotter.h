@@ -6,11 +6,11 @@
 
 //#define SIGNAL_PLOTTER_OUT_1 // imu testing
 //#define SIGNAL_PLOTTER_OUT_2 // raw sensor data
-//#define SIGNAL_PLOTTER_OUT_3 // orientation ekf testing
+#define SIGNAL_PLOTTER_OUT_3 // orientation ekf testing
 //#define SIGNAL_PLOTTER_OUT_4 // height ekf testing
 //#define SIGNAL_PLOTTER_OUT_5 // state machine testing
 //#define SIGNAL_PLOTTER_OUT_6 // spark testing
-#define SIGNAL_PLOTTER_OUT_7 // HIL and MPC testing
+//#define SIGNAL_PLOTTER_OUT_7 // HIL and MPC testing
 //#define SIGNAL_PLOTTER_OUT_GROUND // ground station data
 
 extern uint32_t dt_1000Hz;
