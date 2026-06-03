@@ -302,10 +302,10 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
                 // TODO: Improve
                 // Storage command 0x00: FlashToSD
                 sd_copy_page = page;
-                if (W25Q_STATE == W25Q_State_Available) {
-                    W25Q_STATE = W25Q_State_CopyingToSD; // Trigger saving flash to SD in main loop
-                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
-                }
+                while (W25Q_STATE != W25Q_State_Available) {}
+
+                W25Q_STATE = W25Q_State_CopyingToSD; // Trigger saving flash to SD in main loop
+                InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_STORAGE_FLASH_ERASE) {
                 // Storage command 0x01: FlashReset
                 if (W25Q_STATE == W25Q_State_Available) {

@@ -144,7 +144,7 @@ void SetComSchedule(uint8_t schedule_id) {
 }
 
 //                                       stat,  pow,    gps,    imu,    temp,   pos,    att,    kalman, spark,  mpc,    state
-uint32_t save_schedule1_frequencies[] = {0,     0,      0,      0,      0,      0,      0,      0,      0,      0,      1000}; // preflight save schedule frequencies
+uint32_t save_schedule1_frequencies[] = {0,     0,      0,      0,      0,      0,      0,      0,      0,      0,      50}; // preflight save schedule frequencies
 uint32_t save_schedule2_frequencies[] = {0,     0,      1000,   1000,   0,      0,      1000,   1000,   0,      1000,   1000}; // preflight save schedule frequencies
 uint32_t save_schedule3_frequencies[] = {0,     0,      100,    20,     0,      0,      20,     200,    0,      100,    100}; // flight save schedule frequencies
 
