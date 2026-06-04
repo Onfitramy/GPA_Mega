@@ -272,9 +272,10 @@ void StartInterBoardComTask(void *argument)
     DataPacket_t packet = packets[i];
 
     if (packet.Packet_ID == 255) {
-      packet.Packet_ID = packet_type | 0b01000000;
+      // TODO: These magic binary binary numbers should also be part of an enum
+      packet.Packet_ID = packet_type | PACKET_ACTION_FAILED_LOADING_FROM_FLASH;
     } else {
-      packet.Packet_ID = packet_type | 0b10000000;
+      packet.Packet_ID = packet_type | PACKET_ACTION_LOADED_FROM_FLASH;
     }
 
     InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU, &packet);
@@ -423,6 +424,10 @@ void StartSDTask(void *argument)
         SD_Unmount();
         W25Q_STATE = W25Q_State_Available;
         buzzerPlayNote("C6", 50);
+        break;
+      case W25Q_State_CopyingToSerial:
+        W25Q_CopyLogsToSerial(sd_copy_page);
+        W25Q_STATE = W25Q_State_Available;
         break;
     }
   }

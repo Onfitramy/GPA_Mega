@@ -92,13 +92,13 @@ static void FaultDo(StateMachine_t *sm, uint16_t freq) {
         // When the power unit is not connected, the SD card would try to be mounted until the end of the universe.
         // This however causes problems with the FLASH, because it shares the same SPI lane.
         // Therefore, we stop doing the self-test once it succeeds.
-        if (sd_mount_result == 42 || sd_mount_result == 0) {
-            uint8_t sd_self_test = SD_SelfTest();
-            sd_mount_result = sd_self_test;
-            status_data |= (sd_self_test << 1);
-        } else {
-            status_data |= (sd_mount_result << 1);
-        }
+        // if (sd_mount_result == 42 || sd_mount_result == 0) {
+            // uint8_t sd_self_test = SD_SelfTest();
+            // sd_mount_result = sd_self_test;
+            // status_data |= (sd_self_test << 1);
+        // } else {
+            // status_data |= (sd_mount_result << 1);
+        // }
     }
 }
 static void StartupDo(StateMachine_t *sm, uint16_t freq) {

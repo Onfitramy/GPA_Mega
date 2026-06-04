@@ -8,6 +8,7 @@
 #include "W25Q1.h"
 #include "string.h"
 #include "FreeRTOS.h"
+#include "InterBoardCom.h"
 #include "SD.h"
 #include "semphr.h"
 #include "task.h"
@@ -630,6 +631,41 @@ void W25Q_CopyLogsToSD(uint16_t max_page) {
 		// Save remaining buffer which wasn't written.
 		// Saving is triggered by the buffer being full, however packets are appended after saving the buffer.
 		SD_SaveBuffer("log.txt");
+	}
+
+	W25Q_FLASH_CONFIG.write_logs = write_logs;
+}
+
+/**
+ * Copy logs to the serial interface. Since the secondary does not have direct access to the serial interface,
+ * this function sends packages to the primary which then writes them to the serial interface.
+ */
+void W25Q_CopyLogsToSerial(uint16_t max_page) {
+	if (max_page == 0) {
+		max_page = W25Q_FLASH_CONFIG.curr_logPage;
+	} else if (max_page < LOG_PAGE) {
+		return;
+	}
+
+	bool write_logs = W25Q_FLASH_CONFIG.write_logs;
+	W25Q_FLASH_CONFIG.write_logs = false;
+
+	uint32_t size = FLASH_BUFFER_SIZE * sizeof(DataPacket_t);
+	uint8_t buffer[size];
+
+	for (uint32_t page = LOG_PAGE; page < max_page; page += PAGES_PER_SECTOR) {
+		W25Q_LoadFromLog(buffer, size, page, 0);
+
+		DataPacket_t *packets = (DataPacket_t *) buffer;
+
+		for (uint32_t i = 0; i < FLASH_BUFFER_SIZE; ++i) {
+			DataPacket_t packet = packets[i];
+			packet.Packet_ID = packets->Packet_ID | PACKET_ACTION_WRITE_TO_SERIAL;
+
+			InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU, &packet);
+
+			vTaskDelay(1);
+		}
 	}
 
 	W25Q_FLASH_CONFIG.write_logs = write_logs;

@@ -16,7 +16,7 @@ typedef enum __attribute__((packed)){
     INTERBOARD_OP_LOAD_REQUEST  = 0x02,  // Load data  or request it from another board
     INTERBOARD_OP_CMD           = 0x04,  // Command operation
 
-    // Target Types (bits 3-6, upper nibble)
+    // Target Types (bits 3-7, upper nibble)
     INTERBOARD_TARGET_NONE = 0x00,
     INTERBOARD_TARGET_FLASH = 0x08,
     INTERBOARD_TARGET_SD    = 0x10,

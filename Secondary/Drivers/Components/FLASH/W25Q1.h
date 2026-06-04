@@ -48,7 +48,8 @@ typedef enum {
     W25Q_State_Writing,
     W25Q_State_Reading,
     W25Q_State_Erasing,
-    W25Q_State_CopyingToSD
+    W25Q_State_CopyingToSD,
+    W25Q_State_CopyingToSerial,
 } W25Q_State_t;
 
 void W25Q1_Reset(void);
@@ -73,3 +74,4 @@ void W25Q_LoadFromLog(uint8_t *data, uint32_t size, uint32_t log_page, uint32_t 
 void W25Q_GetConfig();
 uint8_t W25Q_LoadLastPackets(PacketType_t *packet_types, DataPacket_t *packets, uint8_t packet_count);
 void W25Q_CopyLogsToSD(uint16_t max_page);
+void W25Q_CopyLogsToSerial(uint16_t max_page);

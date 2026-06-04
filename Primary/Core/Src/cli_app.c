@@ -873,7 +873,7 @@ BaseType_t cmd_Radio_Switch(char *pcWriteBuffer, size_t xWriteBufferLen, const c
 }
 
 //*****************************************************************************
-BaseType_t cmd_Storage_FLASH_To_SD(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+BaseType_t cmd_Storage_FlashToSD(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {
     (void)pcCommandString;
     (void)xWriteBufferLen;
@@ -914,7 +914,49 @@ BaseType_t cmd_Storage_FLASH_To_SD(char *pcWriteBuffer, size_t xWriteBufferLen, 
 }
 
 //*****************************************************************************
-BaseType_t cmd_Storage_FLASH_Erase(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+BaseType_t cmd_Storage_LogsToSerial(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    uint8_t parameters[3];
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    uint32_t parameter;
+    if (pcParameter == NULL) { //Handle to missing Input
+        parameter = 0;
+    } else {
+        parameter = (uint32_t)strtoul(pcParameter, &endPtr, 10);
+
+        if (parameter < 1024 || parameter > 65535) {
+            snprintf(pcWriteBuffer, xWriteBufferLen, "Page must me in the range between 1024 and 65535\r\n");
+            return pdFALSE;
+        }
+    }
+    uint16_t parameter_16 = (uint16_t)parameter;
+    memcpy(parameters, &parameter_16, sizeof(parameter_16));
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_STORAGE, COMMAND_ID_STORAGE_FLASH_TO_SERIAL, parameters, sizeof(parameters));
+    sendcmdToTarget(&packet);
+
+    /* Write the response to the buffer */
+    if (parameter == 0) {
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Transferring data from FLASH to serial interface up to current config page\r\n");
+    } else {
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Transferring data from FLASH to serial interface up to page %d\r\n");
+    }
+
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_Storage_FlashErase(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {
     (void)pcCommandString;
     (void)xWriteBufferLen;
@@ -930,7 +972,7 @@ BaseType_t cmd_Storage_FLASH_Erase(char *pcWriteBuffer, size_t xWriteBufferLen, 
 }
 
 //*****************************************************************************
-BaseType_t cmd_Storage_FLASH_Write(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+BaseType_t cmd_Storage_FlashWrite(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {
     (void)pcCommandString;
     (void)xWriteBufferLen;
@@ -1016,7 +1058,7 @@ BaseType_t cmd_Flash(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pc
 }
 
 //*****************************************************************************
-BaseType_t cmd_Storage_SD_Unmount(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+BaseType_t cmd_Storage_SDUnmount(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {
     (void)pcCommandString;
     (void)xWriteBufferLen;
@@ -1219,28 +1261,34 @@ const CLI_Command_Definition_t xCommandList[] = {
         .cExpectedNumberOfParameters = 1
     },
     {
-        .pcCommand = "Storage_FLASH_To_SD", /* The command string to type. */
-        .pcHelpString = "Storage_FLASH_To_SD <?page>: Transfers data from FLASH to SD card. "
+        .pcCommand = "Storage_FlashToSD", /* The command string to type. */
+        .pcHelpString = "Storage_FlashToSD <?page>: Transfers data from FLASH to SD card. "
                         "Logs are copied up to the current log page in the config, if no page is explicitly specified.\r\n\r\n",
-        .pxCommandInterpreter = cmd_Storage_FLASH_To_SD, /* The function to run. */
+        .pxCommandInterpreter = cmd_Storage_FlashToSD, /* The function to run. */
         .cExpectedNumberOfParameters = -1
     },
     {
-        .pcCommand = "Storage_FLASH_Erase", /* The command string to type. */
-        .pcHelpString = "Storage_FLASH_Erase: Erases the entire FLASH memory\r\n\r\n",
-        .pxCommandInterpreter = cmd_Storage_FLASH_Erase, /* The function to run. */
+        .pcCommand = "Storage_LogsToSerial", /* The command string to type. */
+        .pcHelpString = "Storage_LogsToSerial: Write the log data from FLASH to the serial interface\r\n\r\n",
+        .pxCommandInterpreter = cmd_Storage_LogsToSerial, /* The function to run. */
+        .cExpectedNumberOfParameters = -1
+    },
+    {
+        .pcCommand = "Storage_FlashErase", /* The command string to type. */
+        .pcHelpString = "Storage_FlashErase: Erases the entire FLASH memory\r\n\r\n",
+        .pxCommandInterpreter = cmd_Storage_FlashErase, /* The function to run. */
         .cExpectedNumberOfParameters = 0
     },
     {
-        .pcCommand = "Storage_FLASH_Write", /* The command string to type. */
-        .pcHelpString = "Storage_FLASH_Write <1/0>: Enables data saving to FLASH memory\r\n\r\n",
-        .pxCommandInterpreter = cmd_Storage_FLASH_Write, /* The function to run. */
+        .pcCommand = "Storage_FlashWrite", /* The command string to type. */
+        .pcHelpString = "Storage_FlashWrite <1/0>: Enables data saving to FLASH memory\r\n\r\n",
+        .pxCommandInterpreter = cmd_Storage_FlashWrite, /* The function to run. */
         .cExpectedNumberOfParameters = 1
     },
     {
-        .pcCommand = "Storage_SD_Unmount", /* The command string to type. */
-        .pcHelpString = "Storage_SD_Unmount: Unmounts the SD card\r\n\r\n",
-        .pxCommandInterpreter = cmd_Storage_SD_Unmount, /* The function to run. */
+        .pcCommand = "Storage_SDUnmount", /* The command string to type. */
+        .pcHelpString = "Storage_SDUnmount: Unmounts the SD card\r\n\r\n",
+        .pxCommandInterpreter = cmd_Storage_SDUnmount, /* The function to run. */
         .cExpectedNumberOfParameters = 0
     },
     {

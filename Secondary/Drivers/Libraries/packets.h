@@ -14,6 +14,7 @@
 // but couldn't be found.
 // Setting the first two bits to 0 will give the packet type as specified here.
 typedef enum __attribute__((packed)){
+    // ID Types (0-4, lower nibble)
     PACKET_ID_STATUS = 0x01, // VR data packet
     PACKET_ID_POWER = 0x02, // Power data packet
     PACKET_ID_GPS = 0x03, // GPS data packet
@@ -23,8 +24,14 @@ typedef enum __attribute__((packed)){
     PACKET_ID_ATTITUDE = 0x07, // Attitude data packet
     PACKET_ID_KALMANMATRIX = 0x08, // Kalman Matrix data packet
     PACKET_ID_SPARK = 0x09, // SPARK data packet
+    PACKET_ID_MPC_INFO = 0x0A, // MPC Info packet
     PACKET_ID_COMMAND = 0x10, // Command packet
     PACKET_ID_STATE = 0x11, // Command packet
+
+    // Action Types (bits 5-7, upper nibble)
+    PACKET_ACTION_LOADED_FROM_FLASH = 0x80,
+    PACKET_ACTION_FAILED_LOADING_FROM_FLASH = 0x40,
+    PACKET_ACTION_WRITE_TO_SERIAL = 0x20,
 } PacketType_t;
 
 typedef enum __attribute__((packed)){
@@ -77,9 +84,10 @@ typedef enum __attribute__((packed)){
     COMMAND_ID_BUZZER_STOPALL = 0x06,
 
     COMMAND_ID_STORAGE_FLASH_TO_SD = 0x00,
-    COMMAND_ID_STORAGE_FLASH_ERASE = 0x01,
-    COMMAND_ID_STORAGE_FLASH_WRITE = 0x02,
-    COMMAND_ID_STORAGE_SD_UNMOUNT = 0x03,
+    COMMAND_ID_STORAGE_FLASH_TO_SERIAL = 0x01,
+    COMMAND_ID_STORAGE_FLASH_ERASE = 0x02,
+    COMMAND_ID_STORAGE_FLASH_WRITE = 0x03,
+    COMMAND_ID_STORAGE_SD_UNMOUNT = 0x04,
 } CommandID_t;
 
 /* Packet and Payload structure definitions */
@@ -181,7 +189,7 @@ typedef union {
 } PayloadData_u;
 
 typedef struct {
-    uint8_t Packet_ID; // Packet ID
+    PacketType_t Packet_ID; // Packet ID
     uint32_t timestamp;
     PayloadData_u Data;
     uint8_t crc;
