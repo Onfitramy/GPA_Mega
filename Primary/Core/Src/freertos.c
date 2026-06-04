@@ -18,20 +18,20 @@
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
+/* FreeRTOS */
 #include "FreeRTOS.h"
 #include "task.h"
-#include "main.h"
-#include "dts.h"
 #include "cmsis_os.h"
 #include "cli_app.h"
 #include "stream_buffer.h"
-#include "armMathAddon.h"
 #include "semphr.h"
 #include "queue.h"
-#include <stdio.h>
 
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
+#include "main.h"
+
+#include "dts.h"
+
+/*Internal Libraries*/
 #include "calibration_data.h"
 #include "InterBoardCom.h"
 #include "packets.h"
@@ -43,15 +43,12 @@
 #include "control.h"
 #include "statemachine.h"
 #include "comSchedule.h"
-/* USER CODE END Includes */
 
-/* Private typedef -----------------------------------------------------------*/
-/* USER CODE BEGIN PTD */
+/*External Libraries*/
+#include "armMathAddon.h"
+#include <stdio.h>
 
-/* USER CODE END PTD */
-
-/* Private define ------------------------------------------------------------*/
-/* USER CODE BEGIN PD */
+/*Global Variables*/
 static int32_t DTS_Temperature;
 
 extern ADC_HandleTypeDef hadc3;
@@ -65,29 +62,16 @@ bool is_groundstation = false;
 
 extern volatile uint8_t ib_queue_ready_flag;
 
-void SensorStatus_Reset(SensorStatus *sensor_status) {
-  sensor_status->hal_status = HAL_OK;
-  sensor_status->active = true;
-} // why is this here?
-
 StatusPayload_t status_data = {0};
 float F4_data_float;
 
-/* USER CODE END PD */
-
-/* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
-
-/* USER CODE END PM */
-
-/* Private variables ---------------------------------------------------------*/
-/* USER CODE BEGIN Variables */
+/* FreeRTOS Variables */
 StreamBufferHandle_t xStreamBuffer;
 QueueHandle_t InterruptQueue;
 QueueHandle_t InterBoardCom_Queue;
 QueueHandle_t USB_Tx_Queue;
-/* USER CODE END Variables */
-/* Definitions for defaultTask */
+
+/*Task Handles*/
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
@@ -109,8 +93,7 @@ const osThreadAttr_t Hz100Task_attributes = {
   .priority = (osPriority_t) osPriorityBelowNormal,
 };
 
-/*Commandline Handler*/
-osThreadId_t cmdLineTaskHandle; // new command line task
+osThreadId_t cmdLineTaskHandle;
 const osThreadAttr_t cmdLineTask_attributes = {
   .name = "cmdLineTask", // defined in cli_app.c
   .priority = (osPriority_t) osPriorityHigh,
@@ -132,28 +115,24 @@ const osThreadAttr_t USBTask_attributes = {
   .priority = (osPriority_t) osPriorityLow,
 };
 
-/* Private function prototypes -----------------------------------------------*/
-/* USER CODE BEGIN FunctionPrototypes */
+/*Private function prototypes */
 void ReadInternalADC(uint32_t* temperature, uint32_t* v_ref);
-/* USER CODE END FunctionPrototypes */
-
-void StartDefaultTask(void *argument);
-
-void StartInterruptHandlerTask(void *argument);
-
-void Start10HzTask(void *argument);
-
-void Start100HzTask(void *argument);
-
-void StartUSBTask(void *argument);
-
+void SensorStatus_Reset(SensorStatus *sensor_status);
 extern void MX_USB_DEVICE_Init(void);
+
+/*Task Function Prototypes*/
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
+
+void Start1000HzTask(void *argument);
+void StartInterruptHandlerTask(void *argument);
+void Start10HzTask(void *argument);
+void Start100HzTask(void *argument);
+void StartUSBTask(void *argument);
 
 /* Hook prototypes */
 void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName);
 
-/* USER CODE BEGIN 4 */
+/*FreeRTOS Hooks*/
 void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
 {
   uint8_t stackOverflow = 1;
@@ -165,72 +144,58 @@ void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
    configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
    called if a stack overflow is detected. */
 }
-/* USER CODE END 4 */
+
 /**
   * @brief  FreeRTOS initialization
   * @param  None
   * @retval None
   */
 void MX_FREERTOS_Init(void) {
-  /* USER CODE BEGIN Init */
-  /* USER CODE END Init */
 
-  /* USER CODE BEGIN RTOS_MUTEX */
+  /*RTOS_MUTEX */
   /* add mutexes, ... */
-  /* USER CODE END RTOS_MUTEX */
 
-  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /*RTOS_SEMAPHORES */
   xStreamBuffer = xStreamBufferCreate(50, 1); // 1-byte trigger level
   if (xStreamBuffer == NULL) {
     // Handle stream buffer creation failure
   }
-  /* USER CODE END RTOS_SEMAPHORES */
 
-  /* USER CODE BEGIN RTOS_TIMERS */
+  /*RTOS_TIMERS */
   /* start timers, add new ones, ... */
-  /* USER CODE END RTOS_TIMERS */
 
-  /* USER CODE BEGIN RTOS_QUEUES */
+  /*RTOS_QUEUES */
   InterruptQueue = xQueueCreate(10, sizeof(uint8_t)); // Queue for 10 bytes
   InterBoardCom_Queue = xQueueCreate(50, sizeof(InterBoardPacket_t));
   USB_Tx_Queue = xQueueCreate(20, sizeof(InterBoardPacket_t));
-  /* USER CODE END RTOS_QUEUES */
 
-  /* Create the thread(s) */
-  /* creation of defaultTask */
-  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+  /* RTOS Thread creation */
+  defaultTaskHandle = osThreadNew(Start1000HzTask, NULL, &defaultTask_attributes);
   Hz10TaskHandle = osThreadNew(Start10HzTask, NULL, &Hz10Task_attributes);
   Hz100TaskHandle = osThreadNew(Start100HzTask, NULL, &Hz100Task_attributes);
 
   cmdLineTaskHandle = osThreadNew(vCommandConsoleTask, NULL, &cmdLineTask_attributes);
   InterruptHandlerTaskHandle = osThreadNew(StartInterruptHandlerTask, NULL, &InterruptHandlerTask_attributes);
-  if (InterruptHandlerTaskHandle == NULL) {
-    InterruptHandlerTaskHandle = NULL;
-  }
   USBTaskHandle = osThreadNew(StartUSBTask, NULL, &USBTask_attributes);
 
-  /* USER CODE BEGIN RTOS_THREADS */
+  /* RTOS_THREADS */
   /* add threads, ... */
-  /* USER CODE END RTOS_THREADS */
 
-  /* USER CODE BEGIN RTOS_EVENTS */
+  /* RTOS_EVENTS */
   /* add events, ... */
-  /* USER CODE END RTOS_EVENTS */
 
 }
 
-/* USER CODE BEGIN Header_StartDefaultTask */
 /**
-  * @brief  Function implementing the defaultTask thread.
+  * @brief  Function implementing the 1000Hz task thread.
   * @param  argument: Not used
   * @retval None
   */
-/* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void *argument)
+void Start1000HzTask(void *argument)
 {
   /* init code for USB_DEVICE */
   HAL_Delay(200); // Wait for USB and other Peripherals to initialize
-  /* USER CODE BEGIN StartDefaultTask */
+
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 1; //1000 Hz
 
@@ -339,11 +304,10 @@ void StartDefaultTask(void *argument)
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz) Always at the end of the loop
   }
 
-  /* USER CODE END StartDefaultTask */
 }
 
 void Start100HzTask(void *argument) {
-  /* USER CODE BEGIN Start100HzTask */
+
   InitializeDataScheduler();
 
   TickType_t xLastWakeTime = xTaskGetTickCount();
@@ -393,11 +357,10 @@ void Start100HzTask(void *argument) {
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }
-  /* USER CODE END Start10HzTask */
 }
 
 void Start10HzTask(void *argument) {
-  /* USER CODE BEGIN Start10HzTask */
+
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 100; //10 Hz
   GPS_Init(); //Initialize the GPS module
@@ -449,23 +412,18 @@ void Start10HzTask(void *argument) {
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
   }
-  /* USER CODE END Start10HzTask */
 }
 
-/* USER CODE BEGIN InterruptHandlerTask */
 /**
-  * @brief  Function implementing the defaultTask thread.
+  * @brief  Function implementing the Interrupt thread.
   * @param  argument: Not used
   * @retval None
   */
-/* USER CODE END InterruptHandlerTask */
 uint8_t rx_recieve_buf[NRF24L01P_PAYLOAD_LENGTH] = {0};
 uint8_t InterBoardPacket_receive_num = 0;
 
 void StartInterruptHandlerTask(void *argument)
 {
-  /* init code for USB_DEVICE */
-  /* USER CODE BEGIN StartDefaultTask */
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn); //Aktivate Interrupt for GPS and NRF
   uint8_t receivedData;
   InterBoardPacket_t InterBoardCom_Packet;
@@ -489,8 +447,6 @@ void StartInterruptHandlerTask(void *argument)
 
 
 void StartUSBTask(void *argument) {
-  /* USER CODE BEGIN StartUSBTask */
-
   /* Infinite loop */
   for(;;)
   {
@@ -503,11 +459,11 @@ void StartUSBTask(void *argument) {
       }
     }
   }
-  /* USER CODE END StartUSBTask */
 }
 
-/* Private application code --------------------------------------------------*/
-/* USER CODE BEGIN Application */
+
+/* Private Functions */
+//Find correct place for these functions
 
 void ReadInternalADC(uint32_t* temperature, uint32_t* v_ref) {
   HAL_ADC_Start(&hadc3);
@@ -520,6 +476,11 @@ void ReadInternalADC(uint32_t* temperature, uint32_t* v_ref) {
   *v_ref = vdda_voltage; // in mV
   *temperature = __HAL_ADC_CALC_TEMPERATURE(vdda_voltage, temp_raw, ADC_RESOLUTION_12B);
   HAL_ADC_Stop(&hadc3);
+}
+
+void SensorStatus_Reset(SensorStatus *sensor_status) {
+  sensor_status->hal_status = HAL_OK;
+  sensor_status->active = true;
 }
 
 /* USER CODE END Application */
