@@ -650,7 +650,6 @@ uint32_t maxEventDelayTable[STATE_MAX] = {
     0,
     0,
     0,
-    0,
     0
 };
 

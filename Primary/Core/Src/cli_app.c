@@ -41,9 +41,10 @@ int _write(int file, char *data, int len)
 {
     UNUSED(file);
     // Transmit data using USB
-    while(CDC_Transmit_HS(data, len)==USBD_BUSY){
+    while(CDC_Transmit_HS((uint8_t*)data, len)==USBD_BUSY){
         vTaskDelay(1);
     };
+    return len;
 }
 
 int sendcmdToTarget(DataPacket_t *packet) {
@@ -56,6 +57,7 @@ int sendcmdToTarget(DataPacket_t *packet) {
         InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, packet);
         return 0; // Assume success for sending
     }
+    return -1; // Invalid target mode
 }
 
 //*****************************************************************************
@@ -358,7 +360,7 @@ BaseType_t cmd_SimulateEvent(char *pcWriteBuffer, size_t xWriteBufferLen, const 
     sendcmdToTarget(&packet);
 
     /* Write the response to the buffer */
-    snprintf(pcWriteBuffer, 30, "Simulating Flight Event %d...\r\n", parameters[0]);
+    snprintf(pcWriteBuffer, 33, "Simulating Flight Event %d...\r\n", parameters[0]);
 
     return pdFALSE;
 }
@@ -844,7 +846,6 @@ BaseType_t cmd_Radio_Switch(char *pcWriteBuffer, size_t xWriteBufferLen, const c
 
     const char *pcParameter;
     BaseType_t xParameterStringLength;
-    char *endPtr;  // Pointer to track invalid characters
 
     uint8_t parameters[1];
 
@@ -907,7 +908,7 @@ BaseType_t cmd_Storage_FlashToSD(char *pcWriteBuffer, size_t xWriteBufferLen, co
     if (parameter == 0) {
         snprintf(pcWriteBuffer, xWriteBufferLen, "Transferring data from FLASH to SD card up to current config page\r\n");
     } else {
-        snprintf(pcWriteBuffer, xWriteBufferLen, "Transferring data from FLASH to SD card up to page %d\r\n");
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Transferring data from FLASH to SD card up to page %d \r\n", (int)parameter);
     }
 
     return pdFALSE;
@@ -1312,12 +1313,12 @@ void cliWrite(const char *str)
 }
 /*************************************************************************************************/
 /*Continous Data Output to log signals*/
-void continousSignal(void *argument){
+void continousSignal(){
 
         cliWrite("Test");
 }
 
-void handleNewline(const char *const pcInputString, char *cOutputBuffer, uint8_t cInputIndex)
+void handleNewline(const char *const pcInputString, char *cOutputBuffer)
 {
     cliWrite("\r\n");
 
@@ -1375,7 +1376,6 @@ void handleCharacterInput(uint8_t *cInputIndex, char *pcInputString)
 /*************************************************************************************************/
 void vCommandConsoleTask(void *pvParameters)
 {
-    uint8_t cInputIndex = 0; // simply used to keep track of the index of the input string
     char receivedData[50];; // used to store the received value from the notification
     UNUSED(pvParameters);
     vRegisterCLICommands();
@@ -1387,7 +1387,7 @@ void vCommandConsoleTask(void *pvParameters)
         if (bytesRead > 0) {
             cliWrite(receivedData);
             receivedData[bytesRead-1] = 0x00; //Strip of \r for analysis
-            handleNewline(receivedData, cOutputBuffer, strlen(receivedData));
+            handleNewline(receivedData, cOutputBuffer);
             xStreamBufferReset(xStreamBuffer);
         }
     }

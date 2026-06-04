@@ -165,7 +165,7 @@ HAL_StatusTypeDef IMU_Update(IMU_Data_t *imu_data) {
         return status;
     }
 
-    bool imu_ready = IMU_VerifyDataReady(imu_data) & 0x03 == 0x03;
+    bool imu_ready = IMU_VerifyDataReady(imu_data) & (0x03 == 0x03);
 
     if (imu_ready) {
         status = IMU_ReadSensorData(imu_data);

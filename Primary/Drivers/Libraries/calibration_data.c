@@ -76,4 +76,5 @@ GPA_Mega GPA_MegaFromUID(uint32_t uid[3]) {
     if (UID_matches(uid, GPA_MEGA_5))
         return GPA_MEGA_5;
     // TODO: some kind of error handling
+    return GPA_MEGA_1; // Default return value, should never be reached
 }

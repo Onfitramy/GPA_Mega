@@ -12,7 +12,7 @@ typedef enum {
 extern CLI_TargetMode_t cli_target_mode;
 
 int sendcmdToTarget(DataPacket_t *packet);
-void handleNewline(const char *const pcInputString, char *cOutputBuffer, uint8_t cInputIndex);
+void handleNewline(const char *const pcInputString, char *cOutputBuffer);
 void handleCharacterInput(uint8_t *cInputIndex, char *pcInputString);
 void vRegisterCLICommands(void);
 void vCommandConsoleTask(void *pvParameters);

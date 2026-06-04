@@ -19,7 +19,7 @@
 
 typedef struct {
     TIM_TypeDef*   TIM_Instance;
-    uint32_t*      TIM_CCRx;
+    volatile uint32_t*      TIM_CCRx;
     uint32_t       PWM_TIM_CH;
     uint16_t       MinPulse;
     uint16_t       MaxPulse;
