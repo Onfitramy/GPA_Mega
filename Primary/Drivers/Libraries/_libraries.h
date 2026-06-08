@@ -15,5 +15,6 @@
 #include "status.h"
 #include "spark.h"
 #include "ptot.h"
+#include "adc.h"
 
 #endif /* LIBRARIES_H */

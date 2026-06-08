@@ -93,8 +93,6 @@ const osThreadAttr_t USBTask_attributes = {
 };
 
 /*Private function prototypes */
-void ReadInternalADC(uint32_t* temperature, uint32_t* v_ref);
-void SensorStatus_Reset(SensorStatus *sensor_status);
 extern void MX_USB_DEVICE_Init(void);
 
 /*Task Function Prototypes*/
@@ -161,28 +159,5 @@ void MX_FREERTOS_Init(void) {
   /* add events, ... */
 
 }
-
-
-/* Private Functions */
-//Find correct place for these functions
-
-void ReadInternalADC(uint32_t* temperature, uint32_t* v_ref) {
-  HAL_ADC_Start(&hadc3);
-  HAL_ADC_PollForConversion(&hadc3, 0xFFFF);
-  uint32_t vrefint_raw = HAL_ADC_GetValue(&hadc3);
-  HAL_ADC_PollForConversion(&hadc3, 0xFFFF);
-  uint32_t temp_raw = HAL_ADC_GetValue(&hadc3);
-  uint32_t vdda_voltage = __HAL_ADC_CALC_VREFANALOG_VOLTAGE(vrefint_raw, ADC_RESOLUTION_12B);
-
-  *v_ref = vdda_voltage; // in mV
-  *temperature = __HAL_ADC_CALC_TEMPERATURE(vdda_voltage, temp_raw, ADC_RESOLUTION_12B);
-  HAL_ADC_Stop(&hadc3);
-}
-
-void SensorStatus_Reset(SensorStatus *sensor_status) {
-  sensor_status->hal_status = HAL_OK;
-  sensor_status->active = true;
-}
-
 /* USER CODE END Application */
 

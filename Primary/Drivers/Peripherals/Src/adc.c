@@ -22,6 +22,20 @@
 
 /* USER CODE BEGIN 0 */
 
+void ReadInternalADC(uint32_t* temperature, uint32_t* v_ref) {
+  HAL_ADC_Start(&hadc3);
+  HAL_ADC_PollForConversion(&hadc3, 0xFFFF);
+  uint32_t vrefint_raw = HAL_ADC_GetValue(&hadc3);
+  HAL_ADC_PollForConversion(&hadc3, 0xFFFF);
+  uint32_t temp_raw = HAL_ADC_GetValue(&hadc3);
+  uint32_t vdda_voltage = __HAL_ADC_CALC_VREFANALOG_VOLTAGE(vrefint_raw, ADC_RESOLUTION_12B);
+
+  *v_ref = vdda_voltage; // in mV
+  *temperature = __HAL_ADC_CALC_TEMPERATURE(vdda_voltage, temp_raw, ADC_RESOLUTION_12B);
+  HAL_ADC_Stop(&hadc3);
+}
+
+
 /* USER CODE END 0 */
 
 ADC_HandleTypeDef hadc1;

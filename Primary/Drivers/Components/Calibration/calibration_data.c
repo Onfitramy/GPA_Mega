@@ -78,3 +78,8 @@ GPA_Mega GPA_MegaFromUID(uint32_t uid[3]) {
     // TODO: some kind of error handling
     return GPA_MEGA_1; // Default return value, should never be reached
 }
+
+void SensorStatus_Reset(SensorStatus *sensor_status) {
+  sensor_status->hal_status = HAL_OK;
+  sensor_status->active = true;
+}

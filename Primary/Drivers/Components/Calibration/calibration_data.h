@@ -27,5 +27,6 @@ typedef struct {
 extern const CalibrationData_t CalibrationData[5][3];
 
 GPA_Mega GPA_MegaFromUID(uint32_t uid[3]);
+void SensorStatus_Reset(SensorStatus *sensor_status);
 
 #endif // CALIBRATION_DATA_H
