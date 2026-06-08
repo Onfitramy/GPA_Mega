@@ -51,7 +51,6 @@ uint16_t adc3_buf[3];
 
 extern float ADC_Temperature, ADC_V_Sense, ADC_V_Ref;
 extern uint8_t SPI1_State; // 0: Ready, 1: TX busy, 2: RX busy
-extern volatile uint8_t SPI1_ReceivePending; // Flag to indicate a pending receive request
 
 extern StateMachine_t flight_sm;
 
@@ -109,7 +108,7 @@ int main(void)
   SCB_EnableICache();
 
   /* Enable D-Cache---------------------------------------------------------*/
-  //SCB_EnableDCache();
+  //SCB_EnableDCache(); //Needs to be disabled for now due to issues with SPI DMA, can be re-enabled once those are resolved
 
   /* MCU Configuration--------------------------------------------------------*/
 
@@ -162,7 +161,7 @@ int main(void)
 
   HAL_ADCEx_Calibration_Start(&hadc3, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
 
-  Startup();
+  Startup(); //Startup function from main_app.c, initializes the state machine and other necessary variables
 
   /* USER CODE END 2 */
 

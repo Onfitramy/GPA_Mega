@@ -19,6 +19,15 @@
 #define USING_VS_CODE_TERMINAL 0
 #define USING_OTHER_TERMINAL 1 // e.g. Putty, TerraTerm
 
+/**
+  ******************************************************************************
+  * File Description : 
+  * This file implements a command-line interface (CLI) for the embedded system, allowing users to interact with the system through a terminal. 
+  * It defines various commands that can be executed to perform actions such as clearing the screen, switching CLI modes, and changing output schedules. 
+  * The CLI supports both internal commands that are executed on the local board and external commands that are sent to another board via radio communication.
+  ******************************************************************************
+  */
+
 char cOutputBuffer[configCOMMAND_INT_MAX_OUTPUT_SIZE], pcInputString[MAX_INPUT_LENGTH];
 extern const CLI_Command_Definition_t xCommandList[];
 extern StreamBufferHandle_t xStreamBuffer;

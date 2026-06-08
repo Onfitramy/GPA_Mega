@@ -17,9 +17,13 @@
   */
 /* USER CODE END Header */
 
-/*File description*/
-/*This file contains the FreeRTOS Task callers*/
-/*It also provides the FreeRTOS related hooks, Queues and Semaphores*/
+/**
+  ******************************************************************************
+  * File Description : 
+  * This file provides initialization and task functions for FreeRTOS. It sets up the necessary queues, stream buffers, and tasks that will be used in the application. 
+  * The tasks include handling interrupts, running at specific frequencies for sensor reading and processing, and managing USB communication.
+  ******************************************************************************
+  */
 
 /* Includes ------------------------------------------------------------------*/
 /* FreeRTOS */
