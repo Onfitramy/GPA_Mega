@@ -40,6 +40,8 @@ target_include_directories(stm32cubemx INTERFACE
     ../../Drivers/CMSIS/DSP_DRIVERS/Include
     ../../Drivers/CMSIS/DSP_DRIVERS/Bin
     ../../Drivers/Libraries
+    ../../Drivers/Peripherals/Inc
+    ../../Drivers/Peripherals/Src
 
     ../../qpSWIFT/include
     ../../qpSWIFT/demo
@@ -47,22 +49,11 @@ target_include_directories(stm32cubemx INTERFACE
 
 target_sources(stm32cubemx INTERFACE
     ../../Core/Src/main.c
-    ../../Core/Src/gpio.c
     ../../Core/Src/freertos.c
     ../../Core/Src/FreeRTOS_CLI.c
     ../../Core/Src/cli_app.c
-    ../../Core/Src/adc.c
-    ../../Core/Src/dma.c
-    ../../Core/Src/dts.c
-    ../../Core/Src/i2c.c
-    ../../Core/Src/memorymap.c
-    ../../Core/Src/spi.c
-    ../../Core/Src/tim.c
     ../../Core/Src/statemachine.c
     ../../Core/Src/main_app.c
-    ../../Core/Src/stm32h7xx_it.c
-    ../../Core/Src/stm32h7xx_hal_msp.c
-    ../../Core/Src/stm32h7xx_hal_timebase_tim.c
     ../../USB_DEVICE/App/usb_device.c
     ../../USB_DEVICE/App/usbd_desc.c
     ../../USB_DEVICE/App/usbd_cdc_if.c
@@ -93,7 +84,6 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_adc_ex.c
     ../../Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_spi.c
     ../../Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_spi_ex.c
-    ../../Core/Src/system_stm32h7xx.c
     ../../Middlewares/Third_Party/FreeRTOS/Source/croutine.c
     ../../Middlewares/Third_Party/FreeRTOS/Source/event_groups.c
     ../../Middlewares/Third_Party/FreeRTOS/Source/list.c
@@ -108,8 +98,6 @@ target_sources(stm32cubemx INTERFACE
     ../../Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ctlreq.c
     ../../Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c
     ../../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c
-    ../../Core/Src/sysmem.c
-    ../../Core/Src/syscalls.c
     ../../startup_stm32h723xx.s
 
     ../../Drivers/Components/LED/ws2812.c
@@ -124,6 +112,21 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/Components/NRF/NRF24L01P.c
     ../../Drivers/CMSIS/DSP_DRIVERS/Lib/armMathAddon.c
     ../../Drivers/Components/Calibration/calibration_data.c
+
+    ../../Drivers/Peripherals/Src/gpio.c
+    ../../Drivers/Peripherals/Src/adc.c
+    ../../Drivers/Peripherals/Src/i2c.c
+    ../../Drivers/Peripherals/Src/spi.c
+    ../../Drivers/Peripherals/Src/tim.c
+    ../../Drivers/Peripherals/Src/dma.c
+    ../../Drivers/Peripherals/Src/dts.c
+    ../../Drivers/Peripherals/Src/memorymap.c
+    ../../Drivers/Peripherals/Src/stm32h7xx_it.c
+    ../../Drivers/Peripherals/Src/stm32h7xx_hal_msp.c
+    ../../Drivers/Peripherals/Src/stm32h7xx_hal_timebase_tim.c
+    ../../Drivers/Peripherals/Src/system_stm32h7xx.c
+    ../../Drivers/Peripherals/Src/sysmem.c
+    ../../Drivers/Peripherals/Src/syscalls.c
 
     ../../Drivers/Libraries/signalPlotter.c
     ../../Drivers/Libraries/status.c
