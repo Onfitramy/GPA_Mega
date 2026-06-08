@@ -29,6 +29,8 @@
 #include "gpio.h"
 #include "Pyro.h"
 
+#include "main_app.h"
+
 #include "InterBoardCom.h"
 #include <stdint.h>
 #include "cli_app.h"
@@ -46,14 +48,12 @@
 /* USER CODE BEGIN PD */
 volatile uint8_t dma_waiting_ws2812;
 uint16_t adc3_buf[3];
-uint32_t uid[3];
 
 extern float ADC_Temperature, ADC_V_Sense, ADC_V_Ref;
 extern uint8_t SPI1_State; // 0: Ready, 1: TX busy, 2: RX busy
 extern volatile uint8_t SPI1_ReceivePending; // Flag to indicate a pending receive request
 
 extern StateMachine_t flight_sm;
-extern bool is_groundstation;
 
 volatile uint32_t tim7_ms = 0;
 uint32_t tim7_target_ms;
@@ -162,33 +162,7 @@ int main(void)
 
   HAL_ADCEx_Calibration_Start(&hadc3, ADC_CALIB_OFFSET, ADC_SINGLE_ENDED);
 
-  // find out board no.
-  uid[0] = HAL_GetUIDw0();
-  uid[1] = HAL_GetUIDw1();
-  uid[2] = HAL_GetUIDw2();
-  gpa_mega = GPA_MegaFromUID(uid);
-
-  // if board is a ground station, set flag
-  if (gpa_mega == GPA_MEGA_1) {
-    is_groundstation = true;
-    cli_target_mode = CLI_TARGET_MODE_EXTERNAL; // Groundstation always uses external target mode
-    signalPlotterSend = false; // Disable signal plotter by default on groundstation
-
-    StateMachine_Init(&flight_sm, STATE_GROUNDSTATION);
-  } else {
-    is_groundstation = false;
-    StateMachine_Init(&flight_sm, STATE_FLIGHT_STARTUP);
-  }
-
-  // define output signal names
-  signalPlotter_init();
-
-  rho0_const = p0_const / (R_const * T0_const);
-  a0_const = sqrt(kappa*R_const*T0_const);
-
-  #ifdef HIL_TESTING
-  HILInit();
-  #endif
+  Startup();
 
   /* USER CODE END 2 */
 
