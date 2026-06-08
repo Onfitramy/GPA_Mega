@@ -108,7 +108,7 @@ int main(void)
   SCB_EnableICache();
 
   /* Enable D-Cache---------------------------------------------------------*/
-  //SCB_EnableDCache(); //Needs to be disabled for now due to issues with SPI DMA, can be re-enabled once those are resolved
+  //SCB_EnableDCache(); //Needs to be disabled for now due to issues with SPI DMA, can be re-enabled once those are resolved (see DMA chaching error)
 
   /* MCU Configuration--------------------------------------------------------*/
 
