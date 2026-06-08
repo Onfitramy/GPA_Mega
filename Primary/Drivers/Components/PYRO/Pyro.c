@@ -1,5 +1,4 @@
 #include "Pyro.h"
-#include "main.h"
 #include "adc.h"
 
 /*Pyro Channel 1 or 2 | Firing duration [ms]*/

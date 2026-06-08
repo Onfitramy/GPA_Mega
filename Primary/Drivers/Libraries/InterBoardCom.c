@@ -2,10 +2,8 @@
 #include "string.h"
 #include <stdarg.h>
 #include <stdio.h>
-#include "main.h"
 #include "spark.h"
 #include "usbd_cdc_if.h"
-#include "statemachine.h"
 
 //The H7 send data to the F4 via SPI1. The data is made up of packets which are sent immediatly after completion of the previous packet.
 //The Packets are made up of 1byte of Packet_ID and 32bytes of Data 33 bytes long.

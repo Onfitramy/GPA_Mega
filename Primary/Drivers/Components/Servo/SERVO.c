@@ -9,7 +9,6 @@
 #include "SERVO.h"
 #include "SERVO_cfg.h"
 #include "tim.h"
-#include "main.h"
 
 uint8_t drogue_deploy_attempts = 0;
 

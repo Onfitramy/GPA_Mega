@@ -27,6 +27,7 @@ target_include_directories(stm32cubemx INTERFACE
     ../../Drivers/CMSIS/Device/ST/STM32H7xx/Include
     ../../Drivers/CMSIS/Include
 
+    ../../Drivers/Components
     ../../Drivers/Components/LED
 	../../Drivers/Components/IMUS
     ../../Drivers/Components/MAG
@@ -35,6 +36,7 @@ target_include_directories(stm32cubemx INTERFACE
     ../../Drivers/Components/Servo
     ../../Drivers/Components/PYRO
     ../../Drivers/Components/NRF
+    ../../Drivers/Components/Calibration
     ../../Drivers/CMSIS/DSP_DRIVERS/Include
     ../../Drivers/CMSIS/DSP_DRIVERS/Bin
     ../../Drivers/Libraries
@@ -56,6 +58,7 @@ target_sources(stm32cubemx INTERFACE
     ../../Core/Src/memorymap.c
     ../../Core/Src/spi.c
     ../../Core/Src/tim.c
+    ../../Core/Src/statemachine.c
     ../../Core/Src/stm32h7xx_it.c
     ../../Core/Src/stm32h7xx_hal_msp.c
     ../../Core/Src/stm32h7xx_hal_timebase_tim.c
@@ -119,18 +122,16 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/Components/PYRO/Pyro.c
     ../../Drivers/Components/NRF/NRF24L01P.c
     ../../Drivers/CMSIS/DSP_DRIVERS/Lib/armMathAddon.c
+    ../../Drivers/Components/Calibration/calibration_data.c
 
     ../../Drivers/Libraries/signalPlotter.c
     ../../Drivers/Libraries/status.c
-    ../../Drivers/Libraries/calibration_data.c
     ../../Drivers/Libraries/InterBoardCom.c
     ../../Drivers/Libraries/radio.c
 
-    ../../Drivers/Libraries/guidance.c
      ../../Drivers/Libraries/comSchedule.c
     ../../Drivers/Libraries/navigation.c
     ../../Drivers/Libraries/control.c
-    ../../Drivers/Libraries/statemachine.c
     ../../Drivers/Libraries/packets.c
     ../../Drivers/Libraries/spark.c
     ../../Drivers/Libraries/ptot.c

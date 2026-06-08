@@ -1,5 +1,7 @@
 #include "comSchedule.h"
 #include "InterBoardCom.h"
+#include "navigation.h"
+#include "statemachine.h"
 
 uint8_t messages_num = 0;
 message_info_t message_schedule[MAX_NUM_MESSAGES];

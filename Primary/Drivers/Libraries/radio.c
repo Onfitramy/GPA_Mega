@@ -1,6 +1,4 @@
 #include "radio.h"
-#include "NRF24L01P.h"
-
 
 radio_info_t radio_info;
 

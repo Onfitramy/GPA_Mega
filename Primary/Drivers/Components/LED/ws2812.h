@@ -1,7 +1,7 @@
 #ifndef ws2812_H_
 #define ws2812_H_
 
-#include "main.h"
+#include "stm32h7xx_hal.h"
 
 #define RGB_MAX_BRIGHTNESS 255
 

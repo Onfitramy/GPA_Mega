@@ -1,10 +1,7 @@
 #ifndef Packets_H_
 #define Packets_H_
 
-#include "stm32h7xx_hal.h"
-#include "IMUS.h"
-#include "LIS3MDL.h"
-#include "SAM-M8Q.h"
+#include "_components.h"
 /*This file includes all public Packets for the different devices and sending modes*/
 /*They are used for radio transmission, flash/SD saving and interBoardCommunication*/
 

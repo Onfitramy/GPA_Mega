@@ -1,7 +1,7 @@
 #ifndef STATUS_H
 #define STATUS_H
 
-#include "main.h"
+#include "_components.h"
 
 typedef uint32_t color_handle;
 

@@ -17,6 +17,10 @@
   */
 /* USER CODE END Header */
 
+/*File description*/
+/*This file contains the FreeRTOS Task callers*/
+/*It also provides the FreeRTOS related hooks, Queues and Semaphores*/
+
 /* Includes ------------------------------------------------------------------*/
 /* FreeRTOS */
 #include "FreeRTOS.h"
@@ -27,22 +31,13 @@
 #include "semphr.h"
 #include "queue.h"
 
-#include "main.h"
-
 #include "dts.h"
 
 /*Internal Libraries*/
-#include "calibration_data.h"
-#include "InterBoardCom.h"
-#include "packets.h"
-#include "status.h"
-#include "radio.h"
+#include "_libraries.h"
 
-#include "guidance.h"
-#include "navigation.h"
-#include "control.h"
 #include "statemachine.h"
-#include "comSchedule.h"
+
 
 /*External Libraries*/
 #include "armMathAddon.h"

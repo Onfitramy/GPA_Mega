@@ -2,7 +2,9 @@
 #define CLI_COMMANDS_H
 
 #include "cli_app.h"
-#include "main.h"
+
+#include "_components.h"
+#include "_libraries.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "stream_buffer.h"
@@ -12,12 +14,6 @@
 #include "stdio.h"
 #include "stdlib.h"
 #include "usbd_cdc_if.h"
-#include "ws2812.h"
-#include "IMUS.h"
-#include "FreeRTOS.h"
-#include "packets.h"
-#include "InterBoardCom.h"
-#include "comSchedule.h"
 
 #define MAX_INPUT_LENGTH 50
 #define USING_VS_CODE_TERMINAL 0

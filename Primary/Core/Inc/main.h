@@ -35,26 +35,11 @@ extern "C" {
 
 #include "usb_device.h"
 
-#include "ws2812.h"
-#include "SERVO.h"
-#include "IMUS.h"
-#include "LIS3MDL.h"
-#include "bmp390.h"
-#include "NRF24L01P.h"
-#include "SAM-M8Q.h"
-#include "radio.h"
+#include "_components.h"
 
-#include "signalPlotter.h"
-#include "status.h"
-#include "packets.h"
+#include "_libraries.h"
 
-#include "guidance.h"
-#include "navigation.h"
-#include "control.h"
 #include "statemachine.h"
-#include "spark.h"
-#include "ptot.h"
-#include "comSchedule.h"
 
 #ifdef HIL_TESTING
 #include "HIL.h"

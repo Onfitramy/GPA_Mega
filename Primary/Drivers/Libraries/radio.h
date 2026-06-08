@@ -1,7 +1,7 @@
 #ifndef RADIO_H
 #define RADIO_H
 
-#include "stm32h7xx_hal.h"
+#include "_components.h"
 #include "stdbool.h"
 
 #define NRF24L01P_PAYLOAD_LENGTH 32

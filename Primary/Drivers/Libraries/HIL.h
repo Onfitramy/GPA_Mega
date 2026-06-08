@@ -1,7 +1,7 @@
 #ifndef HIL_H
 #define HIL_H
 
-#include "main.h"
+#include "_components.h"
 
 #define RAIL_LENGTH     6       // m
 #define WET_MASS        18.454  // kg

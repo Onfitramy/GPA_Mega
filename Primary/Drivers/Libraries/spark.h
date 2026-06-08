@@ -1,7 +1,8 @@
 #ifndef SPARK_H_
 #define SPARK_H_
 
-#include "main.h"
+#include "_components.h"
+#include "packets.h"
 
 extern SPI_HandleTypeDef hspi2;
 
@@ -21,5 +22,8 @@ void SPARK_TargetSpeedMode(uint8_t torque_16);
 void SPARK_Reset();
 
 void ACS_SetAngle(float angle_deg);
+
+#define EXT2_CS_Pin GPIO_PIN_12
+#define EXT2_CS_GPIO_Port GPIOB
 
 #endif /* SPARK_H_ */

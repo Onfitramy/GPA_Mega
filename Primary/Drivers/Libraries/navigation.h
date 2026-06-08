@@ -1,9 +1,14 @@
+/**
+  ******************************************************************************
+  * File Name          : navigation.h
+  * Description        : Provides math functions for navigation and guidance, as well as the EKF implementation
+  ******************************************************************************
+  */
 #ifndef NAVIGATION_H
 #define NAVIGATION_H
 
-#include "main.h"
+#include "_components.h"
 #include "stdbool.h"
-#include "armMathAddon.h"
 
 /* --- GNSS delay compensation settings --- */
 #define GNSS_VELOCITY_DELAY 350 // ms

@@ -1,7 +1,7 @@
 #ifndef InterBoardCom_H_
 #define InterBoardCom_H_
 
-#include "stm32h7xx_hal.h"
+#include "_components.h"
 #include "packets.h"
 
 #define INTERBOARD_BUFFER_SIZE 16

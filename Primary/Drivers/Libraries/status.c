@@ -1,4 +1,7 @@
 #include "status.h"
+#include "statemachine.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 float LED_pulse = 0;
 uint8_t LED_blink = 0;

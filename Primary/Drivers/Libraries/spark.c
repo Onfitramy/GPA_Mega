@@ -1,6 +1,7 @@
 #include "spark.h"
 #include "cli_app.h"
 #include "InterBoardCom.h"
+#include "control.h"
 
 DataPacket_t spark_rx_buffer;
 

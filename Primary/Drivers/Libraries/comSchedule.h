@@ -2,7 +2,7 @@
 #define COMSCHEDULE_H
 // This library handles routing of data, decides which data should be sent when and with what freq
 
-#include "main.h"
+#include "_components.h"
 #include "packets.h"
 
 #define MAX_NUM_MESSAGES 16

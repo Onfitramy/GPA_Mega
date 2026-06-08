@@ -1,7 +1,7 @@
 #ifndef signalPlotter_H_
 #define signalPlotter_H_
 
-#include "stm32h7xx_hal.h"
+#include "_components.h"
 #include <stdbool.h>
 
 //#define SIGNAL_PLOTTER_OUT_1 // imu testing

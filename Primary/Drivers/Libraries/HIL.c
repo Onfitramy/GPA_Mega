@@ -1,4 +1,6 @@
 #include "HIL.h"
+#include "navigation.h"
+#include "control.h"
 
 float magfield[3] = {0.0069, 0.1973, -0.4431};
 

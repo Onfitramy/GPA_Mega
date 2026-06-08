@@ -1,7 +1,7 @@
 #ifndef PTOT_H_
 #define PTOT_H_
 
-#include "main.h"
+#include "_components.h"
 #include "stdbool.h"
 
 typedef struct {
@@ -11,6 +11,9 @@ typedef struct {
 } ptotcb_handle_t;
 
 extern SPI_HandleTypeDef hspi2;
+
+#define PWM4_Pin GPIO_PIN_3
+#define PWM4_GPIO_Port GPIOA
 
 extern ptotcb_handle_t ptot_data;
 

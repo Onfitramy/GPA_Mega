@@ -3,8 +3,8 @@
 
 #include <math.h>
 #include "qpSWIFT.h"
-#include "main.h"
 #include "navigation.h"
+#include "_components.h"
 
 /* --- Model Predictive Controller --- */
 #define H_TARGET 2300.f

@@ -1,7 +1,8 @@
 #ifndef STATEMACHINE_H
 #define STATEMACHINE_H
 
-#include "main.h"
+#include "_components.h"
+#include "_libraries.h"
 
 #define MAX_SELFTEST_TRIES 10
 
