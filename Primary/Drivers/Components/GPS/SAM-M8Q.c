@@ -138,14 +138,14 @@ void GPS_Init(void){
     GPSnotConfig = false;
 
     /* Set automatic navigation data output*/
-    uint8_t MessageBody2[8] = {0x01, 0x07, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00}; //Set NAV-PVT to 10Hz
+    const char MessageBody2[8] = {0x01, 0x07, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00}; //Set NAV-PVT to 10Hz
     len = uUbxProtocolEncode(0x06, 0x01, MessageBody2, 8, (char*)UBX_MessageSend);
     ublox_Write(len, UBX_MessageSend);
     ublox_ReadOutput(UBX_MessageReturn); //Read ACK //Causes Hardfault sometimes
     uUbxProtocolDecode((char*)UBX_MessageReturn, sizeof(UBX_MessageReturn), NULL, NULL, NULL, 0, NULL);
 
     /*Then set naviation rate to 10Hz*/
-    uint8_t MessageBody3[6] = {100, 0, 1, 0, 0};
+    const char MessageBody3[6] = {100, 0, 1, 0, 0};
     len = uUbxProtocolEncode(0x06, 0x08, MessageBody3, 6, (char*)UBX_MessageSend);
     ublox_Write(len, UBX_MessageSend);
   }

@@ -14,6 +14,9 @@ IMU_Data_t imu1_data;
 IMU_Data_t imu2_data;
 IMU_AverageData_t average_imu_data;
 
+#define IMU_MAX_WRITE_LEN 32u
+#define IMU_MAX_READ_LEN 32u
+
 
 static void IMU_WritePin(GPIO_PinState pin, const IMU_Data_t *imu_data) {
     GPIO_TypeDef *imu_cs_port;
@@ -53,7 +56,11 @@ HAL_StatusTypeDef IMU_write_reg(uint8_t address, uint8_t len, uint8_t *data, con
     }
     IMU_Select(imu_data);
 
-    uint8_t tx[len + 1];
+    if (len > IMU_MAX_WRITE_LEN) {
+        return HAL_ERROR;
+    }
+
+    uint8_t tx[IMU_MAX_WRITE_LEN + 1];
     tx[0] = address;
     for (int i = 0; i < len; i++) {
         tx[i + 1] = *(data + i);
@@ -76,7 +83,11 @@ HAL_StatusTypeDef IMU_read_reg(uint8_t address, uint8_t len, uint8_t *data, cons
     }
     IMU_Select(imu_data);
 
-    uint8_t tx[len + 1], rx[len + 1];
+    if (len > IMU_MAX_READ_LEN) {
+        return HAL_ERROR;
+    }
+
+    uint8_t tx[IMU_MAX_WRITE_LEN + 1], rx[IMU_MAX_READ_LEN + 1];
     tx[0] = address | IMU_SPI_READ;
     IMU_SPI_status = HAL_SPI_TransmitReceive(&imu_spi, tx, rx, len + 1, HAL_MAX_DELAY);
     for (int i = 0; i < len; i++) {

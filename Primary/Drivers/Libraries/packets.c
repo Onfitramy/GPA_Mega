@@ -122,14 +122,14 @@ void UpdateTemperaturePacket(DataPacket_t *temp_packet, uint32_t timestamp, int3
     temp_packet->timestamp = timestamp;
 
     // Update the Temperature packet with the latest temperature information
-    if (M1_DTS != NULL) temp_packet->Data.temperature.M1_DTS = (int16_t)M1_DTS;
-    if (M1_ADC != NULL) temp_packet->Data.temperature.M1_ADC = (int16_t)M1_ADC;
+    temp_packet->Data.temperature.M1_DTS = (int16_t)M1_DTS;
+    temp_packet->Data.temperature.M1_ADC = (int16_t)M1_ADC;
     if (M1_BMP != INVALID_FLOAT) temp_packet->Data.temperature.M1_BMP = float_to_int16_scaled(M1_BMP, 0.01f);
     if (M1_IMU1 != INVALID_FLOAT) temp_packet->Data.temperature.M1_IMU1 = float_to_int16_scaled(M1_IMU1, 0.01f);
     if (M1_IMU2 != INVALID_FLOAT) temp_packet->Data.temperature.M1_IMU2 = float_to_int16_scaled(M1_IMU2, 0.01f);
     if (M1_MAG != INVALID_FLOAT) temp_packet->Data.temperature.M1_MAG = float_to_int16_scaled(M1_MAG, 0.01f);
     if (M2_3V3 != INVALID_FLOAT) temp_packet->Data.temperature.M2_3V3 = float_to_int16_scaled(M2_3V3, 0.01f);
-    if (M2_XBee != NULL) temp_packet->Data.temperature.M2_XBee = (int16_t)M2_XBee;
+    temp_packet->Data.temperature.M2_XBee = (int16_t)M2_XBee;
     if (PU_bat != INVALID_FLOAT) temp_packet->Data.temperature.PU_bat = float_to_int16_scaled(PU_bat, 0.01f);
     if (pressure_static != INVALID_FLOAT) temp_packet->Data.temperature.pressure_static = pressure_static;
     if (pressure_total != INVALID_FLOAT) temp_packet->Data.temperature.pressure_total = pressure_total;

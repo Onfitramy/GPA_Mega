@@ -19,6 +19,8 @@
 #define USING_VS_CODE_TERMINAL 0
 #define USING_OTHER_TERMINAL 1 // e.g. Putty, TerraTerm
 
+#define FLASH_CLI_MAX_SIZE 1024u
+
 /**
   ******************************************************************************
   * File Description : 
@@ -1035,14 +1037,20 @@ BaseType_t cmd_Flash(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pc
     }
     size = (uint32_t)strtoul(pcParameter, &endPtr, 10);
 
-    uint8_t data[size];
+    if (size == 0u || size > FLASH_CLI_MAX_SIZE) {
+        snprintf(pcWriteBuffer, xWriteBufferLen,
+                "Error: size must be 1..%u\r\n",
+                (unsigned)FLASH_CLI_MAX_SIZE);
+        return pdFALSE;
+    }
+
+    uint8_t data[FLASH_CLI_MAX_SIZE];
 
     //Set mode, reset/read/write
     mode = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
     if (strncmp(mode, "Reset", 5) == 0){
         //W25Q1_Reset();
-        uint8_t string[] = "FLASH Reset\r\n";
-        strcpy(pcWriteBuffer, (char *)string);
+        snprintf(pcWriteBuffer, xWriteBufferLen, "FLASH Reset\r\n");
     } else if (strncmp(mode, "Read ", 5) == 0)
     {
         //W25Q_Read(page, 0, size, data);

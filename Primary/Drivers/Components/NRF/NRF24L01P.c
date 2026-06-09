@@ -1,5 +1,6 @@
 #include "NRF24L01P.h"
 #include <string.h>
+#include "status.h" //For HAL_GetTickUS and HAL_GetTickDiffUS, which are used for the timeout of the nrf24l01p functions.
 
 HAL_StatusTypeDef NRF_SPI_status;
 

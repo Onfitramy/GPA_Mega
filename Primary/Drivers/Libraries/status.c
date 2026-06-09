@@ -124,3 +124,17 @@ void tasksStatus(void) {
         vPortFree(pxTaskStatusArray);
     }
 }
+
+uint32_t HAL_GetTickUS(){
+  return TIM5->CNT; // Get the current value of TIM5 counter
+}
+
+uint32_t HAL_GetTickDiffUS(uint32_t start){
+  uint32_t now = HAL_GetTickUS();
+  if (now >= start) {
+    return now - start;
+  } else {
+    // Handle overflow
+    return (0xFFFFFFFF - start + now + 1);
+  }
+}

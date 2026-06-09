@@ -11,6 +11,9 @@ void SetLED_color(color_handle color);
 
 void tasksStatus(void);
 
+uint32_t HAL_GetTickUS(void);
+uint32_t HAL_GetTickDiffUS(uint32_t start);
+
 #define COLOR_OFF       0x000000
 #define COLOR_RED       0xFF0000
 #define COLOR_ORANGE    0xFF3F00
