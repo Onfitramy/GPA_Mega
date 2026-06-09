@@ -13,6 +13,33 @@ target_compile_definitions(stm32cubemx INTERFACE
     $<$<CONFIG:Debug>:DEBUG>
 )
 
+file(GLOB_RECURSE CORE_SOURCES
+    ../../Core/Src/*.c
+)
+
+file(GLOB_RECURSE LIBRARY_SOURCES
+    ../../Drivers/Libraries/Src/*.c
+)
+
+file(GLOB_RECURSE PERIPHERAL_SOURCES
+    ../../Drivers/Peripherals/Src/*.c
+)
+
+file(GLOB_RECURSE COMPONENT_SOURCES
+    ../../Drivers/Components/*.c
+)
+
+file(GLOB_RECURSE QPSWIFT_SOURCES
+    ../../qpSWIFT/src/*.c
+)
+
+file (GLOB_RECURSE USB_SOURCES
+    ../../USB_DEVICE/App/usb_device.c
+    ../../USB_DEVICE/App/usbd_desc.c
+    ../../USB_DEVICE/App/usbd_cdc_if.c
+    ../../USB_DEVICE/Target/usbd_conf.c
+)
+
 target_include_directories(stm32cubemx INTERFACE
     ../../Core/Inc
     ../../USB_DEVICE/App
@@ -50,16 +77,21 @@ target_include_directories(stm32cubemx INTERFACE
 )
 
 target_sources(stm32cubemx INTERFACE
-    ../../Core/Src/main.c
-    ../../Core/Src/freertos.c
-    ../../Core/Src/FreeRTOS_CLI.c
-    ../../Core/Src/cli_app.c
-    ../../Core/Src/statemachine.c
-    ../../Core/Src/main_app.c
-    ../../USB_DEVICE/App/usb_device.c
-    ../../USB_DEVICE/App/usbd_desc.c
-    ../../USB_DEVICE/App/usbd_cdc_if.c
-    ../../USB_DEVICE/Target/usbd_conf.c
+    
+    ${CORE_SOURCES}
+
+    ${USB_SOURCES}
+
+    ${COMPONENT_SOURCES}
+
+    ${PERIPHERAL_SOURCES}
+
+    ${LIBRARY_SOURCES}
+
+    ${QPSWIFT_SOURCES}
+
+    ../../Drivers/CMSIS/DSP_DRIVERS/Lib/armMathAddon.c
+
     ../../Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_tim.c
     ../../Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_tim_ex.c
     ../../Drivers/STM32H7xx_HAL_Driver/Src/stm32h7xx_hal_pcd.c
@@ -101,65 +133,6 @@ target_sources(stm32cubemx INTERFACE
     ../../Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ioreq.c
     ../../Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c
     ../../startup_stm32h723xx.s
-
-    ../../Drivers/Components/LED/ws2812.c
-    ../../Drivers/Components/IMUS/IMUS.c
-    ../../Drivers/Components/MAG/LIS3MDL.c
-    ../../Drivers/Components/BARO/bmp390.c
-    ../../Drivers/Components/GPS/SAM-M8Q.c
-    ../../Drivers/Components/GPS/u_ubx_protocol.c
-    ../../Drivers/Components/Servo/SERVO.c
-    ../../Drivers/Components/Servo/SERVO_cfg.c
-    ../../Drivers/Components/PYRO/Pyro.c
-    ../../Drivers/Components/NRF/NRF24L01P.c
-    ../../Drivers/CMSIS/DSP_DRIVERS/Lib/armMathAddon.c
-    ../../Drivers/Components/Calibration/calibration_data.c
-
-    ../../Drivers/Peripherals/Src/gpio.c
-    ../../Drivers/Peripherals/Src/adc.c
-    ../../Drivers/Peripherals/Src/i2c.c
-    ../../Drivers/Peripherals/Src/spi.c
-    ../../Drivers/Peripherals/Src/tim.c
-    ../../Drivers/Peripherals/Src/dma.c
-    ../../Drivers/Peripherals/Src/dts.c
-    ../../Drivers/Peripherals/Src/memorymap.c
-    ../../Drivers/Peripherals/Src/stm32h7xx_it.c
-    ../../Drivers/Peripherals/Src/stm32h7xx_hal_msp.c
-    ../../Drivers/Peripherals/Src/stm32h7xx_hal_timebase_tim.c
-    ../../Drivers/Peripherals/Src/system_stm32h7xx.c
-    ../../Drivers/Peripherals/Src/sysmem.c
-    ../../Drivers/Peripherals/Src/syscalls.c
-
-    ../../Drivers/Libraries/Src/signalPlotter.c
-    ../../Drivers/Libraries/Src/status.c
-    ../../Drivers/Libraries/Src/InterBoardCom.c
-    ../../Drivers/Libraries/Src/radio.c
-
-     ../../Drivers/Libraries/Src/comSchedule.c
-    ../../Drivers/Libraries/Src/navigation.c
-    ../../Drivers/Libraries/Src/control.c
-    ../../Drivers/Libraries/Src/packets.c
-    ../../Drivers/Libraries/Src/spark.c
-    ../../Drivers/Libraries/Src/ptot.c
-    ../../Drivers/Libraries/Src/HIL.c
-
-    ../../qpSWIFT/src/amd_1.c
-    ../../qpSWIFT/src/amd_aat.c
-    ../../qpSWIFT/src/amd_defaults.c
-    ../../qpSWIFT/src/amd_global.c
-    ../../qpSWIFT/src/amd_order.c
-    ../../qpSWIFT/src/amd_post_tree.c
-    ../../qpSWIFT/src/amd_valid.c
-    ../../qpSWIFT/src/amd_2.c
-    ../../qpSWIFT/src/amd_control.c
-    ../../qpSWIFT/src/amd_dump.c
-    ../../qpSWIFT/src/amd_info.c
-    ../../qpSWIFT/src/amd_postorder.c
-    ../../qpSWIFT/src/amd_preprocess.c
-    ../../qpSWIFT/src/ldl.c
-    ../../qpSWIFT/src/timer.c
-    ../../qpSWIFT/src/Auxilary.c
-    ../../qpSWIFT/src/qpSWIFT.c
 )
 
 target_link_directories(stm32cubemx INTERFACE
