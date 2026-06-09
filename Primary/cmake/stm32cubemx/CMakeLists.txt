@@ -40,6 +40,8 @@ target_include_directories(stm32cubemx INTERFACE
     ../../Drivers/CMSIS/DSP_DRIVERS/Include
     ../../Drivers/CMSIS/DSP_DRIVERS/Bin
     ../../Drivers/Libraries
+    ../../Drivers/Libraries/Inc
+    ../../Drivers/Libraries/Src
     ../../Drivers/Peripherals/Inc
     ../../Drivers/Peripherals/Src
 
@@ -128,18 +130,18 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/Peripherals/Src/sysmem.c
     ../../Drivers/Peripherals/Src/syscalls.c
 
-    ../../Drivers/Libraries/signalPlotter.c
-    ../../Drivers/Libraries/status.c
-    ../../Drivers/Libraries/InterBoardCom.c
-    ../../Drivers/Libraries/radio.c
+    ../../Drivers/Libraries/Src/signalPlotter.c
+    ../../Drivers/Libraries/Src/status.c
+    ../../Drivers/Libraries/Src/InterBoardCom.c
+    ../../Drivers/Libraries/Src/radio.c
 
-     ../../Drivers/Libraries/comSchedule.c
-    ../../Drivers/Libraries/navigation.c
-    ../../Drivers/Libraries/control.c
-    ../../Drivers/Libraries/packets.c
-    ../../Drivers/Libraries/spark.c
-    ../../Drivers/Libraries/ptot.c
-    ../../Drivers/Libraries/HIL.c
+     ../../Drivers/Libraries/Src/comSchedule.c
+    ../../Drivers/Libraries/Src/navigation.c
+    ../../Drivers/Libraries/Src/control.c
+    ../../Drivers/Libraries/Src/packets.c
+    ../../Drivers/Libraries/Src/spark.c
+    ../../Drivers/Libraries/Src/ptot.c
+    ../../Drivers/Libraries/Src/HIL.c
 
     ../../qpSWIFT/src/amd_1.c
     ../../qpSWIFT/src/amd_aat.c
