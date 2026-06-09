@@ -35,12 +35,8 @@
 #include "semphr.h"
 #include "queue.h"
 
-#include "dts.h"
-
 /*Internal Libraries*/
 #include "_libraries.h"
-
-#include "statemachine.h"
 
 #include "main_app.h"
 
