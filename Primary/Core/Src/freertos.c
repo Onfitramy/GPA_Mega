@@ -109,7 +109,7 @@ void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName);
 /*FreeRTOS Hooks*/
 void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
 {
-  uint8_t stackOverflow = 1;
+  //uint8_t stackOverflow = 1;
   for(;;)
   {
 

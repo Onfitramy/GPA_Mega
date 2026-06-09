@@ -237,7 +237,7 @@ void Task100Hz(void *argument) {
         // Quaternion EKF magnetometer correction step
         // project magnetometer readings onto horizontal plane
         float mag_enu[3];
-        float mag_b_tilde[3];
+        //float mag_b_tilde[3];
         arm_mat_vec_mult_f32(&M_rot_ib, mag_data.field, mag_enu);
         mag_enu[2] = 0;
         arm_mat_vec_mult_f32(&M_rot_bi, mag_enu, EKF3_corr1.z);

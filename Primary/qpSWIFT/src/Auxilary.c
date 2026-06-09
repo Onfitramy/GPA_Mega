@@ -529,7 +529,7 @@ void kktsolve_2(QP *myQP)
 
 	if(myQP->stats->resolve_kkt)
 	{
-		qp_int d = LDL_numeric(n, myQP->kkt->kktmatrix->jc, myQP->kkt->kktmatrix->ir, myQP->kkt->kktmatrix->pr, myQP->kkt->Lp, myQP->kkt->Parent, myQP->kkt->Lnz, myQP->kkt->Li, myQP->kkt->Lx, myQP->kkt->D, myQP->kkt->Y, myQP->kkt->Pattern, myQP->kkt->Flag, myQP->kkt->P, myQP->kkt->Pinv);
+		LDL_numeric(n, myQP->kkt->kktmatrix->jc, myQP->kkt->kktmatrix->ir, myQP->kkt->kktmatrix->pr, myQP->kkt->Lp, myQP->kkt->Parent, myQP->kkt->Lnz, myQP->kkt->Li, myQP->kkt->Lx, myQP->kkt->D, myQP->kkt->Y, myQP->kkt->Pattern, myQP->kkt->Flag, myQP->kkt->P, myQP->kkt->Pinv);
 	}
     
 	LDL_perm(n, myQP->delta, myQP->kkt->b, myQP->kkt->P);

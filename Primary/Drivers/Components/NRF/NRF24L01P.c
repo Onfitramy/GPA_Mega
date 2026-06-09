@@ -169,7 +169,6 @@ void nrf24l01p_reset() {
 
 
 uint8_t nrf24l01p_read_rx_fifo(uint8_t* rx_payload) {
-    uint8_t command = NRF24L01P_CMD_R_RX_PAYLOAD;
     uint8_t status;
 
 
@@ -267,6 +266,11 @@ uint8_t nrf24l01p_get_status() {
     cs_low();
     HAL_StatusTypeDef SPI_status = HAL_SPI_TransmitReceive(&NRF_SPI, &command, &status, 1, 2000);
     cs_high();
+
+    if (SPI_status != HAL_OK) {
+        // Handle error
+        return 0xFF; // Return an invalid status to indicate error
+    }
 
     return status;
 }

@@ -85,7 +85,11 @@ UBX_MessageType ublox_ReadOutput(char* UBX_MessageReturn) {
     HAL_StatusTypeDef status = HAL_I2C_Mem_Read(&GPS_I2C, GPS_I2C_ADDR, 0xFF, 1, buffer, length, 90);
     if (status == HAL_OK){
         uint32_t ret = uUbxProtocolDecode((char*)buffer, length, &UBX_Message.messageClass, &UBX_Message.messageId, UBX_Message.messageBody, sizeof(UBX_Message.messageBody), NULL);
-        UBX_Message.status = 1; //Read Success
+        if (ret <= 0) {
+            UBX_Message.status = 0; //Decode Fail
+        } else {
+            UBX_Message.status = 1; //Decode Success
+        }
         for (size_t i = 0; i < length; i++) {
             buffer[i] = 0;
         }
@@ -100,7 +104,6 @@ UBX_MessageType ublox_ReadOutput(char* UBX_MessageReturn) {
 void GPS_Init(void){
   uint8_t UBX_MessageSend[32] = {0};
   char UBX_MessageReturn[32] = {0};
-  char MessageBody[1] = {0x01};
   
   /*First Set Port Messages to UBX and deactive NMEA Messages, to do that set bit 14 to 1*/
   if(GPSnotConfig == true){
@@ -168,8 +171,6 @@ uint8_t GPS_ReadSensorData(UBX_NAV_PVT *posllh) {
 uint8_t GPS_VER_CHECK(void) {
     uint8_t UBX_MessageSend[8];
     char UBX_MessageReturn[200];
-    int32_t messageClass;
-    int32_t messageId;
 
     uUbxProtocolEncode(0x0A, 0x04, NULL, 0, (char*)UBX_MessageSend);
 

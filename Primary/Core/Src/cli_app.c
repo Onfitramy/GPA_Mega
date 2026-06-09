@@ -1020,6 +1020,8 @@ BaseType_t cmd_Flash(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pc
     uint32_t size;
     BaseType_t xParameterStringLength;
     char *endPtr;  // Pointer to track invalid characters
+
+    (void)page; // To avoid unused variable warning, will be assigned before use
     
     //Read Page number
     pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 2, &xParameterStringLength);

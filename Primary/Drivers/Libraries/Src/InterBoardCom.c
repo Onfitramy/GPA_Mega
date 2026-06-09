@@ -141,7 +141,7 @@ void InterBoardCom_SendPacket(InterBoardPacket_t *packet) {
     }
     SPI1_State = 1; // Mark SPI as busy
     HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET); // Manually pull CS low to start transmission (pulled high in DMA complete callback)
-    HAL_StatusTypeDef status = HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)packet, SPI1_DMA_Rx_Buffer, sizeof(InterBoardPacket_t));
+    HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)packet, SPI1_DMA_Rx_Buffer, sizeof(InterBoardPacket_t));
 }
 
 InterBoardPacket_t InterBoardCom_ReceivePacket() {
@@ -441,7 +441,7 @@ void InterBoardCom_SendDataPacket(InterBoardPacketID_t Inter_ID, DataPacket_t *p
     InterBoardCom_FillData(&newPacket, packet);
 
     // Send the packet
-    int result = InterBoardCom_QueuePacket(&newPacket);
+    InterBoardCom_QueuePacket(&newPacket);
 }
 
 /**
