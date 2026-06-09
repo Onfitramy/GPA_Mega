@@ -185,7 +185,7 @@ void Task1000Hz(void *argument) {
             RotationMatrixFromQuaternion(x3, &M_rot_ib, DCM_ib_BodyToWorld);
 
             // Conversion to Euler
-            EulerFromRotationMatrix(&M_rot_bi, euler);
+            EulerFromRotationMatrix(&M_rot_bi, body_euler);
             VAR_vec3_abs = QuaternionCovToSmallAngleCov(x3, &P3, &P3_angle);
             FlightPathAngleFromRotationMatrix(&M_rot_bi, &flightpath_angle);
 

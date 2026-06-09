@@ -75,17 +75,17 @@ qp_real P_dataQP[PREDICTION_HORIZON*PREDICTION_HORIZON];
 qp_real q_dataQP[PREDICTION_HORIZON];
 qp_real G_dataQP[NUM_INEQUALITY_CONSTRAINTS*PREDICTION_HORIZON];
 
-float ComputeAirbrakeDrag(float vel_abs, float gamma) {
+float ComputeAirbrakeDrag(float velo_abs, float gamma) {
     float gam = gamma;
     if (gamma > ACS_ANGLE_MAX_DEG)
         gam = ACS_ANGLE_MAX_DEG;
     else if (gamma < ACS_ANGLE_MIN_DEG)
         gam = ACS_ANGLE_MIN_DEG;
 
-    float vel = vel_abs;
-    if (vel_abs < 0)
+    float vel = velo_abs;
+    if (velo_abs < 0)
         vel = -vel;
-    if (vel_abs > 300)
+    if (velo_abs > 300)
         vel = 300;
 
     float M = vel / a0_const;

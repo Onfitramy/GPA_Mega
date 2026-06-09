@@ -108,6 +108,9 @@ void ShowStatus(int8_t status, float freq_cycle, float freq_call) {
         case STATE_GROUNDSTATION:
             SetLED_pulse(COLOR_YELLOW);
             break;
+
+        default:
+            SetLED_color(COLOR_RED);
     }
 }
 

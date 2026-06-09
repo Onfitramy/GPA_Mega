@@ -30,7 +30,7 @@
   ******************************************************************************
   */
 
-char cOutputBuffer[configCOMMAND_INT_MAX_OUTPUT_SIZE], pcInputString[MAX_INPUT_LENGTH];
+char cOutputBuffer[configCOMMAND_INT_MAX_OUTPUT_SIZE];
 extern const CLI_Command_Definition_t xCommandList[];
 extern StreamBufferHandle_t xStreamBuffer;
 int8_t cRxedChar;

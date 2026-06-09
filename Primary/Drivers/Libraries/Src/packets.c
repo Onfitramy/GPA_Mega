@@ -86,7 +86,7 @@ void UpdatePowerPacket(DataPacket_t *power_packet, uint32_t timestamp, float PU_
     calcCRC(power_packet);
 }
 
-void UpdateIMUDataPacket(DataPacket_t *imu_packet, uint32_t timestamp, IMU_AverageData_t *imu_data, LIS3MDL_Data_t *mag_data) {
+void UpdateIMUDataPacket(DataPacket_t *imu_packet, uint32_t timestamp, IMU_AverageData_t *imu_data, LIS3MDL_Data_t *curr_mag_data) {
     imu_packet->timestamp = timestamp;
 
     // Update the IMU packet with the latest IMU data
@@ -96,23 +96,23 @@ void UpdateIMUDataPacket(DataPacket_t *imu_packet, uint32_t timestamp, IMU_Avera
     imu_packet->Data.imu.accelX = float_to_int32_scaled(imu_data->accel[0], 1e-6f);
     imu_packet->Data.imu.accelY = float_to_int32_scaled(imu_data->accel[1], 1e-6f);
     imu_packet->Data.imu.accelZ = float_to_int32_scaled(imu_data->accel[2], 1e-6f);
-    // Assuming mag data is available in mag_data structure
-    imu_packet->Data.imu.magX = float_to_int16_scaled(mag_data->field[0], 1e-4f);
-    imu_packet->Data.imu.magY = float_to_int16_scaled(mag_data->field[1], 1e-4f);
-    imu_packet->Data.imu.magZ = float_to_int16_scaled(mag_data->field[2], 1e-4f);
+    // Assuming mag data is available in curr_mag_data structure
+    imu_packet->Data.imu.magX = float_to_int16_scaled(curr_mag_data->field[0], 1e-4f);
+    imu_packet->Data.imu.magY = float_to_int16_scaled(curr_mag_data->field[1], 1e-4f);
+    imu_packet->Data.imu.magZ = float_to_int16_scaled(curr_mag_data->field[2], 1e-4f);
 
     calcCRC(imu_packet);
 }
 
-void UpdateGPSDataPacket(DataPacket_t *gps_packet, uint32_t timestamp, UBX_NAV_PVT *gps_data, float pressure) {
+void UpdateGPSDataPacket(DataPacket_t *gps_packet, uint32_t timestamp, UBX_NAV_PVT *curr_gps_data, float pressure) {
     gps_packet->timestamp = timestamp;
 
     // Update the GPS packet with the latest GPS data
-    gps_packet->Data.gps.latitude = gps_data->lat;   // Latitude in 1e-7 degrees
-    gps_packet->Data.gps.longitude = gps_data->lon;  // Longitude in 1e-7 degrees
-    gps_packet->Data.gps.altitude = gps_data->height; // Altitude in mm
-    gps_packet->Data.gps.speed = (int16_t)(gps_data->gSpeed / 100); // Speed over ground in cm/s
-    gps_packet->Data.gps.course =  (int16_t)gps_data->headMot; // Course over ground °*1e-5
+    gps_packet->Data.gps.latitude = curr_gps_data->lat;   // Latitude in 1e-7 degrees
+    gps_packet->Data.gps.longitude = curr_gps_data->lon;  // Longitude in 1e-7 degrees
+    gps_packet->Data.gps.altitude = curr_gps_data->height; // Altitude in mm
+    gps_packet->Data.gps.speed = (int16_t)(curr_gps_data->gSpeed / 100); // Speed over ground in cm/s
+    gps_packet->Data.gps.course =  (int16_t)curr_gps_data->headMot; // Course over ground °*1e-5
     gps_packet->Data.gps.pressure = pressure;
 
     calcCRC(gps_packet);
@@ -124,15 +124,15 @@ void UpdateTemperaturePacket(DataPacket_t *temp_packet, uint32_t timestamp, int3
     // Update the Temperature packet with the latest temperature information
     temp_packet->Data.temperature.M1_DTS = (int16_t)M1_DTS;
     temp_packet->Data.temperature.M1_ADC = (int16_t)M1_ADC;
-    if (M1_BMP != INVALID_FLOAT) temp_packet->Data.temperature.M1_BMP = float_to_int16_scaled(M1_BMP, 0.01f);
-    if (M1_IMU1 != INVALID_FLOAT) temp_packet->Data.temperature.M1_IMU1 = float_to_int16_scaled(M1_IMU1, 0.01f);
-    if (M1_IMU2 != INVALID_FLOAT) temp_packet->Data.temperature.M1_IMU2 = float_to_int16_scaled(M1_IMU2, 0.01f);
-    if (M1_MAG != INVALID_FLOAT) temp_packet->Data.temperature.M1_MAG = float_to_int16_scaled(M1_MAG, 0.01f);
-    if (M2_3V3 != INVALID_FLOAT) temp_packet->Data.temperature.M2_3V3 = float_to_int16_scaled(M2_3V3, 0.01f);
+    if (M1_BMP >= INVALID_FLOAT) temp_packet->Data.temperature.M1_BMP = float_to_int16_scaled(M1_BMP, 0.01f);
+    if (M1_IMU1 >= INVALID_FLOAT) temp_packet->Data.temperature.M1_IMU1 = float_to_int16_scaled(M1_IMU1, 0.01f);
+    if (M1_IMU2 >= INVALID_FLOAT) temp_packet->Data.temperature.M1_IMU2 = float_to_int16_scaled(M1_IMU2, 0.01f);
+    if (M1_MAG >= INVALID_FLOAT) temp_packet->Data.temperature.M1_MAG = float_to_int16_scaled(M1_MAG, 0.01f);
+    if (M2_3V3 >= INVALID_FLOAT) temp_packet->Data.temperature.M2_3V3 = float_to_int16_scaled(M2_3V3, 0.01f);
     temp_packet->Data.temperature.M2_XBee = (int16_t)M2_XBee;
-    if (PU_bat != INVALID_FLOAT) temp_packet->Data.temperature.PU_bat = float_to_int16_scaled(PU_bat, 0.01f);
-    if (pressure_static != INVALID_FLOAT) temp_packet->Data.temperature.pressure_static = pressure_static;
-    if (pressure_total != INVALID_FLOAT) temp_packet->Data.temperature.pressure_total = pressure_total;
+    if (PU_bat >= INVALID_FLOAT) temp_packet->Data.temperature.PU_bat = float_to_int16_scaled(PU_bat, 0.01f);
+    if (pressure_static >= INVALID_FLOAT) temp_packet->Data.temperature.pressure_static = pressure_static;
+    if (pressure_total >= INVALID_FLOAT) temp_packet->Data.temperature.pressure_total = pressure_total;
 
     calcCRC(temp_packet);
 }

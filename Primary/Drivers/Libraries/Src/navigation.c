@@ -123,12 +123,12 @@ float VAR_vec3_abs;
 
 /* --- Coordinate system variables --- */
 
-// reference frames
-double WGS84[3];
-double WGS84_ref[3];
-double ECEF[3];
-double ECEF_ref[3];
-double ENU[3];
+// reference frames, g_ for global
+double g_WGS84[3];
+double g_WGS84_ref[3];
+double g_ECEF[3];
+double g_ECEF_ref[3];
+double g_ENU[3];
 
 // rotation matrix
 float M_rot_bi_data[9];
@@ -138,7 +138,7 @@ arm_matrix_instance_f32 M_rot_ib = {3, 3, M_rot_ib_data};
 float M_rot_q_data[9];
 arm_matrix_instance_f32 M_rot_q = {3, 3, M_rot_q_data};
 
-float euler[3] = {0};
+float body_euler[3] = {0};
 float flightpath_angle = 0;
 
 // vectors
@@ -214,23 +214,23 @@ void normalizeAnglePairVector(float *angle_lead_vec, float *angle_mod_vec, uint8
 }
 
 // convert ublox outputs to metric
-void UBLOXtoWGS84(int32_t lat_e7, int32_t lon_e7, int32_t height_e3, double *WGS84) {
-    WGS84[0] = (double)lat_e7 * 1e-7;
-    WGS84[1] = (double)lon_e7 * 1e-7;
-    WGS84[2] = (double)height_e3 * 1e-3;
+void UBLOXtoWGS84(int32_t lat_e7, int32_t lon_e7, int32_t height_e3, double *WGS84Frame) {
+    WGS84Frame[0] = (double)lat_e7 * 1e-7;
+    WGS84Frame[1] = (double)lon_e7 * 1e-7;
+    WGS84Frame[2] = (double)height_e3 * 1e-3;
 }
 
 // convert WGS84 coordinates to ECEF (Earth Centered Earth Fixed) coordinates
-void WGS84toECEF(double *WGS84, double *ECEF) {
+void WGS84toECEF(double *WGS84Frame, double *ECEF) {
     // convert angles to radians
-    double lat_rad = WGS84[0] * PI / 180.;
-    double lon_rad = WGS84[1] * PI / 180.;
+    double lat_rad = WGS84Frame[0] * PI / 180.;
+    double lon_rad = WGS84Frame[1] * PI / 180.;
 
     // transform WGS84 to ECEF
     double N = a / sqrt(1 - e2 * sinf(lat_rad) * sinf(lat_rad));
-    ECEF[0] = (N + WGS84[2]) * cosf(lat_rad) * cosf(lon_rad);
-    ECEF[1] = (N + WGS84[2]) * cosf(lat_rad) * sinf(lon_rad);
-    ECEF[2] = (N * (1 - e2) + WGS84[2]) * sinf(lat_rad);
+    ECEF[0] = (N + WGS84Frame[2]) * cosf(lat_rad) * cosf(lon_rad);
+    ECEF[1] = (N + WGS84Frame[2]) * cosf(lat_rad) * sinf(lon_rad);
+    ECEF[2] = (N * (1 - e2) + WGS84Frame[2]) * sinf(lat_rad);
 }
 
 // convert ECEF (Earth Centered Earth Fixed) coordinates to ENU (East North Up) coordinates

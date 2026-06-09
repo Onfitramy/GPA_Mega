@@ -314,9 +314,9 @@ void signalPlotter_sendAll(void) {
   #ifdef SIGNAL_PLOTTER_OUT_3 // signal plotter outputs quaternion ekf testing
   signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
   signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
-  signalPlotter_sendData(2, euler[0]);
-  signalPlotter_sendData(3, euler[1]);
-  signalPlotter_sendData(4, euler[2]);
+  signalPlotter_sendData(2, body_euler[0]);
+  signalPlotter_sendData(3, body_euler[1]);
+  signalPlotter_sendData(4, body_euler[2]);
   signalPlotter_sendData(5, h3_corr2[0]);
   signalPlotter_sendData(6, h3_corr2[1]);
   signalPlotter_sendData(7, h3_corr2[2]);
@@ -420,9 +420,9 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(6, HIL.v_i[0]);
   signalPlotter_sendData(7, HIL.v_i[1]);
   signalPlotter_sendData(8, HIL.v_i[2]);
-  signalPlotter_sendData(9, euler[0]);
-  signalPlotter_sendData(10, euler[1]);
-  signalPlotter_sendData(11, euler[2]);
+  signalPlotter_sendData(9, body_euler[0]);
+  signalPlotter_sendData(10, body_euler[1]);
+  signalPlotter_sendData(11, body_euler[2]);
   signalPlotter_sendData(12, EKF2.x[0]);
   signalPlotter_sendData(13, EKF2.x[1]);
   signalPlotter_sendData(14, acs_target_angle_deg);

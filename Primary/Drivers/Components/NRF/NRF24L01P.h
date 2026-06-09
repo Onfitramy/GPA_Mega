@@ -39,11 +39,8 @@ extern SPI_HandleTypeDef hspi6;
 #define NRF24L01P_PAYLOAD_LENGTH 32     // 1 - 32bytes
 
 /* nRF24L01+ typedefs */
-typedef uint8_t count;
 typedef uint8_t widths;
-typedef uint8_t length;
 typedef uint16_t delay;
-typedef uint16_t channel;
 
 typedef enum
 {
@@ -78,10 +75,10 @@ typedef struct {
 #pragma pack(pop)
 
 /* Main Functions */
-void nrf24l01p_init(channel MHz, air_data_rate bps);
+void nrf24l01p_init(uint16_t MHz, air_data_rate bps);
 
-void nrf24l01p_rx_init(channel MHz, air_data_rate bps);
-void nrf24l01p_tx_init(channel MHz, air_data_rate bps);
+void nrf24l01p_rx_init(uint16_t MHz, air_data_rate bps);
+void nrf24l01p_tx_init(uint16_t MHz, air_data_rate bps);
 
 void nrf24l01p_rx_receive(uint8_t* rx_payload);
 void nrf24l01p_tx_transmit(uint8_t* tx_payload);
@@ -123,15 +120,15 @@ void nrf24l01p_clear_tx_ds();
 void nrf24l01p_clear_max_rt();
 void nrf24l01p_tx_irq();
 
-void nrf24l01p_set_rf_channel(channel MHz);
+void nrf24l01p_set_rf_channel(uint16_t MHz);
 void nrf24l01p_set_rf_tx_output_power(output_power dBm);
 void nrf24l01p_set_rf_air_data_rate(air_data_rate bps);
 
 void nrf24l01p_enable_crc();
 void nrf24l01p_disable_crc();
-void nrf24l01p_set_crc_length(length bytes);
+void nrf24l01p_set_crc_length(uint8_t bytes);
 void nrf24l01p_set_address_widths(widths bytes);
-void nrf24l01p_auto_retransmit_count(count cnt);
+void nrf24l01p_auto_retransmit_count(uint8_t cnt);
 void nrf24l01p_auto_retransmit_delay(delay us);
 
 void nrf24l01p_startListening();

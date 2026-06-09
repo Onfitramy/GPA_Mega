@@ -11,13 +11,13 @@
 *
 * Status: Inactive
 */
-void formkktmatrix_U(smat *P, smat *G, smat *Gt, smat *kkt)
+void formkktmatrix_U(smat *P, smat *G, smat *Gt, smat *kkt_l)
 {
 
 	qp_int i, j, k, kkt_nnz;
 
 	kkt_nnz = 0;
-	kkt->jc[0] = 0;
+	kkt_l->jc[0] = 0;
 
 	for (i = 0; i < P->n; i++)
 	{
@@ -26,29 +26,29 @@ void formkktmatrix_U(smat *P, smat *G, smat *Gt, smat *kkt)
 			k = P->ir[j];
 			if (k <= i)
 			{
-				kkt->ir[kkt_nnz] = k;
-				kkt->pr[kkt_nnz] = P->pr[j];
+				kkt_l->ir[kkt_nnz] = k;
+				kkt_l->pr[kkt_nnz] = P->pr[j];
 				kkt_nnz++;
 			}
 		}
-		kkt->jc[i + 1] = kkt_nnz;
+		kkt_l->jc[i + 1] = kkt_nnz;
 	}
 
 	for (i = 0; i < Gt->n; i++)
 	{
 		for (j = Gt->jc[i]; j < Gt->jc[i + 1]; j++)
 		{
-			kkt->ir[kkt_nnz] = Gt->ir[j];
-			kkt->pr[kkt_nnz] = Gt->pr[j];
+			kkt_l->ir[kkt_nnz] = Gt->ir[j];
+			kkt_l->pr[kkt_nnz] = Gt->pr[j];
 			kkt_nnz++;
 			if (j == Gt->jc[i + 1] - 1)
 			{
-				kkt->ir[kkt_nnz] = P->n + i;
-				kkt->pr[kkt_nnz] = -1.0;
+				kkt_l->ir[kkt_nnz] = P->n + i;
+				kkt_l->pr[kkt_nnz] = -1.0;
 				kkt_nnz++;
 			}
 		}
-		kkt->jc[i + 1 + P->n] = kkt_nnz;
+		kkt_l->jc[i + 1 + P->n] = kkt_nnz;
 	}
 }
 
@@ -68,40 +68,40 @@ void formkktmatrix_U(smat *P, smat *G, smat *Gt, smat *kkt)
  * 		  [G	0	-I]
  */
 
-void formkktmatrix_full(smat *P, smat *G, smat *A, smat *Gt, smat *At, smat *kkt)
+void formkktmatrix_full(smat *P, smat *G, smat *A, smat *Gt, smat *At, smat *kkt_l)
 {
 
 	if (A && At)
 	{
-
+    
 		qp_int kkt_nnz = 0;
 		qp_int i, j;
-		kkt->jc[0] = 0;
+		kkt_l->jc[0] = 0;
 
 		/* Concatenating Matrices P, A, G vertically */
 		for (i = 0; i < P->n; i++)
 		{
 			for (j = P->jc[i]; j < P->jc[i + 1]; j++)
 			{
-				kkt->pr[kkt_nnz] = P->pr[j];
-				kkt->ir[kkt_nnz] = P->ir[j];
+				kkt_l->pr[kkt_nnz] = P->pr[j];
+				kkt_l->ir[kkt_nnz] = P->ir[j];
 				kkt_nnz++;
 			}
 
 			for (j = A->jc[i]; j < A->jc[i + 1]; j++)
 			{
-				kkt->pr[kkt_nnz] = A->pr[j];
-				kkt->ir[kkt_nnz] = P->m + A->ir[j];
+				kkt_l->pr[kkt_nnz] = A->pr[j];
+				kkt_l->ir[kkt_nnz] = P->m + A->ir[j];
 				kkt_nnz++;
 			}
 
 			for (j = G->jc[i]; j < G->jc[i + 1]; j++)
 			{
-				kkt->pr[kkt_nnz] = G->pr[j];
-				kkt->ir[kkt_nnz] = P->m + A->m + G->ir[j];
+				kkt_l->pr[kkt_nnz] = G->pr[j];
+				kkt_l->ir[kkt_nnz] = P->m + A->m + G->ir[j];
 				kkt_nnz++;
 			}
-			kkt->jc[i + 1] = P->jc[i + 1] + G->jc[i + 1] + A->jc[i + 1];
+			kkt_l->jc[i + 1] = P->jc[i + 1] + G->jc[i + 1] + A->jc[i + 1];
 		}
 
 		/* Concatenating Matrices A', G' horizontally and G' and -I vertically */
@@ -109,28 +109,28 @@ void formkktmatrix_full(smat *P, smat *G, smat *A, smat *Gt, smat *At, smat *kkt
 		{
 			for (j = At->jc[i]; j < At->jc[i + 1]; j++)
 			{
-				kkt->ir[kkt_nnz] = At->ir[j];
-				kkt->pr[kkt_nnz] = At->pr[j];
+				kkt_l->ir[kkt_nnz] = At->ir[j];
+				kkt_l->pr[kkt_nnz] = At->pr[j];
 				kkt_nnz++;
 			}
-			kkt->jc[i + 1 + P->n] = kkt_nnz;
+			kkt_l->jc[i + 1 + P->n] = kkt_nnz;
 		}
 
 		for (i = 0; i < Gt->n; i++)
 		{
 			for (j = Gt->jc[i]; j < Gt->jc[i + 1]; j++)
 			{
-				kkt->ir[kkt_nnz] = Gt->ir[j];
-				kkt->pr[kkt_nnz] = Gt->pr[j];
+				kkt_l->ir[kkt_nnz] = Gt->ir[j];
+				kkt_l->pr[kkt_nnz] = Gt->pr[j];
 				kkt_nnz++;
 				if (j == Gt->jc[i + 1] - 1)
 				{
-					kkt->ir[kkt_nnz] = P->m + A->m + i;
-					kkt->pr[kkt_nnz] = -1.0;
+					kkt_l->ir[kkt_nnz] = P->m + A->m + i;
+					kkt_l->pr[kkt_nnz] = -1.0;
 					kkt_nnz++;
 				}
 			}
-			kkt->jc[i + 1 + P->n + At->n] = kkt_nnz;
+			kkt_l->jc[i + 1 + P->n + At->n] = kkt_nnz;
 		}
 	}
 	else
@@ -139,25 +139,25 @@ void formkktmatrix_full(smat *P, smat *G, smat *A, smat *Gt, smat *At, smat *kkt
 		qp_int kkt_nnz = 0;
 		qp_int i, j;
 
-		kkt->jc[0] = 0;
+		kkt_l->jc[0] = 0;
 
 		/* Concatenating Matrices P and G vertically */
 		for (i = 0; i < P->n; i++)
 		{
 			for (j = P->jc[i]; j < P->jc[i + 1]; j++)
 			{
-				kkt->pr[kkt_nnz] = P->pr[j];
-				kkt->ir[kkt_nnz] = P->ir[j];
+				kkt_l->pr[kkt_nnz] = P->pr[j];
+				kkt_l->ir[kkt_nnz] = P->ir[j];
 				kkt_nnz++;
 			}
 
 			for (j = G->jc[i]; j < G->jc[i + 1]; j++)
 			{
-				kkt->pr[kkt_nnz] = G->pr[j];
-				kkt->ir[kkt_nnz] = P->m + G->ir[j];
+				kkt_l->pr[kkt_nnz] = G->pr[j];
+				kkt_l->ir[kkt_nnz] = P->m + G->ir[j];
 				kkt_nnz++;
 			}
-			kkt->jc[i + 1] = P->jc[i + 1] + G->jc[i + 1];
+			kkt_l->jc[i + 1] = P->jc[i + 1] + G->jc[i + 1];
 		}
 
 		/* Concatenating Matrices G' and -I horizontally */
@@ -165,17 +165,17 @@ void formkktmatrix_full(smat *P, smat *G, smat *A, smat *Gt, smat *At, smat *kkt
 		{
 			for (j = Gt->jc[i]; j < Gt->jc[i + 1]; j++)
 			{
-				kkt->ir[kkt_nnz] = Gt->ir[j];
-				kkt->pr[kkt_nnz] = Gt->pr[j];
+				kkt_l->ir[kkt_nnz] = Gt->ir[j];
+				kkt_l->pr[kkt_nnz] = Gt->pr[j];
 				kkt_nnz++;
 				if (j == Gt->jc[i + 1] - 1)
 				{
-					kkt->ir[kkt_nnz] = P->m + i;
-					kkt->pr[kkt_nnz] = -1.0;
+					kkt_l->ir[kkt_nnz] = P->m + i;
+					kkt_l->pr[kkt_nnz] = -1.0;
 					kkt_nnz++;
 				}
 			}
-			kkt->jc[i + 1 + P->n] = kkt_nnz;
+			kkt_l->jc[i + 1 + P->n] = kkt_nnz;
 		}
 	}
 }
@@ -202,7 +202,7 @@ void formkktmatrix_full(smat *P, smat *G, smat *A, smat *Gt, smat *At, smat *kkt
  *		indicator = 2 : Pure Centering Direction
  *		indicator = 3 : Pure Newton Direction
  */
-void updatekktmatrix(smat *kkt, qp_real *s, qp_real *z, qp_real *delta_s, qp_real *delta_z, qp_real alpha_p, qp_real alpha_d, qp_int m, qp_int n, qp_int p, qp_int indicator)
+void updatekktmatrix(smat *kkt_l, qp_real *s, qp_real *z, qp_real *delta_s, qp_real *delta_z, qp_real alpha_p, qp_real alpha_d, qp_int m, qp_int n, qp_int p, qp_int indicator)
 {
 
 	qp_int index, i;
@@ -210,24 +210,24 @@ void updatekktmatrix(smat *kkt, qp_real *s, qp_real *z, qp_real *delta_s, qp_rea
 	{
 		for (i = n + p; i < n + m + p; i++)
 		{
-			index = kkt->jc[i + 1] - 1;
-			kkt->pr[index] = -s[i - n - p] / z[i - n - p];
+			index = kkt_l->jc[i + 1] - 1;
+			kkt_l->pr[index] = -s[i - n - p] / z[i - n - p];
 		}
 	}
 	if (indicator == 1)
 	{
 		for (i = n + p; i < n + m + p; i++)
 		{
-			index = kkt->jc[i + 1] - 1;
-			kkt->pr[index] = -(s[i - n - p] / z[i - n - p] - 1);
+			index = kkt_l->jc[i + 1] - 1;
+			kkt_l->pr[index] = -(s[i - n - p] / z[i - n - p] - 1);
 		}
 	}
 	if (indicator == 2)
 	{
 		for (i = n + p; i < n + m + p; i++)
 		{
-			index = kkt->jc[i + 1] - 1;
-			kkt->pr[index] = -(s[i - n - p] / z[i - n - p] - (s[i - n - p] - alpha_p * delta_s[i - n - p]) / (z[i - n - p] - alpha_d * delta_z[i - n - p]));
+			index = kkt_l->jc[i + 1] - 1;
+			kkt_l->pr[index] = -(s[i - n - p] / z[i - n - p] - (s[i - n - p] - alpha_p * delta_s[i - n - p]) / (z[i - n - p] - alpha_d * delta_z[i - n - p]));
 		}
 	}
 }

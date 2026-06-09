@@ -72,7 +72,7 @@ void write_register_bytes(uint8_t reg, const uint8_t* data, uint8_t len) {
 }
 
 /* Initializes the NRF24 into Standby 1 mode, ready for both Transmit and receive  */
-void nrf24l01p_init(channel MHz, air_data_rate bps) {
+void nrf24l01p_init(uint16_t MHz, air_data_rate bps) {
 
     nrf24l01p_reset();
 
@@ -325,7 +325,7 @@ void nrf24l01p_power_down() {
     write_register(NRF24L01P_REG_CONFIG, new_config);
 }
 
-void nrf24l01p_set_crc_length(length bytes) {
+void nrf24l01p_set_crc_length(uint8_t bytes) {
     uint8_t new_config = read_register(NRF24L01P_REG_CONFIG);
     
     switch(bytes) {
@@ -337,6 +337,8 @@ void nrf24l01p_set_crc_length(length bytes) {
         case 2:
             new_config |= 1 << 2;
             break;
+        default:
+            new_config &= 0xFB;
     }
 
     new_config |= 1 << 3; // make sure crc is enabled
@@ -364,7 +366,7 @@ void nrf24l01p_set_address_widths(widths bytes) {
     write_register(NRF24L01P_REG_SETUP_AW, bytes - 2);
 }
 
-void nrf24l01p_auto_retransmit_count(count cnt) {
+void nrf24l01p_auto_retransmit_count(uint8_t cnt) {
     uint8_t new_setup_retr = read_register(NRF24L01P_REG_SETUP_RETR);
     
     // Reset ARC register 0
@@ -382,7 +384,7 @@ void nrf24l01p_auto_retransmit_delay(delay us) {
     write_register(NRF24L01P_REG_SETUP_RETR, new_setup_retr);
 }
 
-void nrf24l01p_set_rf_channel(channel MHz) {
+void nrf24l01p_set_rf_channel(uint16_t MHz) {
 	uint16_t new_rf_ch = MHz - 2400;
     write_register(NRF24L01P_REG_RF_CH, new_rf_ch);
 }
@@ -406,6 +408,8 @@ void nrf24l01p_set_rf_air_data_rate(air_data_rate bps) {
             break;
         case _250kbps:
             new_rf_setup |= 1 << 5;
+            break;
+        default:
             break;
     }
     write_register(NRF24L01P_REG_RF_SETUP, new_rf_setup);

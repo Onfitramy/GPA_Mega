@@ -238,7 +238,7 @@ void UpdatePacket(DataPacket_t *packet) {
             UpdatePositionPacket(packet, HAL_GetTick(), /* posX */ 0.0f, /* posY */ 0.0f, /* posZ */ 0.0f, /* velX */ 0.0f, /* velY */ 0.0f, /* velZ */ 0.0f);
             break;
         case PACKET_ID_ATTITUDE:
-            UpdateAttitudePacket(packet, HAL_GetTick(), euler[0], euler[1], euler[2]);
+            UpdateAttitudePacket(packet, HAL_GetTick(), body_euler[0], body_euler[1], body_euler[2]);
             break;
         case PACKET_ID_KALMANMATRIX:
             UpdateKalmanMatrixPacket(packet, HAL_GetTick(), arm_mat_get_entry_f32(&P2, 0, 0), arm_mat_get_entry_f32(&P2, 1, 1), arm_mat_get_entry_f32(&P2, 2, 2), EKF2.x[0], EKF2.x[1], EKF2.x[2]);

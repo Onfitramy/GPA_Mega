@@ -42,10 +42,10 @@ void HILupdateStates(float dt) {
         // compute forces in body frame
         arm_mat_vec_mult_f32(HIL.DCM_bi, gravity_world_vec, F_b);
         arm_vec3_scalar_mult_f32(F_b, -HIL.m, F_b);
-        float vel_abs = arm_vec3_length_f32(HIL.v_i);
-        float CD = ComputeAirbrakeDrag(vel_abs, acs_target_angle_deg);
+        float velo_abs = arm_vec3_length_f32(HIL.v_i);
+        float CD = ComputeAirbrakeDrag(velo_abs, acs_target_angle_deg);
         float rho = CalculateAirDensity(HIL.r_i[2]);
-        F_b[1] -= 0.5*rho*vel_abs*vel_abs*AREF*CD;
+        F_b[1] -= 0.5*rho*velo_abs*velo_abs*AREF*CD;
         F_b[1] += MOTOR_THRUST;
         if (HIL.r_i[2] < RAIL_LENGTH)
             F_b[0] = F_b[2] = 0;
@@ -57,10 +57,10 @@ void HILupdateStates(float dt) {
         // compute forces in body frame
         arm_mat_vec_mult_f32(HIL.DCM_bi, gravity_world_vec, F_b);
         arm_vec3_scalar_mult_f32(F_b, -HIL.m, F_b);
-        float vel_abs = arm_vec3_length_f32(HIL.v_i);
-        float CD = ComputeAirbrakeDrag(vel_abs, acs_target_angle_deg);
+        float velo_abs = arm_vec3_length_f32(HIL.v_i);
+        float CD = ComputeAirbrakeDrag(velo_abs, acs_target_angle_deg);
         float rho = CalculateAirDensity(HIL.r_i[2]);
-        F_b[1] -= 0.5*rho*vel_abs*vel_abs*AREF*CD;
+        F_b[1] -= 0.5*rho*velo_abs*velo_abs*AREF*CD;
     }
     // rigid-body kinetics
     arm_vec3_scalar_mult_f32(F_b, 1/HIL.m, HIL.a_b);

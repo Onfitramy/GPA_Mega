@@ -231,17 +231,17 @@ extern arm_matrix_instance_f32 K3_corr2;
 
 extern float VAR_vec3_abs;
 
-extern double WGS84[3];
-extern double WGS84_ref[3];
-extern double ECEF[3];
-extern double ECEF_ref[3];
-extern double ENU[3];
+extern double g_WGS84[3];
+extern double g_WGS84_ref[3];
+extern double g_ECEF[3];
+extern double g_ECEF_ref[3];
+extern double g_ENU[3];
 
 extern arm_matrix_instance_f32 M_rot_bi;
 extern arm_matrix_instance_f32 M_rot_ib;
 extern arm_matrix_instance_f32 M_rot_q;
 
-extern float euler[3];
+extern float body_euler[3];
 extern float flightpath_angle;
 
 extern float a_WorldFrame_g[3];

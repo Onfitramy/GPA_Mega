@@ -31,6 +31,10 @@ static void IMU_WritePin(GPIO_PinState pin, const IMU_Data_t *imu_data) {
             imu_cs_port = IMU2_CS_PORT;
             imu_cs_pin = IMU2_CS_PIN;
             break;
+        default:
+            imu_cs_port = IMU1_CS_PORT;
+            imu_cs_pin = IMU1_CS_PIN;
+            return;
     }
 
     HAL_GPIO_WritePin(imu_cs_port, imu_cs_pin, pin);
@@ -53,6 +57,8 @@ HAL_StatusTypeDef IMU_write_reg(uint8_t address, uint8_t len, uint8_t *data, con
         case IMU2:
             imu_spi = IMU2_SPI;
             break;
+        default:
+            return HAL_ERROR;
     }
     IMU_Select(imu_data);
 
@@ -80,6 +86,8 @@ HAL_StatusTypeDef IMU_read_reg(uint8_t address, uint8_t len, uint8_t *data, cons
         case IMU2:
             imu_spi = IMU2_SPI;
             break;
+        default:
+            return HAL_ERROR;
     }
     IMU_Select(imu_data);
 
@@ -204,7 +212,7 @@ static void average_arrays(float array_1[3], float array_2[3], float average_arr
     }
 }
 
-void IMU_Average(IMU_Data_t *imu_data_1, IMU_Data_t *imu_data_2, IMU_AverageData_t *average_imu_data) {
+void IMU_Average(IMU_Data_t *imu_data_1, IMU_Data_t *imu_data_2, IMU_AverageData_t *curr_average_imu_data) {
     bool use_imu1 = imu_data_1->active;
     bool use_imu2 = imu_data_2->active;
 
@@ -214,14 +222,14 @@ void IMU_Average(IMU_Data_t *imu_data_1, IMU_Data_t *imu_data_2, IMU_AverageData
         average_arrays(imu_data_1->accel, imu_data_2->accel, accel_average);
         average_arrays(imu_data_1->gyro, imu_data_2->gyro, gyro_average);
 
-        memcpy(average_imu_data->accel, accel_average, sizeof(accel_average));
-        memcpy(average_imu_data->gyro, gyro_average, sizeof(gyro_average));
+        memcpy(curr_average_imu_data->accel, accel_average, sizeof(accel_average));
+        memcpy(curr_average_imu_data->gyro, gyro_average, sizeof(gyro_average));
     } else if (use_imu1) {
-        memcpy(average_imu_data->accel, imu_data_1->accel, sizeof(imu_data_1->accel));
-        memcpy(average_imu_data->gyro, imu_data_1->gyro, sizeof(imu_data_1->gyro));
+        memcpy(curr_average_imu_data->accel, imu_data_1->accel, sizeof(imu_data_1->accel));
+        memcpy(curr_average_imu_data->gyro, imu_data_1->gyro, sizeof(imu_data_1->gyro));
     } else {
-        memcpy(average_imu_data->accel, imu_data_2->accel, sizeof(imu_data_2->accel));
-        memcpy(average_imu_data->gyro, imu_data_2->gyro, sizeof(imu_data_2->gyro));
+        memcpy(curr_average_imu_data->accel, imu_data_2->accel, sizeof(imu_data_2->accel));
+        memcpy(curr_average_imu_data->gyro, imu_data_2->gyro, sizeof(imu_data_2->gyro));
     }
 }
 
@@ -257,6 +265,8 @@ HAL_StatusTypeDef IMU_ConfigXL(uint8_t ODR, uint8_t FS, bool LPF2, IMU_Data_t *i
         case IMU_FS_XL_16:
             imu_data->xl_fs_lsb = 2048;
             break;
+        default:
+            imu_data->xl_fs_lsb = 16384;
     }
     uint8_t tx[1] = { ODR << 4 | FS << 2 | LPF2 << 1 };
     uint8_t rx[1] = { 0 };
@@ -286,6 +296,8 @@ HAL_StatusTypeDef IMU_ConfigG(uint8_t ODR, uint8_t FS, IMU_Data_t *imu_data) {
         case IMU_FS_G_4000:
             imu_data->g_fs_lsb = 1120;
             break;
+        default:
+            imu_data->g_fs_lsb = 70;
     }
     uint8_t tx[1] = { ODR << 4 | FS };
     uint8_t rx[1] = { 0 };

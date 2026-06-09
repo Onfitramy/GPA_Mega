@@ -517,9 +517,9 @@ static void InitExit(StateMachine_t *sm) {}
 static void AlignGNCExit(StateMachine_t *sm) {
     // initialize GNSS reference point
     for (int i = 0; i <= 2; i++) {
-        WGS84_ref[i] = WGS84[i];
+        g_WGS84_ref[i] = g_WGS84[i];
       }
-    WGS84toECEF(WGS84_ref, ECEF_ref);
+    WGS84toECEF(g_WGS84_ref, g_ECEF_ref);
 }
 static void CheckoutsExit(StateMachine_t *sm) {}
 static void ArmedExit(StateMachine_t *sm) {}
