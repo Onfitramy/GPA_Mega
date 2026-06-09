@@ -57,6 +57,59 @@
                 "cwd": "${workspaceFolder}"
             },
             "problemMatcher": []
+        },
+        {
+            "label": "clang-tidy current file",
+            "type": "shell",
+            "command": "clang-tidy",
+            "args": [
+                "-p",
+                "build/Debug",
+                "${relativeFile}"
+            ],
+            "problemMatcher": {
+                "owner": "clang-tidy",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}"
+                ],
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "message": 5
+                }
+            },
+            "group": "test"
+        },
+        {
+            "label": "clang-tidy Core and Drivers",
+            "type": "shell",
+            "command": "powershell",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                "Get-ChildItem Core,Drivers -Recurse -Include *.c | ForEach-Object { clang-tidy -p build/Debug $_.FullName }"
+            ],
+            "problemMatcher": {
+                "owner": "clang-tidy",
+                "fileLocation": [
+                    "absolute"
+                ],
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "message": 5
+                }
+            },
+            "group": "test"
         }
     ]
 }
