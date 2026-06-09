@@ -114,82 +114,82 @@ void Task1000Hz(void *argument) {
 
         // after startup
         if (flight_sm.currentFlightState != STATE_FLIGHT_STARTUP && flight_sm.currentFlightState != STATE_GROUNDSTATION) {
-        #ifndef HIL_TESTING
-        SensorStatus_Reset(&imu1_status);
-        SensorStatus_Reset(&imu2_status);
-        SensorStatus_Reset(&mag_status);
+            #ifndef HIL_TESTING
+            SensorStatus_Reset(&imu1_status);
+            SensorStatus_Reset(&imu2_status);
+            SensorStatus_Reset(&mag_status);
 
-        imu1_status.hal_status |= IMU_Update(&imu1_data); // 70us
-        imu2_status.hal_status |= IMU_Update(&imu2_data); // 70us
-        imu1_status.active = imu1_data.active;
-        imu2_status.active = imu2_data.active;
-        IMU_Average(&imu1_data, &imu2_data, &average_imu_data);
+            imu1_status.hal_status |= IMU_Update(&imu1_data); // 70us
+            imu2_status.hal_status |= IMU_Update(&imu2_data); // 70us
+            imu1_status.active = imu1_data.active;
+            imu2_status.active = imu2_data.active;
+            IMU_Average(&imu1_data, &imu2_data, &average_imu_data);
 
-        if (MAG_VerifyDataReady() & 0b00000001) {
-            mag_status.hal_status |= MAG_ReadSensorData(&mag_data);
-            arm_vec3_sub_f32(mag_data.field, mag_data.calibration.offset, mag_data.field);
-            arm_vec3_element_product_f32(mag_data.field, mag_data.calibration.scale, mag_data.field);
-        } // 7us
-        #else
-        // calculate average_imu_data
-        HILgetIMUData(&average_imu_data);
-        // calculate mag_data.field
-        HILgetMagnetometerData(&mag_data);
-        #endif
+            if (MAG_VerifyDataReady() & 0b00000001) {
+                mag_status.hal_status |= MAG_ReadSensorData(&mag_data);
+                arm_vec3_sub_f32(mag_data.field, mag_data.calibration.offset, mag_data.field);
+                arm_vec3_element_product_f32(mag_data.field, mag_data.calibration.scale, mag_data.field);
+            } // 7us
+            #else
+            // calculate average_imu_data
+            HILgetIMUData(&average_imu_data);
+            // calculate mag_data.field
+            HILgetMagnetometerData(&mag_data);
+            #endif
 
-        ProcessDataSchedule(xTaskGetTickCount());
+            ProcessDataSchedule(xTaskGetTickCount());
 
-        if(is_groundstation) {
-            UpdateStatePacket(&State_DataPacket, HAL_GetTick(), flight_sm.currentFlightState, flight_sm.timestamp_ms);
-            InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_NONE, &State_DataPacket); //Needed to keep Primary and Secondary syncronized
-        }
+            if(is_groundstation) {
+                UpdateStatePacket(&State_DataPacket, HAL_GetTick(), flight_sm.currentFlightState, flight_sm.timestamp_ms);
+                InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_NONE, &State_DataPacket); //Needed to keep Primary and Secondary syncronized
+            }
 
-        // transform measured body acceleration to world-frame acceleration
-        arm_mat_vec_mult_f32(&M_rot_ib, average_imu_data.accel, a_WorldFrame_g);
-        arm_vec3_sub_f32(a_WorldFrame_g, gravity_world_vec, a_WorldFrame_i);
-        a_abs_g = arm_vec3_length_f32(a_WorldFrame_g);
-        a_abs_i = arm_vec3_length_f32(a_WorldFrame_i);
+            // transform measured body acceleration to world-frame acceleration
+            arm_mat_vec_mult_f32(&M_rot_ib, average_imu_data.accel, a_WorldFrame_g);
+            arm_vec3_sub_f32(a_WorldFrame_g, gravity_world_vec, a_WorldFrame_i);
+            a_abs_g = arm_vec3_length_f32(a_WorldFrame_g);
+            a_abs_i = arm_vec3_length_f32(a_WorldFrame_i);
 
-        // calculate acceleration w/o gravity in body frame
-        arm_mat_vec_mult_f32(&M_rot_bi, gravity_world_vec, gravity_body_vec);
-        arm_vec3_sub_f32(average_imu_data.accel, gravity_body_vec, a_BodyFrame_i);
+            // calculate acceleration w/o gravity in body frame
+            arm_mat_vec_mult_f32(&M_rot_bi, gravity_world_vec, gravity_body_vec);
+            arm_vec3_sub_f32(average_imu_data.accel, gravity_body_vec, a_BodyFrame_i);
 
-        /* --- GNSS DELAY COMPENSATION TESTING --- */
-        #ifndef HIL_TESTING  // GPS Delay not implemented yet
-        CompensateGNSSDelay(a_WorldFrame_i[2], EKF2.x[1], &corr_delta_v, &corr_delta_h, 0.001);
-        #endif
+            /* --- GNSS DELAY COMPENSATION TESTING --- */
+            #ifndef HIL_TESTING  // GPS Delay not implemented yet
+            CompensateGNSSDelay(a_WorldFrame_i[2], EKF2.x[1], &corr_delta_v, &corr_delta_h, 0.001);
+            #endif
 
-        // KALMAN FILTER, HEIGHT
-        EKFPredictionStep(&EKF2);
+            // KALMAN FILTER, HEIGHT
+            EKFPredictionStep(&EKF2);
 
-        #ifndef HIL_TESTING
-        if (BMP_readData(&bmp_data.pressure, &bmp_data.height, &bmp_data.temperature)) {
-            // execute this if new data is available
-            // correction step
+            #ifndef HIL_TESTING
+            if (BMP_readData(&bmp_data.pressure, &bmp_data.height, &bmp_data.temperature)) {
+                // execute this if new data is available
+                // correction step
+                EKF2_corr1.z[0] = bmp_data.pressure;
+                EKFCorrectionStep(&EKF2, &EKF2_corr1);
+            }
+            #else
+            // calculate bmp_data.pressure
+            HILgetBarometerData(&bmp_data);
+
             EKF2_corr1.z[0] = bmp_data.pressure;
             EKFCorrectionStep(&EKF2, &EKF2_corr1);
-        }
-        #else
-        // calculate bmp_data.pressure
-        HILgetBarometerData(&bmp_data);
+            #endif
 
-        EKF2_corr1.z[0] = bmp_data.pressure;
-        EKFCorrectionStep(&EKF2, &EKF2_corr1);
-        #endif
+            // KALMAN FILTER, QUATERNION
+            // prediction step
+            EKFPredictionStep(&EKF3);
 
-        // KALMAN FILTER, QUATERNION
-        // prediction step
-        EKFPredictionStep(&EKF3);
+            RotationMatrixFromQuaternion(x3, &M_rot_bi, DCM_bi_WorldToBody);
+            RotationMatrixFromQuaternion(x3, &M_rot_ib, DCM_ib_BodyToWorld);
 
-        RotationMatrixFromQuaternion(x3, &M_rot_bi, DCM_bi_WorldToBody);
-        RotationMatrixFromQuaternion(x3, &M_rot_ib, DCM_ib_BodyToWorld);
+            // Conversion to Euler
+            EulerFromRotationMatrix(&M_rot_bi, euler);
+            VAR_vec3_abs = QuaternionCovToSmallAngleCov(x3, &P3, &P3_angle);
+            FlightPathAngleFromRotationMatrix(&M_rot_bi, &flightpath_angle);
 
-        // Conversion to Euler
-        EulerFromRotationMatrix(&M_rot_bi, euler);
-        VAR_vec3_abs = QuaternionCovToSmallAngleCov(x3, &P3, &P3_angle);
-        FlightPathAngleFromRotationMatrix(&M_rot_bi, &flightpath_angle);
-
-        vel_abs = EKF2.x[1] / arm_mat_get_entry_f32(&M_rot_bi, 2, 2);
+            vel_abs = EKF2.x[1] / arm_mat_get_entry_f32(&M_rot_bi, 2, 2);
         }
 
         //dt_1000Hz = TimeMeasureStop();
@@ -332,9 +332,7 @@ uint8_t InterBoardPacket_receive_num = 0;
   */
 void InterruptTask(void *argument) {
     HAL_NVIC_EnableIRQ(EXTI15_10_IRQn); //Aktivate Interrupt for GPS and NRF
-    uint8_t receivedData;
     InterBoardPacket_t InterBoardCom_Packet;
-    char GPS_Buffer[100]; // Buffer for GPS data
     InterBoardCom_Init();
 
     /* Infinite loop */
@@ -365,7 +363,7 @@ void USBTask(void *argument) {
     for(;;)
     {
         DataPacket_t receivedPacket;
-        if (xQueueReceive(USB_Tx_Queue, &receivedPacket, 0) == pdTRUE) {
+        if (xQueueReceive(USB_Tx_Queue, &receivedPacket, pdMS_TO_TICKS(10)) == pdTRUE) {
         if (USB_OutputDataPacket(&receivedPacket) == USBD_OK) {
             //USB transmission successful, do nothing
         } else {
