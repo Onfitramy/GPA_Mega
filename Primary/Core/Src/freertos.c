@@ -167,7 +167,9 @@ void Task1000Hz_Wrapper(void *argument) {
 
     /* Infinite loop */
     for(;;) {
-        Task1000Hz_Step(argument);   
+        if(app_mode == APP_MODE_NORMAL) {
+            Task1000Hz_Step(argument);
+        }
         vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz) Always at the end of the loop
     }
 }
@@ -179,7 +181,9 @@ void Task100Hz_Wrapper(void *argument) {
 
     /* Infinite loop */
     for(;;) {
-        Task100Hz_Step(argument);   
+        if(app_mode == APP_MODE_NORMAL) {
+            Task100Hz_Step(argument);
+        }
         vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz) Always at the end of the loop
     }
 }
@@ -191,7 +195,9 @@ void Task10Hz_Wrapper(void *argument) {
 
     /* Infinite loop */
     for(;;) {
-        Task10Hz_Step(argument);   
+        if(app_mode == APP_MODE_NORMAL) {
+            Task10Hz_Step(argument);
+        }
         vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz) Always at the end of the loop
     }
 }

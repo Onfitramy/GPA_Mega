@@ -1,9 +1,13 @@
+#ifndef TEST_APP_H
+#define TEST_APP_H
+
 #include "stm32h7xx_hal.h"
 
 #define ARRAY_LEN(x) (sizeof(x) / sizeof((x)[0]))
 #define TEST_LIST_COUNT ARRAY_LEN(test_list)
 
 #define TEST_OUTPUT_BUFFER_SIZE 400
+#define MAX_TESTS_IN_SUITE 20
 
 typedef enum {
     TEST_CATEGORY_GENERAL, // General test. These shouldnt be hardware specific and be able to run just on the CPU without any peripherals.
@@ -76,3 +80,6 @@ typedef struct
 } test_definition_t;
 
 test_result_t single_test_run(const char * test_name);
+test_suite_result_t test_suite_run(const char * suite_name);
+
+#endif /* TEST_APP_H */

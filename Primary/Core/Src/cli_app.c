@@ -1105,6 +1105,36 @@ BaseType_t cmd_TestRun(char *pcWriteBuffer, size_t xWriteBufferLen, const char *
 
 
 //*****************************************************************************
+BaseType_t cmd_TestSuiteRun(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    BaseType_t xParameterStringLength;
+    //char *endPtr;  // Pointer to track invalid characters
+
+    const char *suite_name; // Test name
+    suite_name = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (suite_name == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+
+    test_suite_result_t result = test_suite_run(suite_name);
+
+    if (result.overall_status == TEST_STATUS_PASS) {
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Test suite %s PASSED\r\n", suite_name);
+    } else if (result.overall_status == TEST_STATUS_NOT_FOUND) {
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Test suite %s NOT FOUND\r\n", suite_name);
+    } else {
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Test suite %s FAILED with code %d\r\n", suite_name, result.overall_status);
+    }
+
+    return pdFALSE;
+}
+
+
+//*****************************************************************************
 BaseType_t cmd_Storage_SDUnmount(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {
     (void)pcCommandString;
@@ -1342,6 +1372,12 @@ const CLI_Command_Definition_t xCommandList[] = {
         .pcCommand = "test.run", /* The command string to type. */
         .pcHelpString = "test.run <TestName>: Runs the specified test and outputs the result\r\n\r\n",
         .pxCommandInterpreter = cmd_TestRun, /* The function to run. */
+        .cExpectedNumberOfParameters = 1
+    },
+    {
+        .pcCommand = "test.suite", /* The command string to type. */
+        .pcHelpString = "test.suite <SuiteName>: Runs the specified test suite and outputs the results\r\n\r\n",
+        .pxCommandInterpreter = cmd_TestSuiteRun, /* The function to run. */
         .cExpectedNumberOfParameters = 1
     },
     {

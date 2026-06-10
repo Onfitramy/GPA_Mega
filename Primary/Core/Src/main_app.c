@@ -39,6 +39,8 @@ extern volatile uint8_t ib_queue_ready_flag;
 StatusPayload_t status_data = {0};
 float F4_data_float;
 
+volatile app_mode_t app_mode = APP_MODE_NORMAL; //Main setting to control the application running. On normal all tasks run as normal, on test_idle no tasks run, so Tests can step through individually.
+
 /**
   ******************************************************************************
   * Function Description : 
@@ -47,6 +49,7 @@ float F4_data_float;
   ******************************************************************************
   */
 void Startup() {
+
     // find out board no.
     uid[0] = HAL_GetUIDw0();
     uid[1] = HAL_GetUIDw1();
