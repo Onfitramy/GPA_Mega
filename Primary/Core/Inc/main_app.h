@@ -7,11 +7,11 @@
 
 void Startup();
 
-void Task1000Hz(void *argument);
+void Task1000Hz_Step(void *argument);
 
-void Task100Hz(void *argument);
+void Task100Hz_Step(void *argument);
 
-void Task10Hz(void *argument);
+void Task10Hz_Step(void *argument);
 
 void InterruptTask(void *argument);
 

@@ -71,6 +71,10 @@ void Startup() {
     rho0_const = p0_const / (R_const * T0_const);
     a0_const = sqrt(kappa*R_const*T0_const);
 
+    GPS_Init(); //Initialize the GPS module
+
+    InitializeDataScheduler();
+
     #ifdef HIL_TESTING
     HILInit();
     #endif
@@ -84,116 +88,101 @@ void Startup() {
   * doing the EKF prediction steps and running the State Machine actions.
   ******************************************************************************
   */
-void Task1000Hz(void *argument) {
-    /* init code for USB_DEVICE */
-    HAL_Delay(200); // Wait for USB and other Peripherals to initialize
-
-    TickType_t xLastWakeTime = xTaskGetTickCount();
-    const TickType_t xFrequency = 1; //1000 Hz
-
+void Task1000Hz_Step(void *argument) {
     DataPacket_t State_DataPacket = CreateDataPacket(PACKET_ID_STATE);
+    nrf_timeout++;
 
-    /* Infinite loop */
-    for(;;) {
-        //TimeMeasureStart();
+    // Run 1000 Hz Do Actions
+    StateMachine_DoActions(&flight_sm, 1000);
 
-        nrf_timeout++;
-
-        // Run 1000 Hz Do Actions
-        StateMachine_DoActions(&flight_sm, 1000);
+    HAL_DTS_GetTemperature(&hdts, &DTS_Temperature);
     
-        HAL_DTS_GetTemperature(&hdts, &DTS_Temperature);
-        
-        ReadInternalADC(&ADC_Temperature, &ADC_V_Ref); // 7us
+    ReadInternalADC(&ADC_Temperature, &ADC_V_Ref); // 7us
 
-        #ifdef HIL_TESTING
-        if ((flight_sm.currentFlightState >= STATE_FLIGHT_BURN) && (flight_sm.currentFlightState <= STATE_FLIGHT_LANDED)) {
-        HILupdateStates(0.001);
-        }
+    #ifdef HIL_TESTING
+    if ((flight_sm.currentFlightState >= STATE_FLIGHT_BURN) && (flight_sm.currentFlightState <= STATE_FLIGHT_LANDED)) {
+    HILupdateStates(0.001);
+    }
+    #endif
+
+    // after startup
+    if (flight_sm.currentFlightState != STATE_FLIGHT_STARTUP && flight_sm.currentFlightState != STATE_GROUNDSTATION) {
+        #ifndef HIL_TESTING
+        SensorStatus_Reset(&imu1_status);
+        SensorStatus_Reset(&imu2_status);
+        SensorStatus_Reset(&mag_status);
+
+        imu1_status.hal_status |= IMU_Update(&imu1_data); // 70us
+        imu2_status.hal_status |= IMU_Update(&imu2_data); // 70us
+        imu1_status.active = imu1_data.active;
+        imu2_status.active = imu2_data.active;
+        IMU_Average(&imu1_data, &imu2_data, &average_imu_data);
+
+        if (MAG_VerifyDataReady() & 0b00000001) {
+            mag_status.hal_status |= MAG_ReadSensorData(&mag_data);
+            arm_vec3_sub_f32(mag_data.field, mag_data.calibration.offset, mag_data.field);
+            arm_vec3_element_product_f32(mag_data.field, mag_data.calibration.scale, mag_data.field);
+        } // 7us
+        #else
+        // calculate average_imu_data
+        HILgetIMUData(&average_imu_data);
+        // calculate mag_data.field
+        HILgetMagnetometerData(&mag_data);
         #endif
 
-        // after startup
-        if (flight_sm.currentFlightState != STATE_FLIGHT_STARTUP && flight_sm.currentFlightState != STATE_GROUNDSTATION) {
-            #ifndef HIL_TESTING
-            SensorStatus_Reset(&imu1_status);
-            SensorStatus_Reset(&imu2_status);
-            SensorStatus_Reset(&mag_status);
+        ProcessDataSchedule(xTaskGetTickCount());
 
-            imu1_status.hal_status |= IMU_Update(&imu1_data); // 70us
-            imu2_status.hal_status |= IMU_Update(&imu2_data); // 70us
-            imu1_status.active = imu1_data.active;
-            imu2_status.active = imu2_data.active;
-            IMU_Average(&imu1_data, &imu2_data, &average_imu_data);
-
-            if (MAG_VerifyDataReady() & 0b00000001) {
-                mag_status.hal_status |= MAG_ReadSensorData(&mag_data);
-                arm_vec3_sub_f32(mag_data.field, mag_data.calibration.offset, mag_data.field);
-                arm_vec3_element_product_f32(mag_data.field, mag_data.calibration.scale, mag_data.field);
-            } // 7us
-            #else
-            // calculate average_imu_data
-            HILgetIMUData(&average_imu_data);
-            // calculate mag_data.field
-            HILgetMagnetometerData(&mag_data);
-            #endif
-
-            ProcessDataSchedule(xTaskGetTickCount());
-
-            if(is_groundstation) {
-                UpdateStatePacket(&State_DataPacket, HAL_GetTick(), flight_sm.currentFlightState, flight_sm.timestamp_ms);
-                InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_NONE, &State_DataPacket); //Needed to keep Primary and Secondary syncronized
-            }
-
-            // transform measured body acceleration to world-frame acceleration
-            arm_mat_vec_mult_f32(&M_rot_ib, average_imu_data.accel, a_WorldFrame_g);
-            arm_vec3_sub_f32(a_WorldFrame_g, gravity_world_vec, a_WorldFrame_i);
-            a_abs_g = arm_vec3_length_f32(a_WorldFrame_g);
-            a_abs_i = arm_vec3_length_f32(a_WorldFrame_i);
-
-            // calculate acceleration w/o gravity in body frame
-            arm_mat_vec_mult_f32(&M_rot_bi, gravity_world_vec, gravity_body_vec);
-            arm_vec3_sub_f32(average_imu_data.accel, gravity_body_vec, a_BodyFrame_i);
-
-            /* --- GNSS DELAY COMPENSATION TESTING --- */
-            #ifndef HIL_TESTING  // GPS Delay not implemented yet
-            CompensateGNSSDelay(a_WorldFrame_i[2], EKF2.x[1], &corr_delta_v, &corr_delta_h, 0.001);
-            #endif
-
-            // KALMAN FILTER, HEIGHT
-            EKFPredictionStep(&EKF2);
-
-            #ifndef HIL_TESTING
-            if (BMP_readData(&bmp_data.pressure, &bmp_data.height, &bmp_data.temperature)) {
-                // execute this if new data is available
-                // correction step
-                EKF2_corr1.z[0] = bmp_data.pressure;
-                EKFCorrectionStep(&EKF2, &EKF2_corr1);
-            }
-            #else
-            // calculate bmp_data.pressure
-            HILgetBarometerData(&bmp_data);
-
-            EKF2_corr1.z[0] = bmp_data.pressure;
-            EKFCorrectionStep(&EKF2, &EKF2_corr1);
-            #endif
-
-            // KALMAN FILTER, QUATERNION
-            // prediction step
-            EKFPredictionStep(&EKF3);
-
-            RotationMatrixFromQuaternion(x3, &M_rot_bi, DCM_bi_WorldToBody);
-            RotationMatrixFromQuaternion(x3, &M_rot_ib, DCM_ib_BodyToWorld);
-
-            // Conversion to Euler
-            EulerFromRotationMatrix(&M_rot_bi, body_euler);
-            VAR_vec3_abs = QuaternionCovToSmallAngleCov(x3, &P3, &P3_angle);
-            FlightPathAngleFromRotationMatrix(&M_rot_bi, &flightpath_angle);
-
-            vel_abs = EKF2.x[1] / arm_mat_get_entry_f32(&M_rot_bi, 2, 2);
+        if(is_groundstation) {
+            UpdateStatePacket(&State_DataPacket, HAL_GetTick(), flight_sm.currentFlightState, flight_sm.timestamp_ms);
+            InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_NONE, &State_DataPacket); //Needed to keep Primary and Secondary syncronized
         }
 
-        //dt_1000Hz = TimeMeasureStop();
-        vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz) Always at the end of the loop
+        // transform measured body acceleration to world-frame acceleration
+        arm_mat_vec_mult_f32(&M_rot_ib, average_imu_data.accel, a_WorldFrame_g);
+        arm_vec3_sub_f32(a_WorldFrame_g, gravity_world_vec, a_WorldFrame_i);
+        a_abs_g = arm_vec3_length_f32(a_WorldFrame_g);
+        a_abs_i = arm_vec3_length_f32(a_WorldFrame_i);
+
+        // calculate acceleration w/o gravity in body frame
+        arm_mat_vec_mult_f32(&M_rot_bi, gravity_world_vec, gravity_body_vec);
+        arm_vec3_sub_f32(average_imu_data.accel, gravity_body_vec, a_BodyFrame_i);
+
+        /* --- GNSS DELAY COMPENSATION TESTING --- */
+        #ifndef HIL_TESTING  // GPS Delay not implemented yet
+        CompensateGNSSDelay(a_WorldFrame_i[2], EKF2.x[1], &corr_delta_v, &corr_delta_h, 0.001);
+        #endif
+
+        // KALMAN FILTER, HEIGHT
+        EKFPredictionStep(&EKF2);
+
+        #ifndef HIL_TESTING
+        if (BMP_readData(&bmp_data.pressure, &bmp_data.height, &bmp_data.temperature)) {
+            // execute this if new data is available
+            // correction step
+            EKF2_corr1.z[0] = bmp_data.pressure;
+            EKFCorrectionStep(&EKF2, &EKF2_corr1);
+        }
+        #else
+        // calculate bmp_data.pressure
+        HILgetBarometerData(&bmp_data);
+
+        EKF2_corr1.z[0] = bmp_data.pressure;
+        EKFCorrectionStep(&EKF2, &EKF2_corr1);
+        #endif
+
+        // KALMAN FILTER, QUATERNION
+        // prediction step
+        EKFPredictionStep(&EKF3);
+
+        RotationMatrixFromQuaternion(x3, &M_rot_bi, DCM_bi_WorldToBody);
+        RotationMatrixFromQuaternion(x3, &M_rot_ib, DCM_ib_BodyToWorld);
+
+        // Conversion to Euler
+        EulerFromRotationMatrix(&M_rot_bi, body_euler);
+        VAR_vec3_abs = QuaternionCovToSmallAngleCov(x3, &P3, &P3_angle);
+        FlightPathAngleFromRotationMatrix(&M_rot_bi, &flightpath_angle);
+
+        vel_abs = EKF2.x[1] / arm_mat_get_entry_f32(&M_rot_bi, 2, 2);
     }
 }
 
@@ -206,56 +195,47 @@ void Task1000Hz(void *argument) {
   * and sends data to the signal plotter.
   ******************************************************************************
   */
-void Task100Hz(void *argument) {
-    InitializeDataScheduler();
+void Task100Hz_Step(void *argument) {
+    // Run 100 Hz Do Actions
+    StateMachine_DoActions(&flight_sm, 100);
+    
+    if (!is_groundstation) {
+    //UpdateTemperaturePacket(&Temperature_DataPacket, HAL_GetTick(), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ptot_data.pressure);
 
-    TickType_t xLastWakeTime = xTaskGetTickCount();
-    const TickType_t xFrequency = 10; //100 Hz
-    /* Infinite loop */
-    for(;;) {
-        // Run 100 Hz Do Actions
-        StateMachine_DoActions(&flight_sm, 100);
-        
-        if (!is_groundstation) {
-        //UpdateTemperaturePacket(&Temperature_DataPacket, HAL_GetTick(), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ptot_data.pressure);
-
-        // Don't activate this and the SPARK communication at the same time, because they use the same SPI
-        /*
-        if (ptot_readData(&ptot_data)) {
-            // execute this if new data is available
-            // correction step
-            EKF2_corr3.z[0] = ptot_data.pressure;
-            EKFCorrectionStep(&EKF2, &EKF2_corr3);
-        }
-        */
-
-        SPARK_ReadData();
-        float stepper_est_position;
-        StepperPositionFromAngle(stepper_zero_position, spark_data.Data.spark.magAngle, &stepper_est_position);
-        ACSAngleFromStepperPosition(stepper_est_position, &acs_est_angle_deg);
-
-        // Quaternion EKF magnetometer correction step
-        // project magnetometer readings onto horizontal plane
-        float mag_enu[3];
-        //float mag_b_tilde[3];
-        arm_mat_vec_mult_f32(&M_rot_ib, mag_data.field, mag_enu);
-        mag_enu[2] = 0;
-        arm_mat_vec_mult_f32(&M_rot_bi, mag_enu, EKF3_corr1.z);
-        EKFCorrectionStep(&EKF3, &EKF3_corr1);
-
-        // Quaternion EKF accelerometer correction step
-        arm_vec3_copy_f32(average_imu_data.accel, EKF3_corr2.z);
-        EKFCorrectionStep(&EKF3, &EKF3_corr2);
-        }
-
-        InterBoardCom_ProcessTxBuffer();
-
-        if (signalPlotterSend) signalPlotter_sendAll();
-
-        ShowStatus(flight_sm.currentFlightState, 1, 100);
-
-        vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
+    // Don't activate this and the SPARK communication at the same time, because they use the same SPI
+    /*
+    if (ptot_readData(&ptot_data)) {
+        // execute this if new data is available
+        // correction step
+        EKF2_corr3.z[0] = ptot_data.pressure;
+        EKFCorrectionStep(&EKF2, &EKF2_corr3);
     }
+    */
+
+    SPARK_ReadData();
+    float stepper_est_position;
+    StepperPositionFromAngle(stepper_zero_position, spark_data.Data.spark.magAngle, &stepper_est_position);
+    ACSAngleFromStepperPosition(stepper_est_position, &acs_est_angle_deg);
+
+    // Quaternion EKF magnetometer correction step
+    // project magnetometer readings onto horizontal plane
+    float mag_enu[3];
+    //float mag_b_tilde[3];
+    arm_mat_vec_mult_f32(&M_rot_ib, mag_data.field, mag_enu);
+    mag_enu[2] = 0;
+    arm_mat_vec_mult_f32(&M_rot_bi, mag_enu, EKF3_corr1.z);
+    EKFCorrectionStep(&EKF3, &EKF3_corr1);
+
+    // Quaternion EKF accelerometer correction step
+    arm_vec3_copy_f32(average_imu_data.accel, EKF3_corr2.z);
+    EKFCorrectionStep(&EKF3, &EKF3_corr2);
+    }
+
+    InterBoardCom_ProcessTxBuffer();
+
+    if (signalPlotterSend) signalPlotter_sendAll();
+
+    ShowStatus(flight_sm.currentFlightState, 1, 100);
 }
 
 /**
@@ -264,26 +244,20 @@ void Task100Hz(void *argument) {
   * This Task runs at 10Hz and handles low freq. State Machine actions, reading GPS data, doing the GPS EKF correction
   ******************************************************************************
   */
-void Task10Hz(void *argument) {       
-    TickType_t xLastWakeTime = xTaskGetTickCount();
-    const TickType_t xFrequency = 100; //10 Hz
-    GPS_Init(); //Initialize the GPS module
+void Task10Hz_Step(void *argument) {       
+    // Run 10 Hz Do Actions
+    StateMachine_DoActions(&flight_sm, 10);
 
-    /* Infinite loop */
-    for(;;) {
-        // Run 10 Hz Do Actions
-        StateMachine_DoActions(&flight_sm, 10);
+    #ifndef HIL_TESTING
+    GPS_ReadSensorData(&gps_data);
+    #else
+    // calculate gps_data
+    HILgetGPSData(&gps_data);
+    #endif
+    
+    //GPS_RequestSensorData(); // Request GPS data
 
-        #ifndef HIL_TESTING
-        GPS_ReadSensorData(&gps_data);
-        #else
-        // calculate gps_data
-        HILgetGPSData(&gps_data);
-        #endif
-        
-        //GPS_RequestSensorData(); // Request GPS data
-
-        if (!is_groundstation) { //Secondary board sends data to groundstation
+    if (!is_groundstation) { //Secondary board sends data to groundstation
 
         if ((flight_sm.currentFlightState >= STATE_FLIGHT_GNC_ALIGN) && (flight_sm.currentFlightState <= STATE_FLIGHT_ARMED)) {
             // not needed for now...
@@ -311,10 +285,6 @@ void Task10Hz(void *argument) {
             // Height EKF GNSS correction step
             EKFCorrectionStep(&EKF2, &EKF2_corr2);
         }
-        }
-
-
-        vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
     }
 }
 

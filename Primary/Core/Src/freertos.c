@@ -98,10 +98,9 @@ extern void MX_USB_DEVICE_Init(void);
 /*Task Function Prototypes*/
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
-void StartInterruptHandlerTask(void *argument);
-void Start10HzTask(void *argument);
-void Start100HzTask(void *argument);
-void StartUSBTask(void *argument);
+void Task1000Hz_Wrapper(void *argument);
+void Task100Hz_Wrapper(void *argument);
+void Task10Hz_Wrapper(void *argument);
 
 /* Hook prototypes */
 void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName);
@@ -144,9 +143,9 @@ void MX_FREERTOS_Init(void) {
   USB_Tx_Queue = xQueueCreate(20, sizeof(InterBoardPacket_t));
 
   /* RTOS Thread creation */
-  defaultTaskHandle = osThreadNew(Task1000Hz, NULL, &defaultTask_attributes);
-  Hz10TaskHandle = osThreadNew(Task10Hz, NULL, &Hz10Task_attributes);
-  Hz100TaskHandle = osThreadNew(Task100Hz, NULL, &Hz100Task_attributes);
+  defaultTaskHandle = osThreadNew(Task1000Hz_Wrapper, NULL, &defaultTask_attributes);
+  Hz10TaskHandle = osThreadNew(Task10Hz_Wrapper, NULL, &Hz10Task_attributes);
+  Hz100TaskHandle = osThreadNew(Task100Hz_Wrapper, NULL, &Hz100Task_attributes);
 
   cmdLineTaskHandle = osThreadNew(vCommandConsoleTask, NULL, &cmdLineTask_attributes);
   InterruptHandlerTaskHandle = osThreadNew(InterruptTask, NULL, &InterruptHandlerTask_attributes);
@@ -159,5 +158,43 @@ void MX_FREERTOS_Init(void) {
   /* add events, ... */
 
 }
+
+void Task1000Hz_Wrapper(void *argument) {
+    HAL_Delay(200); // Wait for USB and other Peripherals to initialize
+
+    TickType_t xLastWakeTime = xTaskGetTickCount();
+    const TickType_t xFrequency = 1; //1000 Hz
+
+    /* Infinite loop */
+    for(;;) {
+        Task1000Hz_Step(argument);   
+        vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz) Always at the end of the loop
+    }
+}
+
+void Task100Hz_Wrapper(void *argument) {
+
+    TickType_t xLastWakeTime = xTaskGetTickCount();
+    const TickType_t xFrequency = 10; //100 Hz
+
+    /* Infinite loop */
+    for(;;) {
+        Task100Hz_Step(argument);   
+        vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz) Always at the end of the loop
+    }
+}
+
+void Task10Hz_Wrapper(void *argument) {
+
+    TickType_t xLastWakeTime = xTaskGetTickCount();
+    const TickType_t xFrequency = 100; //100 Hz
+
+    /* Infinite loop */
+    for(;;) {
+        Task10Hz_Step(argument);   
+        vTaskDelayUntil( &xLastWakeTime, xFrequency); // Delay for 1ms (1000Hz) Always at the end of the loop
+    }
+}
+
 /* USER CODE END Application */
 
