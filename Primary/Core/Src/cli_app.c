@@ -14,6 +14,7 @@
 #include "stdio.h"
 #include "stdlib.h"
 #include "usbd_cdc_if.h"
+#include "test_app.h"
 
 #define MAX_INPUT_LENGTH 50
 #define USING_VS_CODE_TERMINAL 0
@@ -1074,6 +1075,36 @@ BaseType_t cmd_Flash(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pc
 }
 
 //*****************************************************************************
+BaseType_t cmd_TestRun(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    BaseType_t xParameterStringLength;
+    //char *endPtr;  // Pointer to track invalid characters
+
+    const char *test; // Test name
+    test = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (test == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+
+    test_result_t result = single_test_run(test);
+
+    if (result.test_status == TEST_STATUS_PASS) {
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Test %s PASSED\r\n", test);
+    } else if (result.test_status == TEST_STATUS_NOT_FOUND) {
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Test %s NOT FOUND\r\n", test);
+    } else {
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Test %s FAILED with code %d\r\n", test, result.test_status);
+    }
+
+    return pdFALSE;
+}
+
+
+//*****************************************************************************
 BaseType_t cmd_Storage_SDUnmount(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {
     (void)pcCommandString;
@@ -1306,6 +1337,12 @@ const CLI_Command_Definition_t xCommandList[] = {
         .pcHelpString = "Storage_SDUnmount: Unmounts the SD card\r\n\r\n",
         .pxCommandInterpreter = cmd_Storage_SDUnmount, /* The function to run. */
         .cExpectedNumberOfParameters = 0
+    },
+    {
+        .pcCommand = "test.run", /* The command string to type. */
+        .pcHelpString = "test.run <TestName>: Runs the specified test and outputs the result\r\n\r\n",
+        .pxCommandInterpreter = cmd_TestRun, /* The function to run. */
+        .cExpectedNumberOfParameters = 1
     },
     {
         .pcCommand = NULL /* simply used as delimeter for end of array*/
