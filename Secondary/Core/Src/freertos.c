@@ -402,33 +402,35 @@ void StartSDTask(void *argument)
   const TickType_t xFrequency = 100; // 10 Hz
   /* Infinite loop */
   for(;;) {
-    switch (W25Q_STATE) {
-      case W25Q_State_Available:
-        if (W25Q_FLASH_CONFIG.write_logs && xSemaphoreTake(flashSemaphore, portMAX_DELAY) == pdTRUE) {
-          W25Q_STATE = W25Q_State_Writing;
-          W25Q_WriteFlashBuffer();
+    if (xSemaphoreTake(flashSemaphore, pdMS_TO_TICKS(10)) == pdTRUE) {
+      switch (W25Q_STATE) {
+        case W25Q_State_Available:
+          if (W25Q_FLASH_CONFIG.write_logs) {
+            W25Q_STATE = W25Q_State_Writing;
+            W25Q_WriteFlashBuffer();
+            W25Q_STATE = W25Q_State_Available;
+          }
+          break;
+        case W25Q_State_Writing:
+          break;
+        case W25Q_State_Reading:
+          break;
+        case W25Q_State_Erasing:
+          W25Q_Chip_Erase();
           W25Q_STATE = W25Q_State_Available;
-        }
-        break;
-      case W25Q_State_Writing:
-        break;
-      case W25Q_State_Reading:
-        break;
-      case W25Q_State_Erasing:
-        W25Q_Chip_Erase();
-        W25Q_STATE = W25Q_State_Available;
-        buzzerPlayNote("C6", 50);
-        break;
-      case W25Q_State_CopyingToSD:
-        W25Q_CopyLogsToSD(sd_copy_page);
-        SD_Unmount();
-        W25Q_STATE = W25Q_State_Available;
-        buzzerPlayNote("C6", 50);
-        break;
-      case W25Q_State_CopyingToSerial:
-        W25Q_CopyLogsToSerial(sd_copy_page);
-        W25Q_STATE = W25Q_State_Available;
-        break;
+          buzzerPlayNote("C6", 50);
+          break;
+        case W25Q_State_CopyingToSD:
+          W25Q_CopyLogsToSD(sd_copy_page);
+          SD_Unmount();
+          W25Q_STATE = W25Q_State_Available;
+          buzzerPlayNote("C6", 50);
+          break;
+        case W25Q_State_CopyingToSerial:
+          W25Q_CopyLogsToSerial(sd_copy_page);
+          W25Q_STATE = W25Q_State_Available;
+          break;
+      }
     }
   }
   /* USER CODE END StartSDTask */

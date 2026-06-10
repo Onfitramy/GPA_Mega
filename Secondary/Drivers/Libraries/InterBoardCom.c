@@ -12,6 +12,11 @@
 #include "radio.h"
 #include "PowerUnit.h"
 
+#include "semphr.h"
+#include "task.h"
+
+extern SemaphoreHandle_t flashSemaphore;
+
 extern SPI_HandleTypeDef hspi1;
 
 extern DMA_HandleTypeDef hdma_spi1_rx;
@@ -304,6 +309,7 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
                 sd_copy_page = page;
                 while (W25Q_STATE != W25Q_State_Available) {}
 
+                xSemaphoreGive(flashSemaphore);
                 W25Q_STATE = W25Q_State_CopyingToSD; // Trigger saving flash to SD in main loop
                 InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_STORAGE_FLASH_TO_SERIAL) {
@@ -317,12 +323,14 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
 
                 while (W25Q_STATE != W25Q_State_Available) {}
 
+                xSemaphoreGive(flashSemaphore);
                 W25Q_STATE = W25Q_State_CopyingToSerial; // Trigger saving flash to serial interface in main loop
                 InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_STORAGE_FLASH_ERASE) {
                 // Storage command 0x02: FlashReset
                 if (W25Q_STATE == W25Q_State_Available) {
                     W25Q_STATE = W25Q_State_Erasing;
+                    xSemaphoreGive(flashSemaphore);
                     InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
                 }
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_STORAGE_FLASH_WRITE) {
