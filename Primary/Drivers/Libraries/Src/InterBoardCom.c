@@ -288,7 +288,6 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t *packet) {
                                 data_packet->Data.gps.speed, data_packet->Data.gps.course);
                         break;
                     case PACKET_ID_IMU:
-                        printf("HELLO");
                         printf("\nID:%d, TS:%lu, GyrX:%d, GyrY:%d, GyrZ:%d, AccX:%ld, AccY:%ld, AccZ:%ld, MagX:%d, MagY:%d, MagZ:%d",
                                 data_packet->Packet_ID, data_packet->timestamp,
                                 data_packet->Data.imu.gyroX, data_packet->Data.imu.gyroY, data_packet->Data.imu.gyroZ,
