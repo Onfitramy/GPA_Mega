@@ -14,7 +14,7 @@
 #include "stdio.h"
 #include "stdlib.h"
 #include "usbd_cdc_if.h"
-#include "test_app.h"
+#include "tests_app.h"
 
 #define MAX_INPUT_LENGTH 50
 #define USING_VS_CODE_TERMINAL 0
