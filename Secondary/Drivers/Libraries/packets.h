@@ -34,6 +34,11 @@ typedef enum __attribute__((packed)){
     PACKET_ACTION_WRITE_TO_SERIAL = 0x20,
 } PacketType_t;
 
+typedef enum {
+    PACKET_SOURCE_LOCAL,
+    PACKET_SOURCE_EXTERNAL,
+} PacketSource_t;
+
 typedef enum __attribute__((packed)){
     COMMAND_TARGET_NONE = 0x00,
     COMMAND_TARGET_SPECIAL = 0x01,

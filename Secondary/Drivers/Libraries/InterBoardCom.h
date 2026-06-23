@@ -49,10 +49,10 @@ void InterBoardCom_ActivateReceive(void);
 InterBoardPacket_t InterBoardCom_ReceivePacket(void);
 
 void InterBoardCom_ParsePacket(InterBoardPacket_t packet);
-void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket);
+void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket, PacketSource_t source);
 
 void InterBoardCom_ReactivateDMAReceive(void);
-void InterBoardCom_command_acknowledge(uint8_t command_target, uint8_t command_id, uint8_t status);
+void InterBoardCom_command_acknowledge(uint8_t command_target, uint8_t command_id, uint8_t status, PacketSource_t source);
 
 void InterBoardCom_SendPacket(InterBoardPacket_t *packet);
 void InterBoardCom_SendTestPacket(void);

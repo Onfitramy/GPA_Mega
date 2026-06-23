@@ -1,4 +1,5 @@
 #include "InterBoardCom.h"
+#include "cli_app.h"
 #include "string.h"
 #include <stdarg.h>
 #include <stdio.h>
@@ -239,9 +240,18 @@ void InterBoardCom_command_acknowledge(uint8_t command_target, uint8_t command_i
     params[0] = command_target;
     params[1] = command_id;
 
-    DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_ACK, status, params, sizeof(params));
-    InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, &packet);
+    if (cli_target_mode == CLI_TARGET_MODE_EXTERNAL) {
+        // Send acknowledgment to external target via radio
+        DataPacket_t packet;
+        CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_ACK, status, params, sizeof(params));
+        InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_RADIO, &packet);
+    } else {
+        // Send acknowledgment via cable
+        snprintf((char *)return_string, sizeof(return_string), "Received ACK for target %d, command %d with status %d\r\n",
+                     command_target, command_id, status);
+        CDC_Transmit_HS(return_string, strlen((char *)return_string));
+        
+    }
 }
 
 extern uint8_t is_groundstation;

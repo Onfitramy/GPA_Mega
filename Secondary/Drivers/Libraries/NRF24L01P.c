@@ -89,7 +89,7 @@ void nrf24l01p_parseReceivedRFDataPacket(uint8_t* packetData) {
 
     // Handle command packet from the NRF24
     if (receivedData.Packet_ID == PACKET_ID_COMMAND) {
-        InterBoardCom_EvaluateCommand(&receivedData);
+        InterBoardCom_EvaluateCommand(&receivedData, PACKET_SOURCE_EXTERNAL);
         // For example, you can check the command type and execute corresponding actions
     } else {
         //Send data packets to main board for display/logging

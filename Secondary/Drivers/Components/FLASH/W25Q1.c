@@ -162,6 +162,7 @@ void W25Q_Read (uint32_t startPage, uint8_t offset, uint32_t size, uint8_t *rDat
 		tData[3] = (memAddr)&0xFF; // LSB of the memory Address
 	}
 
+	vTaskSuspendAll();
     csLOW();
     if (numBLOCK<512)
     {
@@ -170,6 +171,7 @@ void W25Q_Read (uint32_t startPage, uint8_t offset, uint32_t size, uint8_t *rDat
 
     HAL_SPI_Receive(&W25Q1_SPI, rData, size, 100);
     csHIGH();
+	xTaskResumeAll();
 }
 
 void W25Q_FastRead (uint32_t startPage, uint8_t offset, uint32_t size, uint8_t *rData)

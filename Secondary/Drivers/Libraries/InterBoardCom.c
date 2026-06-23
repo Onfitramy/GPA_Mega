@@ -235,18 +235,18 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
             break;
         }
 
-        //Target MCU mean act on the commands or send them to main if needed
         case (INTERBOARD_OP_CMD): {
             //Target Radio means send the command via radio to the flight computer
             if(Interboard_Target == INTERBOARD_TARGET_RADIO) {
                 radioSend(&dataPacket);
                 break;
+            //Target MCU mean act on the commands or send them to main if needed
             } else if (Interboard_Target == INTERBOARD_TARGET_MCU) {
                 if (dataPacket.Packet_ID != PACKET_ID_COMMAND) {
                     // Invalid command ID
                     return;
                 } else {
-                    InterBoardCom_EvaluateCommand(&dataPacket);
+                    InterBoardCom_EvaluateCommand(&dataPacket, PACKET_SOURCE_LOCAL);
                 }
 
             }
@@ -272,7 +272,7 @@ void InterBoardCom_ReactivateDMAReceive(void) {
     HAL_SPI_TransmitReceive_DMA(&hspi1,  (uint8_t *)&transmitBuffer, (uint8_t *)&receiveBuffer, sizeof(InterBoardPacket_t));
 }
 
-void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
+void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket, PacketSource_t source){
     switch (dataPacket->Data.command.command_target) {
         case COMMAND_TARGET_NONE:
             // No target specified, possibly log or ignore
@@ -311,7 +311,7 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
 
                 xSemaphoreGive(flashSemaphore);
                 W25Q_STATE = W25Q_State_CopyingToSD; // Trigger saving flash to SD in main loop
-                InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
+                InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0, source);
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_STORAGE_FLASH_TO_SERIAL) {
                 // Storage command 0x01: FlashToSerial
                 uint16_t page = 0;
@@ -325,13 +325,13 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
 
                 xSemaphoreGive(flashSemaphore);
                 W25Q_STATE = W25Q_State_CopyingToSerial; // Trigger saving flash to serial interface in main loop
-                InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
+                InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0, source);
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_STORAGE_FLASH_ERASE) {
                 // Storage command 0x02: FlashReset
                 if (W25Q_STATE == W25Q_State_Available) {
                     W25Q_STATE = W25Q_State_Erasing;
                     xSemaphoreGive(flashSemaphore);
-                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
+                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0, source);
                 }
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_STORAGE_FLASH_WRITE) {
                 // Storage command 0x03: FLASH saving enable/disable
@@ -340,12 +340,12 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
                 } else if (dataPacket->Data.command.params[0] == 0x00) {
                     W25Q_FLASH_CONFIG.write_logs = false;
                 }
-                InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
+                InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0, source);
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_STORAGE_SD_UNMOUNT) {
                 // Storage command 0x04: FLASH saving enable/disable
                 if (W25Q_STATE == W25Q_State_Available) {
                     SD_Unmount();
-                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
+                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0, source);
                 }
             }
             break;
@@ -354,32 +354,32 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
                 // Camera command 0x00: Power On/Off
                 if (dataPacket->Data.command.params[0] == 0x01) {
                     Camera_SwitchOn(); // Power On
-                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
+                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0, source);
                 } else if (dataPacket->Data.command.params[0] == 0x00) {
                     Camera_SwitchOff(); // Power Off
-                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
+                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0, source);
                 }
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_CAMERA_RECORD) {
                 // Camera command 0x01: Start/Stop recording
                 if (dataPacket->Data.command.params[0] == 0x01) {
                     Camera_StartRecording();
-                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
+                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0, source);
                 } else if (dataPacket->Data.command.params[0] == 0x00) {
                     Camera_StopRecording();
-                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
+                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0, source);
                 }
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_CAMERA_SKIPDATE) {
                 // Camera command 0x02: Skip Date
                 Camera_SkipDate();
-                InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
+                InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0, source);
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_CAMERA_WIFI) {
                 // Camera command 0x03: Wifi On/Off
                 if (dataPacket->Data.command.params[0] == 0x01) {
                     Camera_WifiOn(); // Wifi On
-                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
+                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0, source);
                 } else if (dataPacket->Data.command.params[0] == 0x00) {
                     Camera_WifiOff(); // Wifi Off
-                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
+                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0, source);
                 }
             }
             break;
@@ -388,12 +388,12 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
                 // Radio command 0x01: Switch radio to xbee(1) or nrf(2)
                 if(dataPacket->Data.command.params[0] == 0x01) {
                     radioSet(XBEE_ACTIVE);
-                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
+                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0, source);
                 } else if (dataPacket->Data.command.params[0] == 0x02) {
                     radioSet(NRF_24_ACTIVE);
-                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
+                    InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0, source);
                 }
-                InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0);
+                InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0, source);
             }
             break;
         case COMMAND_TARGET_GROUNDSTATION:
@@ -423,6 +423,7 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
                 buzzerPlayNote(note, playtime_ms);
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_BUZZER_PLAYSONG) {
                 buzzerPlayPattern(dataPacket->Data.command.params[0]);
+                InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0, source);
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_BUZZER_PLAYSONGREPEAT) {
                 uint16_t repeattime_ms = 0;
                 repeattime_ms = dataPacket->Data.command.params[0] << 8;
@@ -445,9 +446,9 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket){
     }
 }
 
-bool cmd_ack_activated = 0;
+bool cmd_ack_activated = 1;
 // Acknowledge a command with status of its execution as its ID (0=Success, 1=Failed, 2=Invalid)
-void InterBoardCom_command_acknowledge(uint8_t command_target, uint8_t command_id, uint8_t status) {
+void InterBoardCom_command_acknowledge(uint8_t command_target, uint8_t command_id, uint8_t status, PacketSource_t source) {
     if (!cmd_ack_activated) {
         return; // Ack not activated
     }
@@ -458,7 +459,21 @@ void InterBoardCom_command_acknowledge(uint8_t command_target, uint8_t command_i
 
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_ACK, status, params, sizeof(params));
-    radioSend(&packet);
+
+    switch (source) {
+        case PACKET_SOURCE_LOCAL:
+            // If the command originated locally, send ACK back to main board
+            InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_MCU, &packet);
+            break;
+        case PACKET_SOURCE_EXTERNAL:
+            // If the command originated externally, send ACK back via radio
+            radioSend(&packet);
+            break;
+        default:
+            // Unknown source, default to sending to main board
+            InterBoardCom_SendDataPacket(INTERBOARD_OP_CMD | INTERBOARD_TARGET_MCU, &packet);
+             break;
+    }
 }
 
 /**

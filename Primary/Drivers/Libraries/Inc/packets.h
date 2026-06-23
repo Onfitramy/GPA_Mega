@@ -45,7 +45,8 @@ typedef enum __attribute__((packed)){
     COMMAND_TARGET_LOGGING = 0x08,
     COMMAND_TARGET_SECONDARY = 0x09,
     COMMAND_TARGET_RADIO = 0x0A,
-    COMMAND_TARGET_ACK = 0x10,
+    COMMAND_TARGET_ACK = 0x10, // Send Acknowlegement via cable
+    COMMAND_TARGET_ACK_RADIO = 0x11, // Send Acknowlegement to external target via radio
 } CommandTarget_t;
 
 typedef enum __attribute__((packed)){
