@@ -22,6 +22,7 @@ typedef enum {
     TEST_CATEGORY_SPARK, // Tests for the SPARK sensor, including reading data and handling communication (needs spark to be connected)
     TEST_CATEGORY_POWER, // Tests for the power system, including monitoring voltage and current, and handling power-related events (needs power board to be connected)
     TEST_CATEGORY_CAMERA, // Tests for the camera system, including controlling camera power and recording, and handling camera-related events (needs camera to be connected)
+    TEST_CATEGORY_NONE, // Placeholder for future test categories. This can be used to add new test categories without changing the existing code structure.
 } test_category_t;
 
 typedef struct {

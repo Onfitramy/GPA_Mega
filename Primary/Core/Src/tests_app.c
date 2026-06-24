@@ -12,6 +12,9 @@
 
 #include "main_app.h"
 
+#include "packets.h"
+#include "statemachine.h"
+#include "servo.h"
 #include "string.h"
 #include "stdio.h"
 #include "stdbool.h"
@@ -36,14 +39,69 @@ test_result_t test_cli(char *test_write_buffer, size_t test_write_buffer_len)
 
 test_result_t test_tests(char *test_write_buffer, size_t test_write_buffer_len)
 {
-     test_result_t test_result = {.test_name = "test_tests", .test_status = TEST_STATUS_NOT_RUN, .execution_time_ms = 0};
+    test_result_t test_result = {.test_name = "test_tests", .test_status = TEST_STATUS_NOT_RUN, .execution_time_ms = 0};
+
+    // Example test, replace with actual tests
+    snprintf(test_write_buffer, test_write_buffer_len, "Running general tests...\r\n");
+    // Here you would call your actual test functions and append results to test_write_buffer
+
+    // For demonstration, we'll just print a success message
+    snprintf(test_write_buffer + strlen(test_write_buffer), test_write_buffer_len - strlen(test_write_buffer), "General tests completed successfully.\r\n");
+
+    test_result.test_status = TEST_STATUS_PASS;
+    test_result.execution_time_ms = 0; // Update with actual execution time
+    return test_result;
+}
+
+test_result_t test_max_power_delay(char *test_write_buffer, size_t test_write_buffer_len)
+{
+    test_result_t test_result = {.test_name = "test_max_power_delay", .test_status = TEST_STATUS_NOT_RUN, .execution_time_ms = 0};
+
+    // Example test, replace with actual tests
+    PU_setACS(DISABLE); // Ensure ACS is disabled before starting the test
+    PU_setCAM(DISABLE); // Ensure Camera is disabled before starting the test
+    RetractDrogue(); // Ensure Drogue is retracted before starting the test
+    snprintf(test_write_buffer, test_write_buffer_len, "Running max power delay test...\r\n");
+    vTaskDelay(pdMS_TO_TICKS(5000)); // 5 second delay to simulate max power delay
+
+    PU_setACS(ENABLE);
+    PU_setCAM(ENABLE);
+    DeployDrogue(DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
+
+    snprintf(test_write_buffer + strlen(test_write_buffer), test_write_buffer_len - strlen(test_write_buffer), "Max power delay test completed successfully.\r\n");
+
+    test_result.test_status = TEST_STATUS_PASS;
+    test_result.execution_time_ms = 0; // Update with actual execution time
+    return test_result;
+}
+
+test_result_t test_state_stepthrough(char *test_write_buffer, size_t test_write_buffer_len)
+{
+     test_result_t test_result = {.test_name = "state_stepthrough", .test_status = TEST_STATUS_NOT_RUN, .execution_time_ms = 0};
 
      // Example test, replace with actual tests
-     snprintf(test_write_buffer, test_write_buffer_len, "Running general tests...\r\n");
-     // Here you would call your actual test functions and append results to test_write_buffer
+     snprintf(test_write_buffer, test_write_buffer_len, "Running state step-through tests...\r\n");
+
+     StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_STARTUP_COMPLETE);
+
+     vTaskDelay(pdMS_TO_TICKS(2000)); // 2 second delay to simulate time between events
+
+     StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_GNSS_FIX);
+
+     vTaskDelay(pdMS_TO_TICKS(2000)); // 2 second delay to simulate time between events
+
+     StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_FILTER_CONVERGED);
+
+     vTaskDelay(pdMS_TO_TICKS(2000)); // 2 second delay to simulate time between events
+
+     StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_CHECKOUTS_COMPLETE);
+
+     vTaskDelay(pdMS_TO_TICKS(2000)); // 2 second delay to simulate time between events
+
+     StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_LAUNCH_DETECTED);
 
      // For demonstration, we'll just print a success message
-     snprintf(test_write_buffer + strlen(test_write_buffer), test_write_buffer_len - strlen(test_write_buffer), "General tests completed successfully.\r\n");
+     snprintf(test_write_buffer + strlen(test_write_buffer), test_write_buffer_len - strlen(test_write_buffer), "State step-through tests completed successfully.\r\n");
 
      test_result.test_status = TEST_STATUS_PASS;
      test_result.execution_time_ms = 0; // Update with actual execution time
@@ -63,7 +121,20 @@ static const test_definition_t test_list[] =
         .test_help_string = "Run test for the test framework itself",
         .test_function = test_tests,
         .test_category = TEST_CATEGORY_TESTS,
+    },
+    {
+        .test_name = "test_max_power_delay",
+        .test_help_string = "Run max power delay test",
+        .test_function = test_max_power_delay,
+        .test_category = TEST_CATEGORY_NONE,
+    },
+    {
+        .test_name = "test_state_stepthrough",
+        .test_help_string = "Run state step-through test",
+        .test_function = test_state_stepthrough,
+        .test_category = TEST_CATEGORY_NONE,
     }
+
 };
 
 // This functions runs a single test

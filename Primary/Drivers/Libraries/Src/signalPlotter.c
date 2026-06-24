@@ -6,7 +6,7 @@
 #include "InterBoardCom.h"
 #include "HIL.h"
 
-bool signalPlotterSend = true;
+bool signalPlotterSend = false;
 
 typedef struct {
   float value;
