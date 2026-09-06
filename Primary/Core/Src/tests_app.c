@@ -53,14 +53,31 @@ test_result_t test_tests(char *test_write_buffer, size_t test_write_buffer_len)
     return test_result;
 }
 
+// Caution: This test activates causes Parachute ejection, used for ground test
+test_result_t test_parachute(char *test_write_buffer, size_t test_write_buffer_len)
+{
+    test_result_t test_result = {.test_name = "test_parachute", .test_status = TEST_STATUS_NOT_RUN, .execution_time_ms = 0};
+
+    snprintf(test_write_buffer, test_write_buffer_len, "Running parachute tests. 30s to ejection...\r\n");
+    Buzzer_PlayNote("A4", 100); // Signal start of test
+    vTaskDelay(pdMS_TO_TICKS(30000)); // 30 second delay to simulate time before ejection
+    DeployDrogue(DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
+
+    // For demonstration, we'll just print a success message
+    snprintf(test_write_buffer + strlen(test_write_buffer), test_write_buffer_len - strlen(test_write_buffer), "Parachute Tests completed\r\n");
+
+    test_result.test_status = TEST_STATUS_PASS;
+    test_result.execution_time_ms = 0; // Update with actual execution time
+    return test_result;
+}
+
 test_result_t test_max_power_delay(char *test_write_buffer, size_t test_write_buffer_len)
 {
     test_result_t test_result = {.test_name = "test_max_power_delay", .test_status = TEST_STATUS_NOT_RUN, .execution_time_ms = 0};
 
-    // Example test, replace with actual tests
     PU_setACS(DISABLE); // Ensure ACS is disabled before starting the test
     PU_setCAM(DISABLE); // Ensure Camera is disabled before starting the test
-    RetractDrogue(); // Ensure Drogue is retracted before starting the test
+    RetractDrogue(); // Ensure Drogue Servo motor is retracted before starting the test
     snprintf(test_write_buffer, test_write_buffer_len, "Running max power delay test...\r\n");
     vTaskDelay(pdMS_TO_TICKS(5000)); // 5 second delay to simulate max power delay
 
@@ -121,6 +138,12 @@ static const test_definition_t test_list[] =
         .test_help_string = "Run test for the test framework itself",
         .test_function = test_tests,
         .test_category = TEST_CATEGORY_TESTS,
+    },
+    {
+        .test_name = "test_parachute",
+        .test_help_string = "CAUTION: This test activates causes Parachute ejection 30s after start, used for ground test",
+        .test_function = test_parachute,
+        .test_category = TEST_CATEGORY_NONE,
     },
     {
         .test_name = "test_max_power_delay",
