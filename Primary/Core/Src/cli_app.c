@@ -22,6 +22,9 @@
 
 #define FLASH_CLI_MAX_SIZE 1024u
 
+#define ARRAY_LEN(array) (sizeof(array) / sizeof((array)[0]))
+static BaseType_t register_list_index = -1;
+
 /**
   ******************************************************************************
   * File Description : 
@@ -41,6 +44,17 @@ uint8_t backspace[] = "\b \b";
 uint8_t backspace_tt[] = " \b";
 
 extern IMU_Data_t imu1_data;
+uint32_t system_version = 0x00009500; // Version 0.9.5
+
+static const reg_descriptor_t registers[] = {
+    {
+        .name = "system.version",
+        .description = "System version number",
+        .address = (void *)&system_version,
+        .type = REG_TYPE_U32,
+        .access = REG_ACCESS_READ
+    },
+};
 
 //Internal commands are executed on this board, external commands are sent via radio to the other board
 CLI_TargetMode_t cli_target_mode = CLI_TARGET_MODE_INTERNAL;
@@ -78,6 +92,200 @@ BaseType_t cmd_clearScreen(char *pcWriteBuffer, size_t xWriteBufferLen, const ch
     (void)xWriteBufferLen;
     memset(pcWriteBuffer, 0x00, xWriteBufferLen);
     printf("\033[2J\033[1;1H");
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_regList(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    if (register_list_index == -1) {
+        snprintf(pcWriteBuffer, xWriteBufferLen,
+                 "Registered Registers:\r\n");
+
+        register_list_index = 0;
+        return pdTRUE;
+    }
+
+    snprintf(pcWriteBuffer, xWriteBufferLen,
+             "  %s: %s\r\n",
+             registers[register_list_index].name,
+             registers[register_list_index].description);
+
+    register_list_index++;
+
+    if ((size_t)register_list_index < ARRAY_LEN(registers)) {
+        return pdTRUE;  // FreeRTOS CLI calls again
+    }
+
+    register_list_index = -1;
+    return pdFALSE;
+}
+
+//*****************************************************************************
+BaseType_t cmd_regGet(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) {
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing register name\r\n");
+        return pdFALSE;
+    }
+
+    for (int i = 0; i < ARRAY_LEN(registers); i++) {
+        if (strncmp(pcParameter, registers[i].name, xParameterStringLength) == 0) {
+            if (registers[i].access & REG_ACCESS_READ) {
+                if (registers[i].custom_read) {
+                    if (!registers[i].custom_read(pcWriteBuffer)) {
+                        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Custom read failed\r\n");
+                    }
+                } else {
+                    switch (registers[i].type) {
+                        case REG_TYPE_U32:
+                            snprintf(pcWriteBuffer, xWriteBufferLen, "%u\r\n", *(uint32_t *)registers[i].address);
+                            break;
+                        case REG_TYPE_I32:
+                            snprintf(pcWriteBuffer, xWriteBufferLen, "%d\r\n", *(int32_t *)registers[i].address);
+                            break;
+                        case REG_TYPE_FLOAT:
+                            snprintf(pcWriteBuffer, xWriteBufferLen, "%.6f\r\n", *(float *)registers[i].address);
+                            break;
+                        case REG_TYPE_BOOL:
+                            snprintf(pcWriteBuffer, xWriteBufferLen, "%s\r\n", (*(bool *)registers[i].address) ? "true" : "false");
+                            break;
+                        default:
+                            snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Unknown register type\r\n");
+                            break;
+                    }
+                }
+            } else {
+                snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Register is not readable\r\n");
+            }
+            return pdFALSE;
+        }
+    }
+
+    return pdFALSE;
+}
+
+#define ARRAY_LEN(x) (sizeof(x) / sizeof((x)[0]))
+
+static BaseType_t cmd_regSet(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    BaseType_t name_len, value_len; 
+    const char *name = FreeRTOS_CLIGetParameter(pcCommandString, 1, &name_len);
+    const char *text = FreeRTOS_CLIGetParameter(pcCommandString, 2, &value_len);
+
+    if (!name || !text || value_len >= 32) {
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Usage: reg-set <name> <value>\r\n");
+        return pdFALSE;
+    }
+
+    const reg_descriptor_t *reg = NULL;
+
+    for (size_t i = 0; i < ARRAY_LEN(registers); i++) {
+        if (strlen(registers[i].name) == (size_t)name_len &&
+            strncmp(registers[i].name, name, name_len) == 0) {
+            reg = &registers[i];
+            break;
+        }
+    }
+
+    if (!reg) {
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Unknown register: %.*s\r\n",
+                 (int)name_len, name);
+        return pdFALSE;
+    }
+
+    if (!(reg->access & REG_ACCESS_WRITE)) {
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Register is read-only\r\n");
+        return pdFALSE;
+    }
+
+    char buffer[32];
+    memcpy(buffer, text, value_len);
+    buffer[value_len] = '\0';
+
+    char *end;
+    float value = strtof(buffer, &end);
+
+    if (*end || !isfinite(value) ||
+        value < reg->min || value > reg->max) {
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Invalid value [%.3f, %.3f]\r\n",
+                 reg->min, reg->max);
+        return pdFALSE;
+    }
+
+    union {
+        uint32_t u32;
+        int32_t  i32;
+        float    f32;
+        bool     boolean;
+    } converted;
+
+    const void *src;
+    size_t size;
+
+    switch (reg->type) {
+        case REG_TYPE_U32:
+            converted.u32 = (uint32_t)value;
+            src = &converted.u32;
+            size = sizeof(converted.u32);
+            break;
+
+        case REG_TYPE_I32:
+            converted.i32 = (int32_t)value;
+            src = &converted.i32;
+            size = sizeof(converted.i32);
+            break;
+
+        case REG_TYPE_FLOAT:
+            converted.f32 = value;
+            src = &converted.f32;
+            size = sizeof(converted.f32);
+            break;
+
+        case REG_TYPE_BOOL:
+            if (value != 0.0f && value != 1.0f) {
+                snprintf(pcWriteBuffer, xWriteBufferLen, "Boolean must be 0 or 1\r\n");
+                return pdFALSE;
+            }
+
+            converted.boolean = value != 0.0f;
+            src = &converted.boolean;
+            size = sizeof(converted.boolean);
+            break;
+
+        default:
+            snprintf(pcWriteBuffer, xWriteBufferLen, "Unsupported register type\r\n");
+            return pdFALSE;
+    }
+
+    bool success;
+
+    if (reg->custom_write) {
+        success = reg->custom_write(src);
+    } else if (reg->address) {
+        taskENTER_CRITICAL();
+        memcpy(reg->address, src, size);
+        taskEXIT_CRITICAL();
+        success = true;
+    } else {
+        success = false;
+    }
+
+    snprintf(pcWriteBuffer, xWriteBufferLen, success
+             ? "%s written\r\n"
+             : "Failed to write %s\r\n",
+             reg->name);
+
     return pdFALSE;
 }
 
@@ -1156,6 +1364,24 @@ const CLI_Command_Definition_t xCommandList[] = {
         .pcHelpString = "cls: Clears screen\r\n\r\n",
         .pxCommandInterpreter = cmd_clearScreen, /* The function to run. */
         .cExpectedNumberOfParameters = 0 /* No parameters are expected. */
+    },
+    {
+        .pcCommand = "reg.list", /* The command string to type. */
+        .pcHelpString = "reg.list: Lists all registers\r\n\r\n",
+        .pxCommandInterpreter = cmd_regList, /* The function to run. */
+        .cExpectedNumberOfParameters = 0 /* No parameters are expected. */
+    },
+    {
+        .pcCommand = "reg.get", /* The command string to type. */
+        .pcHelpString = "reg.get <reg_name>: Gets the value of a register\r\n\r\n",
+        .pxCommandInterpreter = cmd_regGet, /* The function to run. */
+        .cExpectedNumberOfParameters = 1 /* One parameter is expected. */
+    },
+    {
+        .pcCommand = "reg.set", /* The command string to type. */
+        .pcHelpString = "reg.set <reg_name> <value>: Sets the value of a register\r\n\r\n",
+        .pxCommandInterpreter = cmd_regSet, /* The function to run. */
+        .cExpectedNumberOfParameters = 2 /* Two parameters are expected. */
     },
     {
         .pcCommand = "switchCLIMode", /* The command string to type. */
