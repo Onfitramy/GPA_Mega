@@ -23,7 +23,7 @@ typedef struct {
 }message_info_t;
 
 void InitializeDataScheduler();
-void SetComSchedule(uint8_t schedule_id);
+bool SetComSchedule(const void *schedule_id);
 void SetSaveSchedule(uint8_t schedule_id);
 void UpdateComSchedule(uint32_t* new_frequencies);
 void UpdateSendSchedule(uint32_t* new_frequencies);

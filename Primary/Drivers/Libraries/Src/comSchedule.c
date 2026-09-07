@@ -109,40 +109,42 @@ void InitializeDataScheduler() {
         message_schedule[i].last_saved_tick = 0;
     }
 
-    SetComSchedule(7); // Send no data
+    uint8_t schedule_id = 7;
+    SetComSchedule(&schedule_id); // Send no data
     SetSaveSchedule(0); // Save no data
 }
 
 //Used to set the comunication Schedule to one of the predefined schedules
-void SetComSchedule(uint8_t schedule_id) {
-    switch(schedule_id) {
+bool SetComSchedule(const void *schedule_id) {
+    switch(*(const uint8_t*)schedule_id) {
         case 0: // Default schedule
             UpdateComSchedule(comm_schedule0_frequencies);
-            return;
+            return true;
         case 1: // Pre-Launch
             UpdateComSchedule(comm_schedule1_frequencies);
-            return;
+            return true;
         case 2: // Burn
             UpdateComSchedule(comm_schedule2_frequencies);
-            return;
+            return true;
         case 3: // Coast
             UpdateComSchedule(comm_schedule3_frequencies);
-            return;
+            return true;
         case 4: // Descent
             UpdateComSchedule(comm_schedule4_frequencies);
-            return;
+            return true;
         case 5: // Landed
             UpdateComSchedule(comm_schedule5_frequencies);
-            return;
+            return true;
         case 6: // HIL Testing
             UpdateComSchedule(comm_schedule6_frequencies);
-            return;
+            return true;
         case 7: // No Data
             UpdateComSchedule(comm_schedule_no_data_frequencies);
-            return;
+            return true;
         default:
             break;
     }
+    return false;
 }
 
 //                                       stat,  pow,    gps,    imu,    temp,   pos,    att,    kalman, spark,  mpc,    state

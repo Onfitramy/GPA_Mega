@@ -45,6 +45,10 @@ uint8_t backspace_tt[] = " \b";
 
 extern IMU_Data_t imu1_data;
 uint32_t system_version = 0x00009500; // Version 0.9.5
+uint32_t empty_reg = 0;
+
+//Function prototypes for register write and read callbacks
+bool reg_write_radio_mode(const void *value);
 
 static const reg_descriptor_t registers[] = {
     {
@@ -52,6 +56,82 @@ static const reg_descriptor_t registers[] = {
         .description = "System version number",
         .address = (void *)&system_version,
         .type = REG_TYPE_U32,
+        .access = REG_ACCESS_READ
+    },
+    {
+        .name = "system.FHPlotter.out",
+        .description = "FH Plotter output 1/0",
+        .address = (void *)&signalPlotterSend,
+        .type = REG_TYPE_BOOL,
+        .access = REG_ACCESS_READ|REG_ACCESS_WRITE
+    },
+    {
+        .name = "system.messageSchedule",
+        .description = "Set message schedule 0-6",
+        .address = (void *)&empty_reg,
+        .type = REG_TYPE_U32,
+        .access = REG_ACCESS_WRITE,
+        .min = 0,
+        .max = 7,
+        .custom_write = SetComSchedule
+    },
+    {
+        .name = "system.radioMode",
+        .description = "Set radio mode 0-2",
+        .address = (void *)&empty_reg,
+        .type = REG_TYPE_U32,
+        .access = REG_ACCESS_WRITE,
+        .min = 0,
+        .max = 2,
+        .custom_write = reg_write_radio_mode
+    },
+    {
+        .name = "system.CLITargetMode",
+        .description = "Set CLI target 0=internal, 1=external",
+        .address = (void *)&cli_target_mode,
+        .type = REG_TYPE_BOOL,
+        .access = REG_ACCESS_READ|REG_ACCESS_WRITE,
+    },
+    {
+        .name = "sensor.imu1.accel.x",
+        .description = "IMU 1 X-axis acceleration",
+        .address = (void *)&imu1_data.accel[0],
+        .type = REG_TYPE_FLOAT,
+        .access = REG_ACCESS_READ
+    },
+    {
+        .name = "sensor.imu1.accel.y",
+        .description = "IMU 1 Y-axis acceleration",
+        .address = (void *)&imu1_data.accel[1],
+        .type = REG_TYPE_FLOAT,
+        .access = REG_ACCESS_READ
+    },
+    {
+        .name = "sensor.imu1.accel.z",
+        .description = "IMU 1 Z-axis acceleration",
+        .address = (void *)&imu1_data.accel[2],
+        .type = REG_TYPE_FLOAT,
+        .access = REG_ACCESS_READ
+    },
+    {
+        .name = "sensor.imu1.gyro.x",
+        .description = "IMU 1 X-axis gyroscope",
+        .address = (void *)&imu1_data.gyro[0],
+        .type = REG_TYPE_FLOAT,
+        .access = REG_ACCESS_READ
+    },
+    {
+        .name = "sensor.imu1.gyro.y",
+        .description = "IMU 1 Y-axis gyroscope",
+        .address = (void *)&imu1_data.gyro[1],
+        .type = REG_TYPE_FLOAT,
+        .access = REG_ACCESS_READ
+    },
+    {
+        .name = "sensor.imu1.gyro.z",
+        .description = "IMU 1 Z-axis gyroscope",
+        .address = (void *)&imu1_data.gyro[2],
+        .type = REG_TYPE_FLOAT,
         .access = REG_ACCESS_READ
     },
 };
@@ -140,7 +220,8 @@ BaseType_t cmd_regGet(char *pcWriteBuffer, size_t xWriteBufferLen, const char *p
     }
 
     for (int i = 0; i < ARRAY_LEN(registers); i++) {
-        if (strncmp(pcParameter, registers[i].name, xParameterStringLength) == 0) {
+        if (strlen(registers[i].name) == (size_t)xParameterStringLength &&
+            strncmp(pcParameter, registers[i].name, xParameterStringLength) == 0) {
             if (registers[i].access & REG_ACCESS_READ) {
                 if (registers[i].custom_read) {
                     if (!registers[i].custom_read(pcWriteBuffer)) {
@@ -171,7 +252,7 @@ BaseType_t cmd_regGet(char *pcWriteBuffer, size_t xWriteBufferLen, const char *p
             return pdFALSE;
         }
     }
-
+    snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Unknown register\r\n");
     return pdFALSE;
 }
 
@@ -215,12 +296,18 @@ static BaseType_t cmd_regSet(char *pcWriteBuffer, size_t xWriteBufferLen, const 
 
     char *end;
     float value = strtof(buffer, &end);
+    if (buffer == end) {
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Invalid number\r\n");
+        return pdFALSE; // Invalid number error
+    }
 
-    if (*end || !isfinite(value) ||
-        value < reg->min || value > reg->max) {
-        snprintf(pcWriteBuffer, xWriteBufferLen, "Invalid value [%.3f, %.3f]\r\n",
-                 reg->min, reg->max);
-        return pdFALSE;
+    if (reg->min != 0.0f || reg->max != 0.0f) { //Check if min and max are set (not 0.0f)
+        if (*end || !isfinite(value) ||
+            value < reg->min || value > reg->max) {
+            snprintf(pcWriteBuffer, xWriteBufferLen, "Invalid value [%.3f, %.3f]\r\n",
+                    reg->min, reg->max);
+            return pdFALSE;
+        }
     }
 
     union {
@@ -286,96 +373,6 @@ static BaseType_t cmd_regSet(char *pcWriteBuffer, size_t xWriteBufferLen, const 
              : "Failed to write %s\r\n",
              reg->name);
 
-    return pdFALSE;
-}
-
-//*****************************************************************************
-BaseType_t cmd_switchCLIMode(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
-{
-    (void)pcCommandString;
-    (void)xWriteBufferLen;
-
-    const char *pcParameter;
-    BaseType_t xParameterStringLength;
-
-    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
-    if (pcParameter == NULL) {
-        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
-        return pdFALSE;
-    }
-
-    if (strncmp(pcParameter, "internal", xParameterStringLength) == 0) {
-        cli_target_mode = CLI_TARGET_MODE_INTERNAL;
-        snprintf(pcWriteBuffer, xWriteBufferLen, "Switched to Internal CLI Mode\r\n");
-    } else if (strncmp(pcParameter, "external", xParameterStringLength) == 0) {
-        cli_target_mode = CLI_TARGET_MODE_EXTERNAL;
-        snprintf(pcWriteBuffer, xWriteBufferLen, "Switched to External CLI Mode\r\n");
-    } else {
-        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Invalid parameter 1\r\n");
-        return pdFALSE;
-    }
-
-    return pdFALSE;
-}
-
-//*****************************************************************************
-BaseType_t cmd_switchOutputSchedule(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
-{
-    (void)pcCommandString;
-    (void)xWriteBufferLen;
-
-    const char *pcParameter;
-    BaseType_t xParameterStringLength;
-    char *endPtr;  // Pointer to track invalid characters
-
-    uint8_t parameters[1];
-
-    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
-    if (pcParameter == NULL) {
-        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
-        return pdFALSE;
-    }
-
-    parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
-
-    /* Write the response to the buffer */
-    if (parameters[0] >= 6) {
-        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Invalid Schedule number\r\n");
-    } else {
-        snprintf(pcWriteBuffer, 50, "Switching to Output Schedule\r\n");
-        SetComSchedule(parameters[0]);
-    }
-    return pdFALSE;
-}
-
-//*****************************************************************************
-BaseType_t cmd_switchSerialData(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
-{
-    (void)pcCommandString;
-    (void)xWriteBufferLen;
-
-    const char *pcParameter;
-    BaseType_t xParameterStringLength;
-    char *endPtr;  // Pointer to track invalid characters
-
-    uint8_t parameters[1];
-
-    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
-    if (pcParameter == NULL) { //Handle to missing Input
-        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
-        return pdFALSE;
-    }
-    parameters[0] = (uint32_t)strtoul(pcParameter, &endPtr, 10);
-
-    /* Write the response to the buffer */
-    if (parameters[0] == 0) {
-        snprintf(pcWriteBuffer, 50, "Turning Signal Plotter Data OFF...\r\n");
-        signalPlotterSend = false;
-    }
-    else {
-        snprintf(pcWriteBuffer, 50, "Turning Signal Plotter Data ON...\r\n");
-        signalPlotterSend = true;
-    }
     return pdFALSE;
 }
 
@@ -1054,39 +1051,20 @@ BaseType_t cmd_Buzzer_Stop(char *pcWriteBuffer, size_t xWriteBufferLen, const ch
     return pdFALSE;
 }
 
-//*****************************************************************************
-BaseType_t cmd_Radio_Switch(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+bool reg_write_radio_mode(const void *value)
 {
-    (void)pcCommandString;
-    (void)xWriteBufferLen;
-
-    const char *pcParameter;
-    BaseType_t xParameterStringLength;
-
+    uint8_t mode = *(const uint8_t *)value;
+    if (mode != 1 && mode != 2) {
+        return false;
+    }
+    
     uint8_t parameters[1];
-
-    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
-    if (pcParameter == NULL) { //Handle to missing Input
-        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
-        return pdFALSE;
-    }
-
-    if (strncmp(pcParameter, "XBEE", xParameterStringLength) == 0) {
-        parameters[0] = 1;
-        snprintf(pcWriteBuffer, xWriteBufferLen, "Switched to XBEE Mode\r\n");
-    } else if (strncmp(pcParameter, "NRF", xParameterStringLength) == 0) {
-        parameters[0] = 2;
-        snprintf(pcWriteBuffer, xWriteBufferLen, "Switched to NRF Mode\r\n");
-    } else {
-        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Invalid parameter 1\r\n");
-        return pdFALSE;
-    }
+    parameters[0] = mode;
 
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_RADIO, COMMAND_ID_RADIO_SWITCH, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
-
-    return pdFALSE;
+    return true;
 }
 
 //*****************************************************************************
@@ -1384,24 +1362,6 @@ const CLI_Command_Definition_t xCommandList[] = {
         .cExpectedNumberOfParameters = 2 /* Two parameters are expected. */
     },
     {
-        .pcCommand = "switchCLIMode", /* The command string to type. */
-        .pcHelpString = "switchCLIMode <mode>: Switches the CLI mode (internal/external)\r\n\r\n",
-        .pxCommandInterpreter = cmd_switchCLIMode, /* The function to run. */
-        .cExpectedNumberOfParameters = 1 /* One parameter is expected. */
-    },
-    {
-        .pcCommand = "switchSerialData", /* The command string to type. */
-        .pcHelpString = "switchSerialData <1/0>: Switches the Serial Plotter data stream (on/off)\r\n\r\n",
-        .pxCommandInterpreter = cmd_switchSerialData, /* The function to run. */
-        .cExpectedNumberOfParameters = 1 /* One parameter is expected. */
-    },
-    {
-        .pcCommand = "switchOutputSchedule", /* The command string to type. */
-        .pcHelpString = "switchOutputSchedule <schedule_id>: Switches the output schedule to the given schedule_id (0-6)\r\n\r\n",
-        .pxCommandInterpreter = cmd_switchOutputSchedule, /* The function to run. */
-        .cExpectedNumberOfParameters = 1 /* One parameter is expected. */
-    },
-    {
         .pcCommand = "RESET_PRIMARY", /* The command string to type. */
         .pcHelpString = "RESET_PRIMARY: Resets the Primary MCU on the flight computer\r\n\r\n",
         .pxCommandInterpreter = cmd_resetPrimary, /* The function to run. */
@@ -1556,12 +1516,6 @@ const CLI_Command_Definition_t xCommandList[] = {
         .pcHelpString = "Buzzer_Stop: Stops annoying buzzing activities\r\n\r\n",
         .pxCommandInterpreter = cmd_Buzzer_Stop, /* The function to run. */
         .cExpectedNumberOfParameters = 0
-    },
-    {
-        .pcCommand = "Radio_Switch", /* The command string to type. */
-        .pcHelpString = "Radio_Switch <NRF/XBEE>: Switch primary radio to specified radio module\r\n\r\n",
-        .pxCommandInterpreter = cmd_Radio_Switch, /* The function to run. */
-        .cExpectedNumberOfParameters = 1
     },
     {
         .pcCommand = "Storage_FlashToSD", /* The command string to type. */
