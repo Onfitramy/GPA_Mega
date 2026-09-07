@@ -92,48 +92,19 @@ static const reg_descriptor_t registers[] = {
         .type = REG_TYPE_BOOL,
         .access = REG_ACCESS_READ|REG_ACCESS_WRITE,
     },
-    {
-        .name = "sensor.imu1.accel.x",
-        .description = "IMU 1 X-axis acceleration",
-        .address = (void *)&imu1_data.accel[0],
-        .type = REG_TYPE_FLOAT,
-        .access = REG_ACCESS_READ
-    },
-    {
-        .name = "sensor.imu1.accel.y",
-        .description = "IMU 1 Y-axis acceleration",
-        .address = (void *)&imu1_data.accel[1],
-        .type = REG_TYPE_FLOAT,
-        .access = REG_ACCESS_READ
-    },
-    {
-        .name = "sensor.imu1.accel.z",
-        .description = "IMU 1 Z-axis acceleration",
-        .address = (void *)&imu1_data.accel[2],
-        .type = REG_TYPE_FLOAT,
-        .access = REG_ACCESS_READ
-    },
-    {
-        .name = "sensor.imu1.gyro.x",
-        .description = "IMU 1 X-axis gyroscope",
-        .address = (void *)&imu1_data.gyro[0],
-        .type = REG_TYPE_FLOAT,
-        .access = REG_ACCESS_READ
-    },
-    {
-        .name = "sensor.imu1.gyro.y",
-        .description = "IMU 1 Y-axis gyroscope",
-        .address = (void *)&imu1_data.gyro[1],
-        .type = REG_TYPE_FLOAT,
-        .access = REG_ACCESS_READ
-    },
-    {
-        .name = "sensor.imu1.gyro.z",
-        .description = "IMU 1 Z-axis gyroscope",
-        .address = (void *)&imu1_data.gyro[2],
-        .type = REG_TYPE_FLOAT,
-        .access = REG_ACCESS_READ
-    },
+    IMU1_ENTRY(accel[0], accel.x, false, REG_TYPE_FLOAT),
+    IMU1_ENTRY(accel[1], accel.y, true, REG_TYPE_FLOAT),
+    IMU1_ENTRY(accel[2], accel.z, true, REG_TYPE_FLOAT),
+    IMU1_ENTRY(gyro[0], gyro.x, false, REG_TYPE_FLOAT),
+    IMU1_ENTRY(gyro[1], gyro.y, true, REG_TYPE_FLOAT),
+    IMU1_ENTRY(gyro[2], gyro.z, true, REG_TYPE_FLOAT),
+    GPS_ENTRY(gpsFix, false, REG_TYPE_U8),
+    GPS_ENTRY(numSV, false, REG_TYPE_U8),
+    GPS_ENTRY(iTOW, false, REG_TYPE_U32),
+    GPS_ENTRY(lon, false, REG_TYPE_I32),
+    GPS_ENTRY(lat, false, REG_TYPE_I32),
+    GPS_ENTRY(height, false, REG_TYPE_I32),
+    GPS_ENTRY(hMSL, false, REG_TYPE_I32),
 };
 
 //Internal commands are executed on this board, external commands are sent via radio to the other board
@@ -181,6 +152,21 @@ BaseType_t cmd_regList(char *pcWriteBuffer, size_t xWriteBufferLen, const char *
     (void)pcCommandString;
     (void)xWriteBufferLen;
 
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+
+    bool showHiddenRegisters = false;
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) {
+        showHiddenRegisters = false;
+    } else if (strncmp(pcParameter, "hidden", xParameterStringLength) == 0) {
+        showHiddenRegisters = true;
+    } else {
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Unknown parameter\r\n");
+        return pdFALSE;
+    }
+
     if (register_list_index == -1) {
         snprintf(pcWriteBuffer, xWriteBufferLen,
                  "Registered Registers:\r\n");
@@ -195,6 +181,10 @@ BaseType_t cmd_regList(char *pcWriteBuffer, size_t xWriteBufferLen, const char *
              registers[register_list_index].description);
 
     register_list_index++;
+
+    while((size_t)register_list_index < ARRAY_LEN(registers) && registers[register_list_index].hide_from_list && !showHiddenRegisters) {
+        register_list_index++;
+    }
 
     if ((size_t)register_list_index < ARRAY_LEN(registers)) {
         return pdTRUE;  // FreeRTOS CLI calls again
@@ -234,6 +224,18 @@ BaseType_t cmd_regGet(char *pcWriteBuffer, size_t xWriteBufferLen, const char *p
                             break;
                         case REG_TYPE_I32:
                             snprintf(pcWriteBuffer, xWriteBufferLen, "%d\r\n", *(int32_t *)registers[i].address);
+                            break;
+                        case REG_TYPE_U16:
+                            snprintf(pcWriteBuffer, xWriteBufferLen, "%u\r\n", *(uint16_t *)registers[i].address);
+                            break;
+                        case REG_TYPE_I16:
+                            snprintf(pcWriteBuffer, xWriteBufferLen, "%d\r\n", *(int16_t *)registers[i].address);
+                            break;
+                        case REG_TYPE_U8:
+                            snprintf(pcWriteBuffer, xWriteBufferLen, "%u\r\n", *(uint8_t *)registers[i].address);
+                            break;
+                        case REG_TYPE_I8:
+                            snprintf(pcWriteBuffer, xWriteBufferLen, "%d\r\n", *(int8_t *)registers[i].address);
                             break;
                         case REG_TYPE_FLOAT:
                             snprintf(pcWriteBuffer, xWriteBufferLen, "%.6f\r\n", *(float *)registers[i].address);
@@ -313,6 +315,10 @@ static BaseType_t cmd_regSet(char *pcWriteBuffer, size_t xWriteBufferLen, const 
     union {
         uint32_t u32;
         int32_t  i32;
+        uint16_t u16;
+        int16_t  i16;
+        uint8_t  u8;
+        int8_t   i8;
         float    f32;
         bool     boolean;
     } converted;
@@ -331,6 +337,30 @@ static BaseType_t cmd_regSet(char *pcWriteBuffer, size_t xWriteBufferLen, const 
             converted.i32 = (int32_t)value;
             src = &converted.i32;
             size = sizeof(converted.i32);
+            break;
+        
+        case REG_TYPE_U16:
+            converted.u16 = (uint16_t)value;
+            src = &converted.u16;
+            size = sizeof(converted.u16);
+            break;
+
+        case REG_TYPE_I16:
+            converted.i16 = (int16_t)value;
+            src = &converted.i16;
+            size = sizeof(converted.i16);
+            break;
+
+        case REG_TYPE_U8:
+            converted.u8 = (uint8_t)value;
+            src = &converted.u8;
+            size = sizeof(converted.u8);
+            break;
+
+        case REG_TYPE_I8:
+            converted.i8 = (int8_t)value;
+            src = &converted.i8;
+            size = sizeof(converted.i8);
             break;
 
         case REG_TYPE_FLOAT:
@@ -1345,9 +1375,9 @@ const CLI_Command_Definition_t xCommandList[] = {
     },
     {
         .pcCommand = "reg.list", /* The command string to type. */
-        .pcHelpString = "reg.list: Lists all registers\r\n\r\n",
+        .pcHelpString = "reg.list [hidden]: Lists all registers add hidden ones if [hidden] is specified\r\n\r\n",
         .pxCommandInterpreter = cmd_regList, /* The function to run. */
-        .cExpectedNumberOfParameters = 0 /* No parameters are expected. */
+        .cExpectedNumberOfParameters = -1 /* One parameter, but it's optional. */
     },
     {
         .pcCommand = "reg.get", /* The command string to type. */

@@ -10,7 +10,11 @@ typedef enum {
 } CLI_TargetMode_t;
 
 typedef enum {
+    REG_TYPE_U8,
+    REG_TYPE_U16,
     REG_TYPE_U32,
+    REG_TYPE_I8,
+    REG_TYPE_I16,
     REG_TYPE_I32,
     REG_TYPE_FLOAT,
     REG_TYPE_BOOL,
@@ -24,6 +28,7 @@ typedef enum {
 typedef struct {
     const char *name;
     const char * const description;
+    bool hide_from_list; // If true, this register will not be shown in the list command
     reg_type_t type;
     reg_access_t access;
     void *address;
@@ -34,6 +39,9 @@ typedef struct {
     bool (*custom_read)(void *dst);
     bool (*custom_write)(const void *src);
 } reg_descriptor_t;
+
+#define IMU1_ENTRY(member_, accessName_, hide_, type_) {.name = "sensor.imu1." #accessName_,.description = "IMU 1 " #member_,.hide_from_list = hide_,.type = type_,.access = REG_ACCESS_READ,.address = &imu1_data.member_,}
+#define GPS_ENTRY(member_, hide_, type_) {.name = "sensor.gps." #member_,.description = "GPS " #member_,.hide_from_list = hide_,.type = type_,.access = REG_ACCESS_READ,.address = &gps_data.member_,}
 
 extern CLI_TargetMode_t cli_target_mode;
 
