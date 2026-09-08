@@ -1,8 +1,10 @@
 # InterBoardCom master diagnostics
 
-The diagnostics are observational. They do not retry failed transfers, reject
-bad packets, change the PA4 handshake, or recover a stalled SPI peripheral.
-CRC failures are counted and the packet continues through the existing parser.
+The diagnostics do not reject bad packets or change the PA4 handshake. CRC
+failures are counted and the packet continues through the existing parser.
+The transport releases its application busy state after immediate HAL start
+failures and asynchronous SPI errors, but it does not requeue the packet whose
+transfer failed or reset the SPI peripheral.
 
 ## CLI usage
 
@@ -21,10 +23,10 @@ ib.diag
 The command emits six lines. Important interpretations are:
 
 - `queue ... full` is the number of outgoing packets silently rejected by the
-  existing 16-packet circular buffer.
+  circular buffer. Its compiled capacity is printed in the CLI output.
 - `DMA ... busy` and `DMA ... error` are immediate return values from
-  `HAL_SPI_TransmitReceive_DMA()`. With the current transport, either can leave
-  the application SPI state busy.
+  `HAL_SPI_TransmitReceive_DMA()`. The application busy state is released, but
+  the already-dequeued packet is not retried.
 - `stalls` increments once for a transfer that is still marked busy at least
   `INTERBOARD_DIAG_STALL_THRESHOLD_MS` after it was started.
 - `SPI errors` counts asynchronous HAL SPI/DMA error callbacks. `last` is the
@@ -38,9 +40,13 @@ The command emits six lines. Important interpretations are:
 - `accepted - processed` approximates the current receive backlog. The CLI
   snapshot can race one in-flight event, so a difference of one is not by
   itself an error.
-- `waits/zero` exposes the current `eNoAction` plus `ulTaskNotifyTake()` usage.
-  A zero return is expected with the existing code and is recorded so it can
-  be compared before and after notification changes.
+- `waits/zero` verifies the counting-notification path. With
+  `vTaskNotifyGiveFromISR()` and `ulTaskNotifyTake()`, `zero` should remain zero.
+
+The communication task is notified after every SPI completion, including an
+empty (`ID=0`) response. It starts the next queued transfer after processing
+received data, so sustained throughput is no longer limited to the 100 Hz
+fallback call plus the rate of non-empty slave responses.
 
 `app-state` is `SPI1_State`; zero is ready and one is busy. `hal-state` is the
 numeric `HAL_SPI_StateTypeDef`. A persistent app-state of one with a HAL ready

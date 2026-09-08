@@ -69,7 +69,7 @@ static const reg_descriptor_t registers[] = {
         .type = REG_TYPE_U32,
         .access = REG_ACCESS_WRITE,
         .min = 0,
-        .max = 7,
+        .max = 8,
         .custom_write = SetComSchedule
     },
     {

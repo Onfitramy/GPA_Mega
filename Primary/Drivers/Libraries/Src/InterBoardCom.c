@@ -284,44 +284,69 @@ void InterBoardCom_FillData(InterBoardPacket_t *packet, DataPacket_t *data_packe
  * @return 1 if queued successfully, 0 if failed
  */
 uint8_t InterBoardCom_QueuePacket(InterBoardPacket_t *packet) {
-    // Try to queue the packet
-    if (InterBoardBuffer_Push(&txCircBuffer, packet)) {
+    /* Producers run in several tasks while the communication task consumes
+     * the buffer.  Keep the buffer indices/count coherent across preemption. */
+    uint32_t primask = InterBoardCom_DiagnosticsEnterCritical();
+    uint8_t queued = InterBoardBuffer_Push(&txCircBuffer, packet);
+
+    if (queued != 0U) {
         InterBoardCom_DiagnosticsRecordQueueResult(1U);
-        //Transmission is requested in the main loop
+        InterBoardCom_DiagnosticsExitCritical(primask);
         return 1;
     }
     InterBoardCom_DiagnosticsRecordQueueResult(0U);
+    InterBoardCom_DiagnosticsExitCritical(primask);
     return 0; // Buffer full
 }
 
 /**
- * @brief Processes the transmission buffer, called once from 100hz loop, then from SPI DMA complete callback till empty
+ * @brief Starts one queued transmission if SPI1 is idle.
+ *
+ * Called by the 100 Hz task as a startup/recovery fallback and by the
+ * communication task after every DMA completion.  The state check, queue pop,
+ * and state transition are atomic because both tasks can call this function.
  */
 void InterBoardCom_ProcessTxBuffer(void) {
-    
-    // If SPI is busy or buffer is empty, return
-    if (SPI1_State != 0) {
-        InterBoardCom_DiagnosticsObserveBusy();
-        return; // SPI is busy
-    }
+    uint8_t spi_was_busy = 0U;
+    uint8_t packet_ready = 0U;
 
-    if (InterBoardBuffer_IsEmpty(&txCircBuffer)) {
+    uint32_t primask = InterBoardCom_DiagnosticsEnterCritical();
+    if (SPI1_State != 0U) {
+        spi_was_busy = 1U;
+    } else if (InterBoardBuffer_Pop(&txCircBuffer, &transmitBuffer)) {
+        /* Claim SPI1 before interrupts/preemption are restored. */
+        SPI1_State = 1U;
+        packet_ready = 1U;
+    }
+    InterBoardCom_DiagnosticsExitCritical(primask);
+
+    if (spi_was_busy != 0U) {
+        InterBoardCom_DiagnosticsObserveBusy();
         return;
     }
 
-    // Get next packet from buffer
-    if (InterBoardBuffer_Pop(&txCircBuffer, &transmitBuffer)) {
-        InterBoardCom_DiagnosticsRecordDequeue();
-        // Send the packet
-        SPI1_State = 1; // Mark SPI as busy
-        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET); // Aktivate Interrupt
-        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET); // Deactivate Interrupt
-        // Add small delay (10-100 microseconds) to let slave prepare
-        delay_us(3); //10: 0.3% dropped 50: 0.3% dropped
-        interboard_transfer_start_us = HAL_GetTickUS();
-        interboard_stall_reported = 0U;
-        HAL_StatusTypeDef status = HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)&transmitBuffer, SPI1_DMA_Rx_Buffer, sizeof(InterBoardPacket_t));
-        InterBoardCom_DiagnosticsRecordTxStart(transmitBuffer.InterBoardPacket_ID, status);
+    if (packet_ready == 0U) {
+        return;
+    }
+
+    InterBoardCom_DiagnosticsRecordDequeue();
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET); // Activate slave interrupt
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+    delay_us(3); // Allow the slave to prepare the SPI transaction
+    interboard_transfer_start_us = HAL_GetTickUS();
+    interboard_stall_reported = 0U;
+    HAL_StatusTypeDef status = HAL_SPI_TransmitReceive_DMA(&hspi1,
+                                                           (uint8_t *)&transmitBuffer,
+                                                           SPI1_DMA_Rx_Buffer,
+                                                           sizeof(InterBoardPacket_t));
+    InterBoardCom_DiagnosticsRecordTxStart(transmitBuffer.InterBoardPacket_ID, status);
+
+    if (status != HAL_OK) {
+        /* No completion callback follows an immediate start failure.  Release
+         * the software gate so the 100 Hz fallback can try the next packet. */
+        primask = InterBoardCom_DiagnosticsEnterCritical();
+        SPI1_State = 0U;
+        InterBoardCom_DiagnosticsExitCritical(primask);
     }
 }
 

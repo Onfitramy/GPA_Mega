@@ -51,6 +51,7 @@ uint32_t comm_schedule4_frequencies[] = {100, 1000, 100, 1000, 1000, 500, 1000, 
 uint32_t comm_schedule5_frequencies[] = {1000, 0, 500, 0, 0, 0, 0, 0, 0, 0, 0}; // Frequencies for schedule 5 (Landed)
 uint32_t comm_schedule6_frequencies[] = {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100}; // Frequencies for schedule 6 (HIL Testing)
 uint32_t comm_schedule_no_data_frequencies[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // Frequencies for schedule "no data" (for testing the effect of sending no data at all)
+uint32_t comm_schedule_overload[] = {10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10}; // Overload test schedule (for testing the effect of sending all data at 100Hz, which is more than the radio can handle)
 
 void UpdatePacket(DataPacket_t *packet);
 
@@ -138,8 +139,11 @@ bool SetComSchedule(const void *schedule_id) {
         case 6: // HIL Testing
             UpdateComSchedule(comm_schedule6_frequencies);
             return true;
-        case 7: // No Data
+        case 7: // Overload
             UpdateComSchedule(comm_schedule_no_data_frequencies);
+            return true;
+        case 8: // No Data
+            UpdateComSchedule(comm_schedule_overload);
             return true;
         default:
             break;

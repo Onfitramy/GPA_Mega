@@ -223,9 +223,10 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
     if (receivedPacket.InterBoardPacket_ID != 0) {
         BaseType_t queue_result = xQueueSendFromISR(InterBoardCom_Queue, &receivedPacket, &xHigherPriorityTaskWoken);
         InterBoardCom_DiagnosticsRecordRxQueueResult((queue_result == pdTRUE) ? 1U : 0U);
-        // Always notify task, even if queue was already full
-        vTaskNotifyGiveFromISR(InterruptHandlerTaskHandle, &xHigherPriorityTaskWoken);
     }
+    /* Every completion, including an empty slave response, releases the next
+     * queued transfer.  A counting notification also survives task latency. */
+    vTaskNotifyGiveFromISR(InterruptHandlerTaskHandle, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
   }
 }
@@ -233,7 +234,12 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
 void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi) {
     if (hspi->Instance == SPI1) {
         InterBoardCom_DiagnosticsRecordSpiError(hspi->ErrorCode);
-        // Reactivate DMA receive on error
+        /* An error does not produce the normal completion callback.  Release
+         * the application state and wake the task so the queue can continue. */
+        SPI1_State = 0;
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        vTaskNotifyGiveFromISR(InterruptHandlerTaskHandle, &xHigherPriorityTaskWoken);
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         return;
     }
 }
