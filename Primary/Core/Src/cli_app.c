@@ -6,6 +6,7 @@
 #include "_components.h"
 #include "_libraries.h"
 #include "FreeRTOS.h"
+#include "navigation.h"
 #include "task.h"
 #include "stream_buffer.h"
 #include "FreeRTOS_CLI.h"
@@ -51,13 +52,9 @@ uint32_t empty_reg = 0;
 bool reg_write_radio_mode(const void *value);
 
 static const reg_descriptor_t registers[] = {
-    {
-        .name = "system.version",
-        .description = "System version number",
-        .address = (void *)&system_version,
-        .type = REG_TYPE_U32,
-        .access = REG_ACCESS_READ
-    },
+    REG_ENTRY(system_version, system.version, "System version number", false, REG_TYPE_U32),
+    REG_ENTRY(flight_sm.currentFlightState, system.flightState, "Current flight state", false, REG_TYPE_U8),
+    REG_ENTRY(flight_sm.timestamp_ms, system.flightStateTimestamp, "Timestamp of current flight state", false, REG_TYPE_U32),
     {
         .name = "system.FHPlotter.out",
         .description = "FH Plotter output 1/0",
@@ -92,14 +89,36 @@ static const reg_descriptor_t registers[] = {
         .type = REG_TYPE_BOOL,
         .access = REG_ACCESS_READ|REG_ACCESS_WRITE,
     },
+    REG_ENTRY(body_euler[0], vehicle.euler.phi, "Euler angle from EKF", false, REG_TYPE_FLOAT),
+    REG_ENTRY(body_euler[1], vehicle.euler.theta, "Euler angle from EKF", true, REG_TYPE_FLOAT),
+    REG_ENTRY(body_euler[2], vehicle.euler.psi, "Euler angle from EKF", true, REG_TYPE_FLOAT),
+    REG_ENTRY(a_WorldFrame_i[0], vehicle.accel_i.x, "Acceleration in without gravity", false, REG_TYPE_FLOAT),
+    REG_ENTRY(a_WorldFrame_i[1], vehicle.accel_i.y, "Acceleration in without gravity", true, REG_TYPE_FLOAT),
+    REG_ENTRY(a_WorldFrame_i[2], vehicle.accel_i.z, "Acceleration in without gravity", true, REG_TYPE_FLOAT),
+    REG_ENTRY(x2[0], vehicle.height, "Height from EKF", false, REG_TYPE_FLOAT),
+    REG_ENTRY(x2[1], vehicle.velZ, "Vertical velocity from EKF", false, REG_TYPE_FLOAT),
+    REG_ENTRY(x2[2], vehicle.quaternion.q0, "Quaternion from EKF", false, REG_TYPE_FLOAT),
     IMU1_ENTRY(accel[0], accel.x, false, REG_TYPE_FLOAT),
     IMU1_ENTRY(accel[1], accel.y, true, REG_TYPE_FLOAT),
     IMU1_ENTRY(accel[2], accel.z, true, REG_TYPE_FLOAT),
     IMU1_ENTRY(gyro[0], gyro.x, false, REG_TYPE_FLOAT),
     IMU1_ENTRY(gyro[1], gyro.y, true, REG_TYPE_FLOAT),
     IMU1_ENTRY(gyro[2], gyro.z, true, REG_TYPE_FLOAT),
+    MAG_ENTRY(field[0], x, false, REG_TYPE_FLOAT),
+    MAG_ENTRY(field[1], y, true, REG_TYPE_FLOAT),
+    MAG_ENTRY(field[2], z, true, REG_TYPE_FLOAT),
+    MAG_ENTRY(temp, temp, false, REG_TYPE_FLOAT),
+    MAG_ENTRY(calibration.offset[0], offset.x, true, REG_TYPE_FLOAT),
+    MAG_ENTRY(calibration.offset[1], offset.y, true, REG_TYPE_FLOAT),
+    MAG_ENTRY(calibration.offset[2], offset.z, true, REG_TYPE_FLOAT),
+    MAG_ENTRY(calibration.scale[0], scale.x, true, REG_TYPE_FLOAT),
+    MAG_ENTRY(calibration.scale[1], scale.y, true, REG_TYPE_FLOAT),
+    MAG_ENTRY(calibration.scale[2], scale.z, true, REG_TYPE_FLOAT),
+    PRES_ENTRY(pressure, false, REG_TYPE_FLOAT),
+    PRES_ENTRY(temperature, false, REG_TYPE_FLOAT),
+    PRES_ENTRY(height, false, REG_TYPE_FLOAT),
     GPS_ENTRY(gpsFix, false, REG_TYPE_U8),
-    GPS_ENTRY(numSV, false, REG_TYPE_U8),
+    GPS_ENTRY(numSV, true, REG_TYPE_U8),
     GPS_ENTRY(iTOW, false, REG_TYPE_U32),
     GPS_ENTRY(lon, false, REG_TYPE_I32),
     GPS_ENTRY(lat, false, REG_TYPE_I32),

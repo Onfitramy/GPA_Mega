@@ -40,7 +40,10 @@ typedef struct {
     bool (*custom_write)(const void *src);
 } reg_descriptor_t;
 
+#define REG_ENTRY(name_, accessName_, description_, hide_, type_) {.name = #accessName_,.description = #description_,.hide_from_list = hide_,.type = type_,.access = REG_ACCESS_READ,.address = (void*)&name_,}
 #define IMU1_ENTRY(member_, accessName_, hide_, type_) {.name = "sensor.imu1." #accessName_,.description = "IMU 1 " #member_,.hide_from_list = hide_,.type = type_,.access = REG_ACCESS_READ,.address = &imu1_data.member_,}
+#define MAG_ENTRY(member_, accessName_, hide_, type_) {.name = "sensor.mag." #accessName_,.description = "MAG" #member_,.hide_from_list = hide_,.type = type_,.access = REG_ACCESS_READ,.address = &mag_data.member_,}
+#define PRES_ENTRY(member_, hide_, type_) {.name = "sensor.pressure." #member_,.description = "Pressure " #member_,.hide_from_list = hide_,.type = type_,.access = REG_ACCESS_READ,.address = &bmp_data.member_,}
 #define GPS_ENTRY(member_, hide_, type_) {.name = "sensor.gps." #member_,.description = "GPS " #member_,.hide_from_list = hide_,.type = type_,.access = REG_ACCESS_READ,.address = &gps_data.member_,}
 
 extern CLI_TargetMode_t cli_target_mode;
