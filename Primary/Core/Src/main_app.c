@@ -313,13 +313,15 @@ void InterruptTask(void *argument) {
     {
         while (xQueueReceive(InterBoardCom_Queue, &InterBoardCom_Packet, 0) == pdTRUE) {
         InterBoardPacket_receive_num += 1;
+        InterBoardCom_DiagnosticsRecordRxProcessed();
         InterBoardCom_ProcessTxBuffer(); // Check if more packets to send and send them
         HAL_GPIO_TogglePin(M1_LED_GPIO_Port, M1_LED_Pin);
         // Process received InterBoardCom_Packet
         InterBoardCom_ParsePacket(&InterBoardCom_Packet);
         }
 
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);  // Wait for ISR notification
+        uint32_t notification_value = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);  // Wait for ISR notification
+        InterBoardCom_DiagnosticsRecordTaskWait(notification_value);
     }
 }
 

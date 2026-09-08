@@ -166,6 +166,105 @@ BaseType_t cmd_clearScreen(char *pcWriteBuffer, size_t xWriteBufferLen, const ch
 }
 
 //*****************************************************************************
+BaseType_t cmd_InterBoardDiag(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
+{
+    static InterBoardComDiagnostics_t snapshot;
+    static uint8_t output_page = 0U;
+
+    if (output_page == 0U) {
+        const char *parameter;
+        BaseType_t parameter_length;
+        parameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &parameter_length);
+
+        if (parameter != NULL) {
+            if ((parameter_length == 5) && (strncmp(parameter, "reset", 5U) == 0)) {
+                InterBoardCom_ResetDiagnostics();
+            } else {
+                snprintf(pcWriteBuffer, xWriteBufferLen, "Usage: ib.diag [reset]\r\n");
+                return pdFALSE;
+            }
+        }
+
+        InterBoardCom_GetDiagnostics(&snapshot);
+    }
+
+    switch (output_page) {
+        case 0:
+            snprintf(pcWriteBuffer, xWriteBufferLen,
+                     "IB age=%lums app-state=%lu hal-state=%lu queue=%lu/%u high=%lu\r\n",
+                     (unsigned long)(HAL_GetTick() - snapshot.reset_at_ms),
+                     (unsigned long)snapshot.app_spi_state,
+                     (unsigned long)snapshot.hal_spi_state,
+                     (unsigned long)snapshot.tx_queue_depth,
+                     INTERBOARD_BUFFER_SIZE,
+                     (unsigned long)snapshot.tx_queue_high_water);
+            output_page = 1U;
+            return pdTRUE;
+
+        case 1:
+            snprintf(pcWriteBuffer, xWriteBufferLen,
+                     "TX queue: tries=%lu accepted=%lu full=%lu dequeued=%lu\r\n",
+                     (unsigned long)snapshot.tx_enqueue_attempts,
+                     (unsigned long)snapshot.tx_enqueued,
+                     (unsigned long)snapshot.tx_queue_full,
+                     (unsigned long)snapshot.tx_dequeued);
+            output_page = 2U;
+            return pdTRUE;
+
+        case 2:
+            snprintf(pcWriteBuffer, xWriteBufferLen,
+                     "TX DMA: tries=%lu started=%lu busy=%lu error=%lu done=%lu stalls=%lu\r\n",
+                     (unsigned long)snapshot.tx_start_attempts,
+                     (unsigned long)snapshot.tx_started,
+                     (unsigned long)snapshot.tx_start_busy,
+                     (unsigned long)snapshot.tx_start_error,
+                     (unsigned long)snapshot.tx_completed,
+                     (unsigned long)snapshot.tx_stall_observations);
+            output_page = 3U;
+            return pdTRUE;
+
+        case 3:
+            snprintf(pcWriteBuffer, xWriteBufferLen,
+                     "TX last/max=%lu/%luus id=0x%02lX hal=%lu; SPI errors=%lu last=0x%08lX\r\n",
+                     (unsigned long)snapshot.last_transfer_us,
+                     (unsigned long)snapshot.max_transfer_us,
+                     (unsigned long)snapshot.last_tx_id,
+                     (unsigned long)snapshot.last_hal_status,
+                     (unsigned long)snapshot.spi_error_callbacks,
+                     (unsigned long)snapshot.last_spi_error);
+            output_page = 4U;
+            return pdTRUE;
+
+        case 4:
+            snprintf(pcWriteBuffer, xWriteBufferLen,
+                     "RX frames=%lu none=%lu echo=%lu data=%lu crc-ok/bad=%lu/%lu unknown=%lu\r\n",
+                     (unsigned long)snapshot.rx_frames,
+                     (unsigned long)snapshot.rx_none,
+                     (unsigned long)snapshot.rx_echo,
+                     (unsigned long)snapshot.rx_data_frames,
+                     (unsigned long)snapshot.rx_crc_ok,
+                     (unsigned long)snapshot.rx_crc_bad,
+                     (unsigned long)snapshot.rx_unknown_id);
+            output_page = 5U;
+            return pdTRUE;
+
+        default:
+            snprintf(pcWriteBuffer, xWriteBufferLen,
+                     "RX queue ok/full/processed=%lu/%lu/%lu waits/zero=%lu/%lu last-id=0x%02lX crc-calc/rx=%02lX/%02lX\r\n",
+                     (unsigned long)snapshot.rx_queue_enqueued,
+                     (unsigned long)snapshot.rx_queue_full,
+                     (unsigned long)snapshot.rx_processed,
+                     (unsigned long)snapshot.task_wait_returns,
+                     (unsigned long)snapshot.task_wait_zero_returns,
+                     (unsigned long)snapshot.last_rx_id,
+                     (unsigned long)snapshot.last_rx_crc_calculated,
+                     (unsigned long)snapshot.last_rx_crc_received);
+            output_page = 0U;
+            return pdFALSE;
+    }
+}
+
+//*****************************************************************************
 BaseType_t cmd_regList(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {
     (void)pcCommandString;
@@ -1409,6 +1508,12 @@ const CLI_Command_Definition_t xCommandList[] = {
         .pcHelpString = "reg.set <reg_name> <value>: Sets the value of a register\r\n\r\n",
         .pxCommandInterpreter = cmd_regSet, /* The function to run. */
         .cExpectedNumberOfParameters = 2 /* Two parameters are expected. */
+    },
+    {
+        .pcCommand = "ib.diag",
+        .pcHelpString = "ib.diag [reset]: Shows or clears InterBoardCom diagnostics\r\n\r\n",
+        .pxCommandInterpreter = cmd_InterBoardDiag,
+        .cExpectedNumberOfParameters = -1
     },
     {
         .pcCommand = "RESET_PRIMARY", /* The command string to type. */

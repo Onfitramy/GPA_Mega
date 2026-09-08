@@ -188,7 +188,7 @@ static void StartupEntry(StateMachine_t *sm) {
     MPCInit(&a_mpc, PREDICTION_HORIZON, NUM_INEQUALITY_CONSTRAINTS, MPC_DELTA_T, u_star, x_star);
 }
 static void InitEntry(StateMachine_t *sm) {
-    Buzzer_PlayNote("A4", 100);
+    //Buzzer_PlayNote("A4", 100);
     /* --- Read sensor data for EKF initialization --- */
     #ifndef HIL_TESTING
     imu1_status.hal_status |= IMU_Update(&imu1_data);

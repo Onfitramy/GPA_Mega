@@ -213,15 +213,18 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 extern osThreadId_t InterruptHandlerTaskHandle;
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
   if (hspi->Instance == SPI1) {
+    InterBoardCom_DiagnosticsRecordTransferComplete();
     SPI1_State = 0;
     // DMA transfer complete callback for SPI1
     // Process the received data in receiveBuffer
     InterBoardPacket_t receivedPacket = InterBoardCom_ReceivePacket();
+    InterBoardCom_DiagnosticsRecordRx(&receivedPacket);
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     if (receivedPacket.InterBoardPacket_ID != 0) {
-        xQueueSendFromISR(InterBoardCom_Queue, &receivedPacket, &xHigherPriorityTaskWoken);
+        BaseType_t queue_result = xQueueSendFromISR(InterBoardCom_Queue, &receivedPacket, &xHigherPriorityTaskWoken);
+        InterBoardCom_DiagnosticsRecordRxQueueResult((queue_result == pdTRUE) ? 1U : 0U);
         // Always notify task, even if queue was already full
-        xTaskNotifyFromISR(InterruptHandlerTaskHandle, 0, eNoAction, &xHigherPriorityTaskWoken);
+        vTaskNotifyGiveFromISR(InterruptHandlerTaskHandle, &xHigherPriorityTaskWoken);
     }
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
   }
@@ -229,6 +232,7 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
 
 void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi) {
     if (hspi->Instance == SPI1) {
+        InterBoardCom_DiagnosticsRecordSpiError(hspi->ErrorCode);
         // Reactivate DMA receive on error
         return;
     }

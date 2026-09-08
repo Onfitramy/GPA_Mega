@@ -21,11 +21,204 @@ uint8_t SPI1_DMA_Rx_Buffer[SPI1_RX_SIZE];
 
 uint8_t SPI1_State = 0; //0: Ready, 1: Busy
 
+volatile InterBoardComDiagnostics_t InterBoardCom_Diagnostics;
+
+static uint32_t interboard_transfer_start_us;
+static uint8_t interboard_stall_reported;
+
+_Static_assert(sizeof(DataPacket_t) == 32U, "InterBoardCom wire payload must be 32 bytes");
+_Static_assert(sizeof(InterBoardPacket_t) == 33U, "InterBoardCom wire frame must be 33 bytes");
+
+static uint32_t InterBoardCom_DiagnosticsEnterCritical(void) {
+    uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    __DMB();
+    return primask;
+}
+
+static void InterBoardCom_DiagnosticsExitCritical(uint32_t primask) {
+    __DMB();
+    if (primask == 0U) {
+        __enable_irq();
+    }
+}
+
+void InterBoardCom_ResetDiagnostics(void) {
+    InterBoardComDiagnostics_t cleared = {0};
+    cleared.reset_at_ms = HAL_GetTick();
+    cleared.last_hal_status = HAL_OK;
+
+    uint32_t primask = InterBoardCom_DiagnosticsEnterCritical();
+    InterBoardCom_Diagnostics = cleared;
+    InterBoardCom_DiagnosticsExitCritical(primask);
+}
+
+void InterBoardCom_GetDiagnostics(InterBoardComDiagnostics_t *snapshot) {
+    if (snapshot == NULL) {
+        return;
+    }
+
+    uint32_t primask = InterBoardCom_DiagnosticsEnterCritical();
+    *snapshot = InterBoardCom_Diagnostics;
+    snapshot->tx_queue_depth = txCircBuffer.count;
+    snapshot->app_spi_state = SPI1_State;
+    snapshot->hal_spi_state = (uint32_t)HAL_SPI_GetState(&hspi1);
+    InterBoardCom_DiagnosticsExitCritical(primask);
+}
+
+static void InterBoardCom_DiagnosticsRecordQueueResult(uint8_t queued) {
+    uint32_t primask = InterBoardCom_DiagnosticsEnterCritical();
+    InterBoardCom_Diagnostics.tx_enqueue_attempts++;
+    if (queued != 0U) {
+        InterBoardCom_Diagnostics.tx_enqueued++;
+        uint32_t depth = txCircBuffer.count;
+        if (depth > InterBoardCom_Diagnostics.tx_queue_high_water) {
+            InterBoardCom_Diagnostics.tx_queue_high_water = depth;
+        }
+    } else {
+        InterBoardCom_Diagnostics.tx_queue_full++;
+    }
+    InterBoardCom_DiagnosticsExitCritical(primask);
+}
+
+static void InterBoardCom_DiagnosticsRecordDequeue(void) {
+    uint32_t primask = InterBoardCom_DiagnosticsEnterCritical();
+    InterBoardCom_Diagnostics.tx_dequeued++;
+    InterBoardCom_DiagnosticsExitCritical(primask);
+}
+
+static void InterBoardCom_DiagnosticsRecordTxStart(InterBoardPacketID_t id, HAL_StatusTypeDef status) {
+    uint32_t primask = InterBoardCom_DiagnosticsEnterCritical();
+    InterBoardCom_Diagnostics.tx_start_attempts++;
+    InterBoardCom_Diagnostics.last_tx_id = (uint32_t)id;
+    InterBoardCom_Diagnostics.last_hal_status = (uint32_t)status;
+    InterBoardCom_Diagnostics.last_tx_start_ms = HAL_GetTick();
+    if (status == HAL_OK) {
+        InterBoardCom_Diagnostics.tx_started++;
+    } else if (status == HAL_BUSY) {
+        InterBoardCom_Diagnostics.tx_start_busy++;
+    } else {
+        InterBoardCom_Diagnostics.tx_start_error++;
+    }
+    InterBoardCom_DiagnosticsExitCritical(primask);
+}
+
+static void InterBoardCom_DiagnosticsObserveBusy(void) {
+    uint32_t now_ms = HAL_GetTick();
+    uint32_t elapsed_ms = now_ms - InterBoardCom_Diagnostics.last_tx_start_ms;
+    if ((interboard_stall_reported == 0U) &&
+        (elapsed_ms >= INTERBOARD_DIAG_STALL_THRESHOLD_MS)) {
+        uint32_t primask = InterBoardCom_DiagnosticsEnterCritical();
+        if (interboard_stall_reported == 0U) {
+            interboard_stall_reported = 1U;
+            InterBoardCom_Diagnostics.tx_stall_observations++;
+        }
+        InterBoardCom_DiagnosticsExitCritical(primask);
+    }
+}
+
+void InterBoardCom_DiagnosticsRecordTransferComplete(void) {
+    uint32_t transfer_us = HAL_GetTickUS() - interboard_transfer_start_us;
+    uint32_t primask = InterBoardCom_DiagnosticsEnterCritical();
+    InterBoardCom_Diagnostics.tx_completed++;
+    InterBoardCom_Diagnostics.last_transfer_us = transfer_us;
+    if (transfer_us > InterBoardCom_Diagnostics.max_transfer_us) {
+        InterBoardCom_Diagnostics.max_transfer_us = transfer_us;
+    }
+    InterBoardCom_Diagnostics.last_tx_complete_ms = HAL_GetTick();
+    interboard_stall_reported = 0U;
+    InterBoardCom_DiagnosticsExitCritical(primask);
+}
+
+void InterBoardCom_DiagnosticsRecordSpiError(uint32_t spi_error) {
+    uint32_t primask = InterBoardCom_DiagnosticsEnterCritical();
+    InterBoardCom_Diagnostics.spi_error_callbacks++;
+    InterBoardCom_Diagnostics.last_spi_error = spi_error;
+    InterBoardCom_DiagnosticsExitCritical(primask);
+}
+
+void InterBoardCom_DiagnosticsRecordRx(const InterBoardPacket_t *packet) {
+    if (packet == NULL) {
+        return;
+    }
+
+    uint8_t calculated_crc = 0U;
+    uint8_t is_data_frame = 0U;
+
+    switch (packet->InterBoardPacket_ID) {
+        case INTERBOARD_OP_NONE:
+        case INTERBOARD_OP_ECHO:
+            break;
+        case INTERBOARD_OP_DEBUG_VIEW:
+        case (INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU):
+        case (INTERBOARD_OP_CMD | INTERBOARD_TARGET_MCU):
+            is_data_frame = 1U;
+            for (uint32_t i = 0U; i < (sizeof(packet->Data) - 1U); i++) {
+                calculated_crc ^= packet->Data[i];
+            }
+            break;
+        default:
+            break;
+    }
+
+    uint32_t primask = InterBoardCom_DiagnosticsEnterCritical();
+    InterBoardCom_Diagnostics.rx_frames++;
+    InterBoardCom_Diagnostics.last_rx_ms = HAL_GetTick();
+    InterBoardCom_Diagnostics.last_rx_id = (uint32_t)packet->InterBoardPacket_ID;
+
+    if (packet->InterBoardPacket_ID == INTERBOARD_OP_NONE) {
+        InterBoardCom_Diagnostics.rx_none++;
+    } else if (packet->InterBoardPacket_ID == INTERBOARD_OP_ECHO) {
+        InterBoardCom_Diagnostics.rx_echo++;
+    } else if (is_data_frame != 0U) {
+        uint8_t received_crc = packet->Data[sizeof(packet->Data) - 1U];
+        InterBoardCom_Diagnostics.rx_data_frames++;
+        InterBoardCom_Diagnostics.last_rx_crc_calculated = calculated_crc;
+        InterBoardCom_Diagnostics.last_rx_crc_received = received_crc;
+        if (calculated_crc == received_crc) {
+            InterBoardCom_Diagnostics.rx_crc_ok++;
+        } else {
+            InterBoardCom_Diagnostics.rx_crc_bad++;
+        }
+    } else {
+        InterBoardCom_Diagnostics.rx_unknown_id++;
+    }
+    InterBoardCom_DiagnosticsExitCritical(primask);
+}
+
+void InterBoardCom_DiagnosticsRecordRxQueueResult(uint8_t queued) {
+    uint32_t primask = InterBoardCom_DiagnosticsEnterCritical();
+    if (queued != 0U) {
+        InterBoardCom_Diagnostics.rx_queue_enqueued++;
+    } else {
+        InterBoardCom_Diagnostics.rx_queue_full++;
+    }
+    InterBoardCom_DiagnosticsExitCritical(primask);
+}
+
+void InterBoardCom_DiagnosticsRecordRxProcessed(void) {
+    uint32_t primask = InterBoardCom_DiagnosticsEnterCritical();
+    InterBoardCom_Diagnostics.rx_processed++;
+    InterBoardCom_DiagnosticsExitCritical(primask);
+}
+
+void InterBoardCom_DiagnosticsRecordTaskWait(uint32_t notification_value) {
+    uint32_t primask = InterBoardCom_DiagnosticsEnterCritical();
+    InterBoardCom_Diagnostics.task_wait_returns++;
+    if (notification_value == 0U) {
+        InterBoardCom_Diagnostics.task_wait_zero_returns++;
+    }
+    InterBoardCom_DiagnosticsExitCritical(primask);
+}
+
 void InterBoardCom_Init(void) {
     // Initialize circular buffers
     InterBoardBuffer_Init(&txCircBuffer);
     // Initialize SPI state
     SPI1_State = 0;
+    interboard_transfer_start_us = HAL_GetTickUS();
+    interboard_stall_reported = 0U;
+    InterBoardCom_ResetDiagnostics();
 }
 
 /**
@@ -93,9 +286,11 @@ void InterBoardCom_FillData(InterBoardPacket_t *packet, DataPacket_t *data_packe
 uint8_t InterBoardCom_QueuePacket(InterBoardPacket_t *packet) {
     // Try to queue the packet
     if (InterBoardBuffer_Push(&txCircBuffer, packet)) {
+        InterBoardCom_DiagnosticsRecordQueueResult(1U);
         //Transmission is requested in the main loop
         return 1;
     }
+    InterBoardCom_DiagnosticsRecordQueueResult(0U);
     return 0; // Buffer full
 }
 
@@ -105,22 +300,28 @@ uint8_t InterBoardCom_QueuePacket(InterBoardPacket_t *packet) {
 void InterBoardCom_ProcessTxBuffer(void) {
     
     // If SPI is busy or buffer is empty, return
+    if (SPI1_State != 0) {
+        InterBoardCom_DiagnosticsObserveBusy();
+        return; // SPI is busy
+    }
+
     if (InterBoardBuffer_IsEmpty(&txCircBuffer)) {
         return;
     }
-    
-    if (SPI1_State != 0) {
-        return; // SPI is busy
-    }
+
     // Get next packet from buffer
     if (InterBoardBuffer_Pop(&txCircBuffer, &transmitBuffer)) {
+        InterBoardCom_DiagnosticsRecordDequeue();
         // Send the packet
         SPI1_State = 1; // Mark SPI as busy
         HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET); // Aktivate Interrupt
         HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET); // Deactivate Interrupt
         // Add small delay (10-100 microseconds) to let slave prepare
         delay_us(3); //10: 0.3% dropped 50: 0.3% dropped
-        HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)&transmitBuffer, SPI1_DMA_Rx_Buffer, sizeof(InterBoardPacket_t));
+        interboard_transfer_start_us = HAL_GetTickUS();
+        interboard_stall_reported = 0U;
+        HAL_StatusTypeDef status = HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)&transmitBuffer, SPI1_DMA_Rx_Buffer, sizeof(InterBoardPacket_t));
+        InterBoardCom_DiagnosticsRecordTxStart(transmitBuffer.InterBoardPacket_ID, status);
     }
 }
 
