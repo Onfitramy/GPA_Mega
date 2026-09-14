@@ -97,6 +97,10 @@ uint32_t TimeMeasureStop(void) {
 }
 
 void signalPlotter_init(void) {
+    signalPlotter_updateSignalNames();
+}
+
+void signalPlotter_updateSignalNames(void) {
   if (signal_plotter_output == SIGNAL_PLOTTER_OUT_1_ID) { // imu testing
   signalPlotter_setSignalName(0, "delta Time");
   signalPlotter_setSignalName(1, "FlightState");

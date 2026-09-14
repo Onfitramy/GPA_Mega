@@ -52,11 +52,13 @@ extern uint32_t communication_mode;
 
 //Function prototypes for register write and read callbacks
 bool reg_write_radio_mode(const void *value);
+bool reg_write_plotter_mode(const void *value);
 
 static const reg_descriptor_t registers[] = {
     REG_ENTRY(system_version, system.version, "System version number", false, REG_TYPE_U32),
     REG_ENTRY(flight_sm.currentFlightState, system.flightState, "Current flight state", false, REG_TYPE_U8),
     REG_ENTRY(flight_sm.timestamp_ms, system.flightStateTimestamp, "Timestamp of current flight state", false, REG_TYPE_U32),
+    REG_ENTRY(dt_1000Hz, system.mpc.runtime, "Runtime in ms", false, REG_TYPE_U32),
     {
         .name = "system.FHPlotter.mode",
         .description = "0=imu testing, 1=raw sensor data, 2=orientation ekf testing, 3=height ekf testing, 4=variable testing, 5=spark testing, 6=ground station data, 7=HIL and MPC testing",
@@ -65,6 +67,7 @@ static const reg_descriptor_t registers[] = {
         .access = REG_ACCESS_READ|REG_ACCESS_WRITE,
         .min = 0,
         .max = 7,
+        .custom_write = reg_write_plotter_mode
     },
     {
         .name = "system.FHPlotter.out",
@@ -1232,6 +1235,12 @@ bool reg_write_radio_mode(const void *value)
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_RADIO, COMMAND_ID_RADIO_SWITCH, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
+    return true;
+}
+
+bool reg_write_plotter_mode(const void *value){
+    signal_plotter_output = *(const uint32_t *)value;
+    signalPlotter_updateSignalNames();
     return true;
 }
 

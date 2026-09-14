@@ -39,6 +39,9 @@ void signalPlotter_setSignalName(uint8_t id,char *name);
 // sends the current value of a signal (id 0...31) to the signal plotter
 void signalPlotter_sendData(uint8_t id, float value);
 
+//update Signal names based on the current signal_plotter_output
+void signalPlotter_updateSignalNames(void);
+
 // starts a timer for measuring the time between start and stop
 void TimeMeasureStart(void);
 
