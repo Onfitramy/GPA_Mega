@@ -13,6 +13,19 @@
 //#define SIGNAL_PLOTTER_OUT_7 // HIL and MPC testing
 //#define SIGNAL_PLOTTER_OUT_GROUND // ground station data
 
+typedef enum {
+  SIGNAL_PLOTTER_OUT_1_ID = 0,
+  SIGNAL_PLOTTER_OUT_2_ID,
+  SIGNAL_PLOTTER_OUT_3_ID,
+  SIGNAL_PLOTTER_OUT_4_ID,
+  SIGNAL_PLOTTER_OUT_5_ID,
+  SIGNAL_PLOTTER_OUT_6_ID,
+  SIGNAL_PLOTTER_OUT_7_ID,
+  SIGNAL_PLOTTER_OUT_GROUND_ID
+} signal_plotter_output_t;
+
+extern signal_plotter_output_t signal_plotter_output;
+
 extern uint32_t dt_1000Hz;
 
 extern bool signalPlotterSend;

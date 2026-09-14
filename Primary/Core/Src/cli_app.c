@@ -23,8 +23,9 @@
 
 #define FLASH_CLI_MAX_SIZE 1024u
 
-#define ARRAY_LEN(array) (sizeof(array) / sizeof((array)[0]))
 static BaseType_t register_list_index = -1;
+
+extern signal_plotter_output_t signal_plotter_output;
 
 /**
   ******************************************************************************
@@ -47,6 +48,7 @@ uint8_t backspace_tt[] = " \b";
 extern IMU_Data_t imu1_data;
 uint32_t system_version = 0x00009500; // Version 0.9.5
 uint32_t empty_reg = 0;
+extern uint32_t communication_mode;
 
 //Function prototypes for register write and read callbacks
 bool reg_write_radio_mode(const void *value);
@@ -56,6 +58,15 @@ static const reg_descriptor_t registers[] = {
     REG_ENTRY(flight_sm.currentFlightState, system.flightState, "Current flight state", false, REG_TYPE_U8),
     REG_ENTRY(flight_sm.timestamp_ms, system.flightStateTimestamp, "Timestamp of current flight state", false, REG_TYPE_U32),
     {
+        .name = "system.FHPlotter.mode",
+        .description = "0=imu testing, 1=raw sensor data, 2=orientation ekf testing, 3=height ekf testing, 4=variable testing, 5=spark testing, 6=ground station data, 7=HIL and MPC testing",
+        .address = (void *)&signal_plotter_output,
+        .type = REG_TYPE_U32,
+        .access = REG_ACCESS_READ|REG_ACCESS_WRITE,
+        .min = 0,
+        .max = 7,
+    },
+    {
         .name = "system.FHPlotter.out",
         .description = "FH Plotter output 1/0",
         .address = (void *)&signalPlotterSend,
@@ -64,13 +75,22 @@ static const reg_descriptor_t registers[] = {
     },
     {
         .name = "system.messageSchedule",
-        .description = "Set message schedule 0-6",
+        .description = "Set message schedule 0-8",
         .address = (void *)&empty_reg,
         .type = REG_TYPE_U32,
         .access = REG_ACCESS_WRITE,
         .min = 0,
         .max = 8,
         .custom_write = SetComSchedule
+    },
+        {
+        .name = "system.messageMode",
+        .description = "Message mode 0=forwarding, 1=remote transmit, 2=local",
+        .address = (void *)&communication_mode,
+        .type = REG_TYPE_U32,
+        .access = REG_ACCESS_WRITE,
+        .min = 0,
+        .max = 2,
     },
     {
         .name = "system.radioMode",
@@ -1807,10 +1827,12 @@ void vCommandConsoleTask(void *pvParameters)
 
        size_t bytesRead = xStreamBufferReceive(xStreamBuffer, receivedData, sizeof(receivedData), portMAX_DELAY);
         if (bytesRead > 0) {
+            receivedData[bytesRead] = '\0';
             cliWrite(receivedData);
-            receivedData[bytesRead-1] = 0x00; //Strip of \r for analysis
+            while (bytesRead > 0 && (receivedData[bytesRead - 1] == '\r' || receivedData[bytesRead - 1] == '\n')) {
+                receivedData[--bytesRead] = '\0';
+            }
             handleNewline(receivedData, cOutputBuffer);
-            xStreamBufferReset(xStreamBuffer);
         }
     }
 }

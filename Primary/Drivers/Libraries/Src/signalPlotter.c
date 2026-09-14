@@ -22,6 +22,8 @@ uint32_t TimerOverflow = 0;
 
 uint32_t dt_1000Hz;
 
+signal_plotter_output_t signal_plotter_output = SIGNAL_PLOTTER_OUT_3_ID;
+
 void signalPlotter_setSignalName(uint8_t id, char *name) {
   strncpy(data[id].name, name, 16);
 }
@@ -95,7 +97,7 @@ uint32_t TimeMeasureStop(void) {
 }
 
 void signalPlotter_init(void) {
-  #ifdef SIGNAL_PLOTTER_OUT_1 // imu testing
+  if (signal_plotter_output == SIGNAL_PLOTTER_OUT_1_ID) { // imu testing
   signalPlotter_setSignalName(0, "delta Time");
   signalPlotter_setSignalName(1, "FlightState");
   signalPlotter_setSignalName(2, "IMU1_ACC_X");
@@ -107,9 +109,9 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(8, "AVG_ACC_X");
   signalPlotter_setSignalName(9, "AVG_ACC_Y");
   signalPlotter_setSignalName(10, "AVG_ACC_Z");
-  #endif
+  }
 
-  #ifdef SIGNAL_PLOTTER_OUT_2 // raw sensor data
+  if (signal_plotter_output == SIGNAL_PLOTTER_OUT_2_ID) { // raw sensor data
   signalPlotter_setSignalName(0, "delta Time");
   signalPlotter_setSignalName(1, "FlightState");
   signalPlotter_setSignalName(2, "MAG_X");
@@ -134,9 +136,9 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(21, "velN");
   signalPlotter_setSignalName(22, "velE");
   signalPlotter_setSignalName(23, "velD");
-  #endif
+  }
 
-  #ifdef SIGNAL_PLOTTER_OUT_3 // orientation ekf testing
+  if (signal_plotter_output == SIGNAL_PLOTTER_OUT_3_ID) { // orientation ekf testing
   signalPlotter_setSignalName(0, "delta Time");
   signalPlotter_setSignalName(1, "FlightState");
   signalPlotter_setSignalName(2, "phi");
@@ -169,9 +171,9 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(29, "NIS mag EKF3");
   signalPlotter_setSignalName(30, "NIS accel EKF3");
   signalPlotter_setSignalName(31, "VAR vec3 abs");
-  #endif
+  }
 
-  #ifdef SIGNAL_PLOTTER_OUT_4 // height ekf testing
+  if (signal_plotter_output == SIGNAL_PLOTTER_OUT_4_ID) { // height ekf testing
   signalPlotter_setSignalName(0, "delta_Time");
   signalPlotter_setSignalName(1, "FlightState");
   signalPlotter_setSignalName(2, "phi");
@@ -202,9 +204,9 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(27, "EKF height var");
   signalPlotter_setSignalName(28, "EKF velZ var");
   signalPlotter_setSignalName(29, "EKF pref var");
-  #endif
+  }
 
-  #ifdef SIGNAL_PLOTTER_OUT_5 // variable testing data
+  if (signal_plotter_output == SIGNAL_PLOTTER_OUT_5_ID) { // variable testing data
   signalPlotter_setSignalName(0, "delta_Time");
   signalPlotter_setSignalName(1, "FlightState");
   signalPlotter_setSignalName(2, "Entry_Timestamp");
@@ -217,9 +219,9 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(9, "EKF3_gbz_var");
   signalPlotter_setSignalName(10, "EKF3_angle_var");
   signalPlotter_setSignalName(11, "EKF3_NIS");
-  #endif
+  }
 
-  #ifdef SIGNAL_PLOTTER_OUT_6 // SPARK
+  if (signal_plotter_output == SIGNAL_PLOTTER_OUT_6_ID) { // SPARK
   signalPlotter_setSignalName(0, "delta_Time");
   signalPlotter_setSignalName(1, "FlightState");
   signalPlotter_setSignalName(2, "Entry_Timestamp");
@@ -233,9 +235,9 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(10, "TargetAngle");
   signalPlotter_setSignalName(11, "PU current");
   signalPlotter_setSignalName(12, "PU voltage");
-  #endif
+  }
 
-  #ifdef SIGNAL_PLOTTER_OUT_GROUND // ground station data
+  if (signal_plotter_output == SIGNAL_PLOTTER_OUT_GROUND_ID) { // ground station data
   signalPlotter_setSignalName(0, "delta_Time");
   signalPlotter_setSignalName(1, "phi");
   signalPlotter_setSignalName(2, "theta");
@@ -243,9 +245,9 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(4, "x_Accel");
   signalPlotter_setSignalName(5, "y_Accel");
   signalPlotter_setSignalName(6, "z_Accel");
-  #endif
+  }
 
-  #ifdef SIGNAL_PLOTTER_OUT_7 // HIL & MPC
+  if (signal_plotter_output == SIGNAL_PLOTTER_OUT_7_ID) { // HIL & MPC
   signalPlotter_setSignalName(0,"delta t");
   signalPlotter_setSignalName(1,"FlightState");
   signalPlotter_setSignalName(2,"Entry timestamp");
@@ -265,11 +267,11 @@ void signalPlotter_init(void) {
   signalPlotter_setSignalName(16,"QP NumIterations");
   signalPlotter_setSignalName(17,"QP setup time");
   signalPlotter_setSignalName(18,"QP solve time");
-  #endif
+  }
 }
 
 void signalPlotter_sendAll(void) {
-  #ifdef SIGNAL_PLOTTER_OUT_1
+  if (signal_plotter_output == SIGNAL_PLOTTER_OUT_1_ID) {
   signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
   signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
   signalPlotter_sendData(2, imu1_data.accel[0]);
@@ -281,10 +283,11 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(8, average_imu_data.accel[0]);
   signalPlotter_sendData(9, average_imu_data.accel[1]);
   signalPlotter_sendData(10, average_imu_data.accel[2]);
-  #endif
+  }
 
 
-  #ifdef SIGNAL_PLOTTER_OUT_2 // signal plotter outputs raw sensor data
+
+  if (signal_plotter_output == SIGNAL_PLOTTER_OUT_2_ID) { // signal plotter outputs raw sensor data
   signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
   signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
   signalPlotter_sendData(2, mag_data.field[0]);
@@ -309,9 +312,9 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(21, (float)gps_data.velN/1000.f);
   signalPlotter_sendData(22, (float)gps_data.velE/1000.f);
   signalPlotter_sendData(23, (float)gps_data.velD/1000.f);
-  #endif
+  }
 
-  #ifdef SIGNAL_PLOTTER_OUT_3 // signal plotter outputs quaternion ekf testing
+  if (signal_plotter_output == SIGNAL_PLOTTER_OUT_3_ID) { // signal plotter outputs quaternion ekf testing
   signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
   signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
   signalPlotter_sendData(2, body_euler[0]);
@@ -344,14 +347,14 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(29, EKF3_corr1.NIS);
   signalPlotter_sendData(30, EKF3_corr2.NIS);
   signalPlotter_sendData(31, VAR_vec3_abs);
-  #endif
+    }
 
-  #ifdef SIGNAL_PLOTTER_OUT_4 // signal plotter outputs height ekf testing
+  if (signal_plotter_output == SIGNAL_PLOTTER_OUT_4_ID) { // signal plotter outputs height ekf testing
   signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
   signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
-  signalPlotter_sendData(2, euler[0]);
-  signalPlotter_sendData(3, euler[1]);
-  signalPlotter_sendData(4, euler[2]);
+  signalPlotter_sendData(2, body_euler[0]);
+  signalPlotter_sendData(3, body_euler[1]);
+  signalPlotter_sendData(4, body_euler[2]);
   signalPlotter_sendData(5, average_imu_data.accel[0]);
   signalPlotter_sendData(6, average_imu_data.accel[1]);
   signalPlotter_sendData(7, average_imu_data.accel[2]);
@@ -377,9 +380,9 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(27, arm_mat_get_entry_f32(EKF2.P, 0, 0));
   signalPlotter_sendData(28, arm_mat_get_entry_f32(EKF2.P, 1, 1));
   signalPlotter_sendData(29, arm_mat_get_entry_f32(EKF2.P, 2, 2));
-  #endif
+    }
 
-  #ifdef SIGNAL_PLOTTER_OUT_5 // signal plotter outputs testing data
+  if (signal_plotter_output == SIGNAL_PLOTTER_OUT_5_ID) { // signal plotter outputs testing data
   signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
   signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
   signalPlotter_sendData(2, (float)flight_sm.timestamp_ms);
@@ -392,9 +395,9 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(9, arm_mat_get_entry_f32(EKF3.P, 6, 6));
   signalPlotter_sendData(10, VAR_vec3_abs);
   signalPlotter_sendData(11, EKF3_corr1.NIS);
-  #endif
+    }
 
-  #ifdef SIGNAL_PLOTTER_OUT_6 // SPARK
+  if (signal_plotter_output == SIGNAL_PLOTTER_OUT_6_ID) { // SPARK
   signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
   signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
   signalPlotter_sendData(2, (float)flight_sm.timestamp_ms);
@@ -408,9 +411,9 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(10, stepper_target_angle_deg);
   signalPlotter_sendData(11, (float)powerData.Data.power.PU_curr*1e-3f);
   signalPlotter_sendData(12, (float)powerData.Data.power.PU_bat_bus_volt*1e-3f);
-  #endif
+    }
 
-  #ifdef SIGNAL_PLOTTER_OUT_7 // HIL & MPC
+  if (signal_plotter_output == SIGNAL_PLOTTER_OUT_7_ID) { // HIL & MPC
   signalPlotter_sendData(0, (float)dt_1000Hz);
   signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
   signalPlotter_sendData(2, (float)flight_sm.timestamp_ms);
@@ -430,7 +433,7 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(16, (float)a_mpc.iterations);
   signalPlotter_sendData(17, a_mpc.tsetup);
   signalPlotter_sendData(18, a_mpc.tsolve);
-  #endif
+  }
 
   signalPlotter_executeTransmission(HAL_GetTick());
 }
