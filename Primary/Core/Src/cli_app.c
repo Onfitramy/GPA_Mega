@@ -121,6 +121,15 @@ static const reg_descriptor_t registers[] = {
     REG_ENTRY(x2[0], vehicle.height, "Height from EKF", false, REG_TYPE_FLOAT),
     REG_ENTRY(x2[1], vehicle.velZ, "Vertical velocity from EKF", false, REG_TYPE_FLOAT),
     REG_ENTRY(x2[2], vehicle.quaternion.q0, "Quaternion from EKF", false, REG_TYPE_FLOAT),
+    REG_ENTRY(acs_est_angle_deg, vehicle.acs.estimated_angle, "Estimated angle of ACS", false, REG_TYPE_FLOAT),
+    REG_ENTRY(acs_target_angle_deg, vehicle.acs.target_angle, "Target angle of ACS", false, REG_TYPE_FLOAT),
+    REG_ENTRY(spark_data.Data.spark.magAngle, vehicle.spark.magAngle, "Spark magAngle", false, REG_TYPE_FLOAT),
+    REG_ENTRY(spark_data.Data.spark.magSpeed, vehicle.spark.magSpeed, "Spark magSpeed", false, REG_TYPE_FLOAT),
+    REG_ENTRY(spark_data.Data.spark.posDeviation, vehicle.spark.posDeviation, "Spark posDeviation", false, REG_TYPE_FLOAT),
+    REG_ENTRY(spark_data.Data.spark.voltage_driver, sensor.spark.voltage_driver, "Spark voltage_driver", false, REG_TYPE_FLOAT),
+    REG_ENTRY(spark_data.Data.spark.temperature_driver, sensor.spark.temperature_driver, "Spark temperature_driver", false, REG_TYPE_FLOAT),
+    REG_ENTRY(spark_data.Data.spark.temperature_converter, sensor.spark.temperature_converter, "Spark temperature_converter", false, REG_TYPE_FLOAT),
+    REG_ENTRY(spark_data.Data.spark.sparkStatus, sensor.spark.sparkStatus, "Spark sparkStatus", false, REG_TYPE_U8),
     IMU1_ENTRY(accel[0], accel.x, false, REG_TYPE_FLOAT),
     IMU1_ENTRY(accel[1], accel.y, true, REG_TYPE_FLOAT),
     IMU1_ENTRY(accel[2], accel.z, true, REG_TYPE_FLOAT),
@@ -147,6 +156,11 @@ static const reg_descriptor_t registers[] = {
     GPS_ENTRY(lat, false, REG_TYPE_I32),
     GPS_ENTRY(height, false, REG_TYPE_I32),
     GPS_ENTRY(hMSL, false, REG_TYPE_I32),
+    GPS_ENTRY(hAcc, false, REG_TYPE_U32),
+    GPS_ENTRY(vAcc, false, REG_TYPE_U32),
+    GPS_ENTRY(sAcc, false, REG_TYPE_U32),
+    GPS_ENTRY(gSpeed, false, REG_TYPE_I32),
+    GPS_ENTRY(headMot, false, REG_TYPE_I32),
 };
 
 //Internal commands are executed on this board, external commands are sent via radio to the other board
