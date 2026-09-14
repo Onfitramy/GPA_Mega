@@ -215,7 +215,12 @@ void ProcessDataSchedule(uint32_t current_tick) {
             message_schedule[i].last_saved_tick = current_tick;
         } else if (is_send && is_save) {
             // If the packet is due for both sending and saving, we can combine the operations to save time and resources
-            InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO | INTERBOARD_TARGET_FLASH, message_schedule[i].packet); // Send the packet to the groundstation via Radio and indicate that it should also be saved to flash or SD card
+            if (communication_mode == COMM_MODE_FORWARDING || communication_mode == COMM_MODE_LOCAL) {
+                USB_QueueDataPacket(message_schedule[i].packet); // Forward the packet to the PC via USB
+                InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_FLASH, message_schedule[i].packet); // Save the packet to flash or SD card
+            } else if (communication_mode == COMM_MODE_REMOTE_TRANSMIT) {
+                InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_RADIO | INTERBOARD_TARGET_FLASH, message_schedule[i].packet); // Send the packet to the groundstation via Radio and indicate that it should also be saved to flash or SD card
+            }
             message_schedule[i].last_sent_tick = current_tick;
             message_schedule[i].last_saved_tick = current_tick;
         }
