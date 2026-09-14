@@ -14,7 +14,6 @@
 
 #include "packets.h"
 #include "statemachine.h"
-#include "servo.h"
 #include "string.h"
 #include "stdio.h"
 #include "stdbool.h"

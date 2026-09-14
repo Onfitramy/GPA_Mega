@@ -573,7 +573,7 @@ uint8_t W25Q_LoadLastPackets(PacketType_t packet_types[], DataPacket_t packets[]
 	for (int page = W25Q_FLASH_CONFIG.curr_logPage - 1; page >= LOG_PAGE; --page) {
 		W25Q_Read(page, 0, packets_size, (uint8_t*) loaded_packets);
 
-		// iterate through all pages back to front (newest to oldest)
+		// iterate through all packets back to front (newest to oldest)
 		for (int i = PACKETS_PER_PAGE - 1; i >= 0; --i) {
 			DataPacket_t loaded_packet = loaded_packets[i];
 
@@ -655,6 +655,9 @@ void W25Q_CopyLogsToSerial(uint16_t max_page) {
 	uint32_t size = FLASH_BUFFER_SIZE * sizeof(DataPacket_t);
 	uint8_t buffer[size];
 
+	DataPacket_t serial_start_packet = CreateSerialPacket(1);
+	InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU, &serial_start_packet);
+
 	for (uint32_t page = LOG_PAGE; page < max_page; page += PAGES_PER_SECTOR) {
 		W25Q_LoadFromLog(buffer, size, page, 0);
 
@@ -669,6 +672,11 @@ void W25Q_CopyLogsToSerial(uint16_t max_page) {
 			vTaskDelay(1);
 		}
 	}
+
+	vTaskDelay(1);
+
+	DataPacket_t serial_stop_packet = CreateSerialPacket(0);
+	InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU, &serial_stop_packet);
 
 	W25Q_FLASH_CONFIG.write_logs = write_logs;
 }

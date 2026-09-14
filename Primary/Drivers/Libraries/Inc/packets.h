@@ -25,6 +25,7 @@ typedef enum __attribute__((packed)){
     PACKET_ID_MPC_INFO = 0x0A, // MPC Info packet
     PACKET_ID_COMMAND = 0x10, // Command packet
     PACKET_ID_STATE = 0x11, // Command packet
+    PACKET_ID_SERIAL = 0x12, // Serial info packet
 
     // Action Types (bits 5-7, upper nibble)
     PACKET_ACTION_LOADED_FROM_FLASH = 0x80,
@@ -181,6 +182,10 @@ typedef struct {
     uint32_t timestamp_ms;
 } StateData_t;
 
+typedef struct {
+    bool start_stop; // true = start, false = stop
+} SerialData_t;
+
 typedef union {
     StatusPayload_t status;
     PowerPayload_t power;
@@ -195,6 +200,7 @@ typedef union {
     TestPayload_t test;
     CommandPayload_t command;
     StateData_t state;
+    SerialData_t serial;
     uint8_t raw[26];
 } PayloadData_u;
 

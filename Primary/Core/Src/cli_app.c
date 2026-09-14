@@ -1723,7 +1723,8 @@ const CLI_Command_Definition_t xCommandList[] = {
     },
     {
         .pcCommand = "Storage_LogsToSerial", /* The command string to type. */
-        .pcHelpString = "Storage_LogsToSerial: Write the log data from FLASH to the serial interface\r\n\r\n",
+        .pcHelpString = "Storage_LogsToSerial <?page>: Write the log data from FLASH to the serial interface. "
+                        "Logs are written up to the current log page in the config, if no page is explicitly specified.\r\n\r\n",
         .pxCommandInterpreter = cmd_Storage_LogsToSerial, /* The function to run. */
         .cExpectedNumberOfParameters = -1
     },

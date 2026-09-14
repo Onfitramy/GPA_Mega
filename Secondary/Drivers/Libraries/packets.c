@@ -51,6 +51,14 @@ void UpdatePowerPacket(DataPacket_t *power_packet, uint32_t timestamp, float PU_
     calcCRC(power_packet);
 }
 
+DataPacket_t CreateSerialPacket(bool start_stop) {
+    DataPacket_t packet = CreateDataPacket(PACKET_ID_SERIAL | PACKET_ACTION_WRITE_TO_SERIAL);
+    packet.Data.serial.start_stop = start_stop;
+    calcCRC(&packet);
+
+    return packet;
+}
+
 /*void UpdateIMUDataPacket(DataPacket_t *imu_packet, uint32_t timestamp, IMU_Data_t *imu_data, LIS3MDL_Data_t *mag_data) {
     imu_packet->timestamp = timestamp;
 

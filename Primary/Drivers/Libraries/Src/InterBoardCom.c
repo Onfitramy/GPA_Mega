@@ -506,6 +506,13 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t *packet) {
             } else if (data_packet->Packet_ID & PACKET_ACTION_WRITE_TO_SERIAL) {
                 PacketType_t packet_type = data_packet->Packet_ID & ~PACKET_ACTION_WRITE_TO_SERIAL;
                 switch(packet_type) {
+                    case PACKET_ID_SERIAL:
+                        if (data_packet->Data.serial.start_stop == 1) {
+                            printf("\nDumping serial output");
+                        } else if (data_packet->Data.serial.start_stop == 0) {
+                            printf("\nFinished dumping serial output");
+                        }
+                        break;
                     case PACKET_ID_STATUS:
                         printf("\nID:%d, TS:%lu, StatFl:%lu, SensFl:%lu, ErrFl:%lu, STATE:%d",
                                 data_packet->Packet_ID, data_packet->timestamp,
@@ -561,7 +568,7 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t *packet) {
 
             if (data_packet->Packet_ID == PACKET_ID_POWER) {
                 powerData = *data_packet;
-            } else {
+            } else if (!(data_packet->Packet_ID & PACKET_ACTION_WRITE_TO_SERIAL)) {
                 printf("ID: %d\n", data_packet->Packet_ID);
             }
             break;

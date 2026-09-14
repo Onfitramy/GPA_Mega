@@ -27,6 +27,7 @@ typedef enum __attribute__((packed)){
     PACKET_ID_MPC_INFO = 0x0A, // MPC Info packet
     PACKET_ID_COMMAND = 0x10, // Command packet
     PACKET_ID_STATE = 0x11, // Command packet
+    PACKET_ID_SERIAL = 0x12, // Serial info packet
 
     // Action Types (bits 5-7, upper nibble)
     PACKET_ACTION_LOADED_FROM_FLASH = 0x80,
@@ -177,6 +178,10 @@ typedef struct {
     uint32_t timestamp_us;
 } StateData_t;
 
+typedef struct {
+    bool start_stop; // true = start, false = stop
+} SerialData_t;
+
 typedef union {
     StatusPayload_t status;
     PowerPayload_t power;
@@ -190,6 +195,7 @@ typedef union {
     CommandPayload_t command;
     TestPayload_t test;
     StateData_t state;
+    SerialData_t serial;
     uint8_t raw[26];
 } PayloadData_u;
 
@@ -215,6 +221,7 @@ void calcCRC(DataPacket_t *packet);
 uint8_t getCRC(DataPacket_t *packet);
 
 void UpdatePowerPacket(DataPacket_t *power_packet, uint32_t timestamp, float PU_bat_volt, float PU_out_pow, float PU_out_curr, float M2_bus_5V, float M2_bus_GPA_bat_volt);
+DataPacket_t CreateSerialPacket(bool start_stop);
 
 void DataCircBuffer_Init(DataCircularBuffer_t* cb);
 uint8_t DataCircBuffer_Push(DataCircularBuffer_t* cb, DataPacket_t* packet);
