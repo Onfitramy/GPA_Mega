@@ -30,7 +30,6 @@ extern QueueHandle_t FlashQueue;
  * @brief Write two configs to the flash.
  * If a power loss happens between erasing and writing data, there will always be one valid config.
  */
-// TODO: Write config when disabling `write_logs`
 void W25Q_WriteConfig() {
 	W25Q_Write_Page(0, 0, sizeof(W25QPage0_config_t), (uint8_t *)&W25Q_FLASH_CONFIG);
 	W25Q_Write_Page(PAGES_PER_SECTOR, 0, sizeof(W25QPage0_config_t), (uint8_t *)&W25Q_FLASH_CONFIG);
@@ -79,6 +78,10 @@ void W25Q_AddFlashBufferPacket(const DataPacket_t* data_packet) {
 	}
 
 	if (flash_buffer_index >= FLASH_BUFFER_SIZE) {
+		DataPacket_t queue_packet_buffer[FLASH_BUFFER_SIZE];
+		// Copy the flash buffer to another buffer, since FreeRTOS queues preserve pointers (which arrays are).
+		// I'm not 100 % sure if this is necessary, but better be safe than sorry.
+		memcpy(queue_packet_buffer, flash_packet_buffer, FLASH_BUFFER_SIZE * sizeof(DataPacket_t));
 		W25Q_QueueWrite(flash_packet_buffer);
 		//Switch buffer
 		flash_packet_buffer = (flash_packet_buffer == flash_packet_buffer1) ? flash_packet_buffer2 : flash_packet_buffer1;
@@ -567,13 +570,15 @@ void W25Q_GetConfig() {
  */
 uint8_t W25Q_LoadLastPackets(PacketType_t packet_types[], DataPacket_t packets[], uint8_t packet_count) {
 	uint16_t packets_size = sizeof(DataPacket_t) * PACKETS_PER_PAGE;
-	DataPacket_t loaded_packets[PACKETS_PER_PAGE];
 
 	uint8_t loaded_packets_count = 0;
 
 	// iterate through all pages back to front (newest to oldest)
-	for (int page = W25Q_FLASH_CONFIG.curr_logPage - 1; page >= LOG_PAGE; --page) {
-		W25Q_Read(page, 0, packets_size, (uint8_t*) loaded_packets);
+	for (int page = (int32_t)W25Q_FLASH_CONFIG.curr_logPage - 1; page >= LOG_PAGE; --page) {
+		W25Q_Read_t read_result = { .start_page = page, .offset = 0, .size = packets_size };
+		W25Q_QueueReadBlocking(&read_result);
+
+		DataPacket_t* loaded_packets = read_result.packets;
 
 		// iterate through all packets back to front (newest to oldest)
 		for (int i = PACKETS_PER_PAGE - 1; i >= 0; --i) {
@@ -746,8 +751,9 @@ W25Q_ActionPacket_t W25Q_CreatePacket(W25Q_Action action, W25Q_ActionPayload_u p
 	return action_packet;
 }
 
-uint8_t W25Q_QueueAction(W25Q_ActionPacket_t action_packet) {
-	return xQueueSend(FlashQueue, &action_packet, 0) == pdPASS;
+uint8_t W25Q_QueueAction(W25Q_ActionPacket_t* action_packet) {
+	// For bools 1 is true, but we want 0 when everything is fine
+	return xQueueSend(FlashQueue, action_packet, 0) != pdPASS;
 }
 
 uint8_t W25Q_QueueWrite(DataPacket_t* data_packets) {
@@ -756,7 +762,30 @@ uint8_t W25Q_QueueWrite(DataPacket_t* data_packets) {
 
 	W25Q_ActionPacket_t action_packet = W25Q_CreatePacket(W25Q_Action_Write, payload);
 
-	return W25Q_QueueAction(action_packet);
+	return W25Q_QueueAction(&action_packet);
+}
+
+/**
+ * Queue a read action.
+ * The finished pointer of `read_data` will be set to false when this function is called.
+ * When the reading is finished, it changes to true.
+ * The packets field of `read_data` can than be accessed.
+ */
+uint8_t W25Q_QueueRead(W25Q_Read_t* read_data) {
+	read_data->finished = false;
+	W25Q_ActionPayload_u payload;
+	payload.read = read_data;
+
+	W25Q_ActionPacket_t action_packet = W25Q_CreatePacket(W25Q_Action_Read, payload);
+
+	return W25Q_QueueAction(&action_packet);
+}
+
+uint8_t W25Q_QueueErase() {
+	W25Q_ActionPayload_u payload;
+	W25Q_ActionPacket_t action_packet = W25Q_CreatePacket(W25Q_Action_Erase, payload);
+
+	return W25Q_QueueAction(&action_packet);
 }
 
 uint8_t W25Q_QueueSetWriteStatus(bool write_logs) {
@@ -765,21 +794,48 @@ uint8_t W25Q_QueueSetWriteStatus(bool write_logs) {
 
 	W25Q_ActionPacket_t action_packet = W25Q_CreatePacket(W25Q_Action_SetWriteStatus, payload);
 
-	return W25Q_QueueAction(action_packet);
+	return W25Q_QueueAction(&action_packet);
+}
+
+/**
+ * Queue a read action and block until the action is finished.
+ * For more information see `W25Q_QueueRead`.
+ */
+uint8_t W25Q_QueueReadBlocking(W25Q_Read_t* read_result) {
+	uint8_t result = W25Q_QueueRead(read_result);
+
+	if (result != 0) {
+		return result;
+	}
+
+	while (!read_result->finished) {
+		// If this function is called from a higher priority task than the flash task,
+		// a while loop without any delays would cause the flash task to be never executed.
+		// This would result in an infinite loop, which we don't really want.
+		vTaskDelay(1);
+	}
+
+	return result;
 }
 
 void W25Q_HandleAction(W25Q_ActionPacket_t* action_packet) {
-	if (W25Q_STATE != W25Q_State_Available) {
-		// TODO: is the state even still needed?
-	}
-
 	switch (action_packet->action) {
+	// TODO: This should be a general SPI2 interface, so SD mounting/unmounting can also be queued
 	case W25Q_Action_Write:
 		W25Q_WritePackets(action_packet->payload.write.packets);
 		break;
 	case W25Q_Action_Read:
+		W25Q_Read_t* read_data = action_packet->payload.read;
+		DataPacket_t loaded_packets[PACKETS_PER_PAGE];
+
+		W25Q_Read(read_data->start_page, read_data->offset, read_data->size, (uint8_t*) loaded_packets);
+
+		read_data->packets = loaded_packets;
+		read_data->finished = true;
 		break;
 	case W25Q_Action_Erase:
+		W25Q_Chip_Erase();
+		buzzerPlayNote("C6", 100);
 		break;
 	case W25Q_Action_SetWriteStatus:
 		W25Q_FLASH_CONFIG.write_logs = action_packet->payload.write_status.write_logs;

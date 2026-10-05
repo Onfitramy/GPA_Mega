@@ -57,8 +57,13 @@ typedef struct {
 } W25Q_Write_t;
 
 typedef struct {
-    DataPacket_t* packets;
+    // request data
+    uint32_t start_page;
+    uint8_t offset;
     uint32_t size;
+    // response data
+    DataPacket_t* packets;
+    bool finished;
 } W25Q_Read_t;
 
 typedef struct {
@@ -67,7 +72,7 @@ typedef struct {
 
 typedef union {
     W25Q_Write_t write;
-    W25Q_Read_t read;
+    W25Q_Read_t* read;
     W25Q_WriteStatus_t write_status;
 } W25Q_ActionPayload_u;
 
@@ -115,7 +120,11 @@ void W25Q_CopyLogsToSD(uint16_t max_page);
 void W25Q_CopyLogsToSerial(uint16_t max_page);
 
 W25Q_ActionPacket_t W25Q_CreatePacket(W25Q_Action action, W25Q_ActionPayload_u);
-uint8_t W25Q_QueueAction(W25Q_ActionPacket_t action_packet);
+uint8_t W25Q_QueueAction(W25Q_ActionPacket_t* action_packet);
 uint8_t W25Q_QueueWrite(DataPacket_t* data_packets);
+// TODO: Function for reading config or adapt current function
+uint8_t W25Q_QueueRead(W25Q_Read_t* read_data);
+uint8_t W25Q_QueueErase();
 uint8_t W25Q_QueueSetWriteStatus(bool write_logs);
+uint8_t W25Q_QueueReadBlocking(W25Q_Read_t* read_result);
 void W25Q_HandleAction(W25Q_ActionPacket_t* action_packet);
