@@ -13,6 +13,8 @@ extern SPI_HandleTypeDef hspi2;
 #define GPS_ASSIST_PAGE 256 //Start of the GPS assist data page, ends at 767->128KB
 #define LOG_PAGE 1024 //Start of the log page, runs till the end of the flash memory ~16MB
 
+#define ACTION_QUEUE_LENGTH 32
+
 #define FLASH_BUFFER_SIZE (SECTOR_SIZE / sizeof(DataPacket_t))
 #define PACKETS_PER_PAGE (PAGE_SIZE / sizeof(DataPacket_t))
 
@@ -48,9 +50,45 @@ typedef enum {
     W25Q_State_Writing,
     W25Q_State_Reading,
     W25Q_State_Erasing,
-    W25Q_State_CopyingToSD,
-    W25Q_State_CopyingToSerial,
 } W25Q_State_t;
+
+typedef struct {
+    DataPacket_t* packets;
+} W25Q_Write_t;
+
+typedef struct {
+    DataPacket_t* packets;
+    uint32_t size;
+} W25Q_Read_t;
+
+typedef struct {
+    bool write_logs;
+} W25Q_WriteStatus_t;
+
+typedef union {
+    W25Q_Write_t write;
+    W25Q_Read_t read;
+    W25Q_WriteStatus_t write_status;
+} W25Q_ActionPayload_u;
+
+typedef enum {
+    W25Q_Action_Write, // data
+    W25Q_Action_Read, // data*, page
+    W25Q_Action_Erase,
+    W25Q_Action_SetWriteStatus,
+} W25Q_Action;
+
+typedef struct {
+    W25Q_Action action;
+    W25Q_ActionPayload_u payload;
+} W25Q_ActionPacket_t;
+
+// Writing and erasing can be queued, while reading can should be instantaneous => separate queue for reading?
+// read function waits until action is done and is then prioritized
+//
+// own thread for flash queue, should I use semaphores
+//
+// queue takes pointer to struct
 
 void W25Q1_Reset(void);
 uint32_t W25Q1_ReadID(void);
@@ -68,10 +106,16 @@ void W25Q_Chip_Erase (void);
 void W25Q_updateLogPosition(void);
 void W25Q_Write_Cleared(uint32_t page, uint16_t offset, uint32_t size, uint8_t *data);
 void W25Q_SaveToLog(uint8_t *data, uint32_t size);
-void W25Q_AddFlashBufferPacket(const DataPacket_t *data_packet);
-void W25Q_WriteFlashBuffer();
+void W25Q_AddFlashBufferPacket(const DataPacket_t* data_packet);
+void W25Q_WritePackets(DataPacket_t* packets);
 void W25Q_LoadFromLog(uint8_t *data, uint32_t size, uint32_t log_page, uint32_t log_offset);
 void W25Q_GetConfig();
 uint8_t W25Q_LoadLastPackets(PacketType_t *packet_types, DataPacket_t *packets, uint8_t packet_count);
 void W25Q_CopyLogsToSD(uint16_t max_page);
 void W25Q_CopyLogsToSerial(uint16_t max_page);
+
+W25Q_ActionPacket_t W25Q_CreatePacket(W25Q_Action action, W25Q_ActionPayload_u);
+uint8_t W25Q_QueueAction(W25Q_ActionPacket_t action_packet);
+uint8_t W25Q_QueueWrite(DataPacket_t* data_packets);
+uint8_t W25Q_QueueSetWriteStatus(bool write_logs);
+void W25Q_HandleAction(W25Q_ActionPacket_t* action_packet);

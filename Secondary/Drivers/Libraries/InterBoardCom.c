@@ -15,8 +15,6 @@
 #include "semphr.h"
 #include "task.h"
 
-extern SemaphoreHandle_t flashSemaphore;
-
 extern SPI_HandleTypeDef hspi1;
 
 extern DMA_HandleTypeDef hdma_spi1_rx;
@@ -309,8 +307,8 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket, PacketSource_t sour
                 sd_copy_page = page;
                 while (W25Q_STATE != W25Q_State_Available) {}
 
-                xSemaphoreGive(flashSemaphore);
-                W25Q_STATE = W25Q_State_CopyingToSD; // Trigger saving flash to SD in main loop
+                // xSemaphoreGive(flashSemaphore);
+                // W25Q_STATE = W25Q_State_CopyingToSD; // Trigger saving flash to SD in main loop
                 InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0, source);
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_STORAGE_FLASH_TO_SERIAL) {
                 // Storage command 0x01: FlashToSerial
@@ -319,27 +317,23 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket, PacketSource_t sour
                 // TODO: Improve
                 sd_copy_page = page;
 
-                if (W25Q_STATE == W25Q_State_CopyingToSerial) { return; }
+                // if (W25Q_STATE == W25Q_State_CopyingToSerial) { return; }
 
                 while (W25Q_STATE != W25Q_State_Available) {}
 
-                xSemaphoreGive(flashSemaphore);
-                W25Q_STATE = W25Q_State_CopyingToSerial; // Trigger saving flash to serial interface in main loop
+                // xSemaphoreGive(flashSemaphore);
+                // W25Q_STATE = W25Q_State_CopyingToSerial; // Trigger saving flash to serial interface in main loop
                 InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0, source);
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_STORAGE_FLASH_ERASE) {
                 // Storage command 0x02: FlashReset
                 if (W25Q_STATE == W25Q_State_Available) {
                     W25Q_STATE = W25Q_State_Erasing;
-                    xSemaphoreGive(flashSemaphore);
+                    // xSemaphoreGive(flashSemaphore);
                     InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0, source);
                 }
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_STORAGE_FLASH_WRITE) {
                 // Storage command 0x03: FLASH saving enable/disable
-                if (dataPacket->Data.command.params[0] == 0x01) {
-                    W25Q_FLASH_CONFIG.write_logs = true;
-                } else if (dataPacket->Data.command.params[0] == 0x00) {
-                    W25Q_FLASH_CONFIG.write_logs = false;
-                }
+                W25Q_QueueSetWriteStatus(dataPacket->Data.command.params[0]);
                 InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0, source);
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_STORAGE_SD_UNMOUNT) {
                 // Storage command 0x04: FLASH saving enable/disable

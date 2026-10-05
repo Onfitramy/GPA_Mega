@@ -50,6 +50,8 @@ extern UART_HandleTypeDef huart1;
 QueueHandle_t InterBoardPacketQueue;
 QueueHandle_t XBeeDataQueue;
 QueueHandle_t InterruptQueue;
+QueueHandle_t FlashQueue;
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -64,7 +66,6 @@ QueueHandle_t InterruptQueue;
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
-SemaphoreHandle_t flashSemaphore;
 
 /* Definitions for defaultTask */
 
@@ -96,8 +97,8 @@ const osThreadAttr_t InterruptTask_attributes = {
   .priority = (osPriority_t) osPriorityAboveNormal,
 };
 
-osThreadId_t SDTaskHandle;
-const osThreadAttr_t SDTask_attributes = {
+osThreadId_t FlashTaskHandle;
+const osThreadAttr_t FlashTask_attributes = {
   .name = "SDTask",
   .stack_size = 128 * 48,
   .priority = (osPriority_t) osPriorityBelowNormal,
@@ -129,7 +130,7 @@ void StartDefaultTask(void *argument);
 void Start10HzTask(void *argument);
 void StartInterBoardComTask(void *argument);
 void StartInterruptTask(void *argument);
-void StartSDTask(void *argument);
+void StartFlashTask(void *argument);
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
@@ -143,7 +144,6 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
-  flashSemaphore = xSemaphoreCreateBinary();
   /* USER CODE END RTOS_SEMAPHORES */
 
   /* USER CODE BEGIN RTOS_TIMERS */
@@ -154,13 +154,14 @@ void MX_FREERTOS_Init(void) {
   InterBoardPacketQueue = xQueueCreate(64, sizeof(InterBoardPacket_t)); // Queue for 64 InterBoardPacket_t packets
   XBeeDataQueue = xQueueCreate(4, sizeof(xbee_frame_t)); // Queue for 4 XBee data packets
   InterruptQueue = xQueueCreate(10, sizeof(uint8_t)); // Queue for 10 interrupt signals
+  FlashQueue = xQueueCreate(8, sizeof(W25Q_ActionPacket_t));
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
   Hz10TaskHandle = osThreadNew(Start10HzTask, NULL, &Hz10Task_attributes);
-  SDTaskHandle = osThreadNew(StartSDTask, NULL, &SDTask_attributes);
+  FlashTaskHandle = osThreadNew(StartFlashTask, NULL, &FlashTask_attributes);
   InterruptTaskHandle = osThreadNew(StartInterruptTask, NULL, &InterruptTask_attributes);
   InterBoardComHandle = osThreadNew(StartInterBoardComTask, NULL, &InterBoardCom_attributes);
 
@@ -396,41 +397,17 @@ void StartInterruptTask(void *argument)
 volatile uint16_t sd_copy_page = 0;
 extern volatile W25QPage0_config_t W25Q_FLASH_CONFIG;
 
-void StartSDTask(void *argument)
+void StartFlashTask(void *argument)
 {
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = 100; // 10 Hz
+
   /* Infinite loop */
   for(;;) {
-    if (xSemaphoreTake(flashSemaphore, pdMS_TO_TICKS(10)) == pdTRUE) {
-      switch (W25Q_STATE) {
-        case W25Q_State_Available:
-          if (W25Q_FLASH_CONFIG.write_logs) {
-            W25Q_STATE = W25Q_State_Writing;
-            W25Q_WriteFlashBuffer();
-            W25Q_STATE = W25Q_State_Available;
-          }
-          break;
-        case W25Q_State_Writing:
-          break;
-        case W25Q_State_Reading:
-          break;
-        case W25Q_State_Erasing:
-          W25Q_Chip_Erase();
-          W25Q_STATE = W25Q_State_Available;
-          buzzerPlayNote("C6", 50);
-          break;
-        case W25Q_State_CopyingToSD:
-          W25Q_CopyLogsToSD(sd_copy_page);
-          SD_Unmount();
-          W25Q_STATE = W25Q_State_Available;
-          buzzerPlayNote("C6", 50);
-          break;
-        case W25Q_State_CopyingToSerial:
-          W25Q_CopyLogsToSerial(sd_copy_page);
-          W25Q_STATE = W25Q_State_Available;
-          break;
-      }
+    W25Q_ActionPacket_t packet;
+    // Calculate 0.1ms in ticks based on configTICK_RATE_HZ
+    if (xQueueReceive(FlashQueue, &packet, 1) == pdPASS) { // 1ms delay
+      W25Q_HandleAction(&packet);
     }
   }
   /* USER CODE END StartSDTask */

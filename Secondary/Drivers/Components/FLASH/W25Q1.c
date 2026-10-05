@@ -24,6 +24,8 @@ volatile W25QPage0_config_t W25Q_FLASH_CONFIG = {
 
 volatile W25Q_State_t W25Q_STATE = W25Q_State_Available;
 
+extern QueueHandle_t FlashQueue;
+
 /**
  * @brief Write two configs to the flash.
  * If a power loss happens between erasing and writing data, there will always be one valid config.
@@ -71,23 +73,23 @@ extern SemaphoreHandle_t flashSemaphore;
  * If the flash buffer is full, its data written to the next flash sector.
  * @param data_packet
  */
-void W25Q_AddFlashBufferPacket(const DataPacket_t *data_packet) {
+void W25Q_AddFlashBufferPacket(const DataPacket_t* data_packet) {
 	if (flash_buffer_index < FLASH_BUFFER_SIZE) {
 		flash_packet_buffer[flash_buffer_index++] = *data_packet;
 	}
 
 	if (flash_buffer_index >= FLASH_BUFFER_SIZE) {
+		W25Q_QueueWrite(flash_packet_buffer);
 		//Switch buffer
 		flash_packet_buffer = (flash_packet_buffer == flash_packet_buffer1) ? flash_packet_buffer2 : flash_packet_buffer1;
 		flash_buffer_index = 0;
-		xSemaphoreGive(flashSemaphore);
 	}
 }
 
-void W25Q_WriteFlashBuffer() {
+void W25Q_WritePackets(DataPacket_t* packets) {
 	if (W25Q_FLASH_CONFIG.write_logs) {
 		for (int i = 0; i < PAGES_PER_SECTOR; ++i) {
-			W25Q_SaveToLog((uint8_t*)(flash_packet_buffer + i * PACKETS_PER_PAGE), PACKETS_PER_PAGE * sizeof(DataPacket_t));
+			W25Q_SaveToLog((uint8_t*)(packets + i * PACKETS_PER_PAGE), PACKETS_PER_PAGE * sizeof(DataPacket_t));
 		}
 
 		W25Q_WriteConfig();
@@ -655,7 +657,7 @@ void W25Q_CopyLogsToSerial(uint16_t max_page) {
 	uint32_t size = FLASH_BUFFER_SIZE * sizeof(DataPacket_t);
 	uint8_t buffer[size];
 
-	DataPacket_t serial_start_packet = CreateSerialPacket(1);
+	DataPacket_t serial_start_packet = CreateSerialPacket(0);
 	InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU, &serial_start_packet);
 
 	for (uint32_t page = LOG_PAGE; page < max_page; page += PAGES_PER_SECTOR) {
@@ -675,7 +677,7 @@ void W25Q_CopyLogsToSerial(uint16_t max_page) {
 
 	vTaskDelay(1);
 
-	DataPacket_t serial_stop_packet = CreateSerialPacket(0);
+	DataPacket_t serial_stop_packet = CreateSerialPacket(1);
 	InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU, &serial_stop_packet);
 
 	W25Q_FLASH_CONFIG.write_logs = write_logs;
@@ -734,4 +736,54 @@ void W25Q_Write_Cleared(uint32_t page, uint16_t offset, uint32_t size, uint8_t *
 
 		disable_write();
     }
+}
+
+W25Q_ActionPacket_t W25Q_CreatePacket(W25Q_Action action, W25Q_ActionPayload_u payload) {
+	W25Q_ActionPacket_t action_packet;
+	action_packet.action = action;
+	action_packet.payload = payload;
+
+	return action_packet;
+}
+
+uint8_t W25Q_QueueAction(W25Q_ActionPacket_t action_packet) {
+	return xQueueSend(FlashQueue, &action_packet, 0) == pdPASS;
+}
+
+uint8_t W25Q_QueueWrite(DataPacket_t* data_packets) {
+	W25Q_ActionPayload_u payload;
+	payload.write.packets = data_packets;
+
+	W25Q_ActionPacket_t action_packet = W25Q_CreatePacket(W25Q_Action_Write, payload);
+
+	return W25Q_QueueAction(action_packet);
+}
+
+uint8_t W25Q_QueueSetWriteStatus(bool write_logs) {
+	W25Q_ActionPayload_u payload;
+	payload.write_status.write_logs = write_logs;
+
+	W25Q_ActionPacket_t action_packet = W25Q_CreatePacket(W25Q_Action_SetWriteStatus, payload);
+
+	return W25Q_QueueAction(action_packet);
+}
+
+void W25Q_HandleAction(W25Q_ActionPacket_t* action_packet) {
+	if (W25Q_STATE != W25Q_State_Available) {
+		// TODO: is the state even still needed?
+	}
+
+	switch (action_packet->action) {
+	case W25Q_Action_Write:
+		W25Q_WritePackets(action_packet->payload.write.packets);
+		break;
+	case W25Q_Action_Read:
+		break;
+	case W25Q_Action_Erase:
+		break;
+	case W25Q_Action_SetWriteStatus:
+		W25Q_FLASH_CONFIG.write_logs = action_packet->payload.write_status.write_logs;
+		W25Q_WriteConfig();
+		break;
+	}
 }
