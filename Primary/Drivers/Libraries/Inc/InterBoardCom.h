@@ -3,6 +3,7 @@
 
 #include "_components.h"
 #include "packets.h"
+#include "FreeRTOS.h"
 
 #define INTERBOARD_BUFFER_SIZE 32U
 #define INTERBOARD_DIAG_STALL_THRESHOLD_MS 50U
@@ -135,9 +136,11 @@ void InterBoardCom_FillData(InterBoardPacket_t *packet, DataPacket_t *data_packe
 
 void InterBoardCom_ResetDiagnostics(void);
 void InterBoardCom_GetDiagnostics(InterBoardComDiagnostics_t *snapshot);
-void InterBoardCom_DiagnosticsRecordTransferComplete(void);
+/* ISR-only hooks; accumulate wake requests into the callback's wake flag. */
+void InterBoardCom_DiagnosticsRecordTransferComplete(BaseType_t *higher_priority_task_woken);
 void InterBoardCom_DiagnosticsRecordSpiError(uint32_t spi_error);
-void InterBoardCom_DiagnosticsRecordRx(const InterBoardPacket_t *packet);
+void InterBoardCom_DiagnosticsRecordRx(const InterBoardPacket_t *packet,
+                                      BaseType_t *higher_priority_task_woken);
 void InterBoardCom_DiagnosticsRecordRxQueueResult(uint8_t queued);
 void InterBoardCom_DiagnosticsRecordRxProcessed(void);
 void InterBoardCom_DiagnosticsRecordTaskWait(uint32_t notification_value);

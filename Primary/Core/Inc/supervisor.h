@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "FreeRTOS.h"
 
 #define SUPERVISOR_METRIC_COUNT 4U
 
@@ -45,6 +46,14 @@ bool SV_Init(void);
 /* Task context only; callable by multiple tasks. Never waits for queue space.
  * The caller must keep the report unchanged for the duration of this call. */
 bool SV_ReportEvent(SupervisorEventReport_t *event);
+
+/* ISR context only, at a priority permitted to call FreeRTOS APIs.
+ * Preserves an already-set wake flag; the caller yields at the end of the ISR. */
+bool SV_ReportEventFromISR(SupervisorEventReport_t *event,
+                           BaseType_t *higher_priority_task_woken);
+
+/* Task context only. Suppression does not remove already-pending INFO events. */
+bool SV_SetInfoEnabled(uint32_t component_id, bool enabled);
 
 /* Task context only; exactly one task owns consumption. Each call processes
  * at most the queue length, then returns so other supervision work can run. */

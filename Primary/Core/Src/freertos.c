@@ -29,6 +29,7 @@
 /* FreeRTOS */
 #include "FreeRTOS.h"
 #include "task.h"
+#include "supervisor.h"
 #include "cmsis_os.h"
 #include "cli_app.h"
 #include "stream_buffer.h"
@@ -141,6 +142,11 @@ void MX_FREERTOS_Init(void) {
   InterruptQueue = xQueueCreate(10, sizeof(uint8_t)); // Queue for 10 bytes
   InterBoardCom_Queue = xQueueCreate(50, sizeof(InterBoardPacket_t));
   USB_Tx_Queue = xQueueCreate(20, sizeof(InterBoardPacket_t));
+
+  /*Start Supervisor*/
+  if (!SV_Init()) {
+    Error_Handler();
+  }
 
   /* RTOS Thread creation */
   defaultTaskHandle = osThreadNew(Task1000Hz_Wrapper, NULL, &defaultTask_attributes);

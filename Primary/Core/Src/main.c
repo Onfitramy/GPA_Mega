@@ -30,6 +30,8 @@
 #include "Pyro.h"
 
 #include "main_app.h"
+#include "supervisor.h"
+#include "supervisor_events.h"
 
 #include "InterBoardCom.h"
 #include <stdint.h>
@@ -213,16 +215,22 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 extern osThreadId_t InterruptHandlerTaskHandle;
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi){
   if (hspi->Instance == SPI1) {
-    InterBoardCom_DiagnosticsRecordTransferComplete();
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    InterBoardCom_DiagnosticsRecordTransferComplete(&xHigherPriorityTaskWoken);
     SPI1_State = 0;
     // DMA transfer complete callback for SPI1
     // Process the received data in receiveBuffer
     InterBoardPacket_t receivedPacket = InterBoardCom_ReceivePacket();
-    InterBoardCom_DiagnosticsRecordRx(&receivedPacket);
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    InterBoardCom_DiagnosticsRecordRx(&receivedPacket, &xHigherPriorityTaskWoken);
     if (receivedPacket.InterBoardPacket_ID != 0) {
         BaseType_t queue_result = xQueueSendFromISR(InterBoardCom_Queue, &receivedPacket, &xHigherPriorityTaskWoken);
         InterBoardCom_DiagnosticsRecordRxQueueResult((queue_result == pdTRUE) ? 1U : 0U);
+        if (queue_result != pdTRUE) {
+            SupervisorEventReport_t event = SV_EventReport(
+                SUP_COMPONENT_INTERBOARD, IBC_EVENT_RX_QUEUE_FULL,
+                SUP_SEVERITY_ERROR, receivedPacket.InterBoardPacket_ID);
+            (void)SV_ReportEventFromISR(&event, &xHigherPriorityTaskWoken);
+        }
     }
     /* Every completion, including an empty slave response, releases the next
      * queued transfer.  A counting notification also survives task latency. */
@@ -238,6 +246,13 @@ void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi) {
          * the application state and wake the task so the queue can continue. */
         SPI1_State = 0;
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        SupervisorEventReport_t event = SV_EventReport(
+            SUP_COMPONENT_INTERBOARD,
+            IBC_EVENT_SPI_ERROR,
+            SUP_SEVERITY_ERROR,
+            hspi->ErrorCode);
+
+        (void)SV_ReportEventFromISR(&event, &xHigherPriorityTaskWoken);
         vTaskNotifyGiveFromISR(InterruptHandlerTaskHandle, &xHigherPriorityTaskWoken);
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         return;

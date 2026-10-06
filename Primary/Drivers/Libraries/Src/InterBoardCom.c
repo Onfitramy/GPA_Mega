@@ -6,6 +6,9 @@
 #include "spark.h"
 #include "usbd_cdc_if.h"
 
+#include "supervisor.h"
+#include "supervisor_events.h"
+
 //The H7 send data to the F4 via SPI1. The data is made up of packets which are sent immediatly after completion of the previous packet.
 //The Packets are made up of 1byte of Packet_ID and 32bytes of Data 33 bytes long.
 //Data is sent and received from the H7 via DMA, a CS is used to signal the F4 when data is ready to be read.
@@ -25,6 +28,12 @@ volatile InterBoardComDiagnostics_t InterBoardCom_Diagnostics;
 
 static uint32_t interboard_transfer_start_us;
 static uint8_t interboard_stall_reported;
+
+static void InterBoardCom_ReportTask(
+    InterBoardSupervisorEvent_t event_id,
+    SupervisorSeverity_t severity,
+    uint32_t argument,
+    uint32_t metric0);
 
 _Static_assert(sizeof(DataPacket_t) == 32U, "InterBoardCom wire payload must be 32 bytes");
 _Static_assert(sizeof(InterBoardPacket_t) == 33U, "InterBoardCom wire frame must be 33 bytes");
@@ -104,22 +113,28 @@ static void InterBoardCom_DiagnosticsRecordTxStart(InterBoardPacketID_t id, HAL_
 }
 
 static void InterBoardCom_DiagnosticsObserveBusy(void) {
-    uint32_t now_ms = HAL_GetTick();
-    uint32_t elapsed_ms = now_ms - InterBoardCom_Diagnostics.last_tx_start_ms;
-    if ((interboard_stall_reported == 0U) &&
+    uint8_t report_stall = 0U;
+    uint32_t primask = InterBoardCom_DiagnosticsEnterCritical();
+    uint32_t elapsed_ms = HAL_GetTick() - InterBoardCom_Diagnostics.last_tx_start_ms;
+    uint32_t packet_id = transmitBuffer.InterBoardPacket_ID;
+    if ((SPI1_State != 0U) && (interboard_stall_reported == 0U) &&
         (elapsed_ms >= INTERBOARD_DIAG_STALL_THRESHOLD_MS)) {
-        uint32_t primask = InterBoardCom_DiagnosticsEnterCritical();
-        if (interboard_stall_reported == 0U) {
-            interboard_stall_reported = 1U;
-            InterBoardCom_Diagnostics.tx_stall_observations++;
-        }
-        InterBoardCom_DiagnosticsExitCritical(primask);
+        interboard_stall_reported = 1U;
+        InterBoardCom_Diagnostics.tx_stall_observations++;
+        report_stall = 1U;
+    }
+    InterBoardCom_DiagnosticsExitCritical(primask);
+
+    if (report_stall != 0U) {
+        InterBoardCom_ReportTask(IBC_EVENT_TX_STALL, SUP_SEVERITY_ERROR,
+                                packet_id, elapsed_ms);
     }
 }
 
-void InterBoardCom_DiagnosticsRecordTransferComplete(void) {
+void InterBoardCom_DiagnosticsRecordTransferComplete(BaseType_t *higher_priority_task_woken) {
     uint32_t transfer_us = HAL_GetTickUS() - interboard_transfer_start_us;
     uint32_t primask = InterBoardCom_DiagnosticsEnterCritical();
+    uint32_t packet_id = transmitBuffer.InterBoardPacket_ID;
     InterBoardCom_Diagnostics.tx_completed++;
     InterBoardCom_Diagnostics.last_transfer_us = transfer_us;
     if (transfer_us > InterBoardCom_Diagnostics.max_transfer_us) {
@@ -128,6 +143,13 @@ void InterBoardCom_DiagnosticsRecordTransferComplete(void) {
     InterBoardCom_Diagnostics.last_tx_complete_ms = HAL_GetTick();
     interboard_stall_reported = 0U;
     InterBoardCom_DiagnosticsExitCritical(primask);
+
+    SupervisorEventReport_t event = SV_EventReport(
+        SUP_COMPONENT_INTERBOARD, IBC_EVENT_TRANSFER_COMPLETE,
+        SUP_SEVERITY_INFO, packet_id);
+    event.metric_valid_mask = 1U;
+    event.metrics[0] = transfer_us;
+    (void)SV_ReportEventFromISR(&event, higher_priority_task_woken);
 }
 
 void InterBoardCom_DiagnosticsRecordSpiError(uint32_t spi_error) {
@@ -137,13 +159,15 @@ void InterBoardCom_DiagnosticsRecordSpiError(uint32_t spi_error) {
     InterBoardCom_DiagnosticsExitCritical(primask);
 }
 
-void InterBoardCom_DiagnosticsRecordRx(const InterBoardPacket_t *packet) {
+void InterBoardCom_DiagnosticsRecordRx(const InterBoardPacket_t *packet,
+                                      BaseType_t *higher_priority_task_woken) {
     if (packet == NULL) {
         return;
     }
 
     uint8_t calculated_crc = 0U;
     uint8_t is_data_frame = 0U;
+    uint8_t received_crc = packet->Data[sizeof(packet->Data) - 1U];
 
     switch (packet->InterBoardPacket_ID) {
         case INTERBOARD_OP_NONE:
@@ -171,7 +195,6 @@ void InterBoardCom_DiagnosticsRecordRx(const InterBoardPacket_t *packet) {
     } else if (packet->InterBoardPacket_ID == INTERBOARD_OP_ECHO) {
         InterBoardCom_Diagnostics.rx_echo++;
     } else if (is_data_frame != 0U) {
-        uint8_t received_crc = packet->Data[sizeof(packet->Data) - 1U];
         InterBoardCom_Diagnostics.rx_data_frames++;
         InterBoardCom_Diagnostics.last_rx_crc_calculated = calculated_crc;
         InterBoardCom_Diagnostics.last_rx_crc_received = received_crc;
@@ -184,6 +207,23 @@ void InterBoardCom_DiagnosticsRecordRx(const InterBoardPacket_t *packet) {
         InterBoardCom_Diagnostics.rx_unknown_id++;
     }
     InterBoardCom_DiagnosticsExitCritical(primask);
+
+    if ((is_data_frame != 0U) && (calculated_crc != received_crc)) {
+        SupervisorEventReport_t event = SV_EventReport(
+            SUP_COMPONENT_INTERBOARD, IBC_EVENT_RX_CHECKSUM_BAD,
+            SUP_SEVERITY_ERROR, packet->InterBoardPacket_ID);
+        event.metric_valid_mask = 3U;
+        event.metrics[0] = calculated_crc;
+        event.metrics[1] = received_crc;
+        (void)SV_ReportEventFromISR(&event, higher_priority_task_woken);
+    } else if ((is_data_frame == 0U) &&
+               (packet->InterBoardPacket_ID != INTERBOARD_OP_NONE) &&
+               (packet->InterBoardPacket_ID != INTERBOARD_OP_ECHO)) {
+        SupervisorEventReport_t event = SV_EventReport(
+            SUP_COMPONENT_INTERBOARD, IBC_EVENT_RX_UNKNOWN_ID,
+            SUP_SEVERITY_WARNING, packet->InterBoardPacket_ID);
+        (void)SV_ReportEventFromISR(&event, higher_priority_task_woken);
+    }
 }
 
 void InterBoardCom_DiagnosticsRecordRxQueueResult(uint8_t queued) {
@@ -283,20 +323,24 @@ void InterBoardCom_FillData(InterBoardPacket_t *packet, DataPacket_t *data_packe
  * @param packet Pointer to the packet to send
  * @return 1 if queued successfully, 0 if failed
  */
-uint8_t InterBoardCom_QueuePacket(InterBoardPacket_t *packet) {
-    /* Producers run in several tasks while the communication task consumes
-     * the buffer.  Keep the buffer indices/count coherent across preemption. */
+uint8_t InterBoardCom_QueuePacket(InterBoardPacket_t *packet)
+{
     uint32_t primask = InterBoardCom_DiagnosticsEnterCritical();
-    uint8_t queued = InterBoardBuffer_Push(&txCircBuffer, packet);
 
-    if (queued != 0U) {
-        InterBoardCom_DiagnosticsRecordQueueResult(1U);
-        InterBoardCom_DiagnosticsExitCritical(primask);
-        return 1;
-    }
-    InterBoardCom_DiagnosticsRecordQueueResult(0U);
+    uint32_t packet_id = packet->InterBoardPacket_ID;
+    uint8_t queued = InterBoardBuffer_Push(&txCircBuffer, packet);
+    uint32_t queue_depth = txCircBuffer.count;
+
+    InterBoardCom_DiagnosticsRecordQueueResult(queued);
     InterBoardCom_DiagnosticsExitCritical(primask);
-    return 0; // Buffer full
+
+    InterBoardCom_ReportTask(
+        queued ? IBC_EVENT_TX_ENQUEUED : IBC_EVENT_TX_QUEUE_FULL,
+        queued ? SUP_SEVERITY_INFO : SUP_SEVERITY_ERROR,
+        packet_id,
+        queue_depth);
+
+    return queued;
 }
 
 /**
@@ -309,6 +353,7 @@ uint8_t InterBoardCom_QueuePacket(InterBoardPacket_t *packet) {
 void InterBoardCom_ProcessTxBuffer(void) {
     uint8_t spi_was_busy = 0U;
     uint8_t packet_ready = 0U;
+    uint32_t packet_id = 0U;
 
     uint32_t primask = InterBoardCom_DiagnosticsEnterCritical();
     if (SPI1_State != 0U) {
@@ -317,6 +362,7 @@ void InterBoardCom_ProcessTxBuffer(void) {
         /* Claim SPI1 before interrupts/preemption are restored. */
         SPI1_State = 1U;
         packet_ready = 1U;
+        packet_id = transmitBuffer.InterBoardPacket_ID;
     }
     InterBoardCom_DiagnosticsExitCritical(primask);
 
@@ -339,15 +385,35 @@ void InterBoardCom_ProcessTxBuffer(void) {
                                                            (uint8_t *)&transmitBuffer,
                                                            SPI1_DMA_Rx_Buffer,
                                                            sizeof(InterBoardPacket_t));
-    InterBoardCom_DiagnosticsRecordTxStart(transmitBuffer.InterBoardPacket_ID, status);
+    InterBoardCom_DiagnosticsRecordTxStart((InterBoardPacketID_t)packet_id, status);
 
     if (status != HAL_OK) {
-        /* No completion callback follows an immediate start failure.  Release
-         * the software gate so the 100 Hz fallback can try the next packet. */
+        /* No completion callback follows an immediate start failure. */
         primask = InterBoardCom_DiagnosticsEnterCritical();
         SPI1_State = 0U;
         InterBoardCom_DiagnosticsExitCritical(primask);
     }
+
+    InterBoardSupervisorEvent_t event_id;
+    SupervisorSeverity_t severity;
+
+    if (status == HAL_OK) {
+        event_id = IBC_EVENT_TX_STARTED;
+        severity = SUP_SEVERITY_INFO;
+
+    } else if (status == HAL_BUSY) {
+        event_id = IBC_EVENT_TX_START_BUSY;
+        severity = SUP_SEVERITY_WARNING;
+    } else {
+        event_id = IBC_EVENT_TX_START_FAILED;
+        severity = SUP_SEVERITY_ERROR;
+    }
+
+    InterBoardCom_ReportTask(
+        event_id,
+        severity,
+        packet_id,
+        (uint32_t)status);
 }
 
 /**
@@ -664,6 +730,25 @@ void InterBoardCom_SendTestPacket(void) {
     TestPacket = InterBoardCom_CreatePacket(INTERBOARD_OP_ECHO);
     InterBoardCom_FillRaw(&TestPacket, 32, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32);
     InterBoardCom_QueuePacket(&TestPacket);
+}
+
+
+static void InterBoardCom_ReportTask(
+    InterBoardSupervisorEvent_t event_id,
+    SupervisorSeverity_t severity,
+    uint32_t argument,
+    uint32_t metric0)
+{
+    SupervisorEventReport_t event = SV_EventReport(
+        SUP_COMPONENT_INTERBOARD,
+        event_id,
+        severity,
+        argument);
+
+    event.metric_valid_mask = 1U;
+    event.metrics[0] = metric0;
+
+    (void)SV_ReportEvent(&event);
 }
 
 /**

@@ -15,6 +15,7 @@
 */
 
 #include "supervisor.h"
+#include "supervisor_events.h"
 #include "stm32h7xx_hal.h"
 #include <stddef.h>
 #include <string.h>
@@ -39,6 +40,7 @@ typedef struct {
     uint32_t component_id;
     uint32_t event_offset;
     uint8_t  event_count;
+    bool     info_enabled;
 }SupervisorComponent_t;
 
 typedef struct {
@@ -49,7 +51,7 @@ typedef struct {
 /* Component ID(only sequential), number of event types */
 #define SUPERVISOR_COMPONENTS(X) \
     X(0, 10)/*Kernel*/           \
-    X(1, 10)/*Inter Board Com*/  \
+    X(SUP_COMPONENT_INTERBOARD, IBC_EVENT_COUNT)/*Inter Board Com*/  \
     X(2, 10)
 
 /* Generate components[] */
@@ -118,6 +120,9 @@ bool SV_Init(void)
     }
     Supervisor_RecordInit();
     SupervisorEventQueue = queue;
+
+    /* Enable for the initial InterBoardCom tests. */
+    (void)SV_SetInfoEnabled(SUP_COMPONENT_INTERBOARD, true);
     return true;
 }
 
@@ -148,6 +153,10 @@ bool SV_ReportEvent(SupervisorEventReport_t *event)
 
     // Lookup and record ownership changes share the same task critical section.
     taskENTER_CRITICAL();
+    if (event->severity == SUP_SEVERITY_INFO && !component->info_enabled) {
+        taskEXIT_CRITICAL();
+        return true; /* Intentionally suppressed, not a reporting failure. */
+    }
     uint8_t record_index = record_lookup[lookup_index];
     if (record_index != SUPERVISOR_RECORD_NONE) {
         Supervisor_AddSaturating(&records[record_index].occurrence_count, 1U);
@@ -182,6 +191,75 @@ bool SV_ReportEvent(SupervisorEventReport_t *event)
     record_lookup[lookup_index] = SUPERVISOR_RECORD_NONE;
     free_indices[free_count++] = record_index;
     taskEXIT_CRITICAL();
+    return false;
+}
+
+/**
+ * @brief Report a new event to the supervisor. ISR safe version.
+ * @param event Pointer to the event report structure
+ * @param higher_priority_task_woken Pointer to a variable that will be set to pdTRUE if a higher priority task is woken by the function
+ * @return true if the event was reported successfully, false otherwise
+ */
+bool SV_ReportEventFromISR(SupervisorEventReport_t *event, BaseType_t *higher_priority_task_woken)
+{
+    if (event == NULL || SupervisorEventQueue == NULL) {
+        return false;
+    }
+
+    // Check if the component_id is valid
+    if (event->component_id >= SUPERVISOR_COMPONENT_COUNT) {
+        return false;
+    }
+
+    // Check if the event_id is valid for the given component
+    const SupervisorComponent_t *component = &components[event->component_id];
+    if (event->event_id >= component->event_count) {
+        return false;
+    }
+
+    // Calculate the index in the record_lookup table
+    uint32_t lookup_index = component->event_offset + event->event_id;
+
+    // Share the same interrupt mask protection as task-side record updates.
+    UBaseType_t saved_mask = taskENTER_CRITICAL_FROM_ISR();
+    if (event->severity == SUP_SEVERITY_INFO && !component->info_enabled) {
+        taskEXIT_CRITICAL_FROM_ISR(saved_mask);
+        return true; /* Intentionally suppressed, not a reporting failure. */
+    }
+    uint8_t record_index = record_lookup[lookup_index];
+    if (record_index != SUPERVISOR_RECORD_NONE) {
+        Supervisor_AddSaturating(&records[record_index].occurrence_count, 1U);
+        records[record_index].last_occurrence_ms = HAL_GetTick();
+        taskEXIT_CRITICAL_FROM_ISR(saved_mask);
+        return true;
+    }
+
+    if (free_count == 0U) {
+        Supervisor_AddSaturating(&diagnostics.dropped_occurrences, 1U);
+        taskEXIT_CRITICAL_FROM_ISR(saved_mask);
+        return false;
+    }
+
+    record_index = free_indices[--free_count];
+    uint32_t first_occurrence_ms = HAL_GetTick();
+    records[record_index].occurrence_count = 1U;
+    records[record_index].last_occurrence_ms = first_occurrence_ms;
+    record_lookup[lookup_index] = record_index;
+    taskEXIT_CRITICAL_FROM_ISR(saved_mask);
+
+    event->first_occurrence_ms = first_occurrence_ms;
+    if (xQueueSendFromISR(SupervisorEventQueue, event, higher_priority_task_woken) == pdTRUE) {
+        return true;
+    }
+
+    /* Unexpected publication failure: account for all accumulated occurrences
+     * and restore ownership. There is no queued item that could consume it. */
+    saved_mask = taskENTER_CRITICAL_FROM_ISR();
+    Supervisor_AddSaturating(&diagnostics.queue_send_failures, 1U);
+    Supervisor_AddSaturating(&diagnostics.dropped_occurrences, records[record_index].occurrence_count);
+    record_lookup[lookup_index] = SUPERVISOR_RECORD_NONE;
+    free_indices[free_count++] = record_index;
+    taskEXIT_CRITICAL_FROM_ISR(saved_mask);
     return false;
 }
 
@@ -225,15 +303,6 @@ void SV_ProcessEvents(void)
     }
 }
 
-void Supervisor_GetDiagnostics(SupervisorDiagnostics_t *snapshot)
-{
-    if (snapshot != NULL) {
-        taskENTER_CRITICAL();
-        *snapshot = diagnostics;
-        taskEXIT_CRITICAL();
-    }
-}
-
 /**
  * @brief Create a new event report.
  * @param component_id The ID of the component that generated the event, check supervisor.c to validate.
@@ -252,4 +321,30 @@ SupervisorEventReport_t SV_EventReport(uint32_t component_id, uint32_t event_id,
         .metric_valid_mask = 0U
     };
     return report;
+}
+
+bool SV_SetInfoEnabled(uint32_t component_id, bool enabled)
+{
+    if (component_id >= SUPERVISOR_COMPONENT_COUNT) {
+        return false;
+    }
+
+    taskENTER_CRITICAL();
+    components[component_id].info_enabled = enabled;
+    taskEXIT_CRITICAL();
+
+    return true;
+}
+
+/**
+ * @brief Get the current diagnostics.
+ * @param snapshot A pointer to the snapshot to fill.
+ */
+void SV_GetDiagnostics(SupervisorDiagnostics_t *snapshot)
+{
+    if (snapshot != NULL) {
+        taskENTER_CRITICAL();
+        *snapshot = diagnostics;
+        taskEXIT_CRITICAL();
+    }
 }
