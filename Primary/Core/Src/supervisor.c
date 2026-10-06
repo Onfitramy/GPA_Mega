@@ -46,11 +46,6 @@ typedef struct {
     uint32_t last_occurrence_ms;
 } SupervisorEventRecord_t;
 
-typedef struct {
-    SupervisorEventReport_t event;
-    uint32_t first_occurrence_ms;
-} SupervisorQueuedEvent_t;
-
 /* Component ID(only sequential), number of event types */
 #define SUPERVISOR_COMPONENTS(X) \
     X(0, 10)/*Kernel*/           \
@@ -111,13 +106,13 @@ static void Supervisor_RecordInit(void)
     free_count = SUPERVISOR_QUEUE_LENGTH;
 }
 
-bool Supervisor_Init(void)
+bool SV_Init(void)
 {
     if (SupervisorEventQueue != NULL) {
         return true;
     }
 
-    QueueHandle_t queue = xQueueCreate(SUPERVISOR_QUEUE_LENGTH, sizeof(SupervisorQueuedEvent_t));
+    QueueHandle_t queue = xQueueCreate(SUPERVISOR_QUEUE_LENGTH, sizeof(SupervisorEventReport_t));
     if (queue == NULL) {
         return false;
     }
@@ -131,7 +126,7 @@ bool Supervisor_Init(void)
  * @param event Pointer to the event report structure
  * @return true if the event was reported successfully, false otherwise
  */
-bool Supervisor_ReportEvent(const SupervisorEventReport_t *event)
+bool SV_ReportEvent(SupervisorEventReport_t *event)
 {
     if (event == NULL || SupervisorEventQueue == NULL) {
         return false;
@@ -174,14 +169,8 @@ bool Supervisor_ReportEvent(const SupervisorEventReport_t *event)
     record_lookup[lookup_index] = record_index;
     taskEXIT_CRITICAL();
 
-    /* Duplicates may accumulate in the reserved record before publication.
-     * Equal pool/queue capacity guarantees space: each occupied queue slot
-     * owns a record, and this unpublished record is already reserved. */
-    SupervisorQueuedEvent_t queued = {
-        .event = *event,
-        .first_occurrence_ms = first_occurrence_ms
-    };
-    if (xQueueSend(SupervisorEventQueue, &queued, 0) == pdTRUE) {
+    event->first_occurrence_ms = first_occurrence_ms;
+    if (xQueueSend(SupervisorEventQueue, event, 0) == pdTRUE) {
         return true;
     }
 
@@ -199,23 +188,22 @@ bool Supervisor_ReportEvent(const SupervisorEventReport_t *event)
 /**
  * @brief Process events in the supervisor queue.
  */
-void Supervisor_ProcessEvents(void)
+void SV_ProcessEvents(void)
 {
     if (SupervisorEventQueue == NULL) {
         return;
     }
 
-    SupervisorQueuedEvent_t queued;
+    SupervisorEventReport_t queued;
     for (uint32_t processed = 0; processed < SUPERVISOR_QUEUE_LENGTH; ++processed) {
         if (xQueueReceive(SupervisorEventQueue, &queued, 0) != pdTRUE) {
             break;
         }
 
         /* The private queue contains only reports validated by ReportEvent. */
-        uint32_t lookup_index = components[queued.event.component_id].event_offset + queued.event.event_id;
+        uint32_t lookup_index = components[queued.component_id].event_offset + queued.event_id;
         SupervisorEventSnapshot_t snapshot = {
-            .event = queued.event,
-            .first_occurrence_ms = queued.first_occurrence_ms
+            .event = queued
         };
 
         taskENTER_CRITICAL();
@@ -244,4 +232,24 @@ void Supervisor_GetDiagnostics(SupervisorDiagnostics_t *snapshot)
         *snapshot = diagnostics;
         taskEXIT_CRITICAL();
     }
+}
+
+/**
+ * @brief Create a new event report.
+ * @param component_id The ID of the component that generated the event, check supervisor.c to validate.
+ * @param event_id The ID of the event.
+ * @param severity The severity of the event.
+ * @param argument An argument for the event.
+ * @return A new event report.
+ */
+SupervisorEventReport_t SV_EventReport(uint32_t component_id, uint32_t event_id, SupervisorSeverity_t severity, uint32_t argument)
+{
+    SupervisorEventReport_t report = {
+        .component_id = component_id,
+        .event_id = event_id,
+        .severity = severity,
+        .argument = argument,
+        .metric_valid_mask = 0U
+    };
+    return report;
 }
