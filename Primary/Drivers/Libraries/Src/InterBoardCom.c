@@ -581,31 +581,31 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t *packet) {
                         break;
                     case PACKET_ID_STATUS:
                         printf("\nID:%d, TS:%lu, StatFl:%lu, SensFl:%lu, ErrFl:%lu, STATE:%d",
-                                data_packet->Packet_ID, data_packet->timestamp,
+                                packet_type, data_packet->timestamp,
                                 data_packet->Data.status.status_flags, data_packet->Data.status.sensor_status_flags, data_packet->Data.status.error_flags, data_packet->Data.status.State);
                         break;
                     case PACKET_ID_POWER:
                         printf("\nID:%d, TS:%lu, M25VBUS:%u, M2BATV:%u, PUPOW:%u, PUCURR:%u, PUBATV:%u",
-                                data_packet->Packet_ID, data_packet->timestamp,
+                                packet_type, data_packet->timestamp,
                                 data_packet->Data.power.M2_bus_5V, data_packet->Data.power.M2_bus_GPA_bat_volt,
                                 data_packet->Data.power.PU_pow, data_packet->Data.power.PU_curr, data_packet->Data.power.PU_bat_bus_volt);
                         break;
                     case PACKET_ID_GPS:
                         printf("\nID:%d, TS:%lu, Lat:%ld, Lon:%ld, Alt:%ld, Spd:%d, Crs:%d",
-                                data_packet->Packet_ID, data_packet->timestamp,
+                                packet_type, data_packet->timestamp,
                                 data_packet->Data.gps.latitude, data_packet->Data.gps.longitude, data_packet->Data.gps.altitude,
                                 data_packet->Data.gps.speed, data_packet->Data.gps.course);
                         break;
                     case PACKET_ID_IMU:
                         printf("\nID:%d, TS:%lu, GyrX:%d, GyrY:%d, GyrZ:%d, AccX:%ld, AccY:%ld, AccZ:%ld, MagX:%d, MagY:%d, MagZ:%d",
-                                data_packet->Packet_ID, data_packet->timestamp,
+                                packet_type, data_packet->timestamp,
                                 data_packet->Data.imu.gyroX, data_packet->Data.imu.gyroY, data_packet->Data.imu.gyroZ,
                                 data_packet->Data.imu.accelX, data_packet->Data.imu.accelY, data_packet->Data.imu.accelZ,
                                 data_packet->Data.imu.magX, data_packet->Data.imu.magY, data_packet->Data.imu.magZ);
                         break;
                     case PACKET_ID_TEMPERATURE:
                         printf("\nID:%d, TS:%lu, M1DTS:%d, M1ADC:%d, M1BMP:%d, M1IMU1:%d, M1IMU2:%d, M1MAG:%d, M23V3:%d, M2XBee:%d, PUBAT:%d, Pressure:%.6f",
-                                data_packet->Packet_ID, data_packet->timestamp,
+                                packet_type, data_packet->timestamp,
                                 data_packet->Data.temperature.M1_DTS, data_packet->Data.temperature.M1_ADC,
                                 data_packet->Data.temperature.M1_BMP, data_packet->Data.temperature.M1_IMU1,
                                 data_packet->Data.temperature.M1_IMU2, data_packet->Data.temperature.M1_MAG,
@@ -615,19 +615,20 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t *packet) {
 
                     case PACKET_ID_ATTITUDE:
                         printf("\nID:%d, TS:%lu, phi:%f, theta:%f, psi:%f",
-                                data_packet->Packet_ID, data_packet->timestamp,
+                                packet_type, data_packet->timestamp,
                                 data_packet->Data.attitude.phi, data_packet->Data.attitude.theta, data_packet->Data.attitude.psi);
                         break;
                     case PACKET_ID_KALMANMATRIX:
                         printf("\nID:%d, TS:%lu, P11:%f, P22:%f, P33:%f, EKF2_Height:%f, EKF2_Vel:%f, EKF2_RefPres:%f",
-                                data_packet->Packet_ID, data_packet->timestamp,
+                                packet_type, data_packet->timestamp,
                                 data_packet->Data.kalman.P11, data_packet->Data.kalman.P22, data_packet->Data.kalman.P33,
                                 data_packet->Data.kalman.EKF2_Heigth, data_packet->Data.kalman.EKF2_vel, data_packet->Data.kalman.EKF2_refPres);
                         break;
                     case PACKET_ID_STATE:
-                        printf("\nID:%d, TS:%lu, STATE:%d, STATE_TS:%ld", data_packet->Packet_ID, data_packet->timestamp, data_packet->Data.state.flight_state, data_packet->Data.state.timestamp_ms);
+                        printf("\nID:%d, TS:%lu, STATE:%d, STATE_TS:%ld", packet_type, data_packet->timestamp, data_packet->Data.state.flight_state, data_packet->Data.state.timestamp_ms);
                         break;
                     default:
+                        printf("\nID:%d", packet_type);
                         break;
                 }
             }
@@ -637,6 +638,9 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t *packet) {
             } else if (!(data_packet->Packet_ID & PACKET_ACTION_WRITE_TO_SERIAL)) {
                 printf("ID: %d\n", data_packet->Packet_ID);
             }
+
+            fflush(stdout);
+
             break;
         }
 

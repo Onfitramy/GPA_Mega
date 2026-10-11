@@ -526,7 +526,7 @@ void W25Q_CopyLogs(uint16_t max_page, SPI2_W25Q_CopyLogsTarget_t target) {
 	uint8_t buffer[size];
 
 	if (target == SPI2_CopyLogsTarget_Serial) {
-		DataPacket_t serial_start_packet = CreateSerialPacket(0);
+		DataPacket_t serial_start_packet = CreateSerialPacket(1);
 		InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU, &serial_start_packet);
 	}
 
@@ -542,7 +542,7 @@ void W25Q_CopyLogs(uint16_t max_page, SPI2_W25Q_CopyLogsTarget_t target) {
 
 				InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU, &packet);
 
-				vTaskDelay(1);
+				vTaskDelay(100);
 			} else if (target == SPI2_CopyLogsTarget_SD) {
 				if (SD_AppendDataPacketToBuffer(packets + i) != 0) {
 					SD_SaveBuffer("log.txt");
@@ -560,9 +560,9 @@ void W25Q_CopyLogs(uint16_t max_page, SPI2_W25Q_CopyLogsTarget_t target) {
 	}
 
 	if (target == SPI2_CopyLogsTarget_Serial) {
-		vTaskDelay(1);
+		vTaskDelay(100);
 
-		DataPacket_t serial_stop_packet = CreateSerialPacket(1);
+		DataPacket_t serial_stop_packet = CreateSerialPacket(0);
 		InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU, &serial_stop_packet);
 	}
 }
