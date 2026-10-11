@@ -318,7 +318,7 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket, PacketSource_t sour
                 InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0, source);
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_STORAGE_SD_UNMOUNT) {
                 // Storage command 0x04: SD Unmount
-                SD_Unmount();
+                SPI2_QueueMountOperation(SPI2_SD_MountType_Unmount);
                 InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0, source);
             }
             break;

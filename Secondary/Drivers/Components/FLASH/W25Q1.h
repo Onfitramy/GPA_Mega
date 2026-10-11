@@ -62,7 +62,7 @@ void W25Q_Write_Cleared(uint32_t page, uint16_t offset, uint32_t size, uint8_t *
 void W25Q_WriteConfig();
 void W25Q_SaveToLog(uint8_t *data, uint32_t size);
 uint8_t W25Q_WritePackets(DataPacket_t* packets, uint32_t size);
-void W25Q_CopyLogs(uint16_t max_page, SPI2_CopyLogsTarget_t target);
+void W25Q_CopyLogs(uint16_t max_page, SPI2_W25Q_CopyLogsTarget_t target);
 void W25Q_AlignSectorOffset();
 void W25Q_Queue_GetConfig();
 uint8_t W25Q_Queue_LoadLastPackets(PacketType_t *packet_types, DataPacket_t *packets, uint8_t packet_count);

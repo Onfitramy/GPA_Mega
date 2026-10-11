@@ -413,8 +413,8 @@ void W25Q_Queue_GetConfig() {
 	size_t size = sizeof(W25QPage0_config_t);
 	uint8_t data_1[size];
 	uint8_t data_2[size];
-	SPI2_Read_t read_result_1 = { .start_page = 0, .offset = 0, .size = size, .data = data_1 };
-	SPI2_Read_t read_result_2 = { .start_page = PAGES_PER_SECTOR, .offset = 0, .size = size, .data = data_2 };
+	SPI2_W25Q_Read_t read_result_1 = { .start_page = 0, .offset = 0, .size = size, .data = data_1 };
+	SPI2_W25Q_Read_t read_result_2 = { .start_page = PAGES_PER_SECTOR, .offset = 0, .size = size, .data = data_2 };
 	SPI2_QueueRead(&read_result_1);
 	SPI2_QueueBlockingRead(&read_result_2);
 
@@ -448,7 +448,7 @@ uint8_t W25Q_Queue_LoadLastPackets(PacketType_t packet_types[], DataPacket_t pac
 
 	// iterate through all pages back to front (newest to oldest)
 	for (int page = (int32_t)W25Q_FLASH_CONFIG.curr_logPage - 1; page >= LOG_PAGE; --page) {
-		SPI2_Read_t read_result = { .start_page = page, .offset = 0, .size = packets_size };
+		SPI2_W25Q_Read_t read_result = { .start_page = page, .offset = 0, .size = packets_size };
 		SPI2_QueueBlockingRead(&read_result);
 
 		DataPacket_t* loaded_packets = (DataPacket_t*) read_result.data;
@@ -515,7 +515,7 @@ void W25Q_Queue_AddDataPackets(const DataPacket_t* data_packet) {
  * Copy logs to the serial interface. Since the secondary does not have direct access to the serial interface,
  * this function sends packages to the primary which then writes them to the serial interface.
  */
-void W25Q_CopyLogs(uint16_t max_page, SPI2_CopyLogsTarget_t target) {
+void W25Q_CopyLogs(uint16_t max_page, SPI2_W25Q_CopyLogsTarget_t target) {
 	if (max_page == 0) {
 		max_page = W25Q_FLASH_CONFIG.curr_logPage;
 	} else if (max_page < LOG_PAGE) {
