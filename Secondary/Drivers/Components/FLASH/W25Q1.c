@@ -235,64 +235,6 @@ void W25Q_FastRead (uint32_t startPage, uint8_t offset, uint32_t size, uint8_t *
 	csHIGH();  // pull the CS High
 }
 
-
-uint8_t W25Q_Read_Byte(uint32_t Addr)
-{
-	uint8_t tData[5];
-	uint8_t rData;
-
-	if (numBLOCK<512)   // Chip Size<256Mb
-	{
-		tData[0] = 0x03;  // enable Read
-		tData[1] = (Addr>>16)&0xFF;  // MSB of the memory Address
-		tData[2] = (Addr>>8)&0xFF;
-		tData[3] = (Addr)&0xFF; // LSB of the memory Address
-	}
-	else  // we use 32bit memory address for chips >= 256Mb
-	{
-		tData[0] = 0x13;  // Read Data with 4-Byte Address
-		tData[1] = (Addr>>24)&0xFF;  // MSB of the memory Address
-		tData[2] = (Addr>>16)&0xFF;
-		tData[3] = (Addr>>8)&0xFF;
-		tData[4] = (Addr)&0xFF; // LSB of the memory Address
-	}
-
-	csLOW();  // pull the CS Low
-	if (numBLOCK<512)
-	{
-		HAL_SPI_Transmit(&W25Q1_SPI, tData, 4, 100);  // send read instruction along with the 24 bit memory address
-	}
-	else
-	{
-		HAL_SPI_Transmit(&W25Q1_SPI, tData, 5, 100);  // send read instruction along with the 32 bit memory address
-	}
-
-	HAL_SPI_Receive(&W25Q1_SPI, &rData, 1, 100);  // Read the data
-	csHIGH();  // pull the CS High
-
-	return rData;
-}
-
-float W25Q_Read_NUM (uint32_t page, uint16_t offset)
-{
-	uint8_t rData[4];
-	W25Q_Read(page, offset, 4, rData);
-	return (Bytes2float(rData));
-}
-
-void W25Q_Read_32B (uint32_t page, uint16_t offset, uint32_t size, uint32_t *data)
-{
-	uint8_t data8[size*4];
-	uint32_t indx = 0;
-
-	W25Q_FastRead(page, offset, size*4, data8);
-
-	for (uint32_t i=0; i<size; i++)
-	{
-		data[i] = (data8[indx++]) | (data8[indx++]<<8) | (data8[indx++]<<16) | (data8[indx++]<<24);
-	}
-}
-
 void W25Q_Write (uint32_t page, uint16_t offset, uint32_t size, uint8_t *data)
 {
 	uint16_t prevDSize = 64;
@@ -308,7 +250,7 @@ void W25Q_Write (uint32_t page, uint16_t offset, uint32_t size, uint8_t *data)
 	for (uint16_t i=0; i<numSectors; i++)
 	{
 		uint32_t startPage = startSector*16;
-		W25Q_FastRead(startPage, 0, prevDSize, previousData);
+		W25Q_Read(startPage, 0, prevDSize, previousData);
 		uint16_t bytesRemaining = bytestomodify(size, sectorOffset);
 
 		for (uint16_t i=0; i<bytesRemaining; i++)
@@ -323,60 +265,6 @@ void W25Q_Write (uint32_t page, uint16_t offset, uint32_t size, uint8_t *data)
 		dataindx = dataindx+bytesRemaining;
 		size = size-bytesRemaining;
 	}
-}
-
-void W25Q_Write_Byte (uint32_t Addr, uint8_t data)
-{
-	uint8_t tData[6];
-	uint8_t indx;
-
-	if (numBLOCK<512)   // Chip Size<256Mb
-	{
-		tData[0] = 0x02;  // page program
-		tData[1] = (Addr>>16)&0xFF;  // MSB of the memory Address
-		tData[2] = (Addr>>8)&0xFF;
-		tData[3] = (Addr)&0xFF; // LSB of the memory Address
-		tData[4] = data;
-		indx = 5;
-	}
-
-
-	if (W25Q_Read_Byte(Addr) == 0xFF)
-	{
-		enable_write();
-		csLOW();
-		HAL_SPI_Transmit(&W25Q1_SPI, tData, indx, 100);
-		csHIGH();
-
-		vTaskDelay(5);
-		disable_write();
-	}
-}
-
-void W25Q_Write_NUM (uint32_t page, uint16_t offset, float data)
-{
-	uint8_t tempBytes[4];
-	float2Bytes(tempBytes, data);
-
-	/* Write using sector update function */
-	W25Q_Write(page, offset, 4, tempBytes);
-}
-
-
-void W25Q_Write_32B (uint32_t page, uint16_t offset, uint32_t size, uint32_t *data)
-{
-	uint8_t data8[size*4];
-	uint32_t indx = 0;
-
-	for (uint32_t i=0; i<size; i++)
-	{
-		data8[indx++] = data[i]&0xFF;   // extract LSB
-		data8[indx++] = (data[i]>>8)&0xFF;
-		data8[indx++] = (data[i]>>16)&0xFF;
-		data8[indx++] = (data[i]>>24)&0xFF;
-	}
-
-	W25Q_Write(page, offset, indx, data8);
 }
 
 void W25Q_Write_Page (uint32_t page, uint16_t offset, uint32_t size, uint8_t *data)
@@ -461,26 +349,6 @@ void W25Q_WriteConfig() {
 	W25Q_Write_Page(PAGES_PER_SECTOR, 0, sizeof(W25QPage0_config_t), (uint8_t *)&W25Q_FLASH_CONFIG);
 }
 
-/**
- * @brief Align the current log page with the next sector.
- * All remaining data in the current sector is replaced by 0.
- */
-void W25Q_AlignSectorOffset() {
-	uint32_t sectorOffset = W25Q_FLASH_CONFIG.curr_logPage % 16;
-	if (sectorOffset == 0) return;
-
-	uint8_t tempLogs[SECTOR_SIZE];
-	uint32_t startPage = W25Q_FLASH_CONFIG.curr_logPage - sectorOffset;
-	uint32_t emptyStart = sectorOffset * PACKETS_PER_PAGE * sizeof(DataPacket_t);
-
-	W25Q_Read(startPage, 0, emptyStart, tempLogs);
-	W25Q_Erase_Sector(W25Q_FLASH_CONFIG.curr_logPage / PAGES_PER_SECTOR);
-
-	memset(tempLogs + emptyStart, 0, sizeof(tempLogs) - emptyStart);
-	W25Q_Write_Cleared(startPage / PAGES_PER_SECTOR, 0, sizeof(tempLogs), tempLogs);
-	W25Q_FLASH_CONFIG.curr_logPage += PAGES_PER_SECTOR - sectorOffset;
-}
-
 //Saves the data to the log page
 void W25Q_SaveToLog(uint8_t *data, uint32_t size)
 {
@@ -512,6 +380,7 @@ uint8_t W25Q_WritePackets(DataPacket_t* packets, uint32_t size) {
 	}
 
 	if (W25Q_FLASH_CONFIG.write_logs) {
+		// TODO: This can probably be done without a for loop. This would also remove the need for `SPI2_Write_type_t`
 		for (int i = 0; i < PAGES_PER_SECTOR; ++i) {
 			W25Q_SaveToLog((uint8_t*)(packets + i * PACKETS_PER_PAGE), PACKETS_PER_PAGE * sizeof(DataPacket_t));
 		}
@@ -522,116 +391,19 @@ uint8_t W25Q_WritePackets(DataPacket_t* packets, uint32_t size) {
 	return 0;
 }
 
-void W25Q_LoadFromLog(uint8_t *data, uint32_t size, uint32_t log_page, uint32_t log_offset)
-{
-	// Load data from the log page
-	if (size == 0) return; // nothing to load
-
-	W25Q_Read(log_page, log_offset, size, data);
-}
-
-void W25Q_CopyLogsToSD(uint16_t max_page) {
-	if (max_page == 0) {
-		max_page = W25Q_FLASH_CONFIG.curr_logPage;
-	} else if (max_page < LOG_PAGE) {
-		return;
-	}
-
-	bool write_logs = W25Q_FLASH_CONFIG.write_logs;
-	W25Q_FLASH_CONFIG.write_logs = false;
-
-	uint32_t size = FLASH_BUFFER_SIZE * sizeof(DataPacket_t);
-	uint8_t buffer[size];
-
-	for (uint32_t page = LOG_PAGE; page < max_page; page += PAGES_PER_SECTOR) {
-		W25Q_LoadFromLog(buffer, size, page, 0);
-
-		DataPacket_t *packets = (DataPacket_t *) buffer;
-
-		for (uint32_t i = 0; i < FLASH_BUFFER_SIZE; ++i) {
-			if (SD_AppendDataPacketToBuffer(packets + i) != 0) {
-				SD_SaveBuffer("log.txt");
-				SD_ResetBufferIndex();
-				SD_AppendDataPacketToBuffer(packets + i);
-			}
-		}
-
-		// Save remaining buffer which wasn't written.
-		// Saving is triggered by the buffer being full, however packets are appended after saving the buffer.
-		SD_SaveBuffer("log.txt");
-	}
-
-	W25Q_FLASH_CONFIG.write_logs = write_logs;
-}
-
 /**
- * Copy logs to the serial interface. Since the secondary does not have direct access to the serial interface,
- * this function sends packages to the primary which then writes them to the serial interface.
+ * @brief Align the current log page with the next sector.
+ *
+ * Note that this function modifies `W25Q_FLASH_CONFIG`,
+ * even though it is called from the flash task.
+ * This is fine, because `W25Q_Queue_GetConfig` is the only function calling this function
+ * and nothing flash related is done until `W25Q_Queue_GetConfig` is finished.
  */
-void W25Q_CopyLogsToSerial(uint16_t max_page) {
-	if (max_page == 0) {
-		max_page = W25Q_FLASH_CONFIG.curr_logPage;
-	} else if (max_page < LOG_PAGE) {
-		return;
-	}
+void W25Q_AlignSectorOffset() {
+	uint32_t sectorOffset = W25Q_FLASH_CONFIG.curr_logPage % PAGES_PER_SECTOR;
+	if (sectorOffset == 0) return;
 
-	bool write_logs = W25Q_FLASH_CONFIG.write_logs;
-	W25Q_FLASH_CONFIG.write_logs = false;
-
-	uint32_t size = FLASH_BUFFER_SIZE * sizeof(DataPacket_t);
-	uint8_t buffer[size];
-
-	DataPacket_t serial_start_packet = CreateSerialPacket(0);
-	InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU, &serial_start_packet);
-
-	for (uint32_t page = LOG_PAGE; page < max_page; page += PAGES_PER_SECTOR) {
-		W25Q_LoadFromLog(buffer, size, page, 0);
-
-		DataPacket_t *packets = (DataPacket_t *) buffer;
-
-		for (uint32_t i = 0; i < FLASH_BUFFER_SIZE; ++i) {
-			DataPacket_t packet = packets[i];
-			packet.Packet_ID = packets->Packet_ID | PACKET_ACTION_WRITE_TO_SERIAL;
-
-			InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU, &packet);
-
-			vTaskDelay(1);
-		}
-	}
-
-	vTaskDelay(1);
-
-	DataPacket_t serial_stop_packet = CreateSerialPacket(1);
-	InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU, &serial_stop_packet);
-
-	W25Q_FLASH_CONFIG.write_logs = write_logs;
-}
-
-uint8_t flash_buffer_index = 0;
-DataPacket_t flash_packet_buffer1[FLASH_BUFFER_SIZE];
-DataPacket_t flash_packet_buffer2[FLASH_BUFFER_SIZE];
-DataPacket_t* flash_packet_buffer = flash_packet_buffer1; //Dual buffer to stop 500ms data loss when writing to flash
-
-/**
- * @brief Add a data packet to the flash buffer.
- * If the flash buffer is full, its data written to the next flash sector.
- * @param data_packet
- */
-void W25Q_Queue_AddDataPackets(const DataPacket_t* data_packet) {
-	if (flash_buffer_index < FLASH_BUFFER_SIZE) {
-		flash_packet_buffer[flash_buffer_index++] = *data_packet;
-	}
-
-	if (flash_buffer_index >= FLASH_BUFFER_SIZE) {
-		uint32_t byte_buffer_size = FLASH_BUFFER_SIZE * sizeof(DataPacket_t);
-		// We need to use malloc, so the data of the array does not drop out of scope.
-		uint8_t* queue_packet_buffer = malloc(byte_buffer_size);
-		memcpy(queue_packet_buffer, flash_packet_buffer, byte_buffer_size);
-		SPI2_QueueWrite(queue_packet_buffer, byte_buffer_size);
-		//Switch buffer
-		flash_packet_buffer = (flash_packet_buffer == flash_packet_buffer1) ? flash_packet_buffer2 : flash_packet_buffer1;
-		flash_buffer_index = 0;
-	}
+	W25Q_FLASH_CONFIG.curr_logPage += PAGES_PER_SECTOR - sectorOffset;
 }
 
 void W25Q_Queue_GetConfig() {
@@ -643,9 +415,8 @@ void W25Q_Queue_GetConfig() {
 	uint8_t data_2[size];
 	SPI2_Read_t read_result_1 = { .start_page = 0, .offset = 0, .size = size, .data = data_1 };
 	SPI2_Read_t read_result_2 = { .start_page = PAGES_PER_SECTOR, .offset = 0, .size = size, .data = data_2 };
-	// We only need to block on the second read, since the first read is guaranteed to finish first.
 	SPI2_QueueRead(&read_result_1);
-	SPI2_QueueReadBlocking(&read_result_2);
+	SPI2_QueueBlockingRead(&read_result_2);
 
 	// The read func
 	uint8_t* tempConfig1 = read_result_1.data;
@@ -653,16 +424,13 @@ void W25Q_Queue_GetConfig() {
 	// Copy the data to the W25Q_FLASH_CONFIG structure if ID is correct
 	if (tempConfig1[0] == W25Q_FLASH_CONFIG.ID[0] && tempConfig1[1] == W25Q_FLASH_CONFIG.ID[1]) {
 		memcpy(&W25Q_FLASH_CONFIG, tempConfig1, size);
-		// TODO: Queue
 		W25Q_AlignSectorOffset();
 	} else if (tempConfig2[0] == W25Q_FLASH_CONFIG.ID[0] && tempConfig2[1] == W25Q_FLASH_CONFIG.ID[1]) {
 		memcpy(&W25Q_FLASH_CONFIG, tempConfig2, size);
-		// TODO: Queue
 		W25Q_AlignSectorOffset();
 	} else {
-		// TODO: Queue
 		// If the ID does not match, save the default config
-		W25Q_WriteConfig();
+		SPI2_QueueWriteConfig();
 	}
 }
 
@@ -681,7 +449,7 @@ uint8_t W25Q_Queue_LoadLastPackets(PacketType_t packet_types[], DataPacket_t pac
 	// iterate through all pages back to front (newest to oldest)
 	for (int page = (int32_t)W25Q_FLASH_CONFIG.curr_logPage - 1; page >= LOG_PAGE; --page) {
 		SPI2_Read_t read_result = { .start_page = page, .offset = 0, .size = packets_size };
-		SPI2_QueueReadBlocking(&read_result);
+		SPI2_QueueBlockingRead(&read_result);
 
 		DataPacket_t* loaded_packets = (DataPacket_t*) read_result.data;
 
@@ -714,4 +482,87 @@ uint8_t W25Q_Queue_LoadLastPackets(PacketType_t packet_types[], DataPacket_t pac
 	}
 
 	return 1;
+}
+
+uint8_t flash_buffer_index = 0;
+DataPacket_t flash_packet_buffer1[FLASH_BUFFER_SIZE];
+DataPacket_t flash_packet_buffer2[FLASH_BUFFER_SIZE];
+DataPacket_t* flash_packet_buffer = flash_packet_buffer1; //Dual buffer to stop 500ms data loss when writing to flash
+
+/**
+ * @brief Add a data packet to the flash buffer.
+ * If the flash buffer is full, its data written to the next flash sector.
+ * @param data_packet
+ */
+void W25Q_Queue_AddDataPackets(const DataPacket_t* data_packet) {
+	if (flash_buffer_index < FLASH_BUFFER_SIZE) {
+		flash_packet_buffer[flash_buffer_index++] = *data_packet;
+	}
+
+	if (flash_buffer_index >= FLASH_BUFFER_SIZE) {
+		uint32_t byte_buffer_size = FLASH_BUFFER_SIZE * sizeof(DataPacket_t);
+		// We need to use malloc, so the data of the array does not drop out of scope.
+		uint8_t queue_packet_buffer[byte_buffer_size];
+		memcpy(queue_packet_buffer, flash_packet_buffer, byte_buffer_size);
+		SPI2_QueueWrite(queue_packet_buffer, byte_buffer_size, SPI2_WriteType_DataPackets);
+		//Switch buffer
+		flash_packet_buffer = (flash_packet_buffer == flash_packet_buffer1) ? flash_packet_buffer2 : flash_packet_buffer1;
+		flash_buffer_index = 0;
+	}
+}
+
+/**
+ * Copy logs to the serial interface. Since the secondary does not have direct access to the serial interface,
+ * this function sends packages to the primary which then writes them to the serial interface.
+ */
+void W25Q_CopyLogs(uint16_t max_page, SPI2_CopyLogsTarget_t target) {
+	if (max_page == 0) {
+		max_page = W25Q_FLASH_CONFIG.curr_logPage;
+	} else if (max_page < LOG_PAGE) {
+		return;
+	}
+
+	uint32_t size = FLASH_BUFFER_SIZE * sizeof(DataPacket_t);
+	uint8_t buffer[size];
+
+	if (target == SPI2_CopyLogsTarget_Serial) {
+		DataPacket_t serial_start_packet = CreateSerialPacket(0);
+		InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU, &serial_start_packet);
+	}
+
+	for (uint32_t page = LOG_PAGE; page < max_page; page += PAGES_PER_SECTOR) {
+		W25Q_Read(page, 0, size, buffer);
+
+		DataPacket_t *packets = (DataPacket_t *) buffer;
+
+		for (uint32_t i = 0; i < FLASH_BUFFER_SIZE; ++i) {
+			if (target == SPI2_CopyLogsTarget_Serial) {
+				DataPacket_t packet = packets[i];
+				packet.Packet_ID = packets->Packet_ID | PACKET_ACTION_WRITE_TO_SERIAL;
+
+				InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU, &packet);
+
+				vTaskDelay(1);
+			} else if (target == SPI2_CopyLogsTarget_SD) {
+				if (SD_AppendDataPacketToBuffer(packets + i) != 0) {
+					SD_SaveBuffer("log.txt");
+					SD_ResetBufferIndex();
+					SD_AppendDataPacketToBuffer(packets + i);
+				}
+			}
+		}
+
+		if (target == SPI2_CopyLogsTarget_SD) {
+			// Save remaining buffer which wasn't written.
+			// Saving is triggered by the buffer being full, however packets are appended after saving the buffer.
+			SD_SaveBuffer("log.txt");
+		}
+	}
+
+	if (target == SPI2_CopyLogsTarget_Serial) {
+		vTaskDelay(1);
+
+		DataPacket_t serial_stop_packet = CreateSerialPacket(1);
+		InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU, &serial_stop_packet);
+	}
 }

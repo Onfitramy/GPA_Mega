@@ -56,24 +56,16 @@ void W25Q_WaitForInstruction(uint8_t address);
 uint32_t W25Q1_ReadID(void);
 void W25Q_Read (uint32_t startPage, uint8_t offset, uint32_t size, uint8_t *rData);
 void W25Q_FastRead (uint32_t startPage, uint8_t offset, uint32_t size, uint8_t *rData);
-uint8_t W25Q_Read_Byte(uint32_t Addr);
-float W25Q_Read_NUM (uint32_t page, uint16_t offset);
-void W25Q_Read_32B (uint32_t page, uint16_t offset, uint32_t size, uint32_t *data);
 void W25Q_Write (uint32_t page, uint16_t offset, uint32_t size, uint8_t *data);
-void W25Q_Write_Byte (uint32_t Addr, uint8_t data);
-void W25Q_Write_NUM (uint32_t page, uint16_t offset, float data);
-void W25Q_Write_32B (uint32_t page, uint16_t offset, uint32_t size, uint32_t *data);
 void W25Q_Write_Page (uint32_t page, uint16_t offset, uint32_t size, uint8_t *data);
 void W25Q_Write_Cleared(uint32_t page, uint16_t offset, uint32_t size, uint8_t *data);
 void W25Q_WriteConfig();
-void W25Q_AlignSectorOffset();
 void W25Q_SaveToLog(uint8_t *data, uint32_t size);
 uint8_t W25Q_WritePackets(DataPacket_t* packets, uint32_t size);
-void W25Q_LoadFromLog(uint8_t *data, uint32_t size, uint32_t log_page, uint32_t log_offset);
-void W25Q_CopyLogsToSD(uint16_t max_page);
-void W25Q_CopyLogsToSerial(uint16_t max_page);
-void W25Q_Queue_AddDataPackets(const DataPacket_t* data_packet);
+void W25Q_CopyLogs(uint16_t max_page, SPI2_CopyLogsTarget_t target);
+void W25Q_AlignSectorOffset();
 void W25Q_Queue_GetConfig();
 uint8_t W25Q_Queue_LoadLastPackets(PacketType_t *packet_types, DataPacket_t *packets, uint8_t packet_count);
+void W25Q_Queue_AddDataPackets(const DataPacket_t* data_packet);
 
 #endif //W25Q1_H

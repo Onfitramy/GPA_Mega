@@ -28,10 +28,12 @@ uint8_t SPI2_QueueAction(SPI2_ActionPacket_t action_packet) {
 	return xQueueSend(SPI2Queue, &action_packet, 0) != pdPASS;
 }
 
-uint8_t SPI2_QueueWrite(uint8_t* data_packets, uint32_t size) {
+uint8_t SPI2_QueueWrite(uint8_t* data, uint32_t size, SPI2_WriteType_t type) {
 	SPI2_ActionPayload_u payload;
-	payload.write.data = data_packets;
+	payload.write.data = malloc(size);
+	memcpy(payload.write.data, data, size);
 	payload.write.size = size;
+	payload.write.type = type;
 
 	SPI2_ActionPacket_t action_packet = SPI2_CreatePacket(SPI2_Action_Write, payload);
 
@@ -46,6 +48,7 @@ uint8_t SPI2_QueueWrite(uint8_t* data_packets, uint32_t size) {
  */
 uint8_t SPI2_QueueRead(SPI2_Read_t* read_data) {
 	read_data->finished = false;
+
 	SPI2_ActionPayload_u payload;
 	payload.read = read_data;
 
@@ -54,8 +57,11 @@ uint8_t SPI2_QueueRead(SPI2_Read_t* read_data) {
 	return SPI2_QueueAction(action_packet);
 }
 
-uint8_t SPI2_QueueErase() {
+uint8_t SPI2_QueueErase(uint32_t first_sector, uint32_t last_sector) {
 	SPI2_ActionPayload_u payload;
+	payload.erase.first_sector = first_sector;
+	payload.erase.last_sector = last_sector;
+
 	SPI2_ActionPacket_t action_packet = SPI2_CreatePacket(SPI2_Action_Erase, payload);
 
 	return SPI2_QueueAction(action_packet);
@@ -70,18 +76,35 @@ uint8_t SPI2_QueueSetWriteStatus(bool write_logs) {
 	return SPI2_QueueAction(action_packet);
 }
 
+uint8_t SPI2_QueueWriteConfig() {
+	SPI2_ActionPayload_u payload;
+	SPI2_ActionPacket_t action_packet = SPI2_CreatePacket(SPI2_Action_WriteConfig, payload);
+
+	return SPI2_QueueAction(action_packet);
+}
+
+uint8_t SPI2_QueueCopyLogs(uint16_t max_page, SPI2_CopyLogsTarget_t target) {
+	SPI2_ActionPayload_u payload;
+	payload.copy_logs.max_page = max_page;
+	payload.copy_logs.target = target;
+
+	SPI2_ActionPacket_t action_packet = SPI2_CreatePacket(SPI2_Action_CopyLogs, payload);
+
+	return SPI2_QueueAction(action_packet);
+}
+
 /**
  * Queue a read action and block until the action is finished.
  * For more information see `W25Q_QueueRead`.
  */
-uint8_t SPI2_QueueReadBlocking(SPI2_Read_t* read_result) {
-	uint8_t result = SPI2_QueueRead(read_result);
+uint8_t SPI2_QueueBlockingRead(SPI2_Read_t* read_data) {
+	uint8_t result = SPI2_QueueRead(read_data);
 
 	if (result != 0) {
 		return result;
 	}
 
-	while (!read_result->finished) {
+	while (!read_data->finished) {
 		// If this function is called from a higher priority task than the flash task,
 		// a while loop without any delays would cause the flash task to be never executed.
 		// This would result in an infinite loop, which we don't really want.
@@ -93,14 +116,15 @@ uint8_t SPI2_QueueReadBlocking(SPI2_Read_t* read_result) {
 
 void SPI2_HandleAction(SPI2_ActionPacket_t action_packet) {
 	switch (action_packet.action) {
-		// TODO: This should be a general SPI2 interface, so SD mounting/unmounting can also be queued
+	// TODO: This should be a general SPI2 interface, so SD mounting/unmounting can also be queued
 	case SPI2_Action_Write: {
 		SPI2_Write_t write_data = action_packet.payload.write;
 		switch (write_data.type) {
-		case SPI2_WriteType_DataPackets:
+		case SPI2_WriteType_DataPackets: {
 			DataPacket_t* packets = (DataPacket_t*) write_data.data;
 			W25Q_WritePackets(packets, write_data.size / sizeof(DataPacket_t));
 			break;
+		}
 		case SPI2_WriteType_Raw:
 			W25Q_SaveToLog(write_data.data, write_data.size);
 			W25Q_WriteConfig();
@@ -123,7 +147,7 @@ void SPI2_HandleAction(SPI2_ActionPacket_t action_packet) {
 		read_data->finished = true;
 		break;
 	}
-	case SPI2_Action_Erase:
+	case SPI2_Action_Erase: {
 		SPI2_Erase_t erase_data = action_packet.payload.erase;
 		if (erase_data.first_sector == 0 && erase_data.last_sector == 0) {
 			W25Q_Chip_Erase();
@@ -138,9 +162,18 @@ void SPI2_HandleAction(SPI2_ActionPacket_t action_packet) {
 			// TODO: Error handling
 		}
 		break;
+	}
 	case SPI2_Action_SetWriteStatus:
 		W25Q_FLASH_CONFIG.write_logs = action_packet.payload.write_status.write_logs;
 		W25Q_WriteConfig();
 		break;
+	case SPI2_Action_WriteConfig:
+		W25Q_WriteConfig();
+		break;
+	case SPI2_Action_CopyLogs: {
+		SPI2_CopyLogs copy_logs_data = action_packet.payload.copy_logs;
+		W25Q_CopyLogs(copy_logs_data.max_page, copy_logs_data.target);
+		break;
+	}
 	}
 }

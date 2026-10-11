@@ -154,7 +154,7 @@ void MX_FREERTOS_Init(void) {
   InterBoardPacketQueue = xQueueCreate(64, sizeof(InterBoardPacket_t)); // Queue for 64 InterBoardPacket_t packets
   XBeeDataQueue = xQueueCreate(4, sizeof(xbee_frame_t)); // Queue for 4 XBee data packets
   InterruptQueue = xQueueCreate(10, sizeof(uint8_t)); // Queue for 10 interrupt signals
-  SPI2Queue = xQueueCreate(8, sizeof(SPI2_ActionPacket_t));
+  SPI2Queue = xQueueCreate(16, sizeof(SPI2_ActionPacket_t));
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -388,8 +388,6 @@ void StartInterruptTask(void *argument)
   }
   /* USER CODE END StartInterruptTask */
 }
-
-volatile uint16_t sd_copy_page = 0;
 
 void StartFlashTask(void *argument)
 {

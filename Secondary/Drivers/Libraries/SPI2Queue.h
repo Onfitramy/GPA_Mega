@@ -5,16 +5,23 @@
 
 #include "packets.h"
 
-typedef enum __attribute__((packed)){
+typedef enum __attribute__((packed)) {
     SPI2_WriteType_DataPackets,
     SPI2_WriteType_Raw,
 } SPI2_WriteType_t;
 
-typedef enum __attribute__((packed)){
+typedef enum __attribute__((packed)) {
+    SPI2_CopyLogsTarget_SD,
+    SPI2_CopyLogsTarget_Serial,
+} SPI2_CopyLogsTarget_t;
+
+typedef enum __attribute__((packed)) {
     SPI2_Action_Write,
     SPI2_Action_Read,
     SPI2_Action_Erase,
     SPI2_Action_SetWriteStatus,
+    SPI2_Action_WriteConfig,
+    SPI2_Action_CopyLogs,
 } SPI2_Action_t;
 
 #pragma pack(push, 1)
@@ -35,19 +42,25 @@ typedef struct {
 } SPI2_Read_t;
 
 typedef struct {
-    bool write_logs;
-} SPI2_WriteStatus_t;
-
-typedef struct {
     uint32_t first_sector;
     uint32_t last_sector;
 } SPI2_Erase_t;
 
+typedef struct {
+    bool write_logs;
+} SPI2_WriteStatus_t;
+
+typedef struct {
+    uint16_t max_page;
+    SPI2_CopyLogsTarget_t target;
+} SPI2_CopyLogs;
+
 typedef union {
     SPI2_Write_t write;
     SPI2_Read_t* read;
-    SPI2_WriteStatus_t write_status;
     SPI2_Erase_t erase;
+    SPI2_WriteStatus_t write_status;
+    SPI2_CopyLogs copy_logs;
 } SPI2_ActionPayload_u;
 
 typedef struct {
@@ -58,11 +71,13 @@ typedef struct {
 
 SPI2_ActionPacket_t SPI2_CreatePacket(SPI2_Action_t action, SPI2_ActionPayload_u);
 uint8_t SPI2_QueueAction(SPI2_ActionPacket_t action_packet);
-uint8_t SPI2_QueueWrite(uint8_t* data_packets, uint32_t size);
+uint8_t SPI2_QueueWrite(uint8_t* data, uint32_t size, SPI2_WriteType_t type);
 uint8_t SPI2_QueueRead(SPI2_Read_t* read_data);
-uint8_t SPI2_QueueErase();
+uint8_t SPI2_QueueErase(uint32_t first_sector, uint32_t last_sector);
 uint8_t SPI2_QueueSetWriteStatus(bool write_logs);
-uint8_t SPI2_QueueReadBlocking(SPI2_Read_t* read_result);
+uint8_t SPI2_QueueWriteConfig();
+uint8_t SPI2_QueueCopyLogs(uint16_t max_page, SPI2_CopyLogsTarget_t target);
+uint8_t SPI2_QueueBlockingRead(SPI2_Read_t* read_data);
 void SPI2_HandleAction(SPI2_ActionPacket_t action_packet);
 
 #endif //SPI2QUEUE_H
