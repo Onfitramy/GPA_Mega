@@ -1,6 +1,10 @@
-#include <stdbool.h>
+#ifndef W25Q1_H
+#define W25Q1_H
 
+#include <stdbool.h>
 #include "packets.h"
+#include "SPI2Queue.h"
+
 extern SPI_HandleTypeDef hspi2;
 #define W25Q1_SPI hspi2
 
@@ -34,18 +38,6 @@ typedef struct {
         .maxlen = y                       \
     }
 
-typedef enum __attribute__((packed)){
-    W25Q_WriteType_DataPackets,
-    W25Q_WriteType_Raw,
-} W25Q_WriteType_t;
-
-typedef enum __attribute__((packed)){
-    W25Q_Action_Write,
-    W25Q_Action_Read,
-    W25Q_Action_Erase,
-    W25Q_Action_SetWriteStatus,
-} W25Q_Action_t;
-
 #pragma pack(push, 1)
 typedef struct {
     uint8_t ID[2]; // 2 bytes for ID AP in hex
@@ -55,75 +47,33 @@ typedef struct {
     uint32_t curr_logOffset; // Current log offset
     bool write_logs;
 } W25QPage0_config_t;
-
-typedef struct {
-    uint8_t* data;
-    uint32_t size;
-    W25Q_WriteType_t type;
-} W25Q_Write_t;
-
-typedef struct {
-    // request data
-    uint32_t start_page;
-    uint8_t offset;
-    uint32_t size;
-    // response data
-    uint8_t* data;
-    bool finished;
-} W25Q_Read_t;
-
-typedef struct {
-    bool write_logs;
-} W25Q_WriteStatus_t;
-
-typedef struct {
-    uint32_t first_sector;
-    uint32_t last_sector;
-} W25Q_Erase_t;
-
-typedef union {
-    W25Q_Write_t write;
-    W25Q_Read_t* read;
-    W25Q_WriteStatus_t write_status;
-    W25Q_Erase_t erase;
-} W25Q_ActionPayload_u;
-
-typedef struct {
-    W25Q_Action_t action;
-    W25Q_ActionPayload_u payload;
-} W25Q_ActionPacket_t;
 #pragma pack(pop)
 
 void W25Q1_Reset(void);
-uint32_t W25Q1_ReadID(void);
+void W25Q_Chip_Erase (void);
 void W25Q_Erase_Sector (uint16_t numsector);
+void W25Q_WaitForInstruction(uint8_t address);
+uint32_t W25Q1_ReadID(void);
 void W25Q_Read (uint32_t startPage, uint8_t offset, uint32_t size, uint8_t *rData);
 void W25Q_FastRead (uint32_t startPage, uint8_t offset, uint32_t size, uint8_t *rData);
-void W25Q_Write_Page (uint32_t page, uint16_t offset, uint32_t size, uint8_t *data);
-void W25Q_Write_Byte (uint32_t Addr, uint8_t data);
-void W25Q_Write (uint32_t page, uint16_t offset, uint32_t size, uint8_t *data);
-void W25Q_Write_NUM (uint32_t page, uint16_t offset, float data);
+uint8_t W25Q_Read_Byte(uint32_t Addr);
 float W25Q_Read_NUM (uint32_t page, uint16_t offset);
-void W25Q_Write_32B (uint32_t page, uint16_t offset, uint32_t size, uint32_t *data);
 void W25Q_Read_32B (uint32_t page, uint16_t offset, uint32_t size, uint32_t *data);
-void W25Q_Chip_Erase (void);
-void W25Q_updateLogPosition(void);
+void W25Q_Write (uint32_t page, uint16_t offset, uint32_t size, uint8_t *data);
+void W25Q_Write_Byte (uint32_t Addr, uint8_t data);
+void W25Q_Write_NUM (uint32_t page, uint16_t offset, float data);
+void W25Q_Write_32B (uint32_t page, uint16_t offset, uint32_t size, uint32_t *data);
+void W25Q_Write_Page (uint32_t page, uint16_t offset, uint32_t size, uint8_t *data);
 void W25Q_Write_Cleared(uint32_t page, uint16_t offset, uint32_t size, uint8_t *data);
+void W25Q_WriteConfig();
+void W25Q_AlignSectorOffset();
 void W25Q_SaveToLog(uint8_t *data, uint32_t size);
-void W25Q_AddFlashBufferPacket(const DataPacket_t* data_packet);
 uint8_t W25Q_WritePackets(DataPacket_t* packets, uint32_t size);
 void W25Q_LoadFromLog(uint8_t *data, uint32_t size, uint32_t log_page, uint32_t log_offset);
-void W25Q_GetConfig();
-uint8_t W25Q_LoadLastPackets(PacketType_t *packet_types, DataPacket_t *packets, uint8_t packet_count);
 void W25Q_CopyLogsToSD(uint16_t max_page);
 void W25Q_CopyLogsToSerial(uint16_t max_page);
+void W25Q_Queue_AddDataPackets(const DataPacket_t* data_packet);
+void W25Q_Queue_GetConfig();
+uint8_t W25Q_Queue_LoadLastPackets(PacketType_t *packet_types, DataPacket_t *packets, uint8_t packet_count);
 
-W25Q_ActionPacket_t W25Q_CreatePacket(W25Q_Action_t action, W25Q_ActionPayload_u);
-uint8_t W25Q_QueueAction(W25Q_ActionPacket_t action_packet);
-uint8_t W25Q_QueueWrite(uint8_t* data_packets, uint32_t size);
-// TODO: Function for reading config or adapt current function
-uint8_t W25Q_QueueRead(W25Q_Read_t* read_data);
-uint8_t W25Q_QueueErase();
-uint8_t W25Q_QueueSetWriteStatus(bool write_logs);
-uint8_t W25Q_QueueReadBlocking(W25Q_Read_t* read_result);
-void W25Q_HandleAction(W25Q_ActionPacket_t action_packet);
+#endif //W25Q1_H

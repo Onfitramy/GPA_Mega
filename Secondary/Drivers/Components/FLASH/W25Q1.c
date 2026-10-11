@@ -25,95 +25,6 @@ volatile W25QPage0_config_t W25Q_FLASH_CONFIG = {
 	.write_logs = false,
 };
 
-extern QueueHandle_t FlashQueue;
-
-/**
- * @brief Write two configs to the flash.
- * If a power loss happens between erasing and writing data, there will always be one valid config.
- */
-void W25Q_WriteConfig() {
-	W25Q_Write_Page(0, 0, sizeof(W25QPage0_config_t), (uint8_t *)&W25Q_FLASH_CONFIG);
-	W25Q_Write_Page(PAGES_PER_SECTOR, 0, sizeof(W25QPage0_config_t), (uint8_t *)&W25Q_FLASH_CONFIG);
-}
-
-//Saves the data to the log page
-void W25Q_SaveToLog(uint8_t *data, uint32_t size)
-{
-	if (size == 0) return; // nothing to save
-
-	// Check if we have enough space in the current log page
-	if (W25Q_FLASH_CONFIG.curr_logOffset + size > 256) {
-		W25Q_FLASH_CONFIG.curr_logPage += 1; // Move to next page
-		W25Q_FLASH_CONFIG.curr_logOffset = 0; // Reset offset
-	}
-
-	// wrap around if the end of the flash memory is reached
-	if (W25Q_FLASH_CONFIG.curr_logPage >= 65536) {
-		W25Q_FLASH_CONFIG.curr_logPage = LOG_PAGE;
-	}
-
-	W25Q_Write_Cleared(W25Q_FLASH_CONFIG.curr_logPage, W25Q_FLASH_CONFIG.curr_logOffset, size, data);
-
-	W25Q_FLASH_CONFIG.curr_logOffset += size;
-	if (W25Q_FLASH_CONFIG.curr_logOffset >= 256) {
-		W25Q_FLASH_CONFIG.curr_logOffset %= 256;
-		W25Q_FLASH_CONFIG.curr_logPage += 1;
-	}
-}
-
-
-uint8_t flash_buffer_index = 0;
-DataPacket_t flash_packet_buffer1[FLASH_BUFFER_SIZE];
-DataPacket_t flash_packet_buffer2[FLASH_BUFFER_SIZE];
-DataPacket_t* flash_packet_buffer = flash_packet_buffer1; //Dual buffer to stop 500ms data loss when writing to flash
-extern SemaphoreHandle_t flashSemaphore;
-
-/**
- * @brief Add a data packet to the flash buffer.
- * If the flash buffer is full, its data written to the next flash sector.
- * @param data_packet
- */
-void W25Q_AddFlashBufferPacket(const DataPacket_t* data_packet) {
-	if (flash_buffer_index < FLASH_BUFFER_SIZE) {
-		flash_packet_buffer[flash_buffer_index++] = *data_packet;
-	}
-
-	if (flash_buffer_index >= FLASH_BUFFER_SIZE) {
-		uint32_t byte_buffer_size = FLASH_BUFFER_SIZE * sizeof(DataPacket_t);
-		// We need to use malloc, so the data of the array does not drop out of scope.
-		uint8_t* queue_packet_buffer = malloc(byte_buffer_size);
-		memcpy(queue_packet_buffer, flash_packet_buffer, byte_buffer_size);
-		W25Q_QueueWrite(queue_packet_buffer, byte_buffer_size);
-		//Switch buffer
-		flash_packet_buffer = (flash_packet_buffer == flash_packet_buffer1) ? flash_packet_buffer2 : flash_packet_buffer1;
-		flash_buffer_index = 0;
-	}
-}
-
-uint8_t W25Q_WritePackets(DataPacket_t* packets, uint32_t size) {
-	if (size != PAGES_PER_SECTOR * PACKETS_PER_PAGE) {
-		return 1;
-	}
-
-	if (W25Q_FLASH_CONFIG.write_logs) {
-		for (int i = 0; i < PAGES_PER_SECTOR; ++i) {
-			W25Q_SaveToLog((uint8_t*)(packets + i * PACKETS_PER_PAGE), PACKETS_PER_PAGE * sizeof(DataPacket_t));
-		}
-
-		W25Q_WriteConfig();
-	}
-
-	return 0;
-}
-
-void W25Q_LoadFromLog(uint8_t *data, uint32_t size, uint32_t log_page, uint32_t log_offset)
-{
-	// Load data from the log page
-	if (size == 0) return; // nothing to load
-
-	W25Q_Read(log_page, log_offset, size, data);
-}
-
 void csLOW(void)
 {
     HAL_GPIO_WritePin(FLASH_CS_GPIO_Port, FLASH_CS_Pin, GPIO_PIN_RESET);
@@ -136,6 +47,54 @@ uint32_t bytestomodify (uint32_t size, uint16_t offset)
 	else return 4096-offset;
 }
 
+void enable_write (void)
+{
+	uint8_t tData = 0x06;  // enable Write
+	csLOW();  // pull the CS LOW
+	HAL_SPI_Transmit(&W25Q1_SPI, &tData, 1, 100);
+	csHIGH();  // pull the HIGH
+	vTaskDelay(5);  // Write cycle delay (5ms)
+}
+
+void disable_write (void)
+{
+	uint8_t tData = 0x04;  // disable Write
+	csLOW();  // pull the CS LOW
+	HAL_SPI_Transmit(&W25Q1_SPI, &tData, 1, 100);
+	csHIGH();  // pull the HIGH
+	vTaskDelay(5);  // Write cycle delay (5ms)
+}
+
+void float2Bytes(uint8_t * ftoa_bytes_temp,float float_variable)
+{
+	union {
+		float a;
+		uint8_t bytes[4];
+	} thing;
+
+	thing.a = float_variable;
+
+	for (uint8_t i = 0; i < 4; i++) {
+		ftoa_bytes_temp[i] = thing.bytes[i];
+	}
+
+}
+
+float Bytes2float(uint8_t * ftoa_bytes_temp)
+{
+	union {
+		float a;
+		uint8_t bytes[4];
+	} thing;
+
+	for (uint8_t i = 0; i < 4; i++) {
+		thing.bytes[i] = ftoa_bytes_temp[i];
+	}
+
+	float float_variable =  thing.a;
+	return float_variable;
+}
+
 void W25Q1_Reset(void)
 {
     uint8_t tData[2];
@@ -147,6 +106,72 @@ void W25Q1_Reset(void)
     csHIGH();
 
     vTaskDelay(20); // Wait for the chip to reset
+}
+
+void W25Q_Erase_Sector (uint16_t numsector)
+{
+	uint8_t tData[6];
+	uint32_t memAddr = numsector * SECTOR_SIZE;   // Each sector contains 16 pages * 256 bytes
+
+	enable_write();
+
+	if (numBLOCK<512)   // Chip Size<256Mb
+	{
+		tData[0] = 0x20;  // Erase sector
+		tData[1] = (memAddr>>16)&0xFF;  // MSB of the memory Address
+		tData[2] = (memAddr>>8)&0xFF;
+		tData[3] = (memAddr)&0xFF; // LSB of the memory Address
+
+		csLOW();
+		HAL_SPI_Transmit(&W25Q1_SPI, tData, 4, 100);
+		csHIGH();
+	}
+
+	W25Q_WaitForInstruction(0x05);
+
+	disable_write();
+}
+
+/**
+ * @brief Wait for an instruction being completed, by checking the specified register.
+ * @param address
+ */
+void W25Q_WaitForInstruction(uint8_t address) {
+	uint8_t tDataStatus = address;
+
+	csLOW();
+
+	HAL_SPI_Transmit(&W25Q1_SPI, &tDataStatus, 1, 100);
+
+	uint8_t rDataStatus[2] = {255};
+	// wait until erase is finished
+	while (true) {
+		HAL_SPI_Receive(&W25Q1_SPI, rDataStatus, 2, 100);
+		// I don't know why the first byte is sometimes not altered, but the second is
+		if ((rDataStatus[1] & 0b00000001) == 0) {
+			break;
+		}
+	}
+
+	csHIGH();
+}
+
+void W25Q_Chip_Erase (void)
+{
+	uint8_t tData[1];
+	tData[0] = 0xC7;    //Chip erase
+	W25Q_FLASH_CONFIG.curr_logPage = LOG_PAGE;	//Reset Log offset to zero
+	W25Q_FLASH_CONFIG.curr_logOffset = 0;
+
+	enable_write();
+	csLOW();
+	HAL_SPI_Transmit(&W25Q1_SPI, tData, 1, 100);
+	csHIGH();
+
+	W25Q_WaitForInstruction(0x05);
+	disable_write();
+
+	W25Q_WriteConfig();
 }
 
 uint32_t W25Q1_ReadID(void)
@@ -161,7 +186,7 @@ uint32_t W25Q1_ReadID(void)
     return ((rData[0]<<16)|(rData[1]<<8)|rData[2]);
 }
 
-void W25Q_Read (uint32_t startPage, uint8_t offset, uint32_t size, uint8_t *rData)
+void W25Q_Read(uint32_t startPage, uint8_t offset, uint32_t size, uint8_t *rData)
 {
 	uint8_t tData[5];
 	uint32_t memAddr = (startPage*256) + offset;
@@ -210,7 +235,8 @@ void W25Q_FastRead (uint32_t startPage, uint8_t offset, uint32_t size, uint8_t *
 	csHIGH();  // pull the CS High
 }
 
-uint8_t W25Q_Read_Byte (uint32_t Addr)
+
+uint8_t W25Q_Read_Byte(uint32_t Addr)
 {
 	uint8_t tData[5];
 	uint8_t rData;
@@ -247,129 +273,24 @@ uint8_t W25Q_Read_Byte (uint32_t Addr)
 	return rData;
 }
 
-void enable_write (void)
+float W25Q_Read_NUM (uint32_t page, uint16_t offset)
 {
-	uint8_t tData = 0x06;  // enable Write
-	csLOW();  // pull the CS LOW
-	HAL_SPI_Transmit(&W25Q1_SPI, &tData, 1, 100);
-	csHIGH();  // pull the HIGH
-	vTaskDelay(5);  // Write cycle delay (5ms)
+	uint8_t rData[4];
+	W25Q_Read(page, offset, 4, rData);
+	return (Bytes2float(rData));
 }
 
-void disable_write (void)
+void W25Q_Read_32B (uint32_t page, uint16_t offset, uint32_t size, uint32_t *data)
 {
-	uint8_t tData = 0x04;  // disable Write
-	csLOW();  // pull the CS LOW
-	HAL_SPI_Transmit(&W25Q1_SPI, &tData, 1, 100);
-	csHIGH();  // pull the HIGH
-	vTaskDelay(5);  // Write cycle delay (5ms)
-}
+	uint8_t data8[size*4];
+	uint32_t indx = 0;
 
-/**
- * @brief Wait for an instruction being completed, by checking the specified register.
- * @param address
- */
-void W25Q_WaitForInstruction(uint8_t address) {
-	uint8_t tDataStatus = address;
+	W25Q_FastRead(page, offset, size*4, data8);
 
-	csLOW();
-
-	HAL_SPI_Transmit(&W25Q1_SPI, &tDataStatus, 1, 100);
-
-	uint8_t rDataStatus[2] = {255};
-	// wait until erase is finished
-	while (true) {
-		HAL_SPI_Receive(&W25Q1_SPI, rDataStatus, 2, 100);
-		// I don't know why the first byte is sometimes not altered, but the second is
-		if ((rDataStatus[1] & 0b00000001) == 0) {
-			break;
-		}
-	}
-
-	csHIGH();
-}
-
-void W25Q_Erase_Sector (uint16_t numsector)
-{
-	uint8_t tData[6];
-	uint32_t memAddr = numsector * SECTOR_SIZE;   // Each sector contains 16 pages * 256 bytes
-
-	enable_write();
-
-	if (numBLOCK<512)   // Chip Size<256Mb
+	for (uint32_t i=0; i<size; i++)
 	{
-	  tData[0] = 0x20;  // Erase sector
-	  tData[1] = (memAddr>>16)&0xFF;  // MSB of the memory Address
-	  tData[2] = (memAddr>>8)&0xFF;
-	  tData[3] = (memAddr)&0xFF; // LSB of the memory Address
-
-	  csLOW();
-	  HAL_SPI_Transmit(&W25Q1_SPI, tData, 4, 100);
-	  csHIGH();
+		data[i] = (data8[indx++]) | (data8[indx++]<<8) | (data8[indx++]<<16) | (data8[indx++]<<24);
 	}
-
-	W25Q_WaitForInstruction(0x05);
-
-	disable_write();
-}
-
-void W25Q_Write_Page (uint32_t page, uint16_t offset, uint32_t size, uint8_t *data)
-{
-	uint8_t tData[266];
-	uint32_t startPage = page;
-	uint32_t endPage  = startPage + ((size+offset-1)/256);
-	uint32_t numPages = endPage-startPage+1;
-
-    uint16_t startSector  = startPage/16;
-	uint16_t endSector  = endPage/16;
-	uint16_t numSectors = endSector-startSector+1;
-
-    for (uint16_t i=0; i<numSectors; i++)
-	{
-		W25Q_Erase_Sector(startSector++);
-	}
-
-    uint32_t dataPosition = 0;
-
-	// write the data
-	for (uint32_t i=0; i<numPages; i++)
-	{
-		uint32_t memAddr = (startPage*256)+offset;
-		uint16_t bytesremaining  = bytestowrite(size, offset);
-
-		enable_write();
-
-		uint32_t indx = 0;
-		if (numBLOCK<512)   // Chip Size<256Mb
-		{
-			tData[0] = 0x02;  // page program
-			tData[1] = (memAddr>>16)&0xFF;  // MSB of the memory Address
-			tData[2] = (memAddr>>8)&0xFF;
-			tData[3] = (memAddr)&0xFF; // LSB of the memory Address
-
-			indx = 4;
-		}
-
-        uint16_t bytestosend  = bytesremaining + indx;
-
-		for (uint16_t i=0; i<bytesremaining; i++)
-		{
-			tData[indx++] = data[i+dataPosition];
-		}
-
-		csLOW();
-		HAL_SPI_Transmit(&W25Q1_SPI, tData, bytestosend, 100);
-		csHIGH();
-
-		startPage++;
-		offset = 0;
-		size = size-bytesremaining;
-		dataPosition = dataPosition+bytesremaining;
-
-        W25Q_WaitForInstruction(0x05);
-
-		disable_write();
-    }
 }
 
 void W25Q_Write (uint32_t page, uint16_t offset, uint32_t size, uint8_t *data)
@@ -380,11 +301,11 @@ void W25Q_Write (uint32_t page, uint16_t offset, uint32_t size, uint8_t *data)
 	uint16_t endSector  = (page + ((size+offset-1)/256))/16;
 	uint16_t numSectors = endSector-startSector+1;
 
-    uint8_t previousData[prevDSize];
+	uint8_t previousData[prevDSize];
 	uint32_t sectorOffset = ((page%16)*256)+offset;
 	uint32_t dataindx = 0;
 
-    for (uint16_t i=0; i<numSectors; i++)
+	for (uint16_t i=0; i<numSectors; i++)
 	{
 		uint32_t startPage = startSector*16;
 		W25Q_FastRead(startPage, 0, prevDSize, previousData);
@@ -401,7 +322,7 @@ void W25Q_Write (uint32_t page, uint16_t offset, uint32_t size, uint8_t *data)
 		sectorOffset = 0;
 		dataindx = dataindx+bytesRemaining;
 		size = size-bytesRemaining;
-    }
+	}
 }
 
 void W25Q_Write_Byte (uint32_t Addr, uint8_t data)
@@ -432,51 +353,15 @@ void W25Q_Write_Byte (uint32_t Addr, uint8_t data)
 	}
 }
 
-void float2Bytes(uint8_t * ftoa_bytes_temp,float float_variable)
-{
-    union {
-      float a;
-      uint8_t bytes[4];
-    } thing;
-
-    thing.a = float_variable;
-
-    for (uint8_t i = 0; i < 4; i++) {
-      ftoa_bytes_temp[i] = thing.bytes[i];
-    }
-
-}
-
-float Bytes2float(uint8_t * ftoa_bytes_temp)
-{
-    union {
-      float a;
-      uint8_t bytes[4];
-    } thing;
-
-    for (uint8_t i = 0; i < 4; i++) {
-    	thing.bytes[i] = ftoa_bytes_temp[i];
-    }
-
-   float float_variable =  thing.a;
-   return float_variable;
-}
-
-uint8_t tempBytes[4];
 void W25Q_Write_NUM (uint32_t page, uint16_t offset, float data)
 {
+	uint8_t tempBytes[4];
 	float2Bytes(tempBytes, data);
 
 	/* Write using sector update function */
 	W25Q_Write(page, offset, 4, tempBytes);
 }
 
-float W25Q_Read_NUM (uint32_t page, uint16_t offset)
-{
-	uint8_t rData[4];
-	W25Q_Read(page, offset, 4, rData);
-	return (Bytes2float(rData));
-}
 
 void W25Q_Write_32B (uint32_t page, uint16_t offset, uint32_t size, uint32_t *data)
 {
@@ -494,42 +379,93 @@ void W25Q_Write_32B (uint32_t page, uint16_t offset, uint32_t size, uint32_t *da
 	W25Q_Write(page, offset, indx, data8);
 }
 
-void W25Q_Read_32B (uint32_t page, uint16_t offset, uint32_t size, uint32_t *data)
+void W25Q_Write_Page (uint32_t page, uint16_t offset, uint32_t size, uint8_t *data)
 {
-	uint8_t data8[size*4];
-	uint32_t indx = 0;
+	uint32_t startPage = page;
+	uint32_t endPage  = startPage + ((size+offset-1)/256);
 
-	W25Q_FastRead(page, offset, size*4, data8);
+    uint16_t startSector  = startPage/16;
+	uint16_t endSector  = endPage/16;
+	uint16_t numSectors = endSector-startSector+1;
 
-	for (uint32_t i=0; i<size; i++)
+    for (uint16_t i=0; i<numSectors; i++)
 	{
-		data[i] = (data8[indx++]) | (data8[indx++]<<8) | (data8[indx++]<<16) | (data8[indx++]<<24);
+		W25Q_Erase_Sector(startSector++);
+	}
+
+	W25Q_Write_Cleared(page, offset, size, data);
+}
+
+
+/**
+  * @brief Writes Pre cleared memory if the memory hasn't been cleard nothing is written in that position
+  * @param None
+  * @retval None
+*/
+void W25Q_Write_Cleared(uint32_t page, uint16_t offset, uint32_t size, uint8_t *data)
+{
+	uint8_t tData[266];
+	uint32_t startPage = page;
+	uint32_t endPage  = startPage + ((size+offset-1)/256);
+	uint32_t numPages = endPage-startPage+1;
+
+	uint32_t dataPosition = 0;
+
+	// write the data
+	for (uint32_t i=0; i<numPages; i++)
+	{
+		uint32_t memAddr = (startPage*256)+offset;
+		uint16_t bytesremaining  = bytestowrite(size, offset);
+
+		enable_write();
+
+		uint32_t indx = 0;
+		if (numBLOCK<512)   // Chip Size<256Mb
+		{
+			tData[0] = 0x02;  // page program
+			tData[1] = (memAddr>>16)&0xFF;  // MSB of the memory Address
+			tData[2] = (memAddr>>8)&0xFF;
+			tData[3] = (memAddr)&0xFF; // LSB of the memory Address
+
+			indx = 4;
+		}
+
+		uint16_t bytestosend  = bytesremaining + indx;
+
+		for (uint16_t i=0; i<bytesremaining; i++)
+		{
+			tData[indx++] = data[i+dataPosition];
+		}
+
+		csLOW();
+		HAL_SPI_Transmit(&W25Q1_SPI, tData, bytestosend, 100);
+		csHIGH();
+
+		startPage++;
+		offset = 0;
+		size = size-bytesremaining;
+		dataPosition = dataPosition+bytesremaining;
+
+		W25Q_WaitForInstruction(0x05);
+
+		disable_write();
 	}
 }
 
-void W25Q_Chip_Erase (void)
-{
-    uint8_t tData[1];
-    tData[0] = 0xC7;    //Chip erase
-	W25Q_FLASH_CONFIG.curr_logPage = LOG_PAGE;	//Reset Log offset to zero
-	W25Q_FLASH_CONFIG.curr_logOffset = 0;
-
-    enable_write();
-    csLOW();
-    HAL_SPI_Transmit(&W25Q1_SPI, tData, 1, 100);
-    csHIGH();
-
-	W25Q_WaitForInstruction(0x05);
-	disable_write();
-
-	W25Q_WriteConfig();
+/**
+ * @brief Write two configs to the flash.
+ * If a power loss happens between erasing and writing data, there will always be one valid config.
+ */
+void W25Q_WriteConfig() {
+	W25Q_Write_Page(0, 0, sizeof(W25QPage0_config_t), (uint8_t *)&W25Q_FLASH_CONFIG);
+	W25Q_Write_Page(PAGES_PER_SECTOR, 0, sizeof(W25QPage0_config_t), (uint8_t *)&W25Q_FLASH_CONFIG);
 }
 
 /**
  * @brief Align the current log page with the next sector.
  * All remaining data in the current sector is replaced by 0.
  */
-static void W25Q_AlignSectorOffset() {
+void W25Q_AlignSectorOffset() {
 	uint32_t sectorOffset = W25Q_FLASH_CONFIG.curr_logPage % 16;
 	if (sectorOffset == 0) return;
 
@@ -545,83 +481,53 @@ static void W25Q_AlignSectorOffset() {
 	W25Q_FLASH_CONFIG.curr_logPage += PAGES_PER_SECTOR - sectorOffset;
 }
 
-void W25Q_GetConfig() {
-	// Wait for Flash to initialize
-	vTaskDelay(1000);
+//Saves the data to the log page
+void W25Q_SaveToLog(uint8_t *data, uint32_t size)
+{
+	if (size == 0) return; // nothing to save
 
-	size_t size = sizeof(W25QPage0_config_t);
-	uint8_t data_1[size];
-	uint8_t data_2[size];
-	W25Q_Read_t read_result_1 = { .start_page = 0, .offset = 0, .size = size, .data = data_1 };
-	W25Q_Read_t read_result_2 = { .start_page = PAGES_PER_SECTOR, .offset = 0, .size = size, .data = data_2 };
-	// We only need to block on the second read, since the first read is guaranteed to finish first.
-	W25Q_QueueRead(&read_result_1);
-	W25Q_QueueReadBlocking(&read_result_2);
+	// Check if we have enough space in the current log page
+	if (W25Q_FLASH_CONFIG.curr_logOffset + size > 256) {
+		W25Q_FLASH_CONFIG.curr_logPage += 1; // Move to next page
+		W25Q_FLASH_CONFIG.curr_logOffset = 0; // Reset offset
+	}
 
-	// The read func
-	uint8_t* tempConfig1 = read_result_1.data;
-	uint8_t* tempConfig2 = read_result_2.data;
-	// Copy the data to the W25Q_FLASH_CONFIG structure if ID is correct
-	if (tempConfig1[0] == W25Q_FLASH_CONFIG.ID[0] && tempConfig1[1] == W25Q_FLASH_CONFIG.ID[1]) {
-		memcpy(&W25Q_FLASH_CONFIG, tempConfig1, size);
-		W25Q_AlignSectorOffset();
-	} else if (tempConfig2[0] == W25Q_FLASH_CONFIG.ID[0] && tempConfig2[1] == W25Q_FLASH_CONFIG.ID[1]) {
-		memcpy(&W25Q_FLASH_CONFIG, tempConfig2, size);
-		W25Q_AlignSectorOffset();
-	} else {
-		// If the ID does not match, save the default config
-		W25Q_WriteConfig();
+	// wrap around if the end of the flash memory is reached
+	if (W25Q_FLASH_CONFIG.curr_logPage >= 65536) {
+		W25Q_FLASH_CONFIG.curr_logPage = LOG_PAGE;
+	}
+
+	W25Q_Write_Cleared(W25Q_FLASH_CONFIG.curr_logPage, W25Q_FLASH_CONFIG.curr_logOffset, size, data);
+
+	W25Q_FLASH_CONFIG.curr_logOffset += size;
+	if (W25Q_FLASH_CONFIG.curr_logOffset >= 256) {
+		W25Q_FLASH_CONFIG.curr_logOffset %= 256;
+		W25Q_FLASH_CONFIG.curr_logPage += 1;
 	}
 }
 
-/**
- * @brief Load the latest packets of the given IDs from flash memory.
- *
- * @param packet_types IDs of the packages which should be loaded.
- * @param packets Array to which the loaded packets will be written.
- * @return 0 if all packages where found, else 1.
- */
-uint8_t W25Q_LoadLastPackets(PacketType_t packet_types[], DataPacket_t packets[], uint8_t packet_count) {
-	uint16_t packets_size = sizeof(DataPacket_t) * PACKETS_PER_PAGE;
-
-	uint8_t loaded_packets_count = 0;
-
-	// iterate through all pages back to front (newest to oldest)
-	for (int page = (int32_t)W25Q_FLASH_CONFIG.curr_logPage - 1; page >= LOG_PAGE; --page) {
-		W25Q_Read_t read_result = { .start_page = page, .offset = 0, .size = packets_size };
-		W25Q_QueueReadBlocking(&read_result);
-
-		DataPacket_t* loaded_packets = (DataPacket_t*) read_result.data;
-
-		// iterate through all packets back to front (newest to oldest)
-		for (int i = PACKETS_PER_PAGE - 1; i >= 0; --i) {
-			DataPacket_t loaded_packet = loaded_packets[i];
-
-			// find the index into the packets array for the loaded ID
-			uint8_t packet_index = 255;
-			for (uint8_t j = 0; j < packet_count; ++j) {
-				if (loaded_packet.Packet_ID == packet_types[j]) {
-					packet_index = j;
-					break;
-				}
-			}
-
-			// loaded packet ID not wanted or already found in a previous iteration
-			if (packet_index == 255 || packets[packet_index].Packet_ID == loaded_packet.Packet_ID) {
-				continue;
-			}
-
-			packets[packet_index] = loaded_packet;
-			loaded_packets_count++;
-
-			// exit if all packages where found
-			if (loaded_packets_count == packet_count) {
-				return 0;
-			}
-		}
+uint8_t W25Q_WritePackets(DataPacket_t* packets, uint32_t size) {
+	if (size != PAGES_PER_SECTOR * PACKETS_PER_PAGE) {
+		return 1;
 	}
 
-	return 1;
+	if (W25Q_FLASH_CONFIG.write_logs) {
+		for (int i = 0; i < PAGES_PER_SECTOR; ++i) {
+			W25Q_SaveToLog((uint8_t*)(packets + i * PACKETS_PER_PAGE), PACKETS_PER_PAGE * sizeof(DataPacket_t));
+		}
+
+		W25Q_WriteConfig();
+	}
+
+	return 0;
+}
+
+void W25Q_LoadFromLog(uint8_t *data, uint32_t size, uint32_t log_page, uint32_t log_offset)
+{
+	// Load data from the log page
+	if (size == 0) return; // nothing to load
+
+	W25Q_Read(log_page, log_offset, size, data);
 }
 
 void W25Q_CopyLogsToSD(uint16_t max_page) {
@@ -701,191 +607,111 @@ void W25Q_CopyLogsToSerial(uint16_t max_page) {
 	W25Q_FLASH_CONFIG.write_logs = write_logs;
 }
 
-/**
-  * @brief Writes Pre cleared memory if the memory hasnt been cleard nothing is written in that position
-  * @param None
-  * @retval None
-  */
-void W25Q_Write_Cleared(uint32_t page, uint16_t offset, uint32_t size, uint8_t *data)
-{
-	uint8_t tData[266];
-	uint32_t startPage = page;
-	uint32_t endPage  = startPage + ((size+offset-1)/256);
-	uint32_t numPages = endPage-startPage+1;
-
-    uint32_t dataPosition = 0;
-
-	// write the data
-	for (uint32_t i=0; i<numPages; i++)
-	{
-		uint32_t memAddr = (startPage*256)+offset;
-		uint16_t bytesremaining  = bytestowrite(size, offset);
-
-		enable_write();
-
-        uint32_t indx = 0;
-		if (numBLOCK<512)   // Chip Size<256Mb
-		{
-			tData[0] = 0x02;  // page program
-			tData[1] = (memAddr>>16)&0xFF;  // MSB of the memory Address
-			tData[2] = (memAddr>>8)&0xFF;
-			tData[3] = (memAddr)&0xFF; // LSB of the memory Address
-
-			indx = 4;
-		}
-
-        uint16_t bytestosend  = bytesremaining + indx;
-
-		for (uint16_t i=0; i<bytesremaining; i++)
-		{
-			tData[indx++] = data[i+dataPosition];
-		}
-
-		csLOW();
-		HAL_SPI_Transmit(&W25Q1_SPI, tData, bytestosend, 100);
-		csHIGH();
-
-		startPage++;
-		offset = 0;
-		size = size-bytesremaining;
-		dataPosition = dataPosition+bytesremaining;
-
-        W25Q_WaitForInstruction(0x05);
-
-		disable_write();
-    }
-}
-
-W25Q_ActionPacket_t W25Q_CreatePacket(W25Q_Action_t action, W25Q_ActionPayload_u payload) {
-	W25Q_ActionPacket_t action_packet;
-	action_packet.action = action;
-	action_packet.payload = payload;
-
-	return action_packet;
-}
-
-uint8_t W25Q_QueueAction(W25Q_ActionPacket_t action_packet) {
-	// For bools 1 is true, but we want 0 when everything is fine.
-	//
-	// We create another pointer of action_packet
-	// because FreeRTOS wants a pointer to the item we want to send,
-	// which is a pointer.
-	return xQueueSend(FlashQueue, &action_packet, 0) != pdPASS;
-}
-
-uint8_t W25Q_QueueWrite(uint8_t* data_packets, uint32_t size) {
-	W25Q_ActionPayload_u payload;
-	payload.write.data = data_packets;
-	payload.write.size = size;
-
-	W25Q_ActionPacket_t action_packet = W25Q_CreatePacket(W25Q_Action_Write, payload);
-
-	return W25Q_QueueAction(action_packet);
-}
+uint8_t flash_buffer_index = 0;
+DataPacket_t flash_packet_buffer1[FLASH_BUFFER_SIZE];
+DataPacket_t flash_packet_buffer2[FLASH_BUFFER_SIZE];
+DataPacket_t* flash_packet_buffer = flash_packet_buffer1; //Dual buffer to stop 500ms data loss when writing to flash
 
 /**
- * Queue a read action.
- * The finished pointer of `read_data` will be set to false when this function is called.
- * When the reading is finished, it changes to true.
- * The packets field of `read_data` can than be accessed.
+ * @brief Add a data packet to the flash buffer.
+ * If the flash buffer is full, its data written to the next flash sector.
+ * @param data_packet
  */
-uint8_t W25Q_QueueRead(W25Q_Read_t* read_data) {
-	read_data->finished = false;
-	W25Q_ActionPayload_u payload;
-	payload.read = read_data;
+void W25Q_Queue_AddDataPackets(const DataPacket_t* data_packet) {
+	if (flash_buffer_index < FLASH_BUFFER_SIZE) {
+		flash_packet_buffer[flash_buffer_index++] = *data_packet;
+	}
 
-	W25Q_ActionPacket_t action_packet = W25Q_CreatePacket(W25Q_Action_Read, payload);
-
-	return W25Q_QueueAction(action_packet);
+	if (flash_buffer_index >= FLASH_BUFFER_SIZE) {
+		uint32_t byte_buffer_size = FLASH_BUFFER_SIZE * sizeof(DataPacket_t);
+		// We need to use malloc, so the data of the array does not drop out of scope.
+		uint8_t* queue_packet_buffer = malloc(byte_buffer_size);
+		memcpy(queue_packet_buffer, flash_packet_buffer, byte_buffer_size);
+		SPI2_QueueWrite(queue_packet_buffer, byte_buffer_size);
+		//Switch buffer
+		flash_packet_buffer = (flash_packet_buffer == flash_packet_buffer1) ? flash_packet_buffer2 : flash_packet_buffer1;
+		flash_buffer_index = 0;
+	}
 }
 
-uint8_t W25Q_QueueErase() {
-	W25Q_ActionPayload_u payload;
-	W25Q_ActionPacket_t action_packet = W25Q_CreatePacket(W25Q_Action_Erase, payload);
+void W25Q_Queue_GetConfig() {
+	// Wait for Flash to initialize
+	vTaskDelay(1000);
 
-	return W25Q_QueueAction(action_packet);
-}
+	size_t size = sizeof(W25QPage0_config_t);
+	uint8_t data_1[size];
+	uint8_t data_2[size];
+	SPI2_Read_t read_result_1 = { .start_page = 0, .offset = 0, .size = size, .data = data_1 };
+	SPI2_Read_t read_result_2 = { .start_page = PAGES_PER_SECTOR, .offset = 0, .size = size, .data = data_2 };
+	// We only need to block on the second read, since the first read is guaranteed to finish first.
+	SPI2_QueueRead(&read_result_1);
+	SPI2_QueueReadBlocking(&read_result_2);
 
-uint8_t W25Q_QueueSetWriteStatus(bool write_logs) {
-	W25Q_ActionPayload_u payload;
-	payload.write_status.write_logs = write_logs;
-
-	W25Q_ActionPacket_t action_packet = W25Q_CreatePacket(W25Q_Action_SetWriteStatus, payload);
-
-	return W25Q_QueueAction(action_packet);
+	// The read func
+	uint8_t* tempConfig1 = read_result_1.data;
+	uint8_t* tempConfig2 = read_result_2.data;
+	// Copy the data to the W25Q_FLASH_CONFIG structure if ID is correct
+	if (tempConfig1[0] == W25Q_FLASH_CONFIG.ID[0] && tempConfig1[1] == W25Q_FLASH_CONFIG.ID[1]) {
+		memcpy(&W25Q_FLASH_CONFIG, tempConfig1, size);
+		// TODO: Queue
+		W25Q_AlignSectorOffset();
+	} else if (tempConfig2[0] == W25Q_FLASH_CONFIG.ID[0] && tempConfig2[1] == W25Q_FLASH_CONFIG.ID[1]) {
+		memcpy(&W25Q_FLASH_CONFIG, tempConfig2, size);
+		// TODO: Queue
+		W25Q_AlignSectorOffset();
+	} else {
+		// TODO: Queue
+		// If the ID does not match, save the default config
+		W25Q_WriteConfig();
+	}
 }
 
 /**
- * Queue a read action and block until the action is finished.
- * For more information see `W25Q_QueueRead`.
+ * @brief Load the latest packets of the given IDs from flash memory.
+ *
+ * @param packet_types IDs of the packages which should be loaded.
+ * @param packets Array to which the loaded packets will be written.
+ * @return 0 if all packages where found, else 1.
  */
-uint8_t W25Q_QueueReadBlocking(W25Q_Read_t* read_result) {
-	uint8_t result = W25Q_QueueRead(read_result);
+uint8_t W25Q_Queue_LoadLastPackets(PacketType_t packet_types[], DataPacket_t packets[], uint8_t packet_count) {
+	uint16_t packets_size = sizeof(DataPacket_t) * PACKETS_PER_PAGE;
 
-	if (result != 0) {
-		return result;
-	}
+	uint8_t loaded_packets_count = 0;
 
-	while (!read_result->finished) {
-		// If this function is called from a higher priority task than the flash task,
-		// a while loop without any delays would cause the flash task to be never executed.
-		// This would result in an infinite loop, which we don't really want.
-		vTaskDelay(1);
-	}
+	// iterate through all pages back to front (newest to oldest)
+	for (int page = (int32_t)W25Q_FLASH_CONFIG.curr_logPage - 1; page >= LOG_PAGE; --page) {
+		SPI2_Read_t read_result = { .start_page = page, .offset = 0, .size = packets_size };
+		SPI2_QueueReadBlocking(&read_result);
 
-	return result;
-}
+		DataPacket_t* loaded_packets = (DataPacket_t*) read_result.data;
 
-void W25Q_HandleAction(W25Q_ActionPacket_t action_packet) {
-	switch (action_packet.action) {
-	// TODO: This should be a general SPI2 interface, so SD mounting/unmounting can also be queued
-	case W25Q_Action_Write: {
-		W25Q_Write_t write_data = action_packet.payload.write;
-		switch (write_data.type) {
-		case W25Q_WriteType_DataPackets:
-			DataPacket_t* packets = (DataPacket_t*) write_data.data;
-			W25Q_WritePackets(packets, write_data.size / sizeof(DataPacket_t));
-			break;
-		case W25Q_WriteType_Raw:
-			W25Q_SaveToLog(write_data.data, write_data.size);
-			W25Q_WriteConfig();
-			break;
-		}
+		// iterate through all packets back to front (newest to oldest)
+		for (int i = PACKETS_PER_PAGE - 1; i >= 0; --i) {
+			DataPacket_t loaded_packet = loaded_packets[i];
 
-		// The data to be written lives on the heap.
-		free(write_data.data);
-
-		break;
-	}
-	break;
-	case W25Q_Action_Read: {
-		W25Q_Read_t* read_data = action_packet.payload.read;
-		uint8_t data[read_data->size];
-
-		W25Q_Read(read_data->start_page, read_data->offset, read_data->size, data);
-
-		memcpy(read_data->data, data, read_data->size);
-		read_data->finished = true;
-		break;
-	}
-	case W25Q_Action_Erase:
-		W25Q_Erase_t erase_data = action_packet.payload.erase;
-		if (erase_data.first_sector == 0 && erase_data.last_sector == 0) {
-			W25Q_Chip_Erase();
-			buzzerPlayNote("C6", 100);
-		} else if (erase_data.last_sector >= erase_data.first_sector) {
-			for (uint32_t i = erase_data.first_sector; i <= erase_data.last_sector; ++i) {
-				W25Q_Erase_Sector(i);
+			// find the index into the packets array for the loaded ID
+			uint8_t packet_index = 255;
+			for (uint8_t j = 0; j < packet_count; ++j) {
+				if (loaded_packet.Packet_ID == packet_types[j]) {
+					packet_index = j;
+					break;
+				}
 			}
 
-			buzzerPlayNote("C6", 100);
-		} else {
-			// TODO: Error handling
+			// loaded packet ID not wanted or already found in a previous iteration
+			if (packet_index == 255 || packets[packet_index].Packet_ID == loaded_packet.Packet_ID) {
+				continue;
+			}
+
+			packets[packet_index] = loaded_packet;
+			loaded_packets_count++;
+
+			// exit if all packages where found
+			if (loaded_packets_count == packet_count) {
+				return 0;
+			}
 		}
-		break;
-	case W25Q_Action_SetWriteStatus:
-		W25Q_FLASH_CONFIG.write_logs = action_packet.payload.write_status.write_logs;
-		W25Q_WriteConfig();
-		break;
 	}
+
+	return 1;
 }

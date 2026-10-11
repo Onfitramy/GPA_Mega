@@ -94,6 +94,7 @@ target_sources(stm32cubemx INTERFACE
     ../../Drivers/Components/SD/SD.c
     ../../Drivers/Libraries/NRF24L01P.c
     ../../Drivers/Libraries/radio.c
+	../../Drivers/Libraries/SPI2Queue.c
     ../../Drivers/Libraries/InterBoardCom.c
     ../../Drivers/Libraries/VoltageReader.c
     ../../Drivers/Libraries/status.c

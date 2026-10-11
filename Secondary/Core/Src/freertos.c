@@ -50,7 +50,7 @@ extern UART_HandleTypeDef huart1;
 QueueHandle_t InterBoardPacketQueue;
 QueueHandle_t XBeeDataQueue;
 QueueHandle_t InterruptQueue;
-QueueHandle_t FlashQueue;
+QueueHandle_t SPI2Queue;
 
 /* USER CODE END PTD */
 
@@ -154,7 +154,7 @@ void MX_FREERTOS_Init(void) {
   InterBoardPacketQueue = xQueueCreate(64, sizeof(InterBoardPacket_t)); // Queue for 64 InterBoardPacket_t packets
   XBeeDataQueue = xQueueCreate(4, sizeof(xbee_frame_t)); // Queue for 4 XBee data packets
   InterruptQueue = xQueueCreate(10, sizeof(uint8_t)); // Queue for 10 interrupt signals
-  FlashQueue = xQueueCreate(8, sizeof(W25Q_ActionPacket_t));
+  SPI2Queue = xQueueCreate(8, sizeof(SPI2_ActionPacket_t));
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -249,14 +249,14 @@ uint16_t receivedPackets = 0;
 void StartInterBoardComTask(void *argument)
 {
   /* USER CODE BEGIN StartInterBoardComTask */
-  W25Q_GetConfig();
+  W25Q_Queue_GetConfig();
 
   const int packet_count = 3;
   PacketType_t packet_types[3] = { PACKET_ID_IMU, PACKET_ID_ATTITUDE, PACKET_ID_POSITION };
   DataPacket_t packets[3];
   memset(packets, 255, packet_count * sizeof(DataPacket_t));
 
-  int result = W25Q_LoadLastPackets(packet_types, packets, packet_count);
+  int result = W25Q_Queue_LoadLastPackets(packet_types, packets, packet_count);
 
   InterBoardCom_Init();
 
@@ -398,12 +398,12 @@ void StartFlashTask(void *argument)
 
   /* Infinite loop */
   for(;;) {
-    W25Q_ActionPacket_t packet;
+    SPI2_ActionPacket_t packet;
     // We create another pointer of packet
     // because FreeRTOS wants a pointer to the item we want to send,
     // which is a pointer.
-    if (xQueueReceive(FlashQueue, &packet, portMAX_DELAY) == pdPASS) {
-      W25Q_HandleAction(packet);
+    if (xQueueReceive(SPI2Queue, &packet, portMAX_DELAY) == pdPASS) {
+      SPI2_HandleAction(packet);
     }
   }
   /* USER CODE END StartSDTask */
