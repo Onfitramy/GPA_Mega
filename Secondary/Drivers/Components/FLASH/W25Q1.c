@@ -6,6 +6,9 @@
 
 #include "main.h"
 #include "W25Q1.h"
+
+#include <stdlib.h>
+
 #include "string.h"
 #include "FreeRTOS.h"
 #include "InterBoardCom.h"
@@ -21,8 +24,6 @@ volatile W25QPage0_config_t W25Q_FLASH_CONFIG = {
 	.curr_logOffset = 0, // Start at the beginning of the log page
 	.write_logs = false,
 };
-
-volatile W25Q_State_t W25Q_STATE = W25Q_State_Available;
 
 extern QueueHandle_t FlashQueue;
 
@@ -78,18 +79,22 @@ void W25Q_AddFlashBufferPacket(const DataPacket_t* data_packet) {
 	}
 
 	if (flash_buffer_index >= FLASH_BUFFER_SIZE) {
-		DataPacket_t queue_packet_buffer[FLASH_BUFFER_SIZE];
-		// Copy the flash buffer to another buffer, since FreeRTOS queues preserve pointers (which arrays are).
-		// I'm not 100 % sure if this is necessary, but better be safe than sorry.
-		memcpy(queue_packet_buffer, flash_packet_buffer, FLASH_BUFFER_SIZE * sizeof(DataPacket_t));
-		W25Q_QueueWrite(flash_packet_buffer);
+		uint32_t byte_buffer_size = FLASH_BUFFER_SIZE * sizeof(DataPacket_t);
+		// We need to use malloc, so the data of the array does not drop out of scope.
+		uint8_t* queue_packet_buffer = malloc(byte_buffer_size);
+		memcpy(queue_packet_buffer, flash_packet_buffer, byte_buffer_size);
+		W25Q_QueueWrite(queue_packet_buffer, byte_buffer_size);
 		//Switch buffer
 		flash_packet_buffer = (flash_packet_buffer == flash_packet_buffer1) ? flash_packet_buffer2 : flash_packet_buffer1;
 		flash_buffer_index = 0;
 	}
 }
 
-void W25Q_WritePackets(DataPacket_t* packets) {
+uint8_t W25Q_WritePackets(DataPacket_t* packets, uint32_t size) {
+	if (size != PAGES_PER_SECTOR * PACKETS_PER_PAGE) {
+		return 1;
+	}
+
 	if (W25Q_FLASH_CONFIG.write_logs) {
 		for (int i = 0; i < PAGES_PER_SECTOR; ++i) {
 			W25Q_SaveToLog((uint8_t*)(packets + i * PACKETS_PER_PAGE), PACKETS_PER_PAGE * sizeof(DataPacket_t));
@@ -97,6 +102,8 @@ void W25Q_WritePackets(DataPacket_t* packets) {
 
 		W25Q_WriteConfig();
 	}
+
+	return 0;
 }
 
 void W25Q_LoadFromLog(uint8_t *data, uint32_t size, uint32_t log_page, uint32_t log_offset)
@@ -542,18 +549,24 @@ void W25Q_GetConfig() {
 	// Wait for Flash to initialize
 	vTaskDelay(1000);
 
-	uint8_t tempConfig1[sizeof(W25QPage0_config_t)];
-	uint8_t tempConfig2[sizeof(W25QPage0_config_t)];
+	size_t size = sizeof(W25QPage0_config_t);
+	uint8_t data_1[size];
+	uint8_t data_2[size];
+	W25Q_Read_t read_result_1 = { .start_page = 0, .offset = 0, .size = size, .data = data_1 };
+	W25Q_Read_t read_result_2 = { .start_page = PAGES_PER_SECTOR, .offset = 0, .size = size, .data = data_2 };
+	// We only need to block on the second read, since the first read is guaranteed to finish first.
+	W25Q_QueueRead(&read_result_1);
+	W25Q_QueueReadBlocking(&read_result_2);
 
-	// Copy the config on the chip to a local variable
-	W25Q_Read(0, 0, sizeof(W25QPage0_config_t), tempConfig1);
-	W25Q_Read(PAGES_PER_SECTOR, 0, sizeof(W25QPage0_config_t), tempConfig2);
+	// The read func
+	uint8_t* tempConfig1 = read_result_1.data;
+	uint8_t* tempConfig2 = read_result_2.data;
 	// Copy the data to the W25Q_FLASH_CONFIG structure if ID is correct
 	if (tempConfig1[0] == W25Q_FLASH_CONFIG.ID[0] && tempConfig1[1] == W25Q_FLASH_CONFIG.ID[1]) {
-		memcpy(&W25Q_FLASH_CONFIG, tempConfig1, sizeof(W25QPage0_config_t));
+		memcpy(&W25Q_FLASH_CONFIG, tempConfig1, size);
 		W25Q_AlignSectorOffset();
 	} else if (tempConfig2[0] == W25Q_FLASH_CONFIG.ID[0] && tempConfig2[1] == W25Q_FLASH_CONFIG.ID[1]) {
-		memcpy(&W25Q_FLASH_CONFIG, tempConfig2, sizeof(W25QPage0_config_t));
+		memcpy(&W25Q_FLASH_CONFIG, tempConfig2, size);
 		W25Q_AlignSectorOffset();
 	} else {
 		// If the ID does not match, save the default config
@@ -578,7 +591,7 @@ uint8_t W25Q_LoadLastPackets(PacketType_t packet_types[], DataPacket_t packets[]
 		W25Q_Read_t read_result = { .start_page = page, .offset = 0, .size = packets_size };
 		W25Q_QueueReadBlocking(&read_result);
 
-		DataPacket_t* loaded_packets = read_result.packets;
+		DataPacket_t* loaded_packets = (DataPacket_t*) read_result.data;
 
 		// iterate through all packets back to front (newest to oldest)
 		for (int i = PACKETS_PER_PAGE - 1; i >= 0; --i) {
@@ -743,7 +756,7 @@ void W25Q_Write_Cleared(uint32_t page, uint16_t offset, uint32_t size, uint8_t *
     }
 }
 
-W25Q_ActionPacket_t W25Q_CreatePacket(W25Q_Action action, W25Q_ActionPayload_u payload) {
+W25Q_ActionPacket_t W25Q_CreatePacket(W25Q_Action_t action, W25Q_ActionPayload_u payload) {
 	W25Q_ActionPacket_t action_packet;
 	action_packet.action = action;
 	action_packet.payload = payload;
@@ -751,18 +764,23 @@ W25Q_ActionPacket_t W25Q_CreatePacket(W25Q_Action action, W25Q_ActionPayload_u p
 	return action_packet;
 }
 
-uint8_t W25Q_QueueAction(W25Q_ActionPacket_t* action_packet) {
-	// For bools 1 is true, but we want 0 when everything is fine
-	return xQueueSend(FlashQueue, action_packet, 0) != pdPASS;
+uint8_t W25Q_QueueAction(W25Q_ActionPacket_t action_packet) {
+	// For bools 1 is true, but we want 0 when everything is fine.
+	//
+	// We create another pointer of action_packet
+	// because FreeRTOS wants a pointer to the item we want to send,
+	// which is a pointer.
+	return xQueueSend(FlashQueue, &action_packet, 0) != pdPASS;
 }
 
-uint8_t W25Q_QueueWrite(DataPacket_t* data_packets) {
+uint8_t W25Q_QueueWrite(uint8_t* data_packets, uint32_t size) {
 	W25Q_ActionPayload_u payload;
-	payload.write.packets = data_packets;
+	payload.write.data = data_packets;
+	payload.write.size = size;
 
 	W25Q_ActionPacket_t action_packet = W25Q_CreatePacket(W25Q_Action_Write, payload);
 
-	return W25Q_QueueAction(&action_packet);
+	return W25Q_QueueAction(action_packet);
 }
 
 /**
@@ -778,14 +796,14 @@ uint8_t W25Q_QueueRead(W25Q_Read_t* read_data) {
 
 	W25Q_ActionPacket_t action_packet = W25Q_CreatePacket(W25Q_Action_Read, payload);
 
-	return W25Q_QueueAction(&action_packet);
+	return W25Q_QueueAction(action_packet);
 }
 
 uint8_t W25Q_QueueErase() {
 	W25Q_ActionPayload_u payload;
 	W25Q_ActionPacket_t action_packet = W25Q_CreatePacket(W25Q_Action_Erase, payload);
 
-	return W25Q_QueueAction(&action_packet);
+	return W25Q_QueueAction(action_packet);
 }
 
 uint8_t W25Q_QueueSetWriteStatus(bool write_logs) {
@@ -794,7 +812,7 @@ uint8_t W25Q_QueueSetWriteStatus(bool write_logs) {
 
 	W25Q_ActionPacket_t action_packet = W25Q_CreatePacket(W25Q_Action_SetWriteStatus, payload);
 
-	return W25Q_QueueAction(&action_packet);
+	return W25Q_QueueAction(action_packet);
 }
 
 /**
@@ -818,27 +836,55 @@ uint8_t W25Q_QueueReadBlocking(W25Q_Read_t* read_result) {
 	return result;
 }
 
-void W25Q_HandleAction(W25Q_ActionPacket_t* action_packet) {
-	switch (action_packet->action) {
+void W25Q_HandleAction(W25Q_ActionPacket_t action_packet) {
+	switch (action_packet.action) {
 	// TODO: This should be a general SPI2 interface, so SD mounting/unmounting can also be queued
-	case W25Q_Action_Write:
-		W25Q_WritePackets(action_packet->payload.write.packets);
+	case W25Q_Action_Write: {
+		W25Q_Write_t write_data = action_packet.payload.write;
+		switch (write_data.type) {
+		case W25Q_WriteType_DataPackets:
+			DataPacket_t* packets = (DataPacket_t*) write_data.data;
+			W25Q_WritePackets(packets, write_data.size / sizeof(DataPacket_t));
+			break;
+		case W25Q_WriteType_Raw:
+			W25Q_SaveToLog(write_data.data, write_data.size);
+			W25Q_WriteConfig();
+			break;
+		}
+
+		// The data to be written lives on the heap.
+		free(write_data.data);
+
 		break;
-	case W25Q_Action_Read:
-		W25Q_Read_t* read_data = action_packet->payload.read;
-		DataPacket_t loaded_packets[PACKETS_PER_PAGE];
+	}
+	break;
+	case W25Q_Action_Read: {
+		W25Q_Read_t* read_data = action_packet.payload.read;
+		uint8_t data[read_data->size];
 
-		W25Q_Read(read_data->start_page, read_data->offset, read_data->size, (uint8_t*) loaded_packets);
+		W25Q_Read(read_data->start_page, read_data->offset, read_data->size, data);
 
-		read_data->packets = loaded_packets;
+		memcpy(read_data->data, data, read_data->size);
 		read_data->finished = true;
 		break;
+	}
 	case W25Q_Action_Erase:
-		W25Q_Chip_Erase();
-		buzzerPlayNote("C6", 100);
+		W25Q_Erase_t erase_data = action_packet.payload.erase;
+		if (erase_data.first_sector == 0 && erase_data.last_sector == 0) {
+			W25Q_Chip_Erase();
+			buzzerPlayNote("C6", 100);
+		} else if (erase_data.last_sector >= erase_data.first_sector) {
+			for (uint32_t i = erase_data.first_sector; i <= erase_data.last_sector; ++i) {
+				W25Q_Erase_Sector(i);
+			}
+
+			buzzerPlayNote("C6", 100);
+		} else {
+			// TODO: Error handling
+		}
 		break;
 	case W25Q_Action_SetWriteStatus:
-		W25Q_FLASH_CONFIG.write_logs = action_packet->payload.write_status.write_logs;
+		W25Q_FLASH_CONFIG.write_logs = action_packet.payload.write_status.write_logs;
 		W25Q_WriteConfig();
 		break;
 	}

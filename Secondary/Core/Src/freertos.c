@@ -245,23 +245,18 @@ void Start10HzTask(void *argument){
 }
 
 uint16_t receivedPackets = 0;
-extern W25Q_State_t W25Q_STATE;
 
 void StartInterBoardComTask(void *argument)
 {
   /* USER CODE BEGIN StartInterBoardComTask */
-  W25Q_STATE = W25Q_State_Reading;
   W25Q_GetConfig();
-  W25Q_STATE = W25Q_State_Available;
 
   const int packet_count = 3;
   PacketType_t packet_types[3] = { PACKET_ID_IMU, PACKET_ID_ATTITUDE, PACKET_ID_POSITION };
   DataPacket_t packets[3];
   memset(packets, 255, packet_count * sizeof(DataPacket_t));
 
-  W25Q_STATE = W25Q_State_Reading;
   int result = W25Q_LoadLastPackets(packet_types, packets, packet_count);
-  W25Q_STATE = W25Q_State_Available;
 
   InterBoardCom_Init();
 
@@ -395,7 +390,6 @@ void StartInterruptTask(void *argument)
 }
 
 volatile uint16_t sd_copy_page = 0;
-extern volatile W25QPage0_config_t W25Q_FLASH_CONFIG;
 
 void StartFlashTask(void *argument)
 {
@@ -405,9 +399,11 @@ void StartFlashTask(void *argument)
   /* Infinite loop */
   for(;;) {
     W25Q_ActionPacket_t packet;
-    // Calculate 0.1ms in ticks based on configTICK_RATE_HZ
-    if (xQueueReceive(FlashQueue, &packet, 1) == pdPASS) { // 1ms delay
-      W25Q_HandleAction(&packet);
+    // We create another pointer of packet
+    // because FreeRTOS wants a pointer to the item we want to send,
+    // which is a pointer.
+    if (xQueueReceive(FlashQueue, &packet, portMAX_DELAY) == pdPASS) {
+      W25Q_HandleAction(packet);
     }
   }
   /* USER CODE END StartSDTask */
