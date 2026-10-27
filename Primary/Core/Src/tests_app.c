@@ -57,10 +57,20 @@ test_result_t test_parachute(char *test_write_buffer, size_t test_write_buffer_l
 {
     test_result_t test_result = {.test_name = "test_parachute", .test_status = TEST_STATUS_NOT_RUN, .execution_time_ms = 0};
 
+    // Activate power unit and deploy drogue after a delay to simulate ejection
+    PU_setCAM(ENABLE);
+    PU_setREC(ENABLE);
+
+
     snprintf(test_write_buffer, test_write_buffer_len, "Running parachute tests. 30s to ejection...\r\n");
     Buzzer_PlayNote("A4", 100); // Signal start of test
     vTaskDelay(pdMS_TO_TICKS(30000)); // 30 second delay to simulate time before ejection
+    Buzzer_PlayNote("A2", 1000); // Signal drogue deployment
     DeployDrogue(DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
+
+    vTaskDelay(pdMS_TO_TICKS(10000)); // 10 second delay to allow for drogue deployment
+    Buzzer_PlayNote("A2", 1000); // Signal main deployment
+    DeployMain();
 
     // For demonstration, we'll just print a success message
     snprintf(test_write_buffer + strlen(test_write_buffer), test_write_buffer_len - strlen(test_write_buffer), "Parachute Tests completed\r\n");
