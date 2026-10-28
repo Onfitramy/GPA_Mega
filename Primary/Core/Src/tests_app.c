@@ -61,6 +61,9 @@ test_result_t test_parachute(char *test_write_buffer, size_t test_write_buffer_l
     PU_setCAM(ENABLE);
     PU_setREC(ENABLE);
 
+    DeployMain();
+    DeployDrogue(DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
+
 
     snprintf(test_write_buffer, test_write_buffer_len, "Running parachute tests. 30s to ejection...\r\n");
     Buzzer_PlayNote("A4", 100); // Signal start of test
@@ -74,6 +77,30 @@ test_result_t test_parachute(char *test_write_buffer, size_t test_write_buffer_l
 
     // For demonstration, we'll just print a success message
     snprintf(test_write_buffer + strlen(test_write_buffer), test_write_buffer_len - strlen(test_write_buffer), "Parachute Tests completed\r\n");
+
+    test_result.test_status = TEST_STATUS_PASS;
+    test_result.execution_time_ms = 0; // Update with actual execution time
+    return test_result;
+}
+
+// Caution: This test activates causes Parachute ejection, used for ground test
+test_result_t test_main_deploy(char *test_write_buffer, size_t test_write_buffer_len)
+{
+    test_result_t test_result = {.test_name = "test_main_deploy", .test_status = TEST_STATUS_NOT_RUN, .execution_time_ms = 0};
+
+    DeployMain();
+
+    test_result.test_status = TEST_STATUS_PASS;
+    test_result.execution_time_ms = 0; // Update with actual execution time
+    return test_result;
+}
+
+// Caution: This test activates causes Parachute ejection, used for ground test
+test_result_t test_main_retract(char *test_write_buffer, size_t test_write_buffer_len)
+{
+    test_result_t test_result = {.test_name = "test_main_retract", .test_status = TEST_STATUS_NOT_RUN, .execution_time_ms = 0};
+
+    RetractMain(1);
 
     test_result.test_status = TEST_STATUS_PASS;
     test_result.execution_time_ms = 0; // Update with actual execution time
@@ -155,6 +182,18 @@ static const test_definition_t test_list[] =
         .test_category = TEST_CATEGORY_NONE,
     },
     {
+        .test_name = "test_main_deploy",
+        .test_help_string = "CAUTION: This test activates causes Parachute ejection 30s after start, used for ground test",
+        .test_function = test_main_deploy,
+        .test_category = TEST_CATEGORY_NONE,
+    },
+    {
+        .test_name = "test_main_retract",
+        .test_help_string = "CAUTION: This test activates causes Parachute ejection 30s after start, used for ground test",
+        .test_function = test_main_retract,
+        .test_category = TEST_CATEGORY_NONE,
+    },
+  {
         .test_name = "test_max_power_delay",
         .test_help_string = "Run max power delay test",
         .test_function = test_max_power_delay,
