@@ -295,6 +295,7 @@ static void LandedEntry(StateMachine_t *sm) {
     PU_setREC(DISABLE);
     Camera_Recording(0);
     SetSaveSchedule(0);
+    Storage_FlashSave(false);
 
     // TODO:
     // disable cams
