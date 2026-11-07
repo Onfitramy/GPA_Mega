@@ -126,8 +126,8 @@ static void InterBoardCom_DiagnosticsObserveBusy(void) {
     InterBoardCom_DiagnosticsExitCritical(primask);
 
     if (report_stall != 0U) {
-        InterBoardCom_ReportTask(IBC_EVENT_TX_STALL, SUP_SEVERITY_ERROR,
-                                packet_id, elapsed_ms);
+        // InterBoardCom_ReportTask(IBC_EVENT_TX_STALL, SUP_SEVERITY_ERROR,
+                                // packet_id, elapsed_ms);
     }
 }
 
@@ -334,11 +334,11 @@ uint8_t InterBoardCom_QueuePacket(InterBoardPacket_t *packet)
     InterBoardCom_DiagnosticsRecordQueueResult(queued);
     InterBoardCom_DiagnosticsExitCritical(primask);
 
-    InterBoardCom_ReportTask(
-        queued ? IBC_EVENT_TX_ENQUEUED : IBC_EVENT_TX_QUEUE_FULL,
-        queued ? SUP_SEVERITY_INFO : SUP_SEVERITY_ERROR,
-        packet_id,
-        queue_depth);
+    // InterBoardCom_ReportTask(
+    //     queued ? IBC_EVENT_TX_ENQUEUED : IBC_EVENT_TX_QUEUE_FULL,
+    //     queued ? SUP_SEVERITY_INFO : SUP_SEVERITY_ERROR,
+    //     packet_id,
+    //     queue_depth);
 
     return queued;
 }
@@ -409,11 +409,11 @@ void InterBoardCom_ProcessTxBuffer(void) {
         severity = SUP_SEVERITY_ERROR;
     }
 
-    InterBoardCom_ReportTask(
-        event_id,
-        severity,
-        packet_id,
-        (uint32_t)status);
+    // InterBoardCom_ReportTask(
+    //     event_id,
+    //     severity,
+    //     packet_id,
+    //     (uint32_t)status);
 }
 
 /**
