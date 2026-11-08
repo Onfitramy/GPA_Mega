@@ -252,11 +252,12 @@ void StartInterBoardComTask(void *argument)
   W25Q_Queue_GetConfig();
 
   const int packet_count = 3;
+  const uint32_t max_history = 256;
   PacketType_t packet_types[3] = { PACKET_ID_IMU, PACKET_ID_ATTITUDE, PACKET_ID_POSITION };
   DataPacket_t packets[3];
   memset(packets, 255, packet_count * sizeof(DataPacket_t));
 
-  int result = W25Q_Queue_LoadLastPackets(packet_types, packets, packet_count);
+  int result = W25Q_Queue_LoadLastPackets(packet_types, packets, packet_count, max_history);
 
   InterBoardCom_Init();
 

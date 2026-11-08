@@ -201,7 +201,7 @@ void ProcessDataSchedule(uint32_t current_tick) {
         if (is_send || is_save){
             UpdatePacket(message_schedule[i].packet);
         }
-        
+
         if (is_send && !is_save) {
             // After updating the packet, send it via the appropriate communication interface
             if (communication_mode == COMM_MODE_FORWARDING || communication_mode == COMM_MODE_LOCAL) {

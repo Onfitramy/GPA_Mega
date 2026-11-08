@@ -441,9 +441,10 @@ void W25Q_Queue_GetConfig() {
  * @param packets Array to which the loaded packets will be written.
  * @return 0 if all packages where found, else 1.
  */
-uint8_t W25Q_Queue_LoadLastPackets(PacketType_t packet_types[], DataPacket_t packets[], uint8_t packet_count) {
+uint8_t W25Q_Queue_LoadLastPackets(PacketType_t packet_types[], DataPacket_t packets[], uint8_t packet_count, uint32_t max_history) {
 	uint16_t packets_size = sizeof(DataPacket_t) * PACKETS_PER_PAGE;
 
+	uint32_t total_packet_count = 0;
 	uint8_t loaded_packets_count = 0;
 
 	// iterate through all pages back to front (newest to oldest)
@@ -455,7 +456,12 @@ uint8_t W25Q_Queue_LoadLastPackets(PacketType_t packet_types[], DataPacket_t pac
 
 		// iterate through all packets back to front (newest to oldest)
 		for (int i = PACKETS_PER_PAGE - 1; i >= 0; --i) {
+			if (total_packet_count >= max_history) {
+				return 1;
+			}
+
 			DataPacket_t loaded_packet = loaded_packets[i];
+			total_packet_count++;
 
 			// find the index into the packets array for the loaded ID
 			uint8_t packet_index = 255;
