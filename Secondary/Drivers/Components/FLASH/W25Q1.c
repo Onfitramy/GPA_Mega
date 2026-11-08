@@ -501,10 +501,8 @@ void W25Q_Queue_AddDataPackets(const DataPacket_t* data_packet) {
 
 	if (flash_buffer_index >= FLASH_BUFFER_SIZE) {
 		uint32_t byte_buffer_size = FLASH_BUFFER_SIZE * sizeof(DataPacket_t);
-		// We need to use malloc, so the data of the array does not drop out of scope.
-		uint8_t queue_packet_buffer[byte_buffer_size];
-		memcpy(queue_packet_buffer, flash_packet_buffer, byte_buffer_size);
-		SPI2_QueueWrite(queue_packet_buffer, byte_buffer_size, SPI2_WriteType_DataPackets);
+
+		SPI2_QueueWrite((uint8_t*) flash_packet_buffer, byte_buffer_size, SPI2_WriteType_DataPackets);
 		//Switch buffer
 		flash_packet_buffer = (flash_packet_buffer == flash_packet_buffer1) ? flash_packet_buffer2 : flash_packet_buffer1;
 		flash_buffer_index = 0;
@@ -538,7 +536,7 @@ void W25Q_CopyLogs(uint16_t max_page, SPI2_W25Q_CopyLogsTarget_t target) {
 		for (uint32_t i = 0; i < FLASH_BUFFER_SIZE; ++i) {
 			if (target == SPI2_CopyLogsTarget_Serial) {
 				DataPacket_t packet = packets[i];
-				packet.Packet_ID = packets->Packet_ID | PACKET_ACTION_WRITE_TO_SERIAL;
+				packet.Packet_ID = packet.Packet_ID | PACKET_ACTION_WRITE_TO_SERIAL;
 
 				InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU, &packet);
 

@@ -93,7 +93,7 @@ typedef enum __attribute__((packed)){
 } CommandID_t;
 
 typedef enum __attribute__((packed)) {
-    BUZZER_PATTERN_REPEAT_NOTE = 0,
+    BUZZER_PATTERN_PLAY_NOTE = 0,
     BUZZER_PATTERN_PLAY_ASE_SONG = 1,
     BUZZER_PATTERN_PLAY_FAILURE_SONG = 2,
     BUZZER_PATTERN_CODE_PRIMARY_ARMED = 3,

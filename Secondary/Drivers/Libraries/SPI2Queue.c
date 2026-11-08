@@ -31,6 +31,7 @@ uint8_t SPI2_QueueAction(SPI2_ActionPacket_t action_packet) {
 
 uint8_t SPI2_QueueWrite(uint8_t* data, uint32_t size, SPI2_W25Q_WriteType_t type) {
 	SPI2_ActionPayload_u payload;
+	// We need to use malloc, so the data of the array does not drop out of scope.
 	payload.write.data = malloc(size);
 	memcpy(payload.write.data, data, size);
 	payload.write.size = size;
@@ -171,13 +172,13 @@ void SPI2_HandleAction(SPI2_ActionPacket_t action_packet) {
 		SPI2_W25Q_Erase_t erase_data = action_packet.payload.erase;
 		if (erase_data.first_sector == 0 && erase_data.last_sector == 0) {
 			W25Q_Chip_Erase();
-			buzzerPlayNote("C6", 100);
+			buzzerPlayNote("C6", 300);
 		} else if (erase_data.last_sector >= erase_data.first_sector) {
 			for (uint32_t i = erase_data.first_sector; i <= erase_data.last_sector; ++i) {
 				W25Q_Erase_Sector(i);
 			}
 
-			buzzerPlayNote("C6", 100);
+			buzzerPlayNote("C6", 300);
 		} else {
 			// TODO: Error handling
 		}

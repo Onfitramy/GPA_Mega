@@ -1112,7 +1112,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   else if (htim->Instance == TIM10) {
     tim10_ms++;
     switch (buzzerPattern) {
-      case BUZZER_PATTERN_REPEAT_NOTE:
+      case BUZZER_PATTERN_PLAY_NOTE:
         if ((tim10_ms >= tim10_target1_ms) && (buzzerActivePeriod || !buzzerPeriodicMode)) {
           tim10_ms = 0;
           buzzerStop();
@@ -1170,7 +1170,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       tim11_ms = 0;
 
       #ifdef BUZZER_BEEP_CODES
-      if (buzzerPattern != BUZZER_PATTERN_REPEAT_NOTE &&
+      if (buzzerPattern != BUZZER_PATTERN_PLAY_NOTE &&
           buzzerPattern != BUZZER_PATTERN_PLAY_ASE_SONG &&
           buzzerPattern != BUZZER_PATTERN_PLAY_FAILURE_SONG) {
         if (primaryActive) {

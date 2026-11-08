@@ -393,6 +393,7 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket, PacketSource_t sour
                     note[i] = dataPacket->Data.command.params[3+i];
                 }
                 note[length] = '\0';
+                buzzerPattern = BUZZER_PATTERN_PLAY_NOTE;
                 buzzerPlayNote(note, playtime_ms);
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_BUZZER_PLAYSONG) {
                 buzzerPlayPattern(dataPacket->Data.command.params[0]);

@@ -4,7 +4,7 @@
 
 bool buzzerPeriodicMode = false;
 bool buzzerActivePeriod = false;
-BuzzerPattern_t buzzerPattern = 0;
+BuzzerPattern_t buzzerPattern = BUZZER_PATTERN_PLAY_NOTE;
 BuzzerPattern_t primaryPattern = BUZZER_PATTERN_STOP;
 BuzzerPattern_t secondaryPattern = BUZZER_PATTERN_STOP;
 bool primaryActive = true;
@@ -64,7 +64,7 @@ void buzzerDelay(uint32_t duration_ms) {
 }
 
 void buzzerEnablePeriodicMode1(char *note, uint32_t duration_on_ms, uint32_t duration_off_ms) {
-    buzzerPattern = 0;
+    buzzerPattern = BUZZER_PATTERN_PLAY_NOTE;
     buzzerPeriodicMode = true;
     buzzerActivePeriod = true;
     HAL_TIM_Base_Stop_IT(&htim10);
@@ -94,6 +94,9 @@ void buzzerPlayPattern(BuzzerPattern_t pattern) {
 }
 
 void buzzerPlaySecondaryStatus(sm_state_t flight_state) {
+    #ifndef BUZZER_BEEP_CODES
+    return;
+    #endif
     BuzzerPattern_t pattern;
 
     switch (flight_state) {

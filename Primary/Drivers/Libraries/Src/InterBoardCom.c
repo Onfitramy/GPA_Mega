@@ -612,7 +612,6 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t *packet) {
                                 data_packet->Data.temperature.M2_3V3, data_packet->Data.temperature.M2_XBee,
                                 data_packet->Data.temperature.PU_bat, data_packet->Data.temperature.pressure_static);
                         break;
-
                     case PACKET_ID_ATTITUDE:
                         printf("\nID:%d, TS:%lu, phi:%f, theta:%f, psi:%f",
                                 packet_type, data_packet->timestamp,
@@ -624,8 +623,13 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t *packet) {
                                 data_packet->Data.kalman.P11, data_packet->Data.kalman.P22, data_packet->Data.kalman.P33,
                                 data_packet->Data.kalman.EKF2_Heigth, data_packet->Data.kalman.EKF2_vel, data_packet->Data.kalman.EKF2_refPres);
                         break;
+                    case PACKET_ID_MPC_INFO:
+                        printf("ID%d, TS:%lu, Freq:%f, BrkDefl:%f, TgtAng:%f",
+                                packet_type, data_packet->timestamp, data_packet->Data.mpc_info.MPC_freq,
+                                data_packet->Data.mpc_info.Airbreak_deflection, data_packet->Data.mpc_info.Target_Angle);
+                        break;
                     case PACKET_ID_STATE:
-                        printf("\nID:%d, TS:%lu, STATE:%d, STATE_TS:%ld", packet_type, data_packet->timestamp, data_packet->Data.state.flight_state, data_packet->Data.state.timestamp_ms);
+                        printf("\nID:%d, TS:%lu, STATE:%d, STATE_TS:%lu", packet_type, data_packet->timestamp, data_packet->Data.state.flight_state, data_packet->Data.state.timestamp_ms);
                         break;
                     default:
                         printf("\nID:%d", packet_type);
@@ -677,49 +681,49 @@ uint8_t USB_OutputDataPacket(DataPacket_t *packet) {
 
     switch(packet->Packet_ID) {
         case PACKET_ID_IMU:
-            sprintf((char *)usb_packet_buffer, "ID%d,%ld,%ld,%ld,%ld,%d,%d,%d,%d,%d,%d\n",
+            sprintf((char *)usb_packet_buffer, "ID%d,%lu,%ld,%ld,%ld,%d,%d,%d,%d,%d,%d\n",
                     packet->Packet_ID , packet->timestamp, packet->Data.imu.accelX, packet->Data.imu.accelY, packet->Data.imu.accelZ,
                     packet->Data.imu.gyroX, packet->Data.imu.gyroY, packet->Data.imu.gyroZ, packet->Data.imu.magX, packet->Data.imu.magY, packet->Data.imu.magZ);
             break;
         case PACKET_ID_ATTITUDE:
-            sprintf((char *)usb_packet_buffer, "ID%d,%ld,%f,%f,%f\n",
+            sprintf((char *)usb_packet_buffer, "ID%d,%lu,%f,%f,%f\n",
                     packet->Packet_ID , packet->timestamp, packet->Data.attitude.phi, packet->Data.attitude.theta, packet->Data.attitude.psi);
             break;
         case PACKET_ID_GPS:
-            sprintf((char *)usb_packet_buffer, "ID%d,%ld,%ld,%ld,%ld,%d,%d\n",
+            sprintf((char *)usb_packet_buffer, "ID%d,%lu,%ld,%ld,%ld,%d,%d\n",
                     packet->Packet_ID , packet->timestamp, packet->Data.gps.latitude, packet->Data.gps.longitude, packet->Data.gps.altitude, packet->Data.gps.course, packet->Data.gps.speed);
             break;
         case PACKET_ID_POSITION:
-            sprintf((char *)usb_packet_buffer, "ID%d,%ld,%ld,%ld,%ld,%ld,%ld,%ld\n",
+            sprintf((char *)usb_packet_buffer, "ID%d,%lu,%ld,%ld,%ld,%ld,%ld,%ld\n",
                     packet->Packet_ID , packet->timestamp, packet->Data.position.posX, packet->Data.position.posY, packet->Data.position.posZ,
                     packet->Data.position.velX, packet->Data.position.velY, packet->Data.position.velZ);
             break;
         case PACKET_ID_POWER:
-            sprintf((char *)usb_packet_buffer, "ID%d,%ld,%ld,%ld,%d,%d,%d,%d,%d\n",
+            sprintf((char *)usb_packet_buffer, "ID%d,%lu,%ld,%ld,%d,%d,%d,%d,%d\n",
                     packet->Packet_ID , packet->timestamp, packet->Data.power.M1_5V_bus, packet->Data.power.M1_BAT_bus_volt,
                     packet->Data.power.M2_bus_5V, packet->Data.power.M2_bus_GPA_bat_volt, packet->Data.power.PU_bat_bus_volt,
                     packet->Data.power.PU_curr, packet->Data.power.PU_pow);
             break;
         case PACKET_ID_TEMPERATURE:
-            sprintf((char *)usb_packet_buffer, "ID%d,%ld,%d,%d,%d,%d,%d,%d,%d\n",
+            sprintf((char *)usb_packet_buffer, "ID%d,%lu,%d,%d,%d,%d,%d,%d,%d\n",
                     packet->Packet_ID , packet->timestamp, packet->Data.temperature.M1_ADC, packet->Data.temperature.M1_BMP,
                     packet->Data.temperature.M1_DTS, packet->Data.temperature.M1_IMU1, packet->Data.temperature.M1_MAG,
                     packet->Data.temperature.M2_3V3, packet->Data.temperature.M2_XBee);
             break;
         case PACKET_ID_STATUS:
-            sprintf((char *)usb_packet_buffer, "ID%d,%ld,%ld,%ld,%ld,%d\n",
+            sprintf((char *)usb_packet_buffer, "ID%d,%lu,%ld,%ld,%ld,%d\n",
                     packet->Packet_ID , packet->timestamp, packet->Data.status.status_flags, packet->Data.status.sensor_status_flags, packet->Data.status.error_flags, packet->Data.status.State);
             break;
         case PACKET_ID_KALMANMATRIX:
-            sprintf((char *)usb_packet_buffer, "ID%d,%ld,%f,%f,%f,%f,%f,%f\n",
+            sprintf((char *)usb_packet_buffer, "ID%d,%lu,%f,%f,%f,%f,%f,%f\n",
                     packet->Packet_ID , packet->timestamp, packet->Data.kalman.P11, packet->Data.kalman.P22, packet->Data.kalman.P33, packet->Data.kalman.EKF2_Heigth, packet->Data.kalman.EKF2_vel, packet->Data.kalman.EKF2_refPres);
             break;
         case PACKET_ID_MPC_INFO:
-            sprintf((char *)usb_packet_buffer, "ID%d,%ld,%f,%f,%f\n",
+            sprintf((char *)usb_packet_buffer, "ID%d,%lu,%f,%f,%f\n",
                     packet->Packet_ID , packet->timestamp, packet->Data.mpc_info.MPC_freq, packet->Data.mpc_info.Airbreak_deflection, packet->Data.mpc_info.Target_Angle);
             break;
         case PACKET_ID_STATE:
-            sprintf((char *)usb_packet_buffer, "ID%d,%ld,%d,%ld\n",
+            sprintf((char *)usb_packet_buffer, "ID%d,%lu,%d,%ld\n",
                     packet->Packet_ID , packet->timestamp, packet->Data.state.flight_state, packet->Data.state.timestamp_ms);
             break;
         default:
