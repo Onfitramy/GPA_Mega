@@ -74,13 +74,13 @@ void buzzerEnablePeriodicMode1(char *note, uint32_t duration_on_ms, uint32_t dur
     HAL_TIM_Base_Start_IT(&htim10);
 }
 
-void buzzerEnablePeriodicMode2(uint8_t pattern, uint32_t period_ms) {
+void buzzerEnablePeriodicMode2(BuzzerPattern_t pattern, uint32_t period_ms) {
     tim11_target_ms = period_ms;
     buzzerPattern = pattern;
     HAL_TIM_Base_Start_IT(&htim11);
 }
 
-void buzzerPlayPattern(uint8_t pattern) {
+void buzzerPlayPattern(BuzzerPattern_t pattern) {
     buzzerPattern = pattern;
     buzzerPeriodicMode = false;
     buzzerEventNumber = 0;
@@ -362,5 +362,48 @@ void ASESongTable(uint8_t event_num) {
         buzzerPlayNote("B3", 410);
     } else {
         buzzerStopPeriodic();
+    }
+}
+
+void BeepCodeTable(uint8_t event_num, BuzzerPattern_t beep_code) {
+    uint8_t* beeps;
+    uint32_t size;
+    char note[3];
+
+    switch (beep_code) {
+    case BUZZER_PATTERN_CODE_PRIMARY_ARMED:
+        beeps = BEEP_CODE_PRIMARY_ARMED_TABLE;
+        size = sizeof(BEEP_CODE_PRIMARY_ARMED_TABLE);
+        strcpy(note, BUZZER_BEEP_HIGH);
+        break;
+    case BUZZER_PATTERN_CODE_PRIMARY_ABORT:
+        beeps = BEEP_CODE_PRIMARY_ABORT_TABLE;
+        size = sizeof(BEEP_CODE_PRIMARY_ABORT_TABLE);
+        strcpy(note, BUZZER_BEEP_HIGH);
+        break;
+    default:
+        return;
+    }
+
+    if (event_num >= size * 2) {
+        buzzerStopPeriodic();
+        return;
+    }
+
+    if (event_num % 2 == 0) {
+        uint8_t beep_pos = event_num / 2;
+        uint32_t duration;
+
+        if (beeps[beep_pos] == 0) {
+            duration = BUZZER_BEEP_SHORT;
+        } else if (beeps[beep_pos] == 1) {
+            duration = BUZZER_BEEP_LONG;
+        } else {
+            return;
+        }
+
+        buzzerPlayNote(note, duration);
+    } else {
+        buzzerDelay(BUZZER_BEEP_DELAY);
     }
 }

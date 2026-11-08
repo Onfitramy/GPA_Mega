@@ -131,7 +131,8 @@ static void AbortEntry(StateMachine_t *sm) {
     PU_setACS(DISABLE);
     PU_setREC(DISABLE);
     PU_setCAM(DISABLE);
-    Buzzer_PlaySong(2); // when you try your best...
+    // replaced by beep code
+    // Buzzer_PlaySong(2); // when you try your best...
 }
 static void StartupEntry(StateMachine_t *sm) {
     /* --- Initialize sensors --- */
@@ -701,6 +702,7 @@ void StateMachine_Dispatch(StateMachine_t *sm, flight_event_t event) {
 
     // update flight state
     sm->currentFlightState = newState;
+    Buzzer_PlayBeepCode(flight_sm.currentFlightState);
 
     // stop timer
     HAL_TIM_Base_Stop_IT(&htim7);

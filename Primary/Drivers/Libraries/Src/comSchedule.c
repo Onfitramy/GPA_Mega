@@ -151,6 +151,7 @@ bool SetComSchedule(const void *schedule_id) {
     return false;
 }
 
+// units are in ms, not Hz
 //                                       stat,  pow,    gps,    imu,    temp,   pos,    att,    kalman, spark,  mpc,    state
 uint32_t save_schedule1_frequencies[] = {0,     0,      0,      0,      0,      0,      0,      0,      0,      0,      50}; // preflight save schedule frequencies
 uint32_t save_schedule2_frequencies[] = {0,     0,      1000,   1000,   0,      0,      1000,   1000,   0,      1000,   1000}; // preflight save schedule frequencies

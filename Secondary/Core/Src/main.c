@@ -1143,6 +1143,17 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
           FailureSongTable(buzzerEventNumber);
           buzzerEventNumber++;
         }
+        break;
+      // It is intended that only the last case does anything.
+      // The other cases fall through to the last case, because they shall execute the same code.
+      case BUZZER_PATTERN_CODE_PRIMARY_ARMED:
+      case BUZZER_PATTERN_CODE_PRIMARY_ABORT:
+        if (tim10_ms >= tim10_target1_ms) {
+          tim10_ms = 0;
+          BeepCodeTable(buzzerEventNumber, buzzerPattern);
+          buzzerEventNumber++;
+        }
+        break;
     }
     
   }

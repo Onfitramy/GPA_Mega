@@ -7,6 +7,7 @@
 #include <string.h>
 #include "spark.h"
 #include "cli_app.h"
+#include "statemachine.h"
 
 int16_t float_to_int16_scaled(float value, float scale_factor);
 int32_t float_to_int32_scaled(float value, float scale_factor);
@@ -331,6 +332,26 @@ void Buzzer_PlaySongRepeat(uint8_t song_num, uint16_t period_ms) {
 
     DataPacket_t packet;
     CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_BUZZER_PLAYSONGREPEAT, parameters, sizeof(parameters));
+    sendcmdToTarget(&packet);
+}
+
+void Buzzer_PlayBeepCode(uint8_t flight_state) {
+    uint8_t parameters[1];
+
+    switch (flight_state) {
+    case STATE_FLIGHT_ARMED:
+        parameters[0] = BUZZER_PATTERN_CODE_PRIMARY_ARMED;
+        break;
+    case STATE_FLIGHT_ABORT:
+        parameters[0] = BUZZER_PATTERN_CODE_PRIMARY_ABORT;
+        break;
+    default:
+        // TODO: Stop
+        return;
+    }
+
+    DataPacket_t packet;
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_BUZZER_PLAYBEEPCODE, parameters, sizeof(parameters));
     sendcmdToTarget(&packet);
 }
 

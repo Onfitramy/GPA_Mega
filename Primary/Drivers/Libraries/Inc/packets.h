@@ -82,7 +82,8 @@ typedef enum __attribute__((packed)){
     COMMAND_ID_BUZZER_PLAYNOTE = 0x03,
     COMMAND_ID_BUZZER_PLAYSONG = 0x04,
     COMMAND_ID_BUZZER_PLAYSONGREPEAT = 0x05,
-    COMMAND_ID_BUZZER_STOPALL = 0x06,
+    COMMAND_ID_BUZZER_PLAYBEEPCODE = 0x06,
+    COMMAND_ID_BUZZER_STOPALL = 0x07,
 
     COMMAND_ID_STORAGE_FLASH_TO_SD = 0x00,
     COMMAND_ID_STORAGE_FLASH_TO_SERIAL = 0x01,
@@ -90,6 +91,14 @@ typedef enum __attribute__((packed)){
     COMMAND_ID_STORAGE_FLASH_WRITE = 0x03,
     COMMAND_ID_STORAGE_SD_UNMOUNT = 0x04,
 } CommandID_t;
+
+typedef enum __attribute__((packed)) {
+    BUZZER_PATTERN_REPEAT_NOTE = 0,
+    BUZZER_PATTERN_PLAY_ASE_SONG = 1,
+    BUZZER_PATTERN_PLAY_FAILURE_SONG = 2,
+    BUZZER_PATTERN_CODE_PRIMARY_ARMED = 3,
+    BUZZER_PATTERN_CODE_PRIMARY_ABORT = 4,
+} BuzzerPattern_t;
 
 /* Packet and Payload structure definitions */
 /* Each Payload has to be exactly 26 bytes */
@@ -236,6 +245,7 @@ void PU_setACS(bool on);
 void Buzzer_PlayNote(char *note, uint32_t duration_ms);
 void Buzzer_PlaySong(uint8_t song_num);
 void Buzzer_PlaySongRepeat(uint8_t song_num, uint16_t period_ms);
+void Buzzer_PlayBeepCode(uint8_t flight_state);
 
 void Camera_Power(bool enable);
 void Camera_Recording(bool enable);

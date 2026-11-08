@@ -404,6 +404,14 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket, PacketSource_t sour
                 uint8_t song_pattern = dataPacket->Data.command.params[2];
                 buzzerPlayPattern(song_pattern);
                 buzzerEnablePeriodicMode2(song_pattern, repeattime_ms);
+            } else if (dataPacket->Data.command.command_id == COMMAND_ID_BUZZER_PLAYBEEPCODE) {
+                uint16_t repeat_time_ms = BUZZER_BEEP_REPEAT_TIME;
+                uint8_t pattern = dataPacket->Data.command.params[0];
+
+                buzzerPlayPattern(pattern);
+                buzzerEnablePeriodicMode2(pattern, repeat_time_ms);
+
+                InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0, source);
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_BUZZER_STOPALL) {
                 buzzerStopPeriodic();
                 HAL_TIM_Base_Stop_IT(&htim11);
