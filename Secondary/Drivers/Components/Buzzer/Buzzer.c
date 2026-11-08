@@ -4,7 +4,10 @@
 
 bool buzzerPeriodicMode = false;
 bool buzzerActivePeriod = false;
-uint8_t buzzerPattern = 0;
+BuzzerPattern_t buzzerPattern = 0;
+BuzzerPattern_t primaryPattern = BUZZER_PATTERN_STOP;
+BuzzerPattern_t secondaryPattern = BUZZER_PATTERN_STOP;
+bool primaryActive = true;
 uint8_t buzzerEventNumber = 0;
 
 static int prescalerForFrequency(float frequency) {
@@ -88,6 +91,30 @@ void buzzerPlayPattern(BuzzerPattern_t pattern) {
 
     tim10_target1_ms = 0;
     HAL_TIM_Base_Start_IT(&htim10);
+}
+
+void buzzerPlaySecondaryStatus(sm_state_t flight_state) {
+    BuzzerPattern_t pattern;
+
+    switch (flight_state) {
+    case STATE_FAULT:
+        pattern = BUZZER_PATTERN_CODE_SECONDARY_FAULT;
+        break;
+    case STATE_BATTERY_LOW:
+        pattern = BUZZER_PATTERN_CODE_SECONDARY_BATTERY_LOW;
+        break;
+    case STATE_BATTERY_CRITICAL:
+        pattern = BUZZER_PATTERN_CODE_SECONDARY_BATTERY_CRITICAL;
+        break;
+    default:
+        pattern = BUZZER_PATTERN_STOP;
+        break;
+    }
+
+    buzzerStop();
+    secondaryPattern = pattern;
+    buzzerPlayPattern(pattern);
+    buzzerEnablePeriodicMode2(pattern, BUZZER_BEEP_REPEAT_TIME);
 }
 
 // Define the frequency for each note
@@ -380,6 +407,21 @@ void BeepCodeTable(uint8_t event_num, BuzzerPattern_t beep_code) {
         beeps = BEEP_CODE_PRIMARY_ABORT_TABLE;
         size = sizeof(BEEP_CODE_PRIMARY_ABORT_TABLE);
         strcpy(note, BUZZER_BEEP_HIGH);
+        break;
+    case BUZZER_PATTERN_CODE_SECONDARY_FAULT:
+        beeps = BEEP_CODE_SECONDARY_FAULT_TABLE;
+        size = sizeof(BEEP_CODE_SECONDARY_FAULT_TABLE);
+        strcpy(note, BUZZER_BEEP_LOW);
+        break;
+    case BUZZER_PATTERN_CODE_SECONDARY_BATTERY_LOW:
+        beeps = BEEP_CODE_SECONDARY_BATTERY_LOW_TABLE;
+        size = sizeof(BEEP_CODE_SECONDARY_BATTERY_LOW_TABLE);
+        strcpy(note, BUZZER_BEEP_LOW);
+        break;
+    case BUZZER_PATTERN_CODE_SECONDARY_BATTERY_CRITICAL:
+        beeps = BEEP_CODE_SECONDARY_BATTERY_CRITICAL_TABLE;
+        size = sizeof(BEEP_CODE_SECONDARY_BATTERY_CRITICAL_TABLE);
+        strcpy(note, BUZZER_BEEP_LOW);
         break;
     default:
         return;

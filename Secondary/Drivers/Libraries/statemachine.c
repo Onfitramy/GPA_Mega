@@ -266,6 +266,8 @@ void StateMachine_Dispatch(StateMachine_t *sm, sm_event_t event) {
     // update flight state
     sm->currentState = newState;
 
+    buzzerPlaySecondaryStatus(sm->currentState);
+
     // stop timer
     HAL_TIM_Base_Stop_IT(&htim7);
 

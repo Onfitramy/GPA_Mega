@@ -250,7 +250,8 @@ static void CheckoutsEntry(StateMachine_t *sm) {
     //HAL_Delay(5);
     #endif
     PU_setCAM(ENABLE);
-    Storage_FlashSave(true);
+    // TODO: Re-enable
+    // Storage_FlashSave(true);
     SetSaveSchedule(1); // start saving pre-flight data to flash
     // TODO:
     // notify ground station that it now needs to command the checkouts

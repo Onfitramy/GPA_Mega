@@ -346,8 +346,8 @@ void Buzzer_PlayBeepCode(uint8_t flight_state) {
         parameters[0] = BUZZER_PATTERN_CODE_PRIMARY_ABORT;
         break;
     default:
-        // TODO: Stop
-        return;
+        parameters[0] = BUZZER_PATTERN_REPEAT_STOP;
+        break;
     }
 
     DataPacket_t packet;
