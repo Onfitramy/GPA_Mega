@@ -65,7 +65,7 @@
 #define APOGEE_MIN_DURATION     100 // ms
 
 #define DROGUE_MAX_VELOCITY     40  // m/s
-#define DROGUE_MIN_VELOCITY     20  // m/s
+#define DROGUE_MIN_VELOCITY     15  // m/s
 #define DROGUE_MIN_ACCELERATION 5   // m/s²
 #define DROGUE_MIN_DURATION     100 // ms
 

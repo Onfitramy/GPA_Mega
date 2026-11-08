@@ -41,7 +41,7 @@ void HILupdateStates(float dt) {
 
         // compute forces in body frame
         arm_mat_vec_mult_f32(HIL.DCM_bi, gravity_world_vec, F_b);
-        arm_vec3_scalar_mult_f32(F_b, -HIL.m, F_b);
+        arm_vec3_scalar_mult_f32(F_b, HIL.m, F_b);
         float velo_abs = arm_vec3_length_f32(HIL.v_i);
         float CD = ComputeAirbrakeDrag(velo_abs, acs_target_angle_deg);
         float rho = CalculateAirDensity(HIL.r_i[2]);
@@ -50,31 +50,50 @@ void HILupdateStates(float dt) {
         if (HIL.r_i[2] < RAIL_LENGTH)
             F_b[0] = F_b[2] = 0;
         
-    } else {
+    } else if (HIL.r_i[2] > 0) {
         // coast
         HIL.m = WET_MASS - PROPELLANT_MASS;
 
         // compute forces in body frame
         arm_mat_vec_mult_f32(HIL.DCM_bi, gravity_world_vec, F_b);
-        arm_vec3_scalar_mult_f32(F_b, -HIL.m, F_b);
+        arm_vec3_scalar_mult_f32(F_b, HIL.m, F_b);
         float velo_abs = arm_vec3_length_f32(HIL.v_i);
         float CD = ComputeAirbrakeDrag(velo_abs, acs_target_angle_deg);
         float rho = CalculateAirDensity(HIL.r_i[2]);
         F_b[1] -= 0.5*rho*velo_abs*velo_abs*AREF*CD;
+
+        if (HIL.v_i[2] < 0) {
+            float cd_s;
+            if (HIL.r_i[2] > MAIN_MIN_DEPLOY_HEIGHT) {
+                cd_s = 0.467;
+            } else {
+                cd_s = 5.77;
+            }
+            F_b[1] -= 0.5 * rho * velo_abs * velo_abs * cd_s;
+        }
+    } else {
+        // landed
+        HIL.v_i[0] = 0;
+        HIL.v_i[1] = 0;
+        HIL.v_i[2] = 0;
+        HIL.a_i[0] = 0;
+        HIL.a_i[1] = 0;
+        HIL.a_i[2] = 0;
     }
     // rigid-body kinetics
     arm_vec3_scalar_mult_f32(F_b, 1/HIL.m, HIL.a_b);
     arm_mat_vec_mult_f32(HIL.DCM_ib, HIL.a_b, HIL.a_i);
     for (int i = 0; i < 3; i++) {
-        HIL.v_i[i] += HIL.a_i[i]*dt;
-        HIL.r_i[i] += HIL.v_i[i]*dt;
-        HIL.r_i[i] += 0.5*HIL.a_i[i]*dt*dt;
+        float a_old = HIL.a_i[i];
+        float v_old = HIL.v_i[i];
+        HIL.v_i[i] += a_old*dt;
+        HIL.r_i[i] += v_old*dt;
     }
     arm_mat_vec_mult_f32(HIL.DCM_bi, HIL.v_i, HIL.v_b);
 
     // update orientation
     //if ((HIL.v_i[0] != 0) || (HIL.v_i[1] != 0)) {
-    if(0) {
+    if(1) {
         float HIL_DCMo_bi_data[9] = { 0 };
         arm_matrix_instance_f32 HIL_DCMo_bi = {3, 3, HIL_DCMo_bi_data};
         arm_mat_copy_f32(HIL.DCM_bi, &HIL_DCMo_bi);
@@ -82,6 +101,7 @@ void HILupdateStates(float dt) {
         float bx_axis_i[3];
         bx_axis_i[0] = HIL.v_i[1];
         bx_axis_i[1] = -HIL.v_i[0];
+        bx_axis_i[2] = 0;
         arm_vec3_normalize_f32(bx_axis_i);
         float by_axis_i[3];
         arm_vec3_copy_f32(HIL.v_i, by_axis_i);
@@ -110,8 +130,11 @@ void HILupdateStates(float dt) {
 
 void HILgetIMUData(IMU_AverageData_t *HIL_imu_data) {
     // accelerometer
-    float grav_vec_b[3];
-    arm_mat_vec_mult_f32(HIL.DCM_bi, gravity_world_vec, grav_vec_b);
+    float grav_vec_b[3] = { 0.0, 0.0, 0.0 };
+    float grav_vec_i[3];
+    // Cancel gravity, since it is not detected by IMUs (except on the launch pad)
+    arm_vec3_scalar_mult_f32(gravity_world_vec, -1, grav_vec_i);
+    arm_mat_vec_mult_f32(HIL.DCM_bi, grav_vec_i, grav_vec_b);
     arm_vec3_add_f32(HIL.a_b,grav_vec_b,HIL_imu_data->accel);
 
     // gyroscope

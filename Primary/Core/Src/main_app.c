@@ -104,7 +104,7 @@ void Task1000Hz_Step(void *argument) {
 
     #ifdef HIL_TESTING
     if ((flight_sm.currentFlightState >= STATE_FLIGHT_BURN) && (flight_sm.currentFlightState <= STATE_FLIGHT_LANDED)) {
-    HILupdateStates(0.001);
+        HILupdateStates(0.001);
     }
     #endif
 

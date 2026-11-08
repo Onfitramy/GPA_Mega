@@ -14,6 +14,7 @@ const double T0_const = 288.15;             // K
 const double L_const = -0.0065;             // K/m
 const double g0_const = 9.80665;            // m/s²
 const double kappa = 1.4;
+const double scale_height = 7800; // m
 double rho0_const;
 double a0_const;
 
@@ -147,7 +148,7 @@ float a_WorldFrame_i[3] = {0};  // World-Frame Acceleration without gravity
 float a_BodyFrame_i[3] = {0};   // Body-Frame Acceleration without gravity
 float a_abs_g;                  // Absolute Acceleration with gravity
 float a_abs_i;                  // Absolute Acceleration without gravity
-float gravity_world_vec[3] = {0, 0, 9.8};
+float gravity_world_vec[3] = {0, 0, -9.8};
 float gravity_body_vec[3];
 
 float g_pred_enu[3] = {0};
@@ -472,7 +473,7 @@ void CalculateTotalPressure(float height, float pressure_reference, float veloci
 }
 
 double CalculateAirDensity(double height) {
-    return pow(L_const / T0_const * height + 1., -g0_const / L_const / R_const - 1.) * rho0_const;
+    return exp(-height / scale_height) * rho0_const;
 }
 
 
