@@ -52,13 +52,13 @@ float runMPC(mpc_t *mpc, float height, float *velocity);
 #define ACS_ANGLE_MAX_DEG 50.f
 #define ACS_ANGLE_MIN_DEG 0.f
 
-#define LENGTH_AE 45.0f
-#define LENGTH_BE 50.0f
+#define LENGTH_AE 25.0f
+#define LENGTH_BE 80.0f
 #define LENGTH_BD 140.0f
 
 #define POSITION_BX -2.0f
-#define POSITION_CX 18.0f
-#define POSITION_CY 155.6f
+#define POSITION_CX 17.916f
+#define POSITION_CY 160f
 
 #define F_DIST 6.0f
 
