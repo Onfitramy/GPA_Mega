@@ -473,9 +473,9 @@ void CalculateTotalPressure(float height, float pressure_reference, float veloci
 }
 
 double CalculateAirDensity(double height) {
-    return exp(-height / scale_height) * rho0_const;
+    // return exp(-height / scale_height) * rho0_const;
+    return pow(L_const / T0_const * height + 1., -g0_const / L_const / R_const - 1.) * rho0_const;
 }
-
 
 void MagnetometerCalibration() {
     

@@ -58,7 +58,7 @@ float runMPC(mpc_t *mpc, float height, float *velocity);
 
 #define POSITION_BX -2.0f
 #define POSITION_CX 17.916f
-#define POSITION_CY 160f
+#define POSITION_CY 160.0f
 
 #define F_DIST 6.0f
 
