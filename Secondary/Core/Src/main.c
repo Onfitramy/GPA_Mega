@@ -1032,7 +1032,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
           break;
 
         case cam_toggle_power:
-          HAL_GPIO_WritePin(GPIO21_GPIO_Port, GPIO21_Pin, 1);
+          HAL_GPIO_WritePin(GPIO22_GPIO_Port, GPIO22_Pin, 1);
           tim7_event_number = 0;
           tim7_task = none;
           break;
@@ -1092,10 +1092,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
             HAL_GPIO_WritePin(GPIO24_GPIO_Port, GPIO24_Pin, 1);
             HAL_TIM_Base_Start_IT(&htim7);
           } else if (tim7_event_number == 2) {
-            HAL_GPIO_WritePin(GPIO21_GPIO_Port, GPIO21_Pin, 0);
+            HAL_GPIO_WritePin(GPIO22_GPIO_Port, GPIO22_Pin, 0);
             HAL_TIM_Base_Start_IT(&htim7);
           } else if (tim7_event_number == 3) {
-            HAL_GPIO_WritePin(GPIO21_GPIO_Port, GPIO21_Pin, 1);
+            HAL_GPIO_WritePin(GPIO22_GPIO_Port, GPIO22_Pin, 1);
             HAL_TIM_Base_Start_IT(&htim7);
           } else if (tim7_event_number == 4) {
             HAL_GPIO_WritePin(GPIO23_GPIO_Port, GPIO23_Pin, 0);

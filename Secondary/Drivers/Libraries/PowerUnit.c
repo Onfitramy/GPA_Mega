@@ -211,9 +211,11 @@ void Camera_SwitchOn() {
     if (tim7_task != none) return;
 
     CameraStatus.powered = true;
+    CameraStatus.recording = false;
+    CameraStatus.wifi = false;
 
     // first action
-    HAL_GPIO_WritePin(GPIO21_GPIO_Port, GPIO21_Pin, 0);
+    HAL_GPIO_WritePin(GPIO22_GPIO_Port, GPIO22_Pin, 0);
 
     // initial delay
     tim7_target_ms = 2000;
@@ -258,9 +260,11 @@ void Camera_SwitchOff() {
     if (tim7_task != none) return;
 
     CameraStatus.powered = false;
+    CameraStatus.recording = false;
+    CameraStatus.wifi = false;
 
     // first action
-    HAL_GPIO_WritePin(GPIO21_GPIO_Port, GPIO21_Pin, 0);
+    HAL_GPIO_WritePin(GPIO22_GPIO_Port, GPIO22_Pin, 0);
 
     // initial delay
     tim7_target_ms = 2000;
