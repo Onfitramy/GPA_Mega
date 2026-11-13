@@ -73,7 +73,7 @@ void ublox_Write(int size, uint8_t *data) {
  *          exceeds the buffer size. Ensure proper buffer management to avoid
  *          data loss or corruption.
  */
-UBX_MessageType ublox_ReadOutput(char* UBX_MessageReturn) {
+UBX_MessageType ublox_ReadOutput(char* UBX_MessageReturn, size_t capacity) {
   UBX_MessageType UBX_Message = {0, 0, UBX_MessageReturn, 0}; //Initialize the message structure to zero
   uint16_t length = ublox_ReadLength();
   if(length > sizeof(buffer)) {
@@ -84,7 +84,7 @@ UBX_MessageType ublox_ReadOutput(char* UBX_MessageReturn) {
   {
     HAL_StatusTypeDef status = HAL_I2C_Mem_Read(&GPS_I2C, GPS_I2C_ADDR, 0xFF, 1, buffer, length, 90);
     if (status == HAL_OK){
-        uint32_t ret = uUbxProtocolDecode((char*)buffer, length, &UBX_Message.messageClass, &UBX_Message.messageId, UBX_Message.messageBody, sizeof(UBX_Message.messageBody), NULL);
+        uint32_t ret = uUbxProtocolDecode((char*)buffer, length, &UBX_Message.messageClass, &UBX_Message.messageId, UBX_Message.messageBody, capacity, NULL);
         if (ret <= 0) {
             UBX_Message.status = 0; //Decode Fail
         } else {
@@ -144,7 +144,7 @@ void GPS_Init(void){
     const char MessageBody2[8] = {0x01, 0x07, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00}; //Set NAV-PVT to 10Hz
     len = uUbxProtocolEncode(0x06, 0x01, MessageBody2, 8, (char*)UBX_MessageSend);
     ublox_Write(len, UBX_MessageSend);
-    ublox_ReadOutput(UBX_MessageReturn); //Read ACK //Causes Hardfault sometimes
+    ublox_ReadOutput(UBX_MessageReturn, sizeof(UBX_MessageReturn)); //Read ACK //Causes Hardfault sometimes
     uUbxProtocolDecode((char*)UBX_MessageReturn, sizeof(UBX_MessageReturn), NULL, NULL, NULL, 0, NULL);
 
     /*Then set naviation rate to 10Hz*/
@@ -159,7 +159,7 @@ uint8_t GPS_ReadSensorData(UBX_NAV_PVT *posllh) {
   char UBX_MessageReturn[200];
   int len = uUbxProtocolEncode(0x01, 0x07, NULL, 0, (char*)UBX_MessageSend);
   ublox_Write(len, UBX_MessageSend);
-  UBX_MessageType UBX_NAV_POSLLH  = ublox_ReadOutput(UBX_MessageReturn);
+  UBX_MessageType UBX_NAV_POSLLH  = ublox_ReadOutput(UBX_MessageReturn, sizeof(UBX_MessageReturn));
   if(UBX_NAV_POSLLH.messageId == 0x07){
     memcpy(posllh, UBX_NAV_POSLLH.messageBody, sizeof(UBX_NAV_PVT));
     return 1; //Return 1 on success
@@ -176,7 +176,7 @@ uint8_t GPS_VER_CHECK(void) {
 
     ublox_Write(8, UBX_MessageSend);
 
-    UBX_MessageType UBX_MON_VER = ublox_ReadOutput(UBX_MessageReturn);
+    UBX_MessageType UBX_MON_VER = ublox_ReadOutput(UBX_MessageReturn, sizeof(UBX_MessageReturn));
 
     if(UBX_MON_VER.status != 1){
       return 0; //Read Fail
@@ -196,7 +196,7 @@ uint8_t GPS_RequestSensorData(void) {
 
 uint8_t GPS_ReadNavPVT(UBX_NAV_PVT *posllh) {
   char UBX_MessageReturn[200];
-  UBX_MessageType UBX_NAV_POSLLH  = ublox_ReadOutput(UBX_MessageReturn);
+  UBX_MessageType UBX_NAV_POSLLH  = ublox_ReadOutput(UBX_MessageReturn, sizeof(UBX_MessageReturn));
   if(UBX_NAV_POSLLH.messageId == 0x07 && UBX_NAV_POSLLH.messageClass == 0x01){
     memcpy(posllh, UBX_NAV_POSLLH.messageBody, sizeof(UBX_NAV_PVT));
     return 1; //Return 1 on success

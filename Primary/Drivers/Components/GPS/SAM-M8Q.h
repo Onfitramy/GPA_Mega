@@ -88,7 +88,7 @@ uint8_t GPS_VER_CHECK(void);
 
 void GPS_Init(void);
 
-UBX_MessageType ublox_ReadOutput(char* UBX_MessageReturn);
+UBX_MessageType ublox_ReadOutput(char* UBX_MessageReturn, size_t capacity);
 
 uint8_t GPS_ReadSensorData(UBX_NAV_PVT *posllh);
 uint8_t GPS_RequestSensorData(void);
