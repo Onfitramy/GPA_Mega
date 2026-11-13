@@ -142,13 +142,13 @@ void Task1000Hz_Step(void *argument) {
 
         // transform measured body acceleration to world-frame acceleration
         arm_mat_vec_mult_f32(&M_rot_ib, average_imu_data.accel, a_WorldFrame_g);
-        arm_vec3_sub_f32(a_WorldFrame_g, gravity_world_vec, a_WorldFrame_i);
+        arm_vec3_add_f32(a_WorldFrame_g, gravity_world_vec, a_WorldFrame_i);
         a_abs_g = arm_vec3_length_f32(a_WorldFrame_g);
         a_abs_i = arm_vec3_length_f32(a_WorldFrame_i);
 
         // calculate acceleration w/o gravity in body frame
         arm_mat_vec_mult_f32(&M_rot_bi, gravity_world_vec, gravity_body_vec);
-        arm_vec3_sub_f32(average_imu_data.accel, gravity_body_vec, a_BodyFrame_i);
+        arm_vec3_add_f32(average_imu_data.accel, gravity_body_vec, a_BodyFrame_i);
 
         /* --- GNSS DELAY COMPENSATION TESTING --- */
         #ifndef HIL_TESTING  // GPS Delay not implemented yet
