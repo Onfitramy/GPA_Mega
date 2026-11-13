@@ -241,15 +241,16 @@ static void InitEntry(StateMachine_t *sm) {
 }
 static void AlignGNCEntry(StateMachine_t *sm) {
     EKF2_corr2.correction_state = active;
+    PU_setCAM(ENABLE);
     // TODO:
     // begin xBee comms
 }
 static void CheckoutsEntry(StateMachine_t *sm) {
     PU_setACS(ENABLE);
+    Camera_Power(1);
     #ifndef HIL_TESTING
     //HAL_Delay(5);
     #endif
-    PU_setCAM(ENABLE);
     // TODO: Re-enable
     // Storage_FlashSave(true);
     SetSaveSchedule(1); // start saving pre-flight data to flash
