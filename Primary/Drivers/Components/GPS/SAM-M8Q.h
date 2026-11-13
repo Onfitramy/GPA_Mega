@@ -88,7 +88,8 @@ uint8_t GPS_VER_CHECK(void);
 
 void GPS_Init(void);
 
-UBX_MessageType ublox_ReadOutput(char* UBX_MessageReturn, size_t capacity);
+//Reads the output and filters it for the wanted class and id. If not found, returns status 0. If found, returns status 1 and fills the message structure with the data.
+UBX_MessageType ublox_ReadOutput(char* UBX_MessageReturn, size_t capacity, int32_t wantedClass, int32_t wantedId);
 
 uint8_t GPS_ReadSensorData(UBX_NAV_PVT *posllh);
 uint8_t GPS_RequestSensorData(void);

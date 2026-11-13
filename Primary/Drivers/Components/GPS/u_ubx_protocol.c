@@ -284,7 +284,7 @@
                      // Store the next byte of the message and
                      // update CRC
                      if ((pMessage != NULL) && (messageByteCount < maxMessageLengthBytes)) {
-                         *pMessage++ = (char) *pInput; // *NOPAD*
+                         pMessage[messageByteCount] = (char) *pInput; // *NOPAD*
                      }
                      updateCrc = true;
                      messageByteCount++;

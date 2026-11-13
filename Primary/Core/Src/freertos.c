@@ -141,7 +141,7 @@ void MX_FREERTOS_Init(void) {
   /*RTOS_QUEUES */
   InterruptQueue = xQueueCreate(10, sizeof(uint8_t)); // Queue for 10 bytes
   InterBoardCom_Queue = xQueueCreate(50, sizeof(InterBoardPacket_t));
-  USB_Tx_Queue = xQueueCreate(20, sizeof(InterBoardPacket_t));
+  USB_Tx_Queue = xQueueCreate(20, sizeof(DataPacket_t));
 
   /*Start Supervisor*/
   if (!SV_Init()) {
