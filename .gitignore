@@ -2,7 +2,6 @@ README.md.backup
 Primary/build/*
 Primary/tests/*
 Primary/tmp/*
-Primary/
 Secondary/build/*
 Secondary/vscode/*
 .idea

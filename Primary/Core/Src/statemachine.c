@@ -216,7 +216,8 @@ static void InitEntry(StateMachine_t *sm) {
     EKF2.x[2] = 101325;
 
     // Quaternion EKF initialization
-    arm_vecN_concatenate_f32(3, average_imu_data.accel, 3, mag_data.field, z3_corr1); // put measurements into z vector
+    arm_vec3_copy_f32(mag_data.field, EKF3_corr1.z); // put measurements into z vector
+    arm_vec3_copy_f32(average_imu_data.accel, EKF3_corr2.z);
     EKFStateVInit(&EKF3, &EKF3_corr1);
     RotationMatrixFromQuaternion(x3, &M_rot_bi, DCM_bi_WorldToBody);
     RotationMatrixFromQuaternion(x3, &M_rot_ib, DCM_ib_BodyToWorld);
