@@ -20,6 +20,7 @@ typedef struct {
     float w_b[3];
     float a_i[3];
     float a_b[3];
+    float euler[3];
     arm_matrix_instance_f32 *DCM_bi;
     arm_matrix_instance_f32 *DCM_ib;
 } HIL_t;
