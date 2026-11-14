@@ -175,10 +175,9 @@ int main(void)
   /* USER CODE BEGIN 2 */
   uint32_t flashid = W25Q1_ReadID(); //Check if the FLASH works, flashid = 0xEF4017
 
-  XBee_Init();
-
   // set NRF24L01 frequency and data rate
   nrf24l01p_init(2462, _1Mbps);
+  //radioSet(NRF_24_ACTIVE);
   radioSet(NRF_24_ACTIVE);
   radioSetMode(RADIO_MODE_TRANSCEIVER);
 
@@ -208,8 +207,15 @@ int main(void)
 }
 
 uint8_t UART_PacketProgress = 0; // Packet reception in progress flag (0 = No Packet, 1 = Receiving Data)
+volatile uint32_t XBEE_UART_RxCallbacks = 0;
+volatile uint32_t XBEE_UART_RxFrames = 0;
+volatile uint32_t XBEE_UART_RxQueueDrops = 0;
+volatile uint32_t XBEE_UART_TxComplete = 0;
+volatile uint32_t XBEE_UART_Errors = 0;
+volatile uint32_t XBEE_UART_LastError = 0;
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
   if(huart->Instance == USART1) {
+    XBEE_UART_RxCallbacks++;
     // Check if data is 0x7e (start byte)
     if (UART_RX_Buffer[0] == 0x7E && UART_PacketProgress == 0) {
       // If start byte, read the next 2 bytes to get the length
@@ -221,7 +227,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
       UART_PacketProgress = 0;
       // Process the complete packet in UART_RX_Buffer
       BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-      xQueueSendFromISR(XBeeDataQueue, UART_RX_Buffer, &xHigherPriorityTaskWoken);
+      XBEE_UART_RxFrames++; // Complete frame received; not checksum-validated here.
+      if (xQueueSendFromISR(XBeeDataQueue, UART_RX_Buffer, &xHigherPriorityTaskWoken) != pdPASS) {
+        XBEE_UART_RxQueueDrops++;
+      }
       portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 
       UART_PacketProgress = 0;
@@ -235,7 +244,15 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
   if(huart->Instance == USART1) {
+    XBEE_UART_TxComplete++; // UART completion, not RF delivery confirmation.
     UART_LOCK = 0; // Release UART lock
+  }
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart){
+  if (huart->Instance == USART1) {
+    XBEE_UART_Errors++;
+    XBEE_UART_LastError = huart->ErrorCode;
   }
 }
 

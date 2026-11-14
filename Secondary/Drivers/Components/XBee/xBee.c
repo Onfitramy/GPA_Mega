@@ -132,13 +132,22 @@ void constructATFrame(xbee_at_cmd_t* frame, uint8_t frame_id, uint16_t ATCommand
 uint8_t debug_temp;
 uint8_t UART_LOCK = 0;
 uint8_t UART_LOCK_ERROR = 0;
+volatile uint32_t XBEE_UART_TxStartOK = 0;
+volatile uint32_t XBEE_UART_TxStartBusy = 0;
+volatile uint32_t XBEE_UART_TxStartErrors = 0;
 void sendAPIFrame(uint8_t* frame, uint16_t frame_length)
 {
     /*if (XBee_Status != 0) {
         return; // XBee not initialized or in error state
     }*/
     HAL_StatusTypeDef res = HAL_UART_Transmit_IT(&huart1, frame, frame_length + 4); //Convert frame_length to bytes
-    res = 0;
+    if (res == HAL_OK) {
+        XBEE_UART_TxStartOK++;
+    } else if (res == HAL_BUSY) {
+        XBEE_UART_TxStartBusy++;
+    } else {
+        XBEE_UART_TxStartErrors++;
+    }
 }
 
 void xBee_changeState(uint8_t state)
@@ -146,7 +155,7 @@ void xBee_changeState(uint8_t state)
     XBee_Status = state;
 }
 
-uint8_t frame[XBEE_MAX_FRAME_SIZE];
+uint8_t frame[XBEE_MAX_RF_PAYLOAD_SIZE]; // 256 bytes max payload + overhead
 uint8_t response[XBEE_MAX_FRAME_SIZE];
 
 void XBee_ToCommandMode()
@@ -200,7 +209,7 @@ uint8_t XBee_QueueDataPacket(DataPacket_t* data)
 
 void XBee_TransmitQueue(uint64_t destinationAddress)
 {
-    uint16_t max_payload_bytes = 256;
+    const uint16_t max_payload_bytes = sizeof(frame);
     uint16_t curr_payload_bytes = 0;
 
     if (xBeeRxCircBuffer.count == 0) {

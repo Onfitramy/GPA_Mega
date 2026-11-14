@@ -220,7 +220,7 @@ typedef struct {
 } DataPacket_t;
 #pragma pack(pop)
 
-#define DATA_BUFFER_SIZE  32  // Size of the data circular buffer
+#define DATA_BUFFER_SIZE  128  // Size of the data circular buffer
 typedef struct {
     DataPacket_t buffer[DATA_BUFFER_SIZE];
     volatile uint16_t head;      // Write index

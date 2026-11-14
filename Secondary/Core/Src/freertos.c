@@ -40,6 +40,8 @@
 #include "statemachine.h"
 #include "radio.h"
 
+//#define IS_GROUND_STATION 1
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 extern UART_HandleTypeDef huart1;
@@ -213,6 +215,7 @@ void Start10HzTask(void *argument){
   for(;;) {
     Counter_10Hz++;
 
+    #ifndef IS_GROUND_STATION
     health.temperature.reg_3V3 = readTemperature(1);
     health.temperature.battery = readTemperature(2);
     health.voltage.bus_5V = readVoltage(1) * (10 + 10) / 10;
@@ -235,6 +238,7 @@ void Start10HzTask(void *argument){
     InterBoardPacket_t powerPacket = InterBoardCom_CreatePacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU);
     InterBoardCom_FillData(&powerPacket, &powerData);
     InterBoardCom_SendPacket(&powerPacket);
+    #endif
 
     XBee_TransmitQueue(XBee_transmit_addr); // Transmit data at 10Hz
 
@@ -278,8 +282,6 @@ void StartInterBoardComTask(void *argument)
     InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU, &packet);
   }
 
-  //XBee_Init();
-
   /* Infinite loop */
   for(;;) {
     InterBoardPacket_t packet;
@@ -295,6 +297,12 @@ uint8_t transmitStatus;
 uint32_t XBEE_TransmittedReceived = 0;
 uint32_t TransmissionErrors = 0;
 uint16_t radioTime = 0;
+volatile uint32_t XBEE_ATResponses = 0;
+volatile uint16_t XBEE_LastATCommand = 0;
+volatile uint8_t XBEE_LastATStatus = 0;
+volatile uint32_t XBEE_TxStatusResponses = 0;
+volatile uint8_t XBEE_LastTxStatus = 0;
+volatile uint8_t XBEE_LastRxFrameType = 0;
 void StartInterruptTask(void *argument)
 {
   /* USER CODE BEGIN StartInterruptTask */
@@ -305,6 +313,8 @@ void StartInterruptTask(void *argument)
 
   HAL_NVIC_EnableIRQ(USART1_IRQn); // Enable USART1 interrupt for XBee
   HAL_NVIC_EnableIRQ(EXTI2_IRQn); //Enable NRF24L01P interrupt, needs to be after queue set creation
+
+  XBee_Init();
   /* Infinite loop */
   for(;;) {
 
@@ -336,7 +346,11 @@ void StartInterruptTask(void *argument)
     } else if (xActivatedMember == XBeeDataQueue) {
       xbee_frame_t packet;
       if (xQueueReceive(XBeeDataQueue, (uint8_t*)&packet, 0) == pdPASS) {
+        XBEE_LastRxFrameType = packet.frame_data[0];
         if (packet.frame_data[0] == 0x88) { // Local AT Command Response
+          XBEE_ATResponses++;
+          XBEE_LastATCommand = ((uint16_t)packet.frame_data[2] << 8) | packet.frame_data[3];
+          XBEE_LastATStatus = packet.frame_data[4];
 
           //Temperature Response
           if (packet.frame_data[2] == 'T' && packet.frame_data[3] == 'P') { // TP command
@@ -372,6 +386,8 @@ void StartInterruptTask(void *argument)
           XBee_parseReceivedRFFrame(&packet);
           // Handle rfData as needed
         } else if (packet.frame_data[0] == 0x8B) { // Transmit Status
+          XBEE_TxStatusResponses++;
+          XBEE_LastTxStatus = packet.frame_data[5];
           // Process transmit status
           HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin); // Toggle M2 LED to indicate transmitting
           uint8_t frameID = packet.frame_data[1];

@@ -65,7 +65,6 @@ static void FaultEntry(StateMachine_t *sm) {
 static void StartupEntry(StateMachine_t *sm) {
     uint32_t flashid = W25Q1_ReadID(); //Check if the FLASH works, flashid = 0xEF4017
     buzzerInit();
-    XBee_Init();
 }
 static void InitEntry(StateMachine_t *sm) {}
 static void OperationalEntry(StateMachine_t *sm) {}
