@@ -355,8 +355,6 @@ float runMPC(mpc_t *mpc, float height, float *velocity) {
     mpc->tsolve = (float)mpcQP->stats->tsolve;
     mpc->iterations = (uint8_t)mpcQP->stats->IterationCount;
 
-    QP_CLEANUP_dense(mpcQP);
-
     if ((mpc->ExitCode == QP_OPTIMAL) || (mpc->ExitCode == QP_MAXIT)) {
         // accept solution
         for (int i = 0; i < mpc->N; i++) {
@@ -369,6 +367,8 @@ float runMPC(mpc_t *mpc, float height, float *velocity) {
         }
         mpc->ustar[mpc->N-1] = mpc->u_nom;
     }
+
+    QP_CLEANUP_dense(mpcQP);
 
     /* propagate x star */
     float x_sum[2] = {0};
