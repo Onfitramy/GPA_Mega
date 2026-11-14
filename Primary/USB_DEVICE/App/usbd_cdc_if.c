@@ -305,16 +305,30 @@ static int8_t CDC_Receive_HS(uint8_t* Buf, uint32_t *Len)
   */
 uint8_t CDC_Transmit_HS(uint8_t* Buf, uint16_t Len)
 {
-  uint8_t result = USBD_OK;
-  /* USER CODE BEGIN 12 */
-  USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceHS.pClassData;
-  if (hcdc->TxState != 0){
-    return USBD_BUSY;
-  }
-  USBD_CDC_SetTxBuffer(&hUsbDeviceHS, Buf, Len);
-  result = USBD_CDC_TransmitPacket(&hUsbDeviceHS);
-  /* USER CODE END 12 */
-  return result;
+    uint8_t result = USBD_FAIL;
+
+    uint32_t saved_primask = __get_PRIMASK();
+    __disable_irq();
+
+    /* USER CODE BEGIN 12 */
+    USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceHS.pClassData;
+    if (hcdc != NULL && hUsbDeviceHS.dev_state == USBD_STATE_CONFIGURED) {
+        
+        if (hcdc->TxState != 0U) {
+            result = USBD_BUSY;
+        } else {
+            result = USBD_CDC_SetTxBuffer(&hUsbDeviceHS, Buf, Len);
+
+            if (result == USBD_OK) {
+                result = USBD_CDC_TransmitPacket(&hUsbDeviceHS);
+            }
+        }
+    }
+
+
+    /* USER CODE END 12 */
+    __set_PRIMASK(saved_primask);
+    return result;
 }
 
 /**

@@ -7,22 +7,16 @@ DataPacket_t spark_rx_buffer;
 
 DataPacket_t spark_data;
 
-void ProcessSPARKData(DataPacket_t *packet) {
-    if (packet->crc != getCRC(packet)) {
-        // CRC mismatch, discard packet
+void ProcessSPARKData(DataPacket_t *packet)
+{
+    if (packet->Packet_ID != PACKET_ID_SPARK ||
+        packet->crc != getCRC(packet)) {
         return;
     }
-    // Extract SPARK-specific data from the received packet
-    spark_data.Packet_ID = PACKET_ID_SPARK;
-    spark_data.timestamp = packet->timestamp;
-    spark_data.Data.spark.magAngle = packet->Data.spark.magAngle;
-    spark_data.Data.spark.magSpeed = packet->Data.spark.magSpeed;
-    spark_data.Data.spark.posDeviation = packet->Data.spark.posDeviation;
-    spark_data.Data.spark.voltage_driver = packet->Data.spark.voltage_driver;
-    spark_data.Data.spark.temperature_driver = packet->Data.spark.temperature_driver;
-    spark_data.Data.spark.temperature_converter = packet->Data.spark.temperature_converter;
-    spark_data.Data.spark.sparkStatus = packet->Data.spark.sparkStatus;
-    spark_data.crc = packet->crc;
+
+    taskENTER_CRITICAL();
+    spark_data = *packet;
+    taskEXIT_CRITICAL();
 }
 
 void SPARK_sendCommand(DataPacket_t *packet)

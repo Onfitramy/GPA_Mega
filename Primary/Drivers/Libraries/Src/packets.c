@@ -91,9 +91,9 @@ void UpdateIMUDataPacket(DataPacket_t *imu_packet, uint32_t timestamp, IMU_Avera
     imu_packet->timestamp = timestamp;
 
     // Update the IMU packet with the latest IMU data
-    imu_packet->Data.imu.gyroX = float_to_int16_scaled(imu_data->gyro[0], 1e-6f);
-    imu_packet->Data.imu.gyroY = float_to_int16_scaled(imu_data->gyro[1], 1e-6f);
-    imu_packet->Data.imu.gyroZ = float_to_int16_scaled(imu_data->gyro[2], 1e-6f);
+    imu_packet->Data.imu.gyroX = float_to_int16_scaled(imu_data->gyro[0], 1e-3f);
+    imu_packet->Data.imu.gyroY = float_to_int16_scaled(imu_data->gyro[1], 1e-3f);
+    imu_packet->Data.imu.gyroZ = float_to_int16_scaled(imu_data->gyro[2], 1e-3f);
     imu_packet->Data.imu.accelX = float_to_int32_scaled(imu_data->accel[0], 1e-6f);
     imu_packet->Data.imu.accelY = float_to_int32_scaled(imu_data->accel[1], 1e-6f);
     imu_packet->Data.imu.accelZ = float_to_int32_scaled(imu_data->accel[2], 1e-6f);
@@ -112,8 +112,8 @@ void UpdateGPSDataPacket(DataPacket_t *gps_packet, uint32_t timestamp, UBX_NAV_P
     gps_packet->Data.gps.latitude = curr_gps_data->lat;   // Latitude in 1e-7 degrees
     gps_packet->Data.gps.longitude = curr_gps_data->lon;  // Longitude in 1e-7 degrees
     gps_packet->Data.gps.altitude = curr_gps_data->height; // Altitude in mm
-    gps_packet->Data.gps.speed = (int16_t)(curr_gps_data->gSpeed / 100); // Speed over ground in cm/s
-    gps_packet->Data.gps.course =  (int16_t)curr_gps_data->headMot; // Course over ground °*1e-5
+    gps_packet->Data.gps.speed = (int16_t)(curr_gps_data->gSpeed / 10); // Speed over ground in cm/s
+    gps_packet->Data.gps.course = (uint16_t)(curr_gps_data->headMot / 1000); // Course over ground °*1e-5
     gps_packet->Data.gps.pressure = pressure;
 
     calcCRC(gps_packet);

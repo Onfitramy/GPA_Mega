@@ -133,13 +133,6 @@ void Task1000Hz_Step(void *argument) {
         HILgetMagnetometerData(&mag_data);
         #endif
 
-        ProcessDataSchedule(xTaskGetTickCount());
-
-        if(is_groundstation) {
-            UpdateStatePacket(&State_DataPacket, HAL_GetTick(), flight_sm.currentFlightState, flight_sm.timestamp_ms);
-            InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_NONE, &State_DataPacket); //Needed to keep Primary and Secondary syncronized
-        }
-
         // transform measured body acceleration to world-frame acceleration
         arm_mat_vec_mult_f32(&M_rot_ib, average_imu_data.accel, a_WorldFrame_g);
         arm_vec3_add_f32(a_WorldFrame_g, gravity_world_vec, a_WorldFrame_i);
@@ -186,6 +179,13 @@ void Task1000Hz_Step(void *argument) {
         FlightPathAngleFromRotationMatrix(&M_rot_bi, &flightpath_angle);
 
         vel_abs = EKF2.x[1] / arm_mat_get_entry_f32(&M_rot_bi, 2, 2);
+    }
+
+    ProcessDataSchedule(xTaskGetTickCount());
+
+    if(is_groundstation) {
+        UpdateStatePacket(&State_DataPacket, HAL_GetTick(), flight_sm.currentFlightState, flight_sm.timestamp_ms);
+        InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_NONE, &State_DataPacket); //Needed to keep Primary and Secondary syncronized
     }
 }
 

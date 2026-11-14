@@ -259,7 +259,9 @@ void UpdatePacket(DataPacket_t *packet) {
             UpdateMPCInfoPacket(packet, HAL_GetTick(), dt_1000Hz, acs_est_angle_deg, acs_target_angle_deg);
             break;
         case PACKET_ID_SPARK:
-            packet = &spark_data; // Assuming spark_data is already updated with the latest data, we can just point to it here
+            if (spark_data.Packet_ID == PACKET_ID_SPARK) {
+                *packet = spark_data;
+            }// Assuming spark_data is already updated with the latest data, we can just point to it here
             break;
         case PACKET_ID_STATE:
             UpdateStatePacket(packet, HAL_GetTick(), flight_sm.currentFlightState, flight_sm.timestamp_ms);
