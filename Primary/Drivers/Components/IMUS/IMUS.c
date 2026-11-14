@@ -17,6 +17,8 @@ IMU_AverageData_t average_imu_data;
 #define IMU_MAX_WRITE_LEN 32u
 #define IMU_MAX_READ_LEN 32u
 
+#define IMU_SPI_TIMEOUT_MS 1U
+
 
 static void IMU_WritePin(GPIO_PinState pin, const IMU_Data_t *imu_data) {
     GPIO_TypeDef *imu_cs_port;
@@ -71,7 +73,7 @@ HAL_StatusTypeDef IMU_write_reg(uint8_t address, uint8_t len, uint8_t *data, con
     for (int i = 0; i < len; i++) {
         tx[i + 1] = *(data + i);
     }
-    IMU_SPI_status = HAL_SPI_Transmit(&imu_spi, tx, len + 1, HAL_MAX_DELAY);
+    IMU_SPI_status = HAL_SPI_Transmit(&imu_spi, tx, len + 1, IMU_SPI_TIMEOUT_MS);
 
     IMU_Deselect(imu_data);
     return IMU_SPI_status;
@@ -97,12 +99,15 @@ HAL_StatusTypeDef IMU_read_reg(uint8_t address, uint8_t len, uint8_t *data, cons
 
     uint8_t tx[IMU_MAX_WRITE_LEN + 1], rx[IMU_MAX_READ_LEN + 1];
     tx[0] = address | IMU_SPI_READ;
-    IMU_SPI_status = HAL_SPI_TransmitReceive(&imu_spi, tx, rx, len + 1, HAL_MAX_DELAY);
+    IMU_SPI_status = HAL_SPI_TransmitReceive(&imu_spi, tx, rx, len + 1, IMU_SPI_TIMEOUT_MS);
+    IMU_Deselect(imu_data);
+
+    if (IMU_SPI_status != HAL_OK) {
+        return IMU_SPI_status;
+    }
     for (int i = 0; i < len; i++) {
         *(data + i) = rx[i + 1];
     }
-
-    IMU_Deselect(imu_data);
     return IMU_SPI_status;
 }
 
@@ -188,6 +193,11 @@ HAL_StatusTypeDef IMU_Update(IMU_Data_t *imu_data) {
 
     if (imu_ready) {
         status = IMU_ReadSensorData(imu_data);
+        if (status != HAL_OK) {
+            imu_data->active = false;
+            return status;
+        }
+
         arm_vec3_sub_f32(imu_data->accel, imu_data->calibration.offset, imu_data->accel);
         arm_vec3_element_product_f32(imu_data->accel, imu_data->calibration.scale, imu_data->accel);
     }

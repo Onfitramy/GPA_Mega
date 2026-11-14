@@ -14,9 +14,7 @@ void ProcessSPARKData(DataPacket_t *packet)
         return;
     }
 
-    taskENTER_CRITICAL();
     spark_data = *packet;
-    taskEXIT_CRITICAL();
 }
 
 void SPARK_sendCommand(DataPacket_t *packet)

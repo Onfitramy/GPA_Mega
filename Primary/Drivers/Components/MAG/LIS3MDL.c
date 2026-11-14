@@ -11,6 +11,7 @@ int16_t MAG_FS_LSB = 6842;
 
 #define LIS3MDL_MAX_WRITE_LEN 32u
 #define LIS3MDL_MAX_READ_LEN 32u
+#define MAG_SPI_TIMEOUT_MS 1U
 
 static void LIS3MDL_Select(void) {
     HAL_GPIO_WritePin(MAG_CS_PORT, MAG_CS_PIN, GPIO_PIN_RESET);
@@ -20,35 +21,36 @@ static void LIS3MDL_Deselect(void) {
     HAL_GPIO_WritePin(MAG_CS_PORT, MAG_CS_PIN, GPIO_PIN_SET);
 }
 
-HAL_StatusTypeDef MAG_write_reg(uint8_t address, uint8_t len, uint8_t *data) {   
-    LIS3MDL_Select();
-
+HAL_StatusTypeDef MAG_write_reg(uint8_t address, uint8_t len, uint8_t *data) { 
     if (len > LIS3MDL_MAX_WRITE_LEN) {
         return HAL_ERROR;
-    }
-
+    }  
+    LIS3MDL_Select();
     uint8_t tx[LIS3MDL_MAX_WRITE_LEN + 1];
     tx[0] = address | LIS3MDL_SPI_AUTOINC;
     for(int i = 0; i < len; i++) {
         tx[i + 1] = *(data + i); 
     }
-    MAG_SPI_status = HAL_SPI_Transmit(&MAG_SPI, tx, len+1, HAL_MAX_DELAY);
+    MAG_SPI_status = HAL_SPI_Transmit(&MAG_SPI, tx, len+1, MAG_SPI_TIMEOUT_MS);
     LIS3MDL_Deselect();
     return MAG_SPI_status;
 }
 
 HAL_StatusTypeDef MAG_read_reg(uint8_t address, uint8_t len, uint8_t *data) {
-    LIS3MDL_Select();
     if (len > LIS3MDL_MAX_READ_LEN) {
         return HAL_ERROR;
     }
+    LIS3MDL_Select();
     uint8_t tx[LIS3MDL_MAX_WRITE_LEN + 1], rx[LIS3MDL_MAX_READ_LEN + 1];
     tx[0] = address | LIS3MDL_SPI_READ | LIS3MDL_SPI_AUTOINC;
-    MAG_SPI_status = HAL_SPI_TransmitReceive(&MAG_SPI, tx, rx, len+1, HAL_MAX_DELAY);
+    MAG_SPI_status = HAL_SPI_TransmitReceive(&MAG_SPI, tx, rx, len+1, MAG_SPI_TIMEOUT_MS);
+    LIS3MDL_Deselect();
+    if (MAG_SPI_status != HAL_OK) {
+        return MAG_SPI_status;
+    }
     for(int i = 0; i < len; i++) {
         *(data + i) = rx[i + 1];
     }
-    LIS3MDL_Deselect();
     return MAG_SPI_status;
 }
 
