@@ -631,7 +631,7 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t *packet) {
                                 data_packet->Data.kalman.EKF2_Heigth, data_packet->Data.kalman.EKF2_vel, data_packet->Data.kalman.EKF2_refPres);
                         break;
                     case PACKET_ID_MPC_INFO:
-                        printf("ID%d, TS:%lu, Freq:%f, BrkDefl:%f, TgtAng:%f",
+                        printf("\nID:%d, TS:%lu, Freq:%f, BrkDefl:%f, TgtAng:%f",
                                 packet_type, data_packet->timestamp, data_packet->Data.mpc_info.MPC_freq,
                                 data_packet->Data.mpc_info.Airbreak_deflection, data_packet->Data.mpc_info.Target_Angle);
                         break;

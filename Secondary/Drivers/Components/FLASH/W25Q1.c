@@ -546,7 +546,8 @@ void W25Q_CopyLogs(uint16_t max_page, SPI2_W25Q_CopyLogsTarget_t target) {
 
 				InterBoardCom_SendDataPacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU, &packet);
 
-				vTaskDelay(100);
+				// Don't overload the interboard com
+				vTaskDelay(10);
 			} else if (target == SPI2_CopyLogsTarget_SD) {
 				if (SD_AppendDataPacketToBuffer(packets + i) != 0) {
 					SD_SaveBuffer("log.txt");
