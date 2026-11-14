@@ -169,7 +169,7 @@ void InterBoardCom_DiagnosticsRecordRx(const InterBoardPacket_t *packet,
     uint8_t is_data_frame = 0U;
     uint8_t received_crc = packet->Data[sizeof(packet->Data) - 1U];
 
-    switch (packet->InterBoardPacket_ID) {
+    switch (packet->InterBoardPacket_ID & ~INTERBOARD_TARGET_FOLLOWING) {
         case INTERBOARD_OP_NONE:
         case INTERBOARD_OP_ECHO:
             break;
@@ -550,6 +550,13 @@ extern uint8_t is_groundstation;
 void InterBoardCom_ParsePacket(InterBoardPacket_t *packet) {
     DataPacket_t* data_packet = (DataPacket_t*) packet->Data;
 
+    if (packet->InterBoardPacket_ID & INTERBOARD_TARGET_FOLLOWING) {
+        InterBoardPacket_t emptyPacket = {0};
+        InterBoardCom_QueuePacket(&emptyPacket);
+    }
+
+    packet->InterBoardPacket_ID &= ~INTERBOARD_TARGET_FOLLOWING;
+
     // Process the received packet based on its ID
     switch (packet->InterBoardPacket_ID) {
         case INTERBOARD_OP_DEBUG_VIEW: //Send for debugging
@@ -641,6 +648,10 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t *packet) {
                 powerData = *data_packet;
             } else if (!(data_packet->Packet_ID & PACKET_ACTION_WRITE_TO_SERIAL)) {
                 printf("ID: %d\n", data_packet->Packet_ID);
+            }
+
+            if (is_groundstation & !(data_packet->Packet_ID & PACKET_ACTION_WRITE_TO_SERIAL)) { //Plot all incomming data packets to USB for groundstation
+                USB_QueueDataPacket(data_packet);
             }
 
             fflush(stdout);

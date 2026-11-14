@@ -63,9 +63,12 @@ void InterBoardCom_ActivateReceive(void) {
         InterBoardCom_ClearSPIErrors();
     }
 
-
+    transmitBuffer.InterBoardPacket_ID &= ~INTERBOARD_TARGET_FOLLOWING;
     if(CircBuffer_Pop(&txCircBuffer, &transmitBuffer) == 0) { // Get next packet to transmit, if none available a packet with ID 0 will be sent
         transmitBuffer.InterBoardPacket_ID = 0; //The data will be ignored by the master
+    }
+    if(!CircBuffer_IsEmpty(&txCircBuffer)) {
+        transmitBuffer.InterBoardPacket_ID |= INTERBOARD_TARGET_FOLLOWING; //Indicate that more packets are available
     }
     SPI1_STATUS = 1; // Busy
     HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)&transmitBuffer, (uint8_t *)&receiveBuffer, sizeof(InterBoardPacket_t));

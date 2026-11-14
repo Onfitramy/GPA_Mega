@@ -5,7 +5,7 @@
 #include "packets.h"
 #include "Buzzer.h"
 
-#define INTERBOARD_BUFFER_SIZE 32
+#define INTERBOARD_BUFFER_SIZE 128
 
 //The Bitfield describe what should be expected and done with the data received.
 typedef enum __attribute__((packed)){
