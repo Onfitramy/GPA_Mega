@@ -304,7 +304,6 @@ void EKFInit(ekf_data_t *ekf, ekf_instance_t kalman_type, uint8_t x_vec_size, ui
 void EKFCorrectionInit(ekf_data_t ekf, ekf_corr_data_t *ekf_corr, ekf_correction_t corr_type, uint8_t z_vec_size,
                        arm_matrix_instance_f32 *H_mat, arm_matrix_instance_f32 *K_mat, arm_matrix_instance_f32 *R_mat,
                        arm_matrix_instance_f32 *S_mat, arm_matrix_instance_f32 *S_inv_mat, float *z_vec, float *h_vec, float *v_vec);
-void EKFStateVInit(ekf_data_t *Kalman, ekf_corr_data_t *ekf_corr);
 void EKFPredictStateV(ekf_data_t *Kalman);
 void EKFPredictCovariance(ekf_data_t *Kalman);
 void EKFPredictMeasurement(ekf_data_t *Kalman, ekf_corr_data_t *ekf_corr);

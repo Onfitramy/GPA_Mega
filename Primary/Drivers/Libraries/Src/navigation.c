@@ -584,23 +584,6 @@ void EKFCorrectionInit(ekf_data_t ekf, ekf_corr_data_t *ekf_corr, ekf_correction
     }
 }
 
-void EKFStateVInit(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
-    if (ekf->type == EKF2_type) {
-        ekf->x[0] = ekf_corr->z[0];
-
-    } else if (ekf->type == EKF3_type) {
-        // calculate initial quaternion from accelerometer and magnetometer readings
-        float *q = ekf->x;
-
-        float DCMbi_data[9] = {0};
-        arm_matrix_instance_f32 DCMbi = {3, 3, DCMbi_data};
-
-        RotationMatrixOrientationFix(&ekf_corr->z[0], &ekf_corr->z[3], &DCMbi, DCM_bi_WorldToBody);
-        QuaternionFromRotationMatrix(&DCMbi, q); // does this function want body to world????
-        arm_quaternion_conjugate_f32(q);         // quick fix
-    }
-}
-
 void EKFPredictStateV(ekf_data_t *ekf) {
     if (ekf->type == EKF1_type) {
         // calculate predicted state x^(t) = F * x(t-1) + B * u(t)

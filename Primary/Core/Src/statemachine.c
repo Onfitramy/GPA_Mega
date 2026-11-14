@@ -1,4 +1,5 @@
 #include "statemachine.h"
+#include "navigation.h"
 
 StateMachine_t flight_sm;
 
@@ -216,11 +217,13 @@ static void InitEntry(StateMachine_t *sm) {
     EKF2.x[2] = 101325;
 
     // Quaternion EKF initialization
-    arm_vec3_copy_f32(mag_data.field, EKF3_corr1.z); // put measurements into z vector
-    arm_vec3_copy_f32(average_imu_data.accel, EKF3_corr2.z);
-    EKFStateVInit(&EKF3, &EKF3_corr1);
-    RotationMatrixFromQuaternion(x3, &M_rot_bi, DCM_bi_WorldToBody);
-    RotationMatrixFromQuaternion(x3, &M_rot_ib, DCM_ib_BodyToWorld);
+    float *q = x3;
+
+    // calculate initial quaternion from accelerometer and magnetometer readings
+    RotationMatrixOrientationFix(average_imu_data.accel, mag_data.field, &M_rot_bi, DCM_bi_WorldToBody);
+    QuaternionFromRotationMatrix(&M_rot_bi, q); // does this function want body to world????
+    arm_quaternion_conjugate_f32(q);         // quick fix
+    arm_mat_trans_f32(&M_rot_bi, &M_rot_ib);
 
     // Activate height EKF prediction step and barometer correction step
     EKF2.prediction_state = active;
