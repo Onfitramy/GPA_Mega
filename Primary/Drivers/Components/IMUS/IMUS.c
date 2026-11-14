@@ -327,17 +327,17 @@ HAL_StatusTypeDef IMU_ReadSensorData(IMU_Data_t *imu_data) {
         uint8_t rx[6] = {0};
         status = IMU_read_reg(IMU_OUTX_L_A, 6, rx, imu_data); // read accelerometer data
         if (status != HAL_OK) return status;
-        imu_data->accel[0] = (float)(int16_t)(rx[1] << 8 | rx[0]) * 9.81 / imu_data->xl_fs_lsb; // accel_X [m/s²]
-        imu_data->accel[1] = (float)(int16_t)(rx[3] << 8 | rx[2]) * 9.81 / imu_data->xl_fs_lsb; // accel_Y [m/s²]
-        imu_data->accel[2] = (float)(int16_t)(rx[5] << 8 | rx[4]) * 9.81 / imu_data->xl_fs_lsb; // accel_Z [m/s²]
+        imu_data->accel[0] = (float)(int16_t)(rx[1] << 8 | rx[0]) * 9.81f / imu_data->xl_fs_lsb; // accel_X [m/s²]
+        imu_data->accel[1] = (float)(int16_t)(rx[3] << 8 | rx[2]) * 9.81f / imu_data->xl_fs_lsb; // accel_Y [m/s²]
+        imu_data->accel[2] = (float)(int16_t)(rx[5] << 8 | rx[4]) * 9.81f / imu_data->xl_fs_lsb; // accel_Z [m/s²]
     }
     if (available & 0x02) {
         uint8_t rx[6] = {0};
         status = IMU_read_reg(IMU_OUTX_L_G, 6, rx, imu_data); // read gyro data
         if (status != HAL_OK) return status;
-        imu_data->gyro[0] = (float)(int16_t)(rx[1] << 8 | rx[0]) * imu_data->g_fs_lsb / 8000 * M_PI / 180; // gyro_X [rad/s]
-        imu_data->gyro[1] = (float)(int16_t)(rx[3] << 8 | rx[2]) * imu_data->g_fs_lsb / 8000 * M_PI / 180; // gyro_Y [rad/s]
-        imu_data->gyro[2] = (float)(int16_t)(rx[5] << 8 | rx[4]) * imu_data->g_fs_lsb / 8000 * M_PI / 180; // gyro_Z [rad/s]
+        imu_data->gyro[0] = (float)(int16_t)(rx[1] << 8 | rx[0]) * imu_data->g_fs_lsb / 8000.0f * PI / 180.0f; // gyro_X [rad/s]
+        imu_data->gyro[1] = (float)(int16_t)(rx[3] << 8 | rx[2]) * imu_data->g_fs_lsb / 8000.0f * PI / 180.0f; // gyro_Y [rad/s]
+        imu_data->gyro[2] = (float)(int16_t)(rx[5] << 8 | rx[4]) * imu_data->g_fs_lsb / 8000.0f * PI / 180.0f; // gyro_Z [rad/s]
     }
     if (available & 0x04) {
         uint8_t rx[2] = {0};

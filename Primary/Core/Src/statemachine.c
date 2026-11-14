@@ -213,8 +213,8 @@ static void InitEntry(StateMachine_t *sm) {
     
     // initialize height EKF state vector
     EKF2.x[0] = bmp_data.height;
-    EKF2.x[1] = 0;
-    EKF2.x[2] = 101325;
+    EKF2.x[1] = 0.0f;
+    EKF2.x[2] = 101325.0f;
 
     // Quaternion EKF initialization
     float *q = x3;
