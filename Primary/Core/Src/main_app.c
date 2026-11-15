@@ -103,9 +103,8 @@ void Task1000Hz_Step(void *argument) {
     ReadInternalADC(&ADC_Temperature, &ADC_V_Ref); // 7us
 
     #ifdef HIL_TESTING
-    if ((flight_sm.currentFlightState >= STATE_FLIGHT_BURN) && (flight_sm.currentFlightState <= STATE_FLIGHT_LANDED)) {
+    if (flight_sm.currentFlightState >= STATE_FLIGHT_ARMED)
         HILupdateStates(0.001);
-    }
     #endif
 
     // after startup
@@ -270,20 +269,20 @@ void Task10Hz_Step(void *argument) {
 
             #ifndef HIL_TESTING // GPS Delay not implemented yet
             // add correction velocity to compensate GNSS delay
-            gnss_velZ_corr = gps_data.velD*(-1e-3) + corr_delta_v;
+            gnss_velZ_corr = -gps_data.velD*1e-3f + corr_delta_v;
 
             // add correction height to compensate GNSS delay
-            gnss_height_corr = gps_data.height*1e-3 + corr_delta_h;
+            gnss_height_corr = gps_data.height*1e-3f + corr_delta_h;
 
             z2_corr2[0] = gnss_height_corr;
             z2_corr2[1] = gnss_velZ_corr;
             #else
-            z2_corr2[0] = gps_data.height*(1e-3);
-            z2_corr2[1] = gps_data.velD*(-1e-3);
+            z2_corr2[0] = gps_data.height*1e-3f;
+            z2_corr2[1] = -gps_data.velD*1e-3f;
             #endif
 
-            arm_mat_set_entry_f32(EKF2_corr2.R, 0, 0, (float)gps_data.vAcc*gps_data.vAcc*1e-6);
-            arm_mat_set_entry_f32(EKF2_corr2.R, 1, 1, (float)gps_data.sAcc*gps_data.sAcc*1e-6);
+            arm_mat_set_entry_f32(EKF2_corr2.R, 0, 0, (float)gps_data.vAcc*gps_data.vAcc*1e-6f);
+            arm_mat_set_entry_f32(EKF2_corr2.R, 1, 1, (float)gps_data.sAcc*gps_data.sAcc*1e-6f);
 
             // Height EKF GNSS correction step
             EKFCorrectionStep(&EKF2, &EKF2_corr2);

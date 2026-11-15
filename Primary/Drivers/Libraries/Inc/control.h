@@ -7,7 +7,7 @@
 #include "_components.h"
 
 /* --- Model Predictive Controller --- */
-#define H_TARGET 2300.f
+#define H_TARGET 2000.f
 #define PREDICTION_HORIZON 20
 #define NUM_INEQUALITY_CONSTRAINTS 40
 #define GAMMA_NOMINAL 25.f

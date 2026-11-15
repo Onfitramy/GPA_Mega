@@ -213,8 +213,8 @@ static void InitEntry(StateMachine_t *sm) {
     
     // initialize height EKF state vector
     EKF2.x[0] = bmp_data.height;
-    EKF2.x[1] = 0;
-    EKF2.x[2] = 101325;
+    EKF2.x[1] = 0.0f;
+    EKF2.x[2] = 101325.0f;
 
     // Quaternion EKF initialization
     float *q = x3;
@@ -283,17 +283,12 @@ static void CoastEntry(StateMachine_t *sm) {
     predictFutureStateGamma(EKF2.x[0], vel_vec_input, AREF, DRYMASS, 0, a_mpc.dt*a_mpc.N, 0.1, &a_mpc.xstar[0], &a_mpc.xstar[1]);
 }
 static void AwaitDrogueEntry(StateMachine_t *sm) {
-    // JUST FOR TESTING
-    acs_target_angle_deg = 0;
-    SPARK_SetAngle(0);
-
+    // deploy drogue parachute
     DeployDrogue(DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
-
-    tim14_target_ms = 60000;
-    HAL_TIM_Base_Start_IT(&htim14);
 }
 static void DrogueDescendEntry(StateMachine_t *sm) {}
 static void AwaitMainEntry(StateMachine_t *sm) {
+    // deplay main parachute
     DeployMain();
 }
 static void MainDescendEntry(StateMachine_t *sm) {}
@@ -466,19 +461,17 @@ static void AwaitDrogueDo(StateMachine_t *sm, uint16_t freq) {
     if (freq != 100) return;
     uint32_t elapsed_time = HAL_GetTick() - sm->timestamp_ms;
 
-    // if nosecone is still attached, attempt second deployment attempt
-    // TODO: improve logic
-    if (ptot_data.connected) {
-        if ((drogue_deploy_attempts == 0) && (elapsed_time >= 4 * DROGUE_MOVE_DELAY_MS)) {
-            DeployDrogue(DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
-            drogue_deploy_attempts++;
-        }
+    // attempt further deployment attempts
+    if ((elapsed_time >= drogue_deploy_attempts * DROGUE_ATTEMPT_PERIOD) && (drogue_deploy_attempts < DROGUE_MAX_NUM_ATTEMPTS)) {
+        DeployDrogue(DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
     }
 
-    stepper_target_angle_deg = 0;
+    // fully deploy airbrakes
+    if (freq != 10) return;
+    acs_target_angle_deg = ACS_ANGLE_MAX_DEG;
+    StepperPositionFromACSAngle(acs_target_angle_deg, &stepper_target_position);
+    StepperAngleFromPosition(stepper_target_position, stepper_zero_position, &stepper_target_angle_deg);
     SPARK_SetAngle(stepper_target_angle_deg);
-
-    // check if drogue has been deployed
 }
 static void DrogueDescendDo(StateMachine_t *sm, uint16_t freq) {
     // check for main deployment height with 1000 Hz
@@ -490,6 +483,13 @@ static void DrogueDescendDo(StateMachine_t *sm, uint16_t freq) {
             StateMachine_Dispatch(sm, EVENT_FLIGHT_MAIN_COMMANDED);
         }
     }
+
+    // fully retract airbrakes
+    if (freq != 10) return;
+    acs_target_angle_deg = ACS_ANGLE_MIN_DEG;
+    StepperPositionFromACSAngle(acs_target_angle_deg, &stepper_target_position);
+    StepperAngleFromPosition(stepper_target_position, stepper_zero_position, &stepper_target_angle_deg);
+    SPARK_SetAngle(stepper_target_angle_deg);
 }
 static void AwaitMainDo(StateMachine_t *sm, uint16_t freq) {
     // check for main with 1000 Hz

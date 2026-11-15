@@ -22,7 +22,11 @@ uint32_t TimerOverflow = 0;
 
 uint32_t dt_1000Hz;
 
+#ifdef HIL_TESTING
+signal_plotter_output_t signal_plotter_output = SIGNAL_PLOTTER_OUT_7_ID;
+#else
 signal_plotter_output_t signal_plotter_output = SIGNAL_PLOTTER_OUT_3_ID;
+#endif
 
 void signalPlotter_setSignalName(uint8_t id, char *name) {
   strncpy(data[id].name, name, 16);
@@ -271,6 +275,13 @@ void signalPlotter_updateSignalNames(void) {
   signalPlotter_setSignalName(16,"QP NumIterations");
   signalPlotter_setSignalName(17,"QP setup time");
   signalPlotter_setSignalName(18,"QP solve time");
+  signalPlotter_setSignalName(19,"HIL phi");
+  signalPlotter_setSignalName(20,"HIL theta");
+  signalPlotter_setSignalName(21,"HIL psi");
+  signalPlotter_setSignalName(22,"HIL State");
+  signalPlotter_setSignalName(23,"HIL acc bx");
+  signalPlotter_setSignalName(24,"HIL acc by");
+  signalPlotter_setSignalName(25,"HIL acc bz");
   }
 }
 
@@ -437,6 +448,13 @@ void signalPlotter_sendAll(void) {
   signalPlotter_sendData(16, (float)a_mpc.iterations);
   signalPlotter_sendData(17, a_mpc.tsetup);
   signalPlotter_sendData(18, a_mpc.tsolve);
+  signalPlotter_sendData(19, HIL.euler[0]);
+  signalPlotter_sendData(20, HIL.euler[1]);
+  signalPlotter_sendData(21, HIL.euler[2]);
+  signalPlotter_sendData(22, HIL.state);
+  signalPlotter_sendData(23, HIL.a_b[0]);
+  signalPlotter_sendData(24, HIL.a_b[1]);
+  signalPlotter_sendData(25, HIL.a_b[2]);
   }
 
   signalPlotter_executeTransmission(HAL_GetTick());

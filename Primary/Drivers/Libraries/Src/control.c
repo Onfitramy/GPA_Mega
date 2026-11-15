@@ -120,7 +120,7 @@ float predictApogeeFromGamma(float height, float *velocity, float Aref, float m,
         t_sim += dt * dir;
 
         // calculate absolute velocity, air density and drag coefficient
-        v_abs = sqrt(v_ver*v_ver+v_hor*v_hor);
+        v_abs = sqrtf(v_ver*v_ver+v_hor*v_hor);
         rho = CalculateAirDensity(p_ver);
         CD = ComputeAirbrakeDrag(v_abs, gamma);
 
@@ -150,7 +150,7 @@ float predictApogeeFromGamma(float height, float *velocity, float Aref, float m,
 void predictFutureStateGamma(float height, float *velocity, float Aref, float m, float gamma, float t_max, float dt, float *h_pred, float *v_pred) {
     float p_ver = (float)height;
     float v_ver = (float)velocity[2];
-    float v_hor = sqrt(velocity[0]*velocity[0]+velocity[1]*velocity[1]);
+    float v_hor = sqrtf(velocity[0]*velocity[0]+velocity[1]*velocity[1]);
 
     float v_abs;
     float rho;
@@ -162,7 +162,7 @@ void predictFutureStateGamma(float height, float *velocity, float Aref, float m,
 
     for (uint32_t i = 0; i < steps; i++) {
         // calculate absolute velocity, air density and drag coefficient
-        v_abs = sqrt(v_ver*v_ver+v_hor*v_hor);
+        v_abs = sqrtf(v_ver*v_ver+v_hor*v_hor);
         rho = CalculateAirDensity(p_ver);
         CD = ComputeAirbrakeDrag(v_abs, gamma);
 
@@ -446,7 +446,7 @@ void ACSAngleFromStepperPosition(float stepper_pos, float *acs_angle_deg) {
 
     W_term = sqrtf(((POSITION_CX - Dx) * (POSITION_CX - Dx) + (POSITION_CY - Dy) * (POSITION_CY - Dy)) / (F_DIST * F_DIST) - 1);
 
-    *acs_angle_deg = atanf((Dy - POSITION_CY + (Dx - POSITION_CX) * W_term) / ((Dx - POSITION_CX) - (Dy - POSITION_CY) * W_term)) * 180.0f / M_PI;
+    *acs_angle_deg = atanf((Dy - POSITION_CY + (Dx - POSITION_CX) * W_term) / ((Dx - POSITION_CX) - (Dy - POSITION_CY) * W_term)) * 180.0f / PI;
 }
 
 void StepperPositionFromACSAngle(float acs_angle_deg, float *stepper_pos) {
@@ -459,7 +459,7 @@ void StepperPositionFromACSAngle(float acs_angle_deg, float *stepper_pos) {
     float AE_squared = LENGTH_AE * LENGTH_AE;
     float BD_squared = LENGTH_BD * LENGTH_BD;
 
-    float acs_angle_rad = acs_angle_deg * M_PI / 180.0f;
+    float acs_angle_rad = acs_angle_deg * PI / 180.0f;
 
     float a_distance = (POSITION_CX - POSITION_BX) * cosf(acs_angle_rad) + POSITION_CY * sinf(acs_angle_rad) + F_DIST;
 
