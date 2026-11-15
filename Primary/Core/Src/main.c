@@ -416,14 +416,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       RetractDrogue();
     }
   }
-  // Timer for handling general delay
+  // Timer for handling HIL stuff
   else if (htim->Instance == TIM14) {
     tim14_ms++;
     if (tim14_ms >= tim14_target_ms) {
       tim14_ms = 0;
       HAL_TIM_Base_Stop_IT(&htim14);
 
-      DeployMain();
+      HILconfirmParachute(tim14_target_ms);
     }
   }
   // Timer for handling main deploy servo retraction

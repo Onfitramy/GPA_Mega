@@ -13,6 +13,8 @@
 #define HIL_CD_S_MAIN       5.77f    // m^2
 #define HIL_C_ROLL          0.01f    // (rad/s)/(m/s)
 #define HIL_MIN_STABLE_VEL  10.0f    // m/s
+#define HIL_DROGUE_DEPLOY_TIME  2000 // ms
+#define HIL_MAIN_DEPLOY_TIME    1500 // ms
 #define HIL_MOTOR_THRUST    HIL_MOTOR_IMPULSE / HIL_MOTOR_BURN_TIME;
 
 typedef enum {
@@ -45,6 +47,7 @@ extern HIL_t HIL;
 
 void HILInit();
 void HILupdateStates(float dt);
+void HILconfirmParachute(uint32_t deploy_delay);
 
 void HILgetIMUData(IMU_AverageData_t *HIL_imu_data);
 void HILgetMagnetometerData(LIS3MDL_Data_t *HIL_mag_data);

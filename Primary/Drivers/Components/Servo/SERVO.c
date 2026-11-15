@@ -114,6 +114,7 @@ void SERVO_ZeroAll() {
 
 void DeployDrogue(float angle_deploy, float move_delay) {
     SERVO_MoveToAngle(DROGUE_SERVO, angle_deploy);
+    drogue_deploy_attempts++;
 
     tim13_target_ms = move_delay;
     HAL_TIM_Base_Start_IT(&htim13);
@@ -121,10 +122,20 @@ void DeployDrogue(float angle_deploy, float move_delay) {
 
 void DeployMain() {
     SERVO_MoveToAngle(MAIN_SERVO, MAIN_DEPLOY_ANGLE);
+
+#ifdef HIL_TESTING
+    tim14_target_ms = HIL_MAIN_DEPLOY_TIME;
+    HAL_TIM_Base_Start_IT(&htim14);
+#endif
 }
 
 void RetractDrogue() {
     SERVO_MoveToAngle(DROGUE_SERVO, DROGUE_NEUTRAL_ANGLE);
+
+#ifdef HIL_TESTING
+    tim14_target_ms = HIL_DROGUE_DEPLOY_TIME;
+    HAL_TIM_Base_Start_IT(&htim14);
+#endif
 }
 
 void RetractMain(uint16_t move_time_ms) {

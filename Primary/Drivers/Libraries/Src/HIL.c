@@ -32,7 +32,7 @@ void HILInit() {
     memset(HIL.a_i, 0, 3 * sizeof(float));
 
     // calculate initial attitude
-    HIL.euler[0] = 0.5f*PI;
+    HIL.euler[0] = 85.0f*PI/180.0f;
     HIL.euler[1] = 0.0f;
     HIL.euler[2] = 0.0f;
     RotationMatrixFromEuler(HIL.euler[0], HIL.euler[1], HIL.euler[2], HIL.DCM_bi);
@@ -46,7 +46,9 @@ void HIL_compute_grav_drag_force(float cd_s, float v_abs) {
 
     // calculate body-frame drag vector
     float rho = CalculateAirDensity(HIL.r_i[2]);
-    HIL.F_b[1] -= 0.5f * rho * v_abs * v_abs * cd_s;
+    HIL.F_b[0] -= 0.5f * rho * cd_s * v_abs * HIL.v_b[0];
+    HIL.F_b[1] -= 0.5f * rho * cd_s * v_abs * HIL.v_b[1];
+    HIL.F_b[2] -= 0.5f * rho * cd_s * v_abs * HIL.v_b[2];
 }
 void HIL_body_force(float v_abs) {
     if (HIL.state == HIL_STATE_PRELAUNCH || HIL.state == HIL_STATE_LANDED) {
@@ -123,12 +125,16 @@ void HILupdateStates(float dt) {
         break;
     case HIL_STATE_COAST:
         if (HIL.v_i[2] < 0.0f)
-            HIL.state = HIL_STATE_DROGUE;
+            HIL.state = HIL_STATE_DESCEND;
         break;
+    case HIL_STATE_DESCEND:
+        if (HIL.r_i[2] <= 0.0f)
+            HIL.state = HIL_STATE_LANDED; // ballistic impact
+        break; // deployment is commanded by flight state machine
     case HIL_STATE_DROGUE:
-        if (HIL.r_i[2] <= MAIN_MIN_DEPLOY_HEIGHT)
-            HIL.state = HIL_STATE_MAIN;
-        break;
+        if (HIL.r_i[2] <= 0.0f)
+            HIL.state = HIL_STATE_LANDED; // main deployment failure
+        break; // deployment is commanded by flight state machine
     case HIL_STATE_MAIN:
         if (HIL.r_i[2] <= 0.0f)
             HIL.state = HIL_STATE_LANDED;
@@ -142,10 +148,10 @@ void HILupdateStates(float dt) {
 
     // compute the total force acting on the vehicle in body-frame (world-frame during parachute descend)
     float velo_abs = arm_vec3_length_f32(HIL.v_i);
-    if (HIL.state < HIL_STATE_DROGUE)
+    // if (HIL.state < HIL_STATE_DROGUE)
         HIL_body_force(velo_abs);
-    else
-        HIL_world_force(velo_abs);
+    // else
+    //     HIL_world_force(velo_abs);
 
     // rigid-body kinetics (integrate acceleration)
     arm_vec3_scalar_mult_f32(HIL.F_b, 1.0f/HIL.m, HIL.a_b);
@@ -157,8 +163,10 @@ void HILupdateStates(float dt) {
     arm_mat_vec_mult_f32(HIL.DCM_bi, HIL.v_i, HIL.v_b);
 
     // --- update orientation ---
-    if (HIL.r_i[2] < HIL_RAIL_LENGTH || HIL.state == HIL_STATE_PRELAUNCH || HIL.state >= HIL_STATE_DROGUE)
+    if (HIL.r_i[2] < HIL_RAIL_LENGTH || HIL.state == HIL_STATE_PRELAUNCH || HIL.state >= HIL_STATE_DROGUE) {
+        memset(HIL.w_b, 0, 3 * sizeof(float));
         return;
+    }
     float HIL_DCM_bi_data_prev[9] = { 0 };
     arm_matrix_instance_f32 HIL_DCM_bi_prev = {3, 3, HIL_DCM_bi_data_prev};
     arm_mat_copy_f32(HIL.DCM_bi, &HIL_DCM_bi_prev);
@@ -222,6 +230,12 @@ void HILupdateStates(float dt) {
         arm_vec3_scalar_mult_f32(HIL.w_b, 0.5f/dt, HIL.w_b); // small angle approximation
     else
         arm_vec3_scalar_mult_f32(HIL.w_b, 0.5f/sinf(delta_angle)*delta_angle/dt, HIL.w_b);
+}
+void HILconfirmParachute(uint32_t deploy_delay) {
+    if (HIL.state == HIL_STATE_DESCEND && deploy_delay == HIL_DROGUE_DEPLOY_TIME)
+        HIL.state = HIL_STATE_DROGUE;
+    if (HIL.state == HIL_STATE_DROGUE && deploy_delay == HIL_MAIN_DEPLOY_TIME)
+        HIL.state = HIL_STATE_MAIN;
 }
 
 void HILgetIMUData(IMU_AverageData_t *HIL_imu_data) {
