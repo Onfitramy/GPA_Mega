@@ -34,7 +34,7 @@ void HILInit() {
     // calculate initial attitude
     HIL.euler[0] = 0.5f*PI;
     HIL.euler[1] = 0.0f;
-    HIL.euler[2] = -PI;
+    HIL.euler[2] = 0.0f;
     RotationMatrixFromEuler(HIL.euler[0], HIL.euler[1], HIL.euler[2], HIL.DCM_bi);
     arm_mat_trans_f32(HIL.DCM_bi, HIL.DCM_ib);
 }
@@ -78,6 +78,35 @@ void HIL_body_force(float v_abs) {
         HIL.F_b[2] = 0.0f;
     }
 }
+void HIL_world_force(float v_abs) {
+    if (HIL.state == HIL_STATE_PRELAUNCH || HIL.state == HIL_STATE_LANDED) {
+        memset(HIL.F_b, 0, 3 * sizeof(float));
+        return;
+    }
+
+    // calculate the current mass
+    HIL.m = HIL_WET_MASS - HIL_PROPELLANT_MASS;
+
+    // determine the CD depending on the current flight phase
+    float CD_S;
+    if (HIL.state == HIL_STATE_DROGUE)
+        CD_S = HIL_CD_S_DROGUE;
+    else if (HIL.state == HIL_STATE_MAIN)
+        CD_S = HIL_CD_S_MAIN;
+    else
+        CD_S = 0; // landed
+
+    // compute the total force in world-frame
+    float F_i[3];
+    arm_vec3_scalar_mult_f32(gravity_world_vec, HIL.m, F_i);
+
+    // calculate world-frame drag vector
+    float rho = CalculateAirDensity(HIL.r_i[2]);
+    F_i[2] -= 0.5f * rho * v_abs * v_abs * CD_S * (HIL.v_i[2] > 0.0f ? 1.0f : -1.0f);
+
+    // convert to body-frame
+    arm_mat_vec_mult_f32(HIL.DCM_bi, F_i, HIL.F_b);
+}
 void HILupdateStates(float dt) {
     // update the simulation time
     HIL.t += dt;
@@ -111,9 +140,12 @@ void HILupdateStates(float dt) {
         break;
     }
 
-    // compute the total force acting on the vehicle in body-frame
+    // compute the total force acting on the vehicle in body-frame (world-frame during parachute descend)
     float velo_abs = arm_vec3_length_f32(HIL.v_i);
-    HIL_body_force(velo_abs);
+    if (HIL.state < HIL_STATE_DROGUE)
+        HIL_body_force(velo_abs);
+    else
+        HIL_world_force(velo_abs);
 
     // rigid-body kinetics (integrate acceleration)
     arm_vec3_scalar_mult_f32(HIL.F_b, 1.0f/HIL.m, HIL.a_b);
@@ -125,6 +157,8 @@ void HILupdateStates(float dt) {
     arm_mat_vec_mult_f32(HIL.DCM_bi, HIL.v_i, HIL.v_b);
 
     // --- update orientation ---
+    if (HIL.r_i[2] < HIL_RAIL_LENGTH || HIL.state == HIL_STATE_PRELAUNCH || HIL.state >= HIL_STATE_DROGUE)
+        return;
     float HIL_DCM_bi_data_prev[9] = { 0 };
     arm_matrix_instance_f32 HIL_DCM_bi_prev = {3, 3, HIL_DCM_bi_data_prev};
     arm_mat_copy_f32(HIL.DCM_bi, &HIL_DCM_bi_prev);
@@ -140,15 +174,18 @@ void HILupdateStates(float dt) {
     arm_mat_set_entry_f32(&R_roll, 2, 2, cosf(roll_angle));
     arm_mat_set_entry_f32(&R_roll, 0, 2, sinf(roll_angle));
     arm_mat_set_entry_f32(&R_roll, 2, 0, -sinf(roll_angle));
-    arm_mat_mult_f32(HIL.DCM_bi, &R_roll, &buffer_mat);
+    arm_mat_mult_f32(HIL.DCM_ib, &R_roll, &buffer_mat);
 
     // extract the rotated x-axis
     float bx_axis_i[3];
-    arm_mat_get_column_f32(&buffer_mat, 0, bx_axis_i);
+    if (HIL.state == HIL_STATE_BURN || HIL.state == HIL_STATE_COAST || HIL.state == HIL_STATE_DESCEND)
+        arm_mat_get_column_f32(&buffer_mat, 0, bx_axis_i);
+    else
+        arm_mat_get_column_f32(HIL.DCM_ib, 0, bx_axis_i);
 
-    // the new y-axis is parallel to the velocity
+    // the new y-axis is parallel to the velocity if airspeed is sufficient
     float by_axis_i[3];
-    if (velo_abs >= 1e-3) {
+    if (velo_abs >= HIL_MIN_STABLE_VEL) {
         arm_vec3_copy_f32(HIL.v_i, by_axis_i);
         arm_vec3_normalize_f32(by_axis_i);
     } else {
@@ -182,9 +219,9 @@ void HILupdateStates(float dt) {
     HIL.w_b[1] = arm_mat_get_entry_f32(&buffer_mat, 0, 2) - arm_mat_get_entry_f32(&buffer_mat, 2, 0);
     HIL.w_b[2] = arm_mat_get_entry_f32(&buffer_mat, 1, 0) - arm_mat_get_entry_f32(&buffer_mat, 0, 1);
     if ((delta_angle < 1e-3f) && (delta_angle > -1e-3f))
-        arm_vec3_scalar_mult_f32(HIL.w_b, -0.5f/dt, HIL.w_b); // small angle approximation
+        arm_vec3_scalar_mult_f32(HIL.w_b, 0.5f/dt, HIL.w_b); // small angle approximation
     else
-        arm_vec3_scalar_mult_f32(HIL.w_b, -0.5f/sinf(delta_angle)*delta_angle/dt, HIL.w_b);
+        arm_vec3_scalar_mult_f32(HIL.w_b, 0.5f/sinf(delta_angle)*delta_angle/dt, HIL.w_b);
 }
 
 void HILgetIMUData(IMU_AverageData_t *HIL_imu_data) {

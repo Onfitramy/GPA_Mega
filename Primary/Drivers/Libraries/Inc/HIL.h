@@ -12,6 +12,7 @@
 #define HIL_CD_S_DROGUE     0.467f   // m^2
 #define HIL_CD_S_MAIN       5.77f    // m^2
 #define HIL_C_ROLL          0.01f    // (rad/s)/(m/s)
+#define HIL_MIN_STABLE_VEL  10.0f    // m/s
 #define HIL_MOTOR_THRUST    HIL_MOTOR_IMPULSE / HIL_MOTOR_BURN_TIME;
 
 typedef enum {
