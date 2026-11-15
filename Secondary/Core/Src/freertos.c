@@ -146,6 +146,8 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
+  nrfMutex = xSemaphoreCreateMutex();
+  configASSERT(nrfMutex != NULL);
   /* USER CODE END RTOS_SEMAPHORES */
 
   /* USER CODE BEGIN RTOS_TIMERS */
@@ -326,20 +328,48 @@ void StartInterruptTask(void *argument)
       //HAL_GPIO_TogglePin(M2_LED_GPIO_Port, M2_LED_Pin);
       if (xQueueReceive(InterruptQueue, &int_pin, 0) == pdPASS) {
         if (int_pin == NRF24_INT_Pin) {
-          uint8_t status = nrf24l01p_get_status(); //Only clear individual interrupts after reading status and adressing them
-          if (status & 0x40) { // Data Ready RX FIFO interrupt
-            nrf24l01p_read_rx_fifo(rx_recieve_buf);
-            nrf24l01p_parseReceivedRFDataPacket(rx_recieve_buf);
-            nrf24l01p_clear_rx_dr();
-          } else if (status & 0x20) { // Data Sent TX FIFO interrupt
-            uint8_t fifo_status = nrf24l01p_get_fifo_status();
-            nrf24l01p_clear_tx_ds();
-            if ((fifo_status & 0x10) && radio_info.mode == RADIO_MODE_TRANSCEIVER) { // TX FIFO empty
-              nrf24l01p_rxMode(); // Switch back to RX mode
+          for (;;) {
+            xSemaphoreTake(nrfMutex, portMAX_DELAY);
+            uint8_t status = nrf24l01p_get_status();
+            uint8_t rx_fifo_status = nrf24l01p_get_fifo_status();
+            // IRQ is edge-triggered at the MCU: service everything before sleeping.
+            // FIFO contents must be checked even if RX_DR has already been cleared.
+            if (!(status & 0x70) && (rx_fifo_status & 0x01)) {
+              xSemaphoreGive(nrfMutex);
+              break;
             }
-          } else if (status & 0x10) { // Max Retransmits interrupt
-            // Handle max retransmit event
-            nrf24l01p_clear_max_rt(); // Flush TX FIFO
+
+            if ((status & 0x40) || !(rx_fifo_status & 0x01)) {
+              // Clear before draining so arrivals during processing remain observable.
+              nrf24l01p_clear_rx_dr();
+              while (!(nrf24l01p_get_fifo_status() & 0x01)) { // RX_EMPTY
+                  nrf24l01p_read_rx_fifo(rx_recieve_buf);
+                  xSemaphoreGive(nrfMutex); // Release the mutex as it is needed in the parse function
+                  nrf24l01p_parseReceivedRFDataPacket(rx_recieve_buf);
+                  xSemaphoreTake(nrfMutex, portMAX_DELAY);
+              }
+            }
+
+            status = nrf24l01p_get_status();
+            if (status & 0x20) { // Data Sent TX FIFO interrupt
+              nrf24l01p_clear_tx_ds();
+              uint8_t fifo_status = nrf24l01p_get_fifo_status();
+              if ((fifo_status & 0x10) && radio_info.mode == RADIO_MODE_TRANSCEIVER) { // TX FIFO empty
+                nrf24l01p_rxMode(); // Switch back to RX mode
+              }
+            }
+          
+            if (status & 0x10) {
+                nrf24l01p_abort_tx();
+
+                if (radio_info.mode == RADIO_MODE_TRANSCEIVER ||
+                    radio_info.mode == RADIO_MODE_RECEIVER) {
+                    nrf24l01p_rxMode();
+                } else if (radio_info.mode == RADIO_MODE_TRANSMITTER) {
+                    nrf24l01p_txMode();
+                }
+            }
+            xSemaphoreGive(nrfMutex);
           }
         }
       }

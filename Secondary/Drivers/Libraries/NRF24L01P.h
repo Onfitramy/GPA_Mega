@@ -102,7 +102,7 @@ void nrf24l01p_rx_set_payload_widths_P0(widths bytes);
 void nrf24l01p_rx_set_payload_widths_P1(widths bytes);
 
 uint8_t nrf24l01p_read_rx_fifo(uint8_t* rx_payload);
-uint8_t nrf24l01p_write_tx_fifo(uint8_t* tx_payload);
+uint8_t nrf24l01p_write_tx_fifo(uint8_t* tx_payload, bool require_ack);
 
 void nrf24l01p_flush_rx_fifo();
 void nrf24l01p_flush_tx_fifo();
@@ -114,6 +114,7 @@ void nrf24l01p_clear_max_rt();
 void nrf24l01p_tx_irq();
 void nrf24l01_clear_irq();
 void nrf24l01p_clear_known_irqs(uint8_t status);
+void nrf24l01p_abort_tx(void);
 
 void nrf24l01p_set_rf_channel(channel MHz);
 void nrf24l01p_set_rf_tx_output_power(output_power dBm);

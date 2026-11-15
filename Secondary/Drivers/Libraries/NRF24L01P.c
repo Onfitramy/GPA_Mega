@@ -145,7 +145,7 @@ void nrf24l01p_rx_receive(uint8_t* rx_payload) {
 }
 
 void nrf24l01p_tx_transmit(uint8_t* tx_payload) {
-    nrf24l01p_write_tx_fifo(tx_payload);
+    nrf24l01p_write_tx_fifo(tx_payload, true);
 }
 
 void nrf24l01p_tx_irq() {
@@ -163,15 +163,21 @@ void nrf24l01p_tx_irq() {
     }
 }
 
+void nrf24l01p_abort_tx(void) {
+    ce_low();
+    nrf24l01p_flush_tx_fifo();
+    nrf24l01p_clear_max_rt();
+}
+
 void nrf24l01_clear_irq() {
     uint8_t status = nrf24l01p_get_status();
     if(status & 0x20) {
         nrf24l01p_clear_tx_ds();
     }
-    if(status & 0x10) {
+    if(status & 0x40) {
         nrf24l01p_clear_rx_dr();
     }
-    if(status & 0x40) {
+    if(status & 0x10) {
         nrf24l01p_clear_max_rt();
     }
 }
@@ -266,16 +272,14 @@ void nrf24l01p_rxMode(void){
     config |= (1 << 0);   // PRIM_RX
     write_register(NRF24L01P_REG_CONFIG, config);
 
-    nrf24l01p_flush_rx_fifo();
-
     ce_high();
     delay_us(15); //Rx Switching time
 
     delay_us(150);
 }
 
-uint8_t nrf24l01p_write_tx_fifo(uint8_t* tx_payload) {
-    uint8_t command = NRF24L01P_CMD_W_TX_PAYLOAD;
+uint8_t nrf24l01p_write_tx_fifo(uint8_t* tx_payload, bool require_ack) {
+    uint8_t command = require_ack? NRF24L01P_CMD_W_TX_PAYLOAD: NRF24L01P_CMD_W_TX_PAYLOAD_NOACK;
     //uint8_t command = NRF24L01P_CMD_W_TX_PAYLOAD_NOACK;
 
     uint8_t rx[1 + NRF24L01P_PAYLOAD_LENGTH];
@@ -341,25 +345,16 @@ void nrf24l01p_rx_set_payload_widths_P1(widths bytes) {
     write_register(NRF24L01P_REG_RX_PW_P1, bytes);
 }
 
-void nrf24l01p_clear_rx_dr() {
-    uint8_t new_status = nrf24l01p_get_status();
-    new_status |= 0x40;
-
-    write_register(NRF24L01P_REG_STATUS, new_status);
+void nrf24l01p_clear_rx_dr(void) {
+    write_register(NRF24L01P_REG_STATUS, 0x40);
 }
 
-void nrf24l01p_clear_tx_ds() {
-    uint8_t new_status = nrf24l01p_get_status();
-    new_status |= 0x20;
-
-    write_register(NRF24L01P_REG_STATUS, new_status);     
+void nrf24l01p_clear_tx_ds(void) {
+    write_register(NRF24L01P_REG_STATUS, 0x20);
 }
 
-void nrf24l01p_clear_max_rt() {
-    uint8_t new_status = nrf24l01p_get_status();
-    new_status |= 0x10;
-
-    write_register(NRF24L01P_REG_STATUS, new_status); 
+void nrf24l01p_clear_max_rt(void) {
+    write_register(NRF24L01P_REG_STATUS, 0x10);
 }
 
 void nrf24l01p_power_up() {
@@ -419,8 +414,8 @@ void nrf24l01p_auto_retransmit_count(count cnt) {
     uint8_t new_setup_retr = read_register(NRF24L01P_REG_SETUP_RETR);
     
     // Reset ARC register 0
-    new_setup_retr |= 0xF0;
-    new_setup_retr |= cnt;
+    new_setup_retr = (new_setup_retr & 0xF0) | (cnt & 0x0F);
+    new_setup_retr = (new_setup_retr & 0x0F) | (((us / 250) - 1) << 4);
     write_register(NRF24L01P_REG_SETUP_RETR, new_setup_retr);
 }
 

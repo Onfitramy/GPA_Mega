@@ -3,8 +3,19 @@
 
 #include "main.h"
 #include "stdbool.h"
+#include "FreeRTOS.h"
+#include "semphr.h"
+
+extern SemaphoreHandle_t nrfMutex;
 
 #define NRF24L01P_PAYLOAD_LENGTH 32
+
+typedef enum {
+    RADIO_SEND_QUEUED,
+    RADIO_SEND_BUSY,
+    RADIO_SEND_DISABLED,
+    RADIO_SEND_ERROR
+} radio_send_result_t;
 
 typedef enum
 {
@@ -30,7 +41,7 @@ typedef struct {
 }radio_info_t;
 
 void radioSet(radio_status_t radio);
-void radioSend(DataPacket_t* dataPacket);
+radio_send_result_t radioSend(DataPacket_t* dataPacket);
 void radioSetMode(radio_mode_t mode);
 
 //Exportet Functions from nrf24xx.c
