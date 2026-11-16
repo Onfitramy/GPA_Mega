@@ -415,7 +415,6 @@ void nrf24l01p_auto_retransmit_count(count cnt) {
     
     // Reset ARC register 0
     new_setup_retr = (new_setup_retr & 0xF0) | (cnt & 0x0F);
-    new_setup_retr = (new_setup_retr & 0x0F) | (((us / 250) - 1) << 4);
     write_register(NRF24L01P_REG_SETUP_RETR, new_setup_retr);
 }
 
@@ -423,8 +422,7 @@ void nrf24l01p_auto_retransmit_delay(delay us) {
     uint8_t new_setup_retr = read_register(NRF24L01P_REG_SETUP_RETR);
 
     // Reset ARD register 0
-    new_setup_retr |= 0x0F;
-    new_setup_retr |= ((us / 250) - 1) << 4;
+    new_setup_retr = (new_setup_retr & 0x0F) | (((us / 250) - 1) << 4);
     write_register(NRF24L01P_REG_SETUP_RETR, new_setup_retr);
 }
 

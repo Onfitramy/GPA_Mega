@@ -1,4 +1,5 @@
 #include "statemachine.h"
+#include "comSchedule.h"
 #include "navigation.h"
 
 StateMachine_t flight_sm;
@@ -241,7 +242,7 @@ static void InitEntry(StateMachine_t *sm) {
     stepper_zero_position += stepper_neutral_angle / 360.f * ROD_SLOPE;
     SPARK_ExitMode();
     // TODO:
-    // check communications
+    SetComSchedule(1); //10Hz all preflight schedule
 }
 static void AlignGNCEntry(StateMachine_t *sm) {
     EKF2_corr2.correction_state = active;
@@ -269,6 +270,7 @@ static void ArmedEntry(StateMachine_t *sm) {
     // TODO:
     // lock ACS
     // start data logging
+    SetComSchedule(2); //Prepare for Burn flight state by reducing data rate
 }
 static void BurnEntry(StateMachine_t *sm) {
     EKF3_corr1.correction_state = inactive; // mag & accel
@@ -281,10 +283,14 @@ static void CoastEntry(StateMachine_t *sm) {
     vel_vec_input[1] = gps_data.velN*(1e-3);
     vel_vec_input[2] = EKF2.x[1];
     predictFutureStateGamma(EKF2.x[0], vel_vec_input, AREF, DRYMASS, 0, a_mpc.dt*a_mpc.N, 0.1, &a_mpc.xstar[0], &a_mpc.xstar[1]);
+
+    SetComSchedule(3); //Coast flight state by reducing data rate
 }
 static void AwaitDrogueEntry(StateMachine_t *sm) {
     // deploy drogue parachute
     DeployDrogue(DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
+
+    SetComSchedule(4); //Descent flight state, focus on GNSS and barometer data
 }
 static void DrogueDescendEntry(StateMachine_t *sm) {}
 static void AwaitMainEntry(StateMachine_t *sm) {
@@ -296,6 +302,7 @@ static void LandedEntry(StateMachine_t *sm) {
     PU_setACS(DISABLE);
     PU_setREC(DISABLE);
     Camera_Recording(0);
+    SetComSchedule(5); //Landed flight state, only GNSS and state
     SetSaveSchedule(0);
     Storage_FlashSave(false);
 
@@ -303,7 +310,6 @@ static void LandedEntry(StateMachine_t *sm) {
     // disable cams
     // switch off LEDs
     // stop data logging
-    // slow xBee and NRF data rate down to save power
 
     Buzzer_PlaySongRepeat(1, 20000);
 }

@@ -57,7 +57,7 @@ void Startup() {
     gpa_mega = GPA_MegaFromUID(uid);
 
     // if board is a ground station, set flag
-    if (gpa_mega == GPA_MEGA_1) {
+    if (gpa_mega == GPA_MEGA_2) {
         is_groundstation = true;
         cli_target_mode = CLI_TARGET_MODE_EXTERNAL; // Groundstation always uses external target mode
         signalPlotterSend = false; // Disable signal plotter by default on groundstation
