@@ -8,6 +8,10 @@ SemaphoreHandle_t nrfMutex = NULL;
 
 radio_info_t radio_info;
 
+volatile uint32_t NRF_CommandRequests = 0;
+volatile uint32_t NRF_CommandQueued = 0;
+volatile uint32_t NRF_CommandBusy = 0;
+
 uint8_t radio_rx_data[NRF24L01P_PAYLOAD_LENGTH];
 
 
@@ -19,16 +23,19 @@ void radioSet(radio_status_t radio){
 
 radio_send_result_t  radioSend(DataPacket_t* dataPacket){
     if(radio_info.status == NRF_24_ACTIVE){
+        uint8_t packet_type = ((uint8_t)dataPacket->Packet_ID) & 0x1F;
+        bool require_ack = (packet_type == PACKET_ID_COMMAND);
+        if (require_ack) NRF_CommandRequests++;
         xSemaphoreTake(nrfMutex, portMAX_DELAY); // Take the mutex to ensure exclusive access to the NRF24L01+ module
         if (radio_info.mode != RADIO_MODE_RECEIVER){
             if (nrf24l01p_get_fifo_status() & 0x20) { // FIFO_STATUS.TX_FULL
+                if (require_ack) NRF_CommandBusy++;
                 xSemaphoreGive(nrfMutex);
                 return RADIO_SEND_BUSY;
             }
             //Set the packet type and determine if acknowledgment is required
-            uint8_t packet_type = ((uint8_t)dataPacket->Packet_ID) & 0x1F;
-            bool require_ack = (packet_type == PACKET_ID_COMMAND);
             uint8_t status = nrf24l01p_write_tx_fifo((uint8_t*)dataPacket, require_ack);
+            if (require_ack) NRF_CommandQueued++; // Submitted to SPI; delivery is reported by IRQ
             if(radio_info.mode == RADIO_MODE_TRANSCEIVER){
                 nrf24l01p_txMode();
             }

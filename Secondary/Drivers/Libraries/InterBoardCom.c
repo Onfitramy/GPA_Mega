@@ -227,7 +227,12 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
             }
 
             if ((Interboard_Target & INTERBOARD_TARGET_RADIO) == INTERBOARD_TARGET_RADIO) {
-                radioSend(&dataPacket);
+                // Keep this packet pending until the NRF TX FIFO has room.
+                // radioSend releases nrfMutex on BUSY; yield so the radio IRQ
+                // task can run while the remaining burst stays in the queue.
+                while (radioSend(&dataPacket) == RADIO_SEND_BUSY) {
+                    vTaskDelay(1);
+                }
             }
             break;
         }

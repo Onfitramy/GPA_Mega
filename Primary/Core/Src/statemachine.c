@@ -242,12 +242,12 @@ static void InitEntry(StateMachine_t *sm) {
     stepper_zero_position += stepper_neutral_angle / 360.f * ROD_SLOPE;
     SPARK_ExitMode();
     // TODO:
-    SetComSchedule(1); //10Hz all preflight schedule
 }
 static void AlignGNCEntry(StateMachine_t *sm) {
     EKF2_corr2.correction_state = active;
     PU_setCAM(ENABLE);
     // TODO:
+    SetComSchedule(1); //10Hz all preflight schedule
     // begin xBee comms
 }
 static void CheckoutsEntry(StateMachine_t *sm) {

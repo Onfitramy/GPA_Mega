@@ -54,6 +54,11 @@ extern uint32_t communication_mode;
 bool reg_write_radio_mode(const void *value);
 bool reg_write_plotter_mode(const void *value);
 
+static bool reg_write_message_schedule(const void *value)
+{
+    return SetComSchedule((uint8_t)*(const uint32_t *)value);
+}
+
 static const reg_descriptor_t registers[] = {
     REG_ENTRY(system_version, system.version, "System version number", false, REG_TYPE_U32),
     REG_ENTRY(flight_sm.currentFlightState, system.flightState, "Current flight state", false, REG_TYPE_U8),
@@ -84,7 +89,7 @@ static const reg_descriptor_t registers[] = {
         .access = REG_ACCESS_WRITE,
         .min = 0,
         .max = 8,
-        .custom_write = SetComSchedule
+        .custom_write = reg_write_message_schedule
     },
         {
         .name = "system.messageMode",

@@ -9,6 +9,8 @@ float nrf_timeout = 0;
 
 bool nrf_mode = 0;
 
+volatile uint32_t NRF_RxCommands = 0;
+
 static void cs_high(void) {
     HAL_GPIO_WritePin(NRF_CS_PORT, NRF_CS_PIN, GPIO_PIN_SET);
 }
@@ -89,6 +91,7 @@ void nrf24l01p_parseReceivedRFDataPacket(uint8_t* packetData) {
 
     // Handle command packet from the NRF24
     if (receivedData.Packet_ID == PACKET_ID_COMMAND) {
+        NRF_RxCommands++;
         InterBoardCom_EvaluateCommand(&receivedData, PACKET_SOURCE_EXTERNAL);
         // For example, you can check the command type and execute corresponding actions
     } else {
@@ -118,8 +121,10 @@ void nrf24l01p_init(channel MHz, air_data_rate bps) {
     nrf24l01p_enable_crc();
     nrf24l01p_set_address_widths(5);
 
-    nrf24l01p_auto_retransmit_count(3);
-    nrf24l01p_auto_retransmit_delay(250);
+    // Commands require ACKs. Allow retries across the peer's telemetry burst;
+    // 250 kbps requires at least 500 us between automatic retransmissions.
+    nrf24l01p_auto_retransmit_count(15);
+    nrf24l01p_auto_retransmit_delay(500);
 
     //Set RX_ADDR_P0 (Receive Adress)
     uint8_t addr[5] = {"ATHMO"};

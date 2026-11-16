@@ -6,7 +6,7 @@
 uint8_t messages_num = 0;
 message_info_t message_schedule[MAX_NUM_MESSAGES];
 
-uint8_t communication_mode = COMM_MODE_REMOTE_TRANSMIT; // Default communication mode(flight mode)
+uint32_t communication_mode = COMM_MODE_REMOTE_TRANSMIT; // Default communication mode(flight mode)
 
 DataPacket_t Status_DataPacket;
 DataPacket_t Power_DataPacket;
@@ -110,14 +110,13 @@ void InitializeDataScheduler() {
         message_schedule[i].last_saved_tick = 0;
     }
 
-    uint8_t schedule_id = 7;
-    SetComSchedule(&schedule_id); // Send no data
+    SetComSchedule(7); // Send no data
     SetSaveSchedule(0); // Save no data
 }
 
 //Used to set the comunication Schedule to one of the predefined schedules
-bool SetComSchedule(const void *schedule_id) {
-    switch(*(const uint8_t*)schedule_id) {
+bool SetComSchedule(uint8_t schedule_id) {
+    switch(schedule_id) {
         case 0: // Default schedule
             UpdateComSchedule(comm_schedule0_frequencies);
             return true;

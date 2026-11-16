@@ -305,6 +305,8 @@ volatile uint8_t XBEE_LastATStatus = 0;
 volatile uint32_t XBEE_TxStatusResponses = 0;
 volatile uint8_t XBEE_LastTxStatus = 0;
 volatile uint8_t XBEE_LastRxFrameType = 0;
+volatile uint32_t NRF_TxCompletions = 0;
+volatile uint32_t NRF_TxMaxRetries = 0;
 void StartInterruptTask(void *argument)
 {
   /* USER CODE BEGIN StartInterruptTask */
@@ -352,6 +354,7 @@ void StartInterruptTask(void *argument)
 
             status = nrf24l01p_get_status();
             if (status & 0x20) { // Data Sent TX FIFO interrupt
+              NRF_TxCompletions++; // IRQ events, not an exact packet count
               nrf24l01p_clear_tx_ds();
               uint8_t fifo_status = nrf24l01p_get_fifo_status();
               if ((fifo_status & 0x10) && radio_info.mode == RADIO_MODE_TRANSCEIVER) { // TX FIFO empty
@@ -360,6 +363,7 @@ void StartInterruptTask(void *argument)
             }
           
             if (status & 0x10) {
+                NRF_TxMaxRetries++;
                 nrf24l01p_abort_tx();
 
                 if (radio_info.mode == RADIO_MODE_TRANSCEIVER ||
