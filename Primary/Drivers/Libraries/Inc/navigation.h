@@ -94,6 +94,9 @@
 #define z_size3_corr1 3
 #define z_size3_corr2 3
 
+#define x_size_max 7
+#define z_size_max 3
+
 // DCM rotation type
 typedef enum {
     DCM_bi_WorldToBody = -1,

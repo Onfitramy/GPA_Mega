@@ -617,9 +617,9 @@ void EKFPredictCovariance(ekf_data_t *ekf) {
         EKFGetStateTransitionJacobian(ekf);
     }
 
-    float Temp1_data[ekf->x_size*ekf->x_size];
+    float Temp1_data[x_size_max*x_size_max];
     arm_matrix_instance_f32 Temp1_mat = {ekf->x_size, ekf->x_size, Temp1_data};
-    float Temp2_data[ekf->x_size*ekf->x_size];
+    float Temp2_data[x_size_max*x_size_max];
     arm_matrix_instance_f32 Temp2_mat = {ekf->x_size, ekf->x_size, Temp2_data};
 
     // calculate Covariance Matrix P(t)^ = F * P(t-1) * F' + Q(t)
@@ -680,11 +680,11 @@ void EKFGetInnovation(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
 
 // update ekf Gain
 void EKFUpdateKalmanGain(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
-    float Temp1_data[ekf->x_size*ekf_corr->z_size];
+    float Temp1_data[x_size_max*z_size_max];
     arm_matrix_instance_f32 Temp1_mat = {ekf->x_size, ekf_corr->z_size, Temp1_data};
-    float Temp2_data[ekf_corr->z_size*ekf_corr->z_size];
+    float Temp2_data[z_size_max*z_size_max];
     arm_matrix_instance_f32 Temp2_mat = {ekf_corr->z_size, ekf_corr->z_size, Temp2_data};
-    float H_trans_data[ekf->x_size*ekf_corr->z_size];
+    float H_trans_data[x_size_max*z_size_max];
     arm_matrix_instance_f32 H_trans_mat = {ekf->x_size, ekf_corr->z_size, H_trans_data};
 
     // retrieve observation jacobian H
@@ -705,7 +705,7 @@ void EKFUpdateKalmanGain(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
 
 // correct quaternion state vector x(t) = x^(t) + K(t) * vt(t)
 void EKFCorrectStateV(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
-    float dx[ekf->x_size];
+    float dx[x_size_max];
 
     arm_mat_vec_mult_f32(ekf_corr->K, ekf_corr->v, dx);
     arm_vecN_add_f32(ekf->x_size, ekf->x, dx, ekf->x);
@@ -713,9 +713,9 @@ void EKFCorrectStateV(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
 
 // correct quaternion covariance matrix P(t) = P^(t) - K(t) * S(t) * K'(t)
 void EKFCorrectCovariance(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
-    float Temp1_data[ekf->x_size*ekf->x_size];
+    float Temp1_data[x_size_max*x_size_max];
     arm_matrix_instance_f32 Temp1_mat = {ekf->x_size, ekf->x_size, Temp1_data};
-    float Temp2_data[ekf_corr->z_size*ekf->x_size];
+    float Temp2_data[z_size_max*x_size_max];
     arm_matrix_instance_f32 Temp2_mat = {ekf_corr->z_size, ekf->x_size, Temp2_data};
 
     // update Covariance Matrix P(t) = P^(t) - K(t) * H(t) * P^(t)
@@ -857,7 +857,7 @@ void EKFCorrectionStep(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
 
 // calculate Normalized Innovation Squared
 void EKFgetNIS(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
-    float buffer[ekf_corr->z_size];
+    float buffer[z_size_max];
 
     // NIS = v' * S_inv * v
     arm_mat_vec_mult_f32(ekf_corr->S_inv, ekf_corr->v, buffer);
