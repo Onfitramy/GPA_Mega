@@ -180,7 +180,6 @@ static void StartupEntry(StateMachine_t *sm) {
     EKFInit(&EKF2, EKF2_type, x_size2, u_size2, 0.001, &F2, &P2, &Q2, NULL, x2, &a_WorldFrame_i[2]);
     EKFCorrectionInit(EKF2, &EKF2_corr1, corr1_type, 1, &H2_corr1, &K2_corr1, &R2_corr1, &S2_corr1, &S2_inv_corr1, z2_corr1, h2_corr1, v2_corr1); // baro
     EKFCorrectionInit(EKF2, &EKF2_corr2, corr2_type, 2, &H2_corr2, &K2_corr2, &R2_corr2, &S2_corr2, &S2_inv_corr2, z2_corr2, h2_corr2, v2_corr2); // GNSS
-    EKFCorrectionInit(EKF2, &EKF2_corr3, corr3_type, 1, &H2_corr3, &K2_corr3, &R2_corr3, &S2_corr3, &S2_inv_corr3, z2_corr3, h2_corr3, v2_corr3); // ptot
 
     // define Kalman Filter dimensions and pointers for Quaternion EKF
     EKFInit(&EKF3, EKF3_type, x_size3, u_size3, 0.001, &F3, &P3, &Q3, NULL, x3, average_imu_data.gyro);
@@ -230,7 +229,6 @@ static void InitEntry(StateMachine_t *sm) {
     EKF2.prediction_state = active;
     EKF2_corr1.correction_state = active;   // baro
     EKF2_corr2.correction_state = inactive; // GNSS
-    EKF2_corr3.correction_state = inactive; // Ptot
 
     // Activate quaternion EKF prediction and correction step
     EKF3.prediction_state = active;
@@ -241,7 +239,6 @@ static void InitEntry(StateMachine_t *sm) {
     StepperPositionFromACSAngle(0.f, &stepper_zero_position);
     stepper_zero_position += stepper_neutral_angle / 360.f * ROD_SLOPE;
     SPARK_ExitMode();
-    // TODO:
 }
 static void AlignGNCEntry(StateMachine_t *sm) {
     EKF2_corr2.correction_state = active;
@@ -529,11 +526,9 @@ static void AbortExit(StateMachine_t *sm) {}
 static void StartupExit(StateMachine_t *sm) {}
 static void InitExit(StateMachine_t *sm) {}
 static void AlignGNCExit(StateMachine_t *sm) {
-    // initialize GNSS reference point
-    for (int i = 0; i <= 2; i++) {
-        g_WGS84_ref[i] = g_WGS84[i];
-      }
-    WGS84toECEF(g_WGS84_ref, g_ECEF_ref);
+    // set reference height
+    h_ref = EKF2.x[0];
+    EKF2.x[0] = 0.0f;
 }
 static void CheckoutsExit(StateMachine_t *sm) {}
 static void ArmedExit(StateMachine_t *sm) {}

@@ -105,11 +105,11 @@ float predictApogeeFromGamma(float height, float *velocity, float Aref, float m,
     float a_hor, a_ver;
 
     int8_t dir = 1;
-    if (v_ver < 0) {
+    if (v_ver < 0.0f) {
         dir = -1;
         v_ver = -v_ver;
-    } else if (v_ver == 0) {
-        *t_apogee = 0;
+    } else if (!(v_ver > 0.0f)) { // equivalent to (v_ver == 0.0f); avoids compiler warning
+        *t_apogee = 0.0f;
         return p_ver;
     }
 
@@ -297,7 +297,7 @@ float runMPC(mpc_t *mpc, float height, float *velocity) {
     float h_nom = predictApogeeFromGamma(x_N0[0], v_input, AREF, m, mpc->u_nom, 20, 0.1, &t_nom);
 
     float a_t = 0.5 * x_N0[1]*x_N0[1] / (h_nom - x_N0[0]);
-    float h_ref = 0.5 * x_N0[1]*x_N0[1] / a_t + H_TARGET;
+    float h_reference = 0.5 * x_N0[1]*x_N0[1] / a_t + H_TARGET;
 
     // define apogee gradient Ca
     arm_mat_set_entry_f32(&Ca_mat, 0, 1, x_N0[1]/a_t);
@@ -330,7 +330,7 @@ float runMPC(mpc_t *mpc, float height, float *velocity) {
 
     /* compute q^T */
     arm_mat_mult_f32(&d_vec, &R_du_mat, &M2_vec);
-    arm_mat_scale_f32(&CaE_mat, MPC_W_A*(Ca_data[0]*x_N_free[0]+Ca_data[1]*x_N_free[1]-h_ref), &q_vec);
+    arm_mat_scale_f32(&CaE_mat, MPC_W_A*(Ca_data[0]*x_N_free[0]+Ca_data[1]*x_N_free[1]-h_reference), &q_vec);
     arm_mat_sub_f32(&q_vec, &M2_vec, &q_vec);
 
     /* solve QP */
@@ -390,43 +390,6 @@ float stepper_target_angle_deg;
 float stepper_neutral_angle = STEPPER_NEUTRAL_ANGLE;
 float acs_target_angle_deg;
 float acs_est_angle_deg;
-
-void CircleIntersectionPoints(float x1, float y1, float r1, float x2, float y2, float r2,
-                              float *xi1, float *yi1, float *xi2, float *yi2, int *num_intersections)
-{
-    float dx = x2 - x1;
-    float dy = y2 - y1;
-    float d = sqrtf(dx * dx + dy * dy);
-
-    // No intersection
-    if (d > (r1 + r2) || d < fabsf(r1 - r2)) {
-        *num_intersections = 0;
-        return;
-    }
-
-    // Single intersection (tangent)
-    if (d == 0 && r1 == r2) {
-        *num_intersections = -1; // Infinite intersections
-        return;
-    }
-
-    float a = (r1 * r1 - r2 * r2 + d * d) / (2 * d);
-    float h = sqrtf(r1 * r1 - a * a);
-    float xm = x1 + a * (dx) / d;
-    float ym = y1 + a * (dy) / d;
-
-    *xi1 = xm + h * (dy) / d;
-    *yi1 = ym - h * (dx) / d;
-
-    *xi2 = xm - h * (dy) / d;
-    *yi2 = ym + h * (dx) / d;
-
-    if (h == 0) {
-        *num_intersections = 1; // Tangent
-    } else {
-        *num_intersections = 2; // Two intersections
-    }
-}
 
 void ACSAngleFromStepperPosition(float stepper_pos, float *acs_angle_deg) {
     float AE_squared = LENGTH_AE * LENGTH_AE;

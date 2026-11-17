@@ -194,16 +194,6 @@ extern arm_matrix_instance_f32 S2_corr2;
 extern arm_matrix_instance_f32 S2_inv_corr2;
 extern arm_matrix_instance_f32 K2_corr2;
 
-extern ekf_corr_data_t EKF2_corr3;
-extern float z2_corr3[z_size2_corr3];
-extern float h2_corr3[z_size2_corr3];
-extern float v2_corr3[z_size2_corr3];
-extern arm_matrix_instance_f32 H2_corr3;
-extern arm_matrix_instance_f32 R2_corr3;
-extern arm_matrix_instance_f32 S2_corr3;
-extern arm_matrix_instance_f32 S2_inv_corr3;
-extern arm_matrix_instance_f32 K2_corr3;
-
 extern ekf_data_t EKF3;
 extern float x3[x_size3];
 extern arm_matrix_instance_f32 F3;
@@ -233,11 +223,7 @@ extern arm_matrix_instance_f32 K3_corr2;
 
 extern float VAR_vec3_abs;
 
-extern double g_WGS84[3];
-extern double g_WGS84_ref[3];
-extern double g_ECEF[3];
-extern double g_ECEF_ref[3];
-extern double g_ENU[3];
+extern float h_ref;
 
 extern arm_matrix_instance_f32 M_rot_bi;
 extern arm_matrix_instance_f32 M_rot_ib;

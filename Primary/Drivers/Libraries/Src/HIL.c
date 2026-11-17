@@ -78,39 +78,10 @@ void HIL_body_force(float v_abs) {
     HIL_compute_grav_drag_force(CD_S, v_abs);
     if (HIL.state == HIL_STATE_BURN)
         HIL.F_b[1] += HIL_MOTOR_THRUST;
-    if (HIL.r_i[2] < HIL_RAIL_LENGTH) {
+    if (HIL.r_i[2] < HIL_RAIL_LENGTH + HIL_INITIAL_ALTITUDE) {
         HIL.F_b[0] = 0.0f;
         HIL.F_b[2] = 0.0f;
     }
-}
-void HIL_world_force(float v_abs) {
-    if (HIL.state == HIL_STATE_PRELAUNCH || HIL.state == HIL_STATE_LANDED) {
-        memset(HIL.F_b, 0, 3 * sizeof(float));
-        return;
-    }
-
-    // calculate the current mass
-    HIL.m = HIL_WET_MASS - HIL_PROPELLANT_MASS;
-
-    // determine the CD depending on the current flight phase
-    float CD_S;
-    if (HIL.state == HIL_STATE_DROGUE)
-        CD_S = HIL_CD_S_DROGUE;
-    else if (HIL.state == HIL_STATE_MAIN)
-        CD_S = HIL_CD_S_MAIN;
-    else
-        CD_S = 0; // landed
-
-    // compute the total force in world-frame
-    float F_i[3];
-    arm_vec3_scalar_mult_f32(gravity_world_vec, HIL.m, F_i);
-
-    // calculate world-frame drag vector
-    float rho = CalculateAirDensity(HIL.r_i[2]);
-    F_i[2] -= 0.5f * rho * v_abs * v_abs * CD_S * (HIL.v_i[2] > 0.0f ? 1.0f : -1.0f);
-
-    // convert to body-frame
-    arm_mat_vec_mult_f32(HIL.DCM_bi, F_i, HIL.F_b);
 }
 void HILupdateStates(float dt) {
     // update the simulation time
@@ -131,15 +102,15 @@ void HILupdateStates(float dt) {
             HIL.state = HIL_STATE_DESCEND;
         break;
     case HIL_STATE_DESCEND:
-        if (HIL.r_i[2] <= 0.0f)
+        if (HIL.r_i[2] <= HIL_INITIAL_ALTITUDE)
             HIL.state = HIL_STATE_LANDED; // ballistic impact
         break; // deployment is commanded by flight state machine
     case HIL_STATE_DROGUE:
-        if (HIL.r_i[2] <= 0.0f)
+        if (HIL.r_i[2] <= HIL_INITIAL_ALTITUDE)
             HIL.state = HIL_STATE_LANDED; // main deployment failure
         break; // deployment is commanded by flight state machine
     case HIL_STATE_MAIN:
-        if (HIL.r_i[2] <= 0.0f)
+        if (HIL.r_i[2] <= HIL_INITIAL_ALTITUDE)
             HIL.state = HIL_STATE_LANDED;
         break;
     default:
@@ -151,10 +122,7 @@ void HILupdateStates(float dt) {
 
     // compute the total force acting on the vehicle in body-frame (world-frame during parachute descend)
     float velo_abs = arm_vec3_length_f32(HIL.v_i);
-    // if (HIL.state < HIL_STATE_DROGUE)
-        HIL_body_force(velo_abs);
-    // else
-    //     HIL_world_force(velo_abs);
+    HIL_body_force(velo_abs);
 
     // rigid-body kinetics (integrate acceleration)
     arm_vec3_scalar_mult_f32(HIL.F_b, 1.0f/HIL.m, HIL.a_b);
@@ -267,8 +235,12 @@ void HILgetBarometerData(bmp390_data_t *HIL_bmp_data) {
 
 void HILgetGPSData(UBX_NAV_PVT *HIL_gps_data) {
     // simply constants
-    HIL_gps_data->gpsFix = 3.f;
-    HIL_gps_data->numSV = 69.f;
+    if (uwTick < 5000) {
+        HIL_gps_data->gpsFix = 0;
+        return;
+    }
+    HIL_gps_data->gpsFix = 3;
+    HIL_gps_data->numSV = 69;
     HIL_gps_data->hAcc = 1600.f;
     HIL_gps_data->vAcc = 3000.f;
     HIL_gps_data->sAcc = 30.f;

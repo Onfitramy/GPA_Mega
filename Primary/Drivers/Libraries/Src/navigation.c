@@ -14,7 +14,6 @@ const double T0_const = 288.15;             // K
 const double L_const = -0.0065;             // K/m
 const double g0_const = 9.80665;            // m/s²
 const double kappa = 1.4;
-const double scale_height = 7800; // m
 double rho0_const;
 double a0_const;
 
@@ -61,21 +60,6 @@ float S2_inv_corr2_data[z_size2_corr2*z_size2_corr2] = {0};
 arm_matrix_instance_f32 S2_inv_corr2 = {z_size2_corr2, z_size2_corr2, S2_inv_corr2_data};
 float K2_corr2_data[x_size2*z_size2_corr2];
 arm_matrix_instance_f32 K2_corr2 = {x_size2, z_size2_corr2, K2_corr2_data};
-
-ekf_corr_data_t EKF2_corr3;
-float z2_corr3[z_size2_corr3] = {0};
-float h2_corr3[z_size2_corr3] = {0};
-float v2_corr3[z_size2_corr3] = {0};
-float H2_corr3_data[z_size2_corr3*x_size2] = {0};
-arm_matrix_instance_f32 H2_corr3 = {z_size2_corr3, x_size2, H2_corr3_data};
-float R2_corr3_data[z_size2_corr3*z_size2_corr3] = {0};
-arm_matrix_instance_f32 R2_corr3 = {z_size2_corr3, z_size2_corr3, R2_corr3_data};
-float S2_corr3_data[z_size2_corr3*z_size2_corr3] = {0};
-arm_matrix_instance_f32 S2_corr3 = {z_size2_corr3, z_size2_corr3, S2_corr3_data};
-float S2_inv_corr3_data[z_size2_corr3*z_size2_corr3] = {0};
-arm_matrix_instance_f32 S2_inv_corr3 = {z_size2_corr3, z_size2_corr3, S2_inv_corr3_data};
-float K2_corr3_data[x_size2*z_size2_corr3];
-arm_matrix_instance_f32 K2_corr3 = {x_size2, z_size2_corr3, K2_corr3_data};
 
 // Quaternion EKF variables
 ekf_data_t EKF3;
@@ -124,12 +108,8 @@ float VAR_vec3_abs;
 
 /* --- Coordinate system variables --- */
 
-// reference frames, g_ for global
-double g_WGS84[3];
-double g_WGS84_ref[3];
-double g_ECEF[3];
-double g_ECEF_ref[3];
-double g_ENU[3];
+// reference height
+float h_ref = 0.0f;
 
 // rotation matrix
 float M_rot_bi_data[9];
@@ -473,7 +453,6 @@ void CalculateTotalPressure(float height, float pressure_reference, float veloci
 }
 
 double CalculateAirDensity(double height) {
-    // return exp(-height / scale_height) * rho0_const;
     return pow(L_const / T0_const * height + 1., -g0_const / L_const / R_const - 1.) * rho0_const;
 }
 
@@ -613,7 +592,6 @@ void EKFPredictStateV(ekf_data_t *ekf) {
     }
 }
 
-
 void EKFPredictCovariance(ekf_data_t *ekf) {
     // calculate Q separately for quaternion EKF
     if (ekf->type == EKF3_type) {
@@ -651,7 +629,6 @@ void EKFPredictCovariance(ekf_data_t *ekf) {
     arm_mat_add_f32(&Temp1_mat, ekf->Q, ekf->P);
 }
 
-
 void EKFPredictMeasurement(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
     if (ekf->type == EKF1_type) {
         // h(t) = H * x^(t)
@@ -660,14 +637,14 @@ void EKFPredictMeasurement(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
         if (ekf_corr->type == corr1_type) {
             // measurement prediction of type 1 correction step
             // expected barometer measurement equivalent to current height estimate
-            BaroHeightToPressure(ekf->x[0], ekf->x[2], ekf_corr->h);
+            BaroHeightToPressure(ekf->x[0] + h_ref, ekf->x[2], ekf_corr->h);
         } else if (ekf_corr->type == corr2_type) {
             // measurement prediction of type 2 correction step
-            ekf_corr->h[0] = ekf->x[0];
+            ekf_corr->h[0] = ekf->x[0] + h_ref;
             ekf_corr->h[1] = ekf->x[1];
         } else if (ekf_corr->type == corr3_type) {
             // measurement predicition of type 3 correction step
-            CalculateTotalPressure(ekf->x[0], ekf->x[2], ekf->x[1], ekf_corr->h);
+            CalculateTotalPressure(ekf->x[0] + h_ref, ekf->x[2], ekf->x[1], ekf_corr->h);
         }
 
     } else if (ekf->type == EKF3_type) {
@@ -725,7 +702,6 @@ void EKFUpdateKalmanGain(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
     arm_mat_mult_f32(&H_trans_mat, ekf_corr->S_inv, &Temp1_mat);
     arm_mat_mult_f32(ekf->P, &Temp1_mat, ekf_corr->K);
 }
-
 
 // correct quaternion state vector x(t) = x^(t) + K(t) * vt(t)
 void EKFCorrectStateV(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
@@ -796,7 +772,7 @@ void EKFGetObservationJacobian(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
     if (ekf->type == EKF1_type) {
         return;
     } else if (ekf->type == EKF2_type) {
-        float T_static = T0_const + L_const * ekf->x[0];
+        float T_static = T0_const + L_const * (ekf->x[0] + h_ref);
         if(ekf_corr->type == corr1_type) {
             arm_mat_set_entry_f32(ekf_corr->H, 0, 0, (-g0_const * ekf_corr->h[0]) / (R_const * T_static));
             arm_mat_set_entry_f32(ekf_corr->H, 0, 2, ekf_corr->h[0] / ekf->x[2]);

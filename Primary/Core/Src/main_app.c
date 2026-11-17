@@ -204,16 +204,6 @@ void Task100Hz_Step(void *argument) {
     if (!is_groundstation) {
     //UpdateTemperaturePacket(&Temperature_DataPacket, HAL_GetTick(), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, ptot_data.pressure);
 
-    // Don't activate this and the SPARK communication at the same time, because they use the same SPI
-    /*
-    if (ptot_readData(&ptot_data)) {
-        // execute this if new data is available
-        // correction step
-        EKF2_corr3.z[0] = ptot_data.pressure;
-        EKFCorrectionStep(&EKF2, &EKF2_corr3);
-    }
-    */
-
     SPARK_ReadData();
     float stepper_est_position;
     StepperPositionFromAngle(stepper_zero_position, spark_data.Data.spark.magAngle, &stepper_est_position);
@@ -224,7 +214,7 @@ void Task100Hz_Step(void *argument) {
     float mag_enu[3];
     //float mag_b_tilde[3];
     arm_mat_vec_mult_f32(&M_rot_ib, mag_data.field, mag_enu);
-    mag_enu[2] = 0;
+    mag_enu[2] = 0.0f;
     arm_mat_vec_mult_f32(&M_rot_bi, mag_enu, EKF3_corr1.z);
     EKFCorrectionStep(&EKF3, &EKF3_corr1);
 
