@@ -166,13 +166,14 @@ typedef struct {
 } KalmanMatrixPayload_t;
 
 typedef struct {
-  float magAngle;      // 4 bytes
-  float posDeviation; // 8 bytes
-  float voltage_driver; // 12 bytes
-  float temperature_NTC1; // 16 bytes
-  float temperature_NTC2; // 20 bytes
-  uint8_t sparkStatus;  // 21 bytes
-  uint8_t reserved[5];  // 26 bytes
+  float magAngle;
+  float magSpeed;
+  float posDeviation;
+  float voltage_driver;
+  float temperature_driver;
+  float temperature_converter;
+  uint8_t sparkStatus;
+  uint8_t as5600_status; // 0b00000HLD | H: high, L: low, D: detected
 } SPARKPayload_t;
 
 typedef struct {

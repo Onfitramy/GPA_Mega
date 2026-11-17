@@ -136,6 +136,7 @@ static const reg_descriptor_t registers[] = {
     REG_ENTRY(spark_data.Data.spark.temperature_driver, sensor.spark.temperature_driver, "Spark temperature_driver", false, REG_TYPE_FLOAT),
     REG_ENTRY(spark_data.Data.spark.temperature_converter, sensor.spark.temperature_converter, "Spark temperature_converter", false, REG_TYPE_FLOAT),
     REG_ENTRY(spark_data.Data.spark.sparkStatus, sensor.spark.sparkStatus, "Spark sparkStatus", false, REG_TYPE_U8),
+    REG_ENTRY(spark_data.Data.spark.as5600_status, sensor.spark.as5600_status, "AS5600 status", false, REG_TYPE_U8),
     REG_ENTRY(powerData.Data.power.M1_5V_bus, sensor.power.M1_5V_bus, "Power M1_5V_bus", false, REG_TYPE_FLOAT),
     REG_ENTRY(powerData.Data.power.M1_BAT_bus_volt, sensor.power.M1_BAT_bus_volt, "Power M1_BAT_bus_volt", false, REG_TYPE_FLOAT),
     REG_ENTRY(powerData.Data.power.M2_bus_5V, sensor.power.M2_bus_5V, "Power M2_bus_5V", false, REG_TYPE_FLOAT),

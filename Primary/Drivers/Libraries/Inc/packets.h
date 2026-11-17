@@ -169,7 +169,7 @@ typedef struct {
   float temperature_driver;
   float temperature_converter;
   uint8_t sparkStatus;
-  uint8_t reserved[1];
+  uint8_t as5600_status; // 0b00000HLD | H: high, L: low, D: detected
 } SPARKPayload_t;
 
 typedef struct {
