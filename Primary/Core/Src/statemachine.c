@@ -460,12 +460,13 @@ static void AwaitDrogueDo(StateMachine_t *sm, uint16_t freq) {
     }
 
     // drogue deploy handler
-    if (freq != 100) return;
-    uint32_t elapsed_time = HAL_GetTick() - sm->timestamp_ms;
+    if (freq == 100) {
+        uint32_t elapsed_time = HAL_GetTick() - sm->timestamp_ms;
 
-    // attempt further deployment attempts
-    if ((elapsed_time >= drogue_deploy_attempts * DROGUE_ATTEMPT_PERIOD) && (drogue_deploy_attempts < DROGUE_MAX_NUM_ATTEMPTS)) {
-        DeployDrogue(DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
+        // attempt further deployment attempts
+        if ((elapsed_time >= drogue_deploy_attempts * DROGUE_ATTEMPT_PERIOD) && (drogue_deploy_attempts < DROGUE_MAX_NUM_ATTEMPTS)) {
+            DeployDrogue(DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
+        }
     }
 
     // fully deploy airbrakes

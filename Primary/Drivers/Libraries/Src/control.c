@@ -376,8 +376,8 @@ float runMPC(mpc_t *mpc, float height, float *velocity) {
     mpc->xstar[0] = x_N_free[0] + x_sum[0];
     mpc->xstar[1] = x_N_free[1] + x_sum[1];
 
-    if (t_nom < -1.5) {
-        return 0;
+    if (t_nom < -1.0f) {
+        return ACS_ANGLE_MAX_DEG;
     }
     return mpc->ustar[0];
 }
