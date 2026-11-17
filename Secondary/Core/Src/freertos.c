@@ -40,7 +40,7 @@
 #include "statemachine.h"
 #include "radio.h"
 
-//#define IS_GROUND_STATION 1
+#define IS_GROUND_STATION 1
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */

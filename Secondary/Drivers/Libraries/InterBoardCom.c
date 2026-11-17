@@ -35,6 +35,8 @@ uint32_t invalid_packets;
 uint32_t packets_dropped;
 float packets_dropped_rate; //% of packets dropped
 
+primary_flight_state_t current_primary_flight_state = STATE_FLIGHT_INIT;
+
 void InterBoardCom_ClearSPIErrors(void);
 
 void InterBoardCom_Init(void) {
