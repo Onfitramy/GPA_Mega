@@ -378,6 +378,8 @@ float runMPC(mpc_t *mpc, float height, float *velocity) {
 
     if (t_nom < -1.0f) {
         return ACS_ANGLE_MAX_DEG;
+    } else if (t_nom < 0.0f) {
+        return ACS_ANGLE_MAX_DEG * (-t_nom) + mpc->ustar[0] * (1 + t_nom); // interpolate
     }
     return mpc->ustar[0];
 }
