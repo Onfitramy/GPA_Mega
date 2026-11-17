@@ -3,6 +3,10 @@
 
 #include "_components.h"
 
+#define HIL_INITIAL_LATITUDE    53.33195f   // deg
+#define HIL_INITIAL_LONGITUDE   9.02661f    // deg
+#define HIL_INITIAL_ALTITUDE    17.0f       // m
+
 #define HIL_RAIL_LENGTH     6.0f     // m
 #define HIL_WET_MASS        22.343f  // kg
 #define HIL_IGNITION_TIME   5.0f     // s

@@ -3,7 +3,7 @@
 #include "control.h"
 
 // all variables used by HIL
-float magfield[3] = {0.0069f, 0.1973f, -0.4431f};
+float HIL_magfield[3] = {0.0069f, 0.1973f, -0.4431f};
 
 float HIL_DCM_bi_data[9] = { 0 };
 arm_matrix_instance_f32 HIL_DCM_bi = {3, 3, HIL_DCM_bi_data};
@@ -30,6 +30,9 @@ void HILInit() {
     memset(HIL.w_b, 0, 3 * sizeof(float));
     memset(HIL.a_b, 0, 3 * sizeof(float));
     memset(HIL.a_i, 0, 3 * sizeof(float));
+
+    // initial altitude
+    HIL.r_i[2] = HIL_INITIAL_ALTITUDE;
 
     // calculate initial attitude
     HIL.euler[0] = 85.0f*PI/180.0f;
@@ -252,7 +255,7 @@ void HILgetIMUData(IMU_AverageData_t *HIL_imu_data) {
 
 void HILgetMagnetometerData(LIS3MDL_Data_t *HIL_mag_data) {
     // magnetometer data is simply the Earth's magnetic field expressed in body-frame
-    arm_mat_vec_mult_f32(HIL.DCM_bi, magfield, HIL_mag_data->field);
+    arm_mat_vec_mult_f32(HIL.DCM_bi, HIL_magfield, HIL_mag_data->field);
 }
 
 void HILgetBarometerData(bmp390_data_t *HIL_bmp_data) {
@@ -271,6 +274,11 @@ void HILgetGPSData(UBX_NAV_PVT *HIL_gps_data) {
     HIL_gps_data->sAcc = 30.f;
 
     // convert everything to correct format
+    float lat, lon;
+    lat = HIL_INITIAL_LATITUDE + HIL.r_i[1] * 180.0f / (PI * 6371000.0f);
+    lon = HIL_INITIAL_LONGITUDE + HIL.r_i[0] * 180.0f / (PI * 6371000.0f);
+    HIL_gps_data->lat = (int32_t)round(lat*1e7f);
+    HIL_gps_data->lon = (int32_t)roundf(lon*1e7f);
     HIL_gps_data->height = (int32_t)roundf(HIL.r_i[2]*1e3f);
     HIL_gps_data->velN = (int32_t)roundf(HIL.v_i[1]*1e3f);
     HIL_gps_data->velE = (int32_t)roundf(HIL.v_i[0]*1e3f);
