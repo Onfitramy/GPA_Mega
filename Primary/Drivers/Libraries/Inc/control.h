@@ -49,7 +49,7 @@ void MPCInit(mpc_t *mpc, uint8_t pred_horz, uint8_t ineq_constr_num, float dt, f
 float runMPC(mpc_t *mpc, float height, float *velocity);
 
 /* --- Airbrake kinematics --- */
-#define ACS_ANGLE_MAX_DEG 50.f
+#define ACS_ANGLE_MAX_DEG 32.f
 #define ACS_ANGLE_MIN_DEG 0.f
 
 #define LENGTH_AE 25.0f
@@ -63,7 +63,7 @@ float runMPC(mpc_t *mpc, float height, float *velocity);
 #define F_DIST 6.0f
 
 #define ROD_SLOPE 8.0f
-#define STEPPER_NEUTRAL_ANGLE 190.f
+#define STEPPER_NEUTRAL_ANGLE 30.f
 
 extern float stepper_zero_position;
 extern float stepper_target_position;
