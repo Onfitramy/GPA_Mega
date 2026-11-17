@@ -412,7 +412,10 @@ BaseType_t cmd_regGet(char *pcWriteBuffer, size_t xWriteBufferLen, const char *p
                             snprintf(pcWriteBuffer, xWriteBufferLen, "%d\r\n", *(int8_t *)registers[i].address);
                             break;
                         case REG_TYPE_FLOAT:
-                            snprintf(pcWriteBuffer, xWriteBufferLen, "%.6f\r\n", *(float *)registers[i].address);
+                            float value;
+                            memcpy(&value, registers[i].address, sizeof(value));
+                            snprintf(pcWriteBuffer, xWriteBufferLen, "%.6f\r\n",
+                                    (double)value);
                             break;
                         case REG_TYPE_BOOL:
                             snprintf(pcWriteBuffer, xWriteBufferLen, "%s\r\n", (*(bool *)registers[i].address) ? "true" : "false");
