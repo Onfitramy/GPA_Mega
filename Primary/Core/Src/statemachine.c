@@ -103,7 +103,21 @@ static flight_state_t MainDescendHandler(flight_event_t event) {
 
 static flight_state_t LandedHandler(flight_event_t event) {
     switch (event) {
-        default: return STATE_FLIGHT_LANDED;
+        case EVENT_FLIGHT_LANDED_SAFE:          return STATE_FLIGHT_LANDED_SAFE;
+        default:                                return STATE_FLIGHT_LANDED;
+    }
+}
+
+static flight_state_t LandedSafeHandler(flight_event_t event) {
+    switch (event) {
+        case EVENT_FLIGHT_LANDED_POWER_DOWN:    return STATE_FLIGHT_LANDED_POWER_DOWN;
+        default:                                return STATE_FLIGHT_LANDED_SAFE;
+    }
+}
+
+static flight_state_t LandedPowerDownHandler(flight_event_t event) {
+    switch (event) {
+        default:                                return STATE_FLIGHT_LANDED_POWER_DOWN;
     }
 }
 
@@ -249,7 +263,7 @@ static void AlignGNCEntry(StateMachine_t *sm) {
 }
 static void CheckoutsEntry(StateMachine_t *sm) {
     PU_setACS(ENABLE);
-    Camera_Power(1);
+    Camera_Power(ENABLE);
     #ifndef HIL_TESTING
     //HAL_Delay(5);
     #endif
@@ -298,17 +312,20 @@ static void MainDescendEntry(StateMachine_t *sm) {}
 static void LandedEntry(StateMachine_t *sm) {
     PU_setACS(DISABLE);
     PU_setREC(DISABLE);
-    Camera_Recording(0);
-    SetComSchedule(5); //Landed flight state, only GNSS and state
-    SetSaveSchedule(0);
-    Storage_FlashSave(false);
+    Camera_Recording(DISABLE);
 
     // TODO:
-    // disable cams
-    // switch off LEDs
     // stop data logging
-
+}
+static void LandedSafeEntry(StateMachine_t *sm) {
+    Camera_Power(DISABLE);
+    SetComSchedule(5); // Landed flight state, only GNSS and state
+    SetSaveSchedule(0);
+    Storage_FlashSave(DISABLE);
     Buzzer_PlaySongRepeat(1, 20000);
+}
+static void LandedPowerDownEntry(StateMachine_t *sm) {
+    PU_setCAM(DISABLE);
 }
 static void TestInitEntry(StateMachine_t *sm) {
     RetractMain(9000);
@@ -371,7 +388,6 @@ static void InitDo(StateMachine_t *sm, uint16_t freq) {
     if ((gps_data.gpsFix == 3)) {
         StateMachine_Dispatch(sm, EVENT_FLIGHT_GNSS_FIX);
     }
-    // TODO: grab ptot and bmp data, calculate offset
 }
 static void AlignGNCDo(StateMachine_t *sm, uint16_t freq) {
     if (freq != 10) return;
@@ -386,14 +402,6 @@ static void ArmedDo(StateMachine_t *sm, uint16_t freq) {
     // Check for liftoff with 1000 Hz
     if (freq != 1000) return;
 
-    // option 1
-    /*UpdateCircularBuffer(acc_z_buf, ACC_BUFFER_SIZE, &acc_z_index, a_BodyFrame_i[1]);
-
-    if (GetOvershootCount(acc_z_buf, ACC_BUFFER_SIZE, LIFTOFF_ACC_THRESHOLD) >= LIFTOFF_MIN_OVERSHOOTS) {
-        StateMachine_Dispatch(sm, EVENT_FLIGHT_LAUNCH_DETECTED);
-    }*/
-
-    // option 2
     if (a_BodyFrame_i[1] < LIFTOFF_ACC_THRESHOLD) {
         time_index = HAL_GetTick();
     } else if ((HAL_GetTick() - time_index) > LIFTOFF_MIN_DURATION) {
@@ -404,14 +412,6 @@ static void BurnDo(StateMachine_t *sm, uint16_t freq) {
     // Check for burnout with 1000 Hz
     if (freq != 1000) return;
 
-    // option 1
-    /*UpdateCircularBuffer(acc_z_buf, ACC_BUFFER_SIZE, &acc_z_index, a_BodyFrame_i[1]);
-
-    if (GetUndershootCount(acc_z_buf, ACC_BUFFER_SIZE, BURNOUT_ACC_THRESHOLD) >= BURNOUT_MIN_UNDERSHOOTS) {
-        StateMachine_Dispatch(sm, EVENT_FLIGHT_BURNOUT_DETECTED);
-    }*/
-
-    // option 2
     if (a_BodyFrame_i[1] > BURNOUT_ACC_THRESHOLD) {
         time_index = HAL_GetTick();
     } else if ((HAL_GetTick() - time_index) > BURNOUT_MIN_DURATION) {
@@ -421,7 +421,6 @@ static void BurnDo(StateMachine_t *sm, uint16_t freq) {
 static void CoastDo(StateMachine_t *sm, uint16_t freq) {
     // check for apogee with 1000 Hz
     if (freq == 1000) {
-        // option 2
         if (EKF2.x[1] > APOGEE_VEL_THRESHOLD) {
             time_index = HAL_GetTick();
         } else if ((HAL_GetTick() - time_index) > APOGEE_MIN_DURATION) {
@@ -517,6 +516,14 @@ static void MainDescendDo(StateMachine_t *sm, uint16_t freq) {
     }
 }
 static void LandedDo(StateMachine_t *sm, uint16_t freq) {}
+static void LandedSafeDo(StateMachine_t *sm, uint16_t freq) {
+    // check battery voltage with 10 Hz
+    if (freq != 10) return;
+
+    if (powerData.Data.power.PU_bat_bus_volt < 7400) // 7.4 V
+        StateMachine_Dispatch(sm, EVENT_FLIGHT_LANDED_POWER_DOWN);
+}
+static void LandedPowerDownDo(StateMachine_t *sm, uint16_t freq) {}
 static void TestInitDo(StateMachine_t *sm, uint16_t freq) {}
 static void TestCalibDo(StateMachine_t *sm, uint16_t freq) {}
 static void GroundstationDo(StateMachine_t *sm, uint16_t freq) {}
@@ -539,6 +546,8 @@ static void DrogueDescendExit(StateMachine_t *sm) {}
 static void AwaitMainExit(StateMachine_t *sm) {}
 static void MainDescendExit(StateMachine_t *sm) {}
 static void LandedExit(StateMachine_t *sm) {}
+static void LandedSafeExit(StateMachine_t *sm) {}
+static void LandedPowerDownExit(StateMachine_t *sm) {}
 static void TestInitExit(StateMachine_t *sm) {}
 static void TestCalibExit(StateMachine_t *sm) {}
 static void GroundstationExit(StateMachine_t *sm) {}
@@ -558,6 +567,8 @@ static StateHandler_t stateHandlerTable[STATE_MAX] = {
     AwaitMainHandler,
     MainDescendHandler,
     LandedHandler,
+    LandedSafeHandler,
+    LandedPowerDownHandler,
     TestInitHandler,
     TestCalibHandler,
     GroundstationHandler
@@ -577,6 +588,8 @@ static StateEntry_t stateEntryTable[STATE_MAX] = {
     AwaitMainEntry,
     MainDescendEntry,
     LandedEntry,
+    LandedSafeEntry,
+    LandedPowerDownEntry,
     TestInitEntry,
     TestCalibEntry,
     GroundstationEntry
@@ -596,6 +609,8 @@ static StateDo_t stateDoTable[STATE_MAX] = {
     AwaitMainDo,
     MainDescendDo,
     LandedDo,
+    LandedSafeDo,
+    LandedPowerDownDo,
     TestInitDo,
     TestCalibDo,
     GroundstationDo
@@ -615,6 +630,8 @@ static StateExit_t stateExitTable[STATE_MAX] = {
     AwaitMainExit,
     MainDescendExit,
     LandedExit,
+    LandedSafeExit,
+    LandedPowerDownExit,
     TestInitExit,
     TestCalibExit,
     GroundstationExit
@@ -635,31 +652,35 @@ uint32_t minEventDelayTable[EVENT_MAX] = {
     MIN_DELAY_UNTIL_MAIN_CONFIRMED,
     MIN_DELAY_UNTIL_TOUCHDOWN,
     0,
+    MIN_DELAY_UNTIL_POWER_DOWN,
+    0,
     0,
     0
 };
 
 uint32_t maxEventDelayTable[STATE_MAX] = {
-    0,      // Abort Exit; LEAVE AT ZERO
-    0,      // Startup complete
-    0,      // GNSS Fix
+    MAX_DELAY_UNUSED,   // Abort Exit; LEAVE AT ZERO
+    MAX_DELAY_UNUSED,   // Startup complete
+    MAX_DELAY_UNUSED,   // GNSS Fix
     #ifdef HIL_TESTING
-    2000,   // Filter converged
+    2000,               // Filter converged
     #else
-    0,      // Filter converged
+    MAX_DELAY_UNUSED,       // Filter converged
     #endif
-    0,      // GCS command
-    0,      // Liftoff; LEAVE AT ZERO
+    MAX_DELAY_UNUSED,   // GCS command
+    MAX_DELAY_UNUSED,   // Liftoff; LEAVE AT ZERO
     MAX_DELAY_UNTIL_BURNOUT_DETECTED,
     MAX_DELAY_UNTIL_DROGUE_COMMANDED,
     MAX_DELAY_UNTIL_TOUCHDOWN_BAD,
     MAX_DELAY_UNTIL_MAIN_COMMANDED,
     MAX_DELAY_UNTIL_TOUCHDOWN_DROGUE,
     MAX_DELAY_UNTIL_TOUCHDOWN_MAIN,
-    0,
-    0,
-    0,
-    0
+    MAX_DELAY_UNTIL_LANDED_SAFE,
+    MAX_DELAY_UNUSED,
+    MAX_DELAY_UNUSED,
+    MAX_DELAY_UNUSED,
+    MAX_DELAY_UNUSED,
+    MAX_DELAY_UNUSED,
 };
 
 /* --- Action handler functions --- */

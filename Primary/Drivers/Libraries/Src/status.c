@@ -94,8 +94,13 @@ void ShowStatus(int8_t status, float freq_cycle, float freq_call) {
             SetLED_slide(COLOR_LIME, COLOR_BLUE);
             break;
         case STATE_FLIGHT_LANDED:
-            //SetLED_color(COLOR_OFF);
             SetLED_blink(COLOR_GREEN);
+            break;
+        case STATE_FLIGHT_LANDED_SAFE:
+            SetLED_pulse(COLOR_WHITE);
+            break;
+        case STATE_FLIGHT_LANDED_POWER_DOWN:
+            SetLED_color(COLOR_OFF);
             break;
 
         case STATE_TEST_INIT:

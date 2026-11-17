@@ -16,14 +16,17 @@
 #define MIN_DELAY_UNTIL_MAIN_COMMANDED      1000
 #define MIN_DELAY_UNTIL_MAIN_CONFIRMED      1000
 #define MIN_DELAY_UNTIL_TOUCHDOWN           15000
+#define MIN_DELAY_UNTIL_POWER_DOWN          10000
 
 /* --- Define maximum Event delay times in ms --- */
+#define MAX_DELAY_UNUSED                    0
 #define MAX_DELAY_UNTIL_BURNOUT_DETECTED    6000
 #define MAX_DELAY_UNTIL_DROGUE_COMMANDED    25000
 #define MAX_DELAY_UNTIL_TOUCHDOWN_BAD       65000   // *!*
 #define MAX_DELAY_UNTIL_MAIN_COMMANDED      110000
 #define MAX_DELAY_UNTIL_TOUCHDOWN_DROGUE    120000
 #define MAX_DELAY_UNTIL_TOUCHDOWN_MAIN      170000
+#define MAX_DELAY_UNTIL_LANDED_SAFE         5000
 
 /* --- Define all possible flight states --- */
 typedef enum {
@@ -40,6 +43,8 @@ typedef enum {
     STATE_FLIGHT_AWAIT_MAIN,        // descend under main
     STATE_FLIGHT_DESCEND_MAIN,      // descend under main
     STATE_FLIGHT_LANDED,            // touched down
+    STATE_FLIGHT_LANDED_SAFE,       // disarmed after landing
+    STATE_FLIGHT_LANDED_POWER_DOWN, // powered down after landing
 
     STATE_TEST_INIT,
     STATE_TEST_CALIB,
@@ -63,6 +68,8 @@ typedef enum {
     EVENT_FLIGHT_MAIN_COMMANDED,
     EVENT_FLIGHT_MAIN_CONFIRMED,
     EVENT_FLIGHT_TOUCHDOWN,
+    EVENT_FLIGHT_LANDED_SAFE,
+    EVENT_FLIGHT_LANDED_POWER_DOWN,
 
     EVENT_TEST_MODE_ENTER,
     EVENT_TEST_CALIBRATE,

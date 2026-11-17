@@ -392,7 +392,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       HAL_TIM_Base_Stop_IT(&htim7);
 
       // handle max state timer elapsed
-      // TODO: maybe simplify by adding timer elapsed event?
+      // TODO: move to statemachine.c
       switch (flight_sm.currentFlightState) {
         case STATE_FLIGHT_GNC_ALIGN:        StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_FILTER_CONVERGED); break;
         case STATE_FLIGHT_CHECKOUTS:        StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_CHECKOUTS_COMPLETE); break;
@@ -402,6 +402,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
         case STATE_FLIGHT_DESCEND_DROGUE:   StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_MAIN_COMMANDED); break;
         case STATE_FLIGHT_AWAIT_MAIN:       StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_TOUCHDOWN); break;
         case STATE_FLIGHT_DESCEND_MAIN:     StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_TOUCHDOWN); break;
+        case STATE_FLIGHT_LANDED:           StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_LANDED_SAFE); break;
         default: break; // error?
       }
     }
