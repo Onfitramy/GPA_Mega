@@ -104,7 +104,7 @@ void Task1000Hz_Step(void *argument) {
     ReadInternalADC(&ADC_Temperature, &ADC_V_Ref); // 7us
 
     #ifdef HIL_TESTING
-    if (flight_sm.currentFlightState >= STATE_FLIGHT_ARMED)
+    if (flight_sm.currentFlightState >= STATE_FLIGHT_BURN)
         HILupdateStates(0.001);
     #endif
 

@@ -9,7 +9,7 @@
 
 #define HIL_RAIL_LENGTH     6.0f     // m
 #define HIL_WET_MASS        22.343f  // kg
-#define HIL_IGNITION_TIME   5.0f     // s
+#define HIL_IGNITION_TIME   0.0f     // s
 #define HIL_MOTOR_BURN_TIME 5.0f     // s
 #define HIL_MOTOR_IMPULSE   5880.2f  // Ns
 #define HIL_PROPELLANT_MASS 3.454f   // kg
