@@ -166,13 +166,16 @@ void UpdatePositionPacket(DataPacket_t *position_packet, uint32_t timestamp, flo
     calcCRC(position_packet);
 }
 
-void UpdateAttitudePacket(DataPacket_t *attitude_packet, uint32_t timestamp, float phi, float theta, float psi) {
+void UpdateAttitudePacket(DataPacket_t *attitude_packet, uint32_t timestamp, float phi, float theta, float psi, float gyro_biasX, float gyro_biasY, float gyro_biasZ) {
     attitude_packet->timestamp = timestamp;
 
     // Update the Attitude packet with the latest attitude information
     attitude_packet->Data.attitude.phi = phi;
     attitude_packet->Data.attitude.theta = theta;
     attitude_packet->Data.attitude.psi = psi;
+    attitude_packet->Data.attitude.gyro_biasX = gyro_biasX;
+    attitude_packet->Data.attitude.gyro_biasY = gyro_biasY;
+    attitude_packet->Data.attitude.gyro_biasZ = gyro_biasZ;
 
     calcCRC(attitude_packet);
 }
