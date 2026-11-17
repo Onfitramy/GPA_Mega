@@ -699,12 +699,14 @@ uint8_t USB_OutputDataPacket(DataPacket_t *packet) {
                     packet->Data.imu.gyroX, packet->Data.imu.gyroY, packet->Data.imu.gyroZ, packet->Data.imu.magX, packet->Data.imu.magY, packet->Data.imu.magZ);
             break;
         case PACKET_ID_ATTITUDE:
-            sprintf((char *)usb_packet_buffer, "ID%d,%lu,%f,%f,%f\n",
-                    packet->Packet_ID , packet->timestamp, packet->Data.attitude.phi, packet->Data.attitude.theta, packet->Data.attitude.psi);
+            sprintf((char *)usb_packet_buffer, "ID%d,%lu,%f,%f,%f,%f,%f,%f\n",
+                    packet->Packet_ID , packet->timestamp, 
+                    packet->Data.attitude.phi, packet->Data.attitude.theta, packet->Data.attitude.psi,
+                    packet->Data.attitude.gyro_biasX, packet->Data.attitude.gyro_biasY, packet->Data.attitude.gyro_biasZ);
             break;
         case PACKET_ID_GPS:
-            sprintf((char *)usb_packet_buffer, "ID%d,%lu,%ld,%ld,%ld,%d,%d\n",
-                    packet->Packet_ID , packet->timestamp, packet->Data.gps.latitude, packet->Data.gps.longitude, packet->Data.gps.altitude, packet->Data.gps.course, packet->Data.gps.speed);
+            sprintf((char *)usb_packet_buffer, "ID%d,%lu,%ld,%ld,%ld,%d,%d,%f\n",
+                    packet->Packet_ID , packet->timestamp, packet->Data.gps.latitude, packet->Data.gps.longitude, packet->Data.gps.altitude, packet->Data.gps.course, packet->Data.gps.speed, packet->Data.gps.pressure);
             break;
         case PACKET_ID_POSITION:
             sprintf((char *)usb_packet_buffer, "ID%d,%lu,%ld,%ld,%ld,%ld,%ld,%ld\n",
@@ -717,12 +719,20 @@ uint8_t USB_OutputDataPacket(DataPacket_t *packet) {
                     packet->Data.power.M2_bus_5V, packet->Data.power.M2_bus_GPA_bat_volt, packet->Data.power.PU_bat_bus_volt,
                     packet->Data.power.PU_curr, packet->Data.power.PU_pow);
             break;
-        case PACKET_ID_TEMPERATURE:
-            sprintf((char *)usb_packet_buffer, "ID%d,%lu,%d,%d,%d,%d,%d,%d,%d\n",
-                    packet->Packet_ID , packet->timestamp, packet->Data.temperature.M1_ADC, packet->Data.temperature.M1_BMP,
+        case PACKET_ID_TEMPERATURE: {
+            int length = snprintf((char *)usb_packet_buffer, sizeof(usb_packet_buffer),
+                    "ID%d,%lu,%d,%d,%d,%d,%d,%d,%d,%d,%u,%.9g,%.9g\n",
+                    (int)packet->Packet_ID, (unsigned long)packet->timestamp,
+                    packet->Data.temperature.M1_ADC, packet->Data.temperature.M1_BMP,
                     packet->Data.temperature.M1_DTS, packet->Data.temperature.M1_IMU1, packet->Data.temperature.M1_MAG,
-                    packet->Data.temperature.M2_3V3, packet->Data.temperature.M2_XBee);
+                    packet->Data.temperature.M2_3V3, packet->Data.temperature.M2_XBee,
+                    packet->Data.temperature.M1_IMU2, (unsigned int)packet->Data.temperature.PU_bat,
+                    packet->Data.temperature.pressure_static, packet->Data.temperature.pressure_total);
+            if (length < 0 || (size_t)length >= sizeof(usb_packet_buffer)) {
+                return USBD_FAIL;
+            }
             break;
+        }
         case PACKET_ID_STATUS:
             sprintf((char *)usb_packet_buffer, "ID%d,%lu,%ld,%ld,%ld,%d\n",
                     packet->Packet_ID , packet->timestamp, packet->Data.status.status_flags, packet->Data.status.sensor_status_flags, packet->Data.status.error_flags, packet->Data.status.State);
@@ -735,6 +745,20 @@ uint8_t USB_OutputDataPacket(DataPacket_t *packet) {
             sprintf((char *)usb_packet_buffer, "ID%d,%lu,%f,%f,%f\n",
                     packet->Packet_ID , packet->timestamp, packet->Data.mpc_info.MPC_freq, packet->Data.mpc_info.Airbreak_deflection, packet->Data.mpc_info.Target_Angle);
             break;
+        case PACKET_ID_SPARK: {
+            // Nine significant digits preserve float precision and bound line length.
+            int length = snprintf((char *)usb_packet_buffer, sizeof(usb_packet_buffer),
+                    "ID%d,%lu,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%u\n",
+                    (int)packet->Packet_ID, (unsigned long)packet->timestamp,
+                    packet->Data.spark.magAngle, packet->Data.spark.magSpeed,
+                    packet->Data.spark.posDeviation, packet->Data.spark.voltage_driver,
+                    packet->Data.spark.temperature_driver, packet->Data.spark.temperature_converter,
+                    (unsigned int)packet->Data.spark.sparkStatus);
+            if (length < 0 || (size_t)length >= sizeof(usb_packet_buffer)) {
+                return USBD_FAIL;
+            }
+            break;
+        }
         case PACKET_ID_STATE:
             sprintf((char *)usb_packet_buffer, "ID%d,%lu,%d,%ld\n",
                     packet->Packet_ID , packet->timestamp, packet->Data.state.flight_state, packet->Data.state.timestamp_ms);

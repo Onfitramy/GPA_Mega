@@ -68,7 +68,7 @@ typedef enum {
 
     STATE_GROUNDSTATION,
 
-    STATE_MAX
+    STATE_MAX_PRIM
 } primary_flight_state_t;
 
 extern primary_flight_state_t current_primary_flight_state;
