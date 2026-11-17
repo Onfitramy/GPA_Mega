@@ -226,8 +226,7 @@ void Start10HzTask(void *argument){
 
     StateMachine_DoActions(&pu_sm, 10);
 
-    DataPacket_t powerData;
-    powerData.Packet_ID = PACKET_ID_POWER; // Power Packet ID
+    DataPacket_t powerData = CreateDataPacket(PACKET_ID_POWER);
 
     UpdatePowerPacket(&powerData,
                       xTaskGetTickCount() * portTICK_PERIOD_MS,

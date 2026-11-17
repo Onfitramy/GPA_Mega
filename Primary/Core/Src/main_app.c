@@ -23,14 +23,15 @@ QueueHandle_t USB_Tx_Queue;
 uint32_t uid[3]; // Unique ID of the board
 extern bool is_groundstation;
 
-static int32_t DTS_Temperature;
+int32_t DTS_Temperature;
+int32_t ADC_Temperature;
 
 extern ADC_HandleTypeDef hadc3;
-uint32_t ADC_Temperature, ADC_V_Ref;
+uint32_t ADC_V_Ref;
 
 GPA_Mega gpa_mega;
 
-DataPacket_t powerData;
+extern DataPacket_t powerData;
 
 bool is_groundstation = false;
 

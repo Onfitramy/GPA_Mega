@@ -22,7 +22,7 @@
 
 /* USER CODE BEGIN 0 */
 
-void ReadInternalADC(uint32_t* temperature, uint32_t* v_ref) {
+void ReadInternalADC(int32_t* temperature, uint32_t* v_ref) {
   HAL_ADC_Start(&hadc3);
   if (HAL_ADC_PollForConversion(&hadc3, 1) != HAL_OK) {
     HAL_ADC_Stop(&hadc3);

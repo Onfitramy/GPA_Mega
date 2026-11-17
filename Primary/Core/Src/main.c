@@ -51,7 +51,7 @@
 volatile uint8_t dma_waiting_ws2812;
 uint16_t adc3_buf[3];
 
-extern float ADC_Temperature, ADC_V_Sense, ADC_V_Ref;
+extern float ADC_V_Sense, ADC_V_Ref;
 extern uint8_t SPI1_State; // 0: Ready, 1: TX busy, 2: RX busy
 
 extern StateMachine_t flight_sm;

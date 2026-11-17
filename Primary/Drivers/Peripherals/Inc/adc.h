@@ -42,7 +42,7 @@ extern ADC_HandleTypeDef hadc3;
 
 void MX_ADC1_Init(void);
 void MX_ADC3_Init(void);
-void ReadInternalADC(uint32_t* temperature, uint32_t* v_ref);
+void ReadInternalADC(int32_t *temperature, uint32_t *v_ref);
 
 /* USER CODE BEGIN Prototypes */
 

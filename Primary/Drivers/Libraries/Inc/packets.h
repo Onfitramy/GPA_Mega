@@ -151,7 +151,7 @@ typedef struct {
 
 typedef struct {
     float phi, theta, psi;
-    uint32_t unused1, unused2, unused3;
+    float gyro_biasX, gyro_biasY, gyro_biasZ;
     uint16_t unused4;
 } AttitudePayload_t;
 

@@ -52,6 +52,9 @@ extern "C" {
 /* USER CODE BEGIN ET */
 extern QueueHandle_t InterruptQueue;
 extern QueueHandle_t InterBoardCom_Queue;
+
+extern int32_t DTS_Temperature;
+extern int32_t ADC_Temperature;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/

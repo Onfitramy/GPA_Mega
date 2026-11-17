@@ -51,6 +51,10 @@ void ShowStatus(int8_t status, float freq_cycle, float freq_call) {
     if((LED_blink == 0) && (LED_pulse + freq_ratio <= 255)) LED_pulse += freq_ratio;
     else if((LED_blink == 1) && (LED_pulse - freq_ratio >= 0)) LED_pulse -= freq_ratio;
     else LED_blink = !LED_blink;
+    if (current_primary_flight_state == STATE_FLIGHT_LANDED_POWER_DOWN) {
+        SetLED_color(COLOR_OFF);
+        return;
+    }
 
     switch(status) {
         case STATE_FAULT:

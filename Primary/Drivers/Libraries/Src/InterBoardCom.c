@@ -29,6 +29,8 @@ volatile InterBoardComDiagnostics_t InterBoardCom_Diagnostics;
 static uint32_t interboard_transfer_start_us;
 static uint8_t interboard_stall_reported;
 
+DataPacket_t powerData = {0};
+
 static void InterBoardCom_ReportTask(
     InterBoardSupervisorEvent_t event_id,
     SupervisorSeverity_t severity,

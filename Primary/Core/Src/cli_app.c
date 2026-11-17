@@ -16,6 +16,7 @@
 #include "stdlib.h"
 #include "usbd_cdc_if.h"
 #include "tests_app.h"
+#include "InterBoardCom.h"
 
 #define MAX_INPUT_LENGTH 50
 #define USING_VS_CODE_TERMINAL 0
@@ -125,7 +126,7 @@ static const reg_descriptor_t registers[] = {
     REG_ENTRY(a_WorldFrame_i[2], vehicle.accel_i.z, "Acceleration in without gravity", true, REG_TYPE_FLOAT),
     REG_ENTRY(x2[0], vehicle.height, "Height from EKF", false, REG_TYPE_FLOAT),
     REG_ENTRY(x2[1], vehicle.velZ, "Vertical velocity from EKF", false, REG_TYPE_FLOAT),
-    REG_ENTRY(x2[2], vehicle.quaternion.q0, "Quaternion from EKF", false, REG_TYPE_FLOAT),
+    REG_ENTRY(x2[2], vehicle.quaternion.p0, "EKF reference pressure", false, REG_TYPE_FLOAT),
     REG_ENTRY(acs_est_angle_deg, vehicle.acs.estimated_angle, "Estimated angle of ACS", false, REG_TYPE_FLOAT),
     REG_ENTRY(acs_target_angle_deg, vehicle.acs.target_angle, "Target angle of ACS", false, REG_TYPE_FLOAT),
     REG_ENTRY(spark_data.Data.spark.magAngle, vehicle.spark.magAngle, "Spark magAngle", false, REG_TYPE_FLOAT),
@@ -135,6 +136,20 @@ static const reg_descriptor_t registers[] = {
     REG_ENTRY(spark_data.Data.spark.temperature_driver, sensor.spark.temperature_driver, "Spark temperature_driver", false, REG_TYPE_FLOAT),
     REG_ENTRY(spark_data.Data.spark.temperature_converter, sensor.spark.temperature_converter, "Spark temperature_converter", false, REG_TYPE_FLOAT),
     REG_ENTRY(spark_data.Data.spark.sparkStatus, sensor.spark.sparkStatus, "Spark sparkStatus", false, REG_TYPE_U8),
+    REG_ENTRY(powerData.Data.power.M1_5V_bus, sensor.power.M1_5V_bus, "Power M1_5V_bus", false, REG_TYPE_FLOAT),
+    REG_ENTRY(powerData.Data.power.M1_BAT_bus_volt, sensor.power.M1_BAT_bus_volt, "Power M1_BAT_bus_volt", false, REG_TYPE_FLOAT),
+    REG_ENTRY(powerData.Data.power.M2_bus_5V, sensor.power.M2_bus_5V, "Power M2_bus_5V", false, REG_TYPE_FLOAT),
+    REG_ENTRY(powerData.Data.power.PU_bat_bus_volt, sensor.power.PU_bat_bus_volt, "Power PU_bat_bus_volt", false, REG_TYPE_FLOAT),
+    REG_ENTRY(powerData.Data.power.M2_bus_GPA_bat_volt, sensor.power.M2_bus_GPA_bat_volt, "Power M2_bus_GPA_bat_volt", false, REG_TYPE_FLOAT),
+    REG_ENTRY(powerData.Data.power.PU_curr, sensor.power.PU_curr, "Power PU_curr", false, REG_TYPE_FLOAT),
+    REG_ENTRY(powerData.Data.power.PU_pow, sensor.power.PU_pow, "Power PU_pow", false, REG_TYPE_FLOAT),
+    REG_ENTRY(bmp_data.pressure, sensor.bmp.pressure, "Pressure", false, REG_TYPE_FLOAT),
+    REG_ENTRY(bmp_data.temperature, sensor.bmp.temperature, "Temperature", false, REG_TYPE_FLOAT),
+    REG_ENTRY(DTS_Temperature, sensor.DTS_Temperature, "DTS Temperature", false, REG_TYPE_I32),
+    REG_ENTRY(ADC_Temperature, sensor.ADC_Temperature, "ADC Temperature", false, REG_TYPE_I32),
+    REG_ENTRY(imu1_data.temp, sensor.imu1.temp, "IMU1 Temperature", false, REG_TYPE_FLOAT),
+    REG_ENTRY(imu2_data.temp, sensor.imu2.temp, "IMU2 Temperature", false, REG_TYPE_FLOAT),
+    REG_ENTRY(mag_data.temp, sensor.mag.temp, "MAG Temperature", false, REG_TYPE_FLOAT),
     IMU1_ENTRY(accel[0], accel.x, false, REG_TYPE_FLOAT),
     IMU1_ENTRY(accel[1], accel.y, true, REG_TYPE_FLOAT),
     IMU1_ENTRY(accel[2], accel.z, true, REG_TYPE_FLOAT),
@@ -144,7 +159,6 @@ static const reg_descriptor_t registers[] = {
     MAG_ENTRY(field[0], x, false, REG_TYPE_FLOAT),
     MAG_ENTRY(field[1], y, true, REG_TYPE_FLOAT),
     MAG_ENTRY(field[2], z, true, REG_TYPE_FLOAT),
-    MAG_ENTRY(temp, temp, false, REG_TYPE_FLOAT),
     MAG_ENTRY(calibration.offset[0], offset.x, true, REG_TYPE_FLOAT),
     MAG_ENTRY(calibration.offset[1], offset.y, true, REG_TYPE_FLOAT),
     MAG_ENTRY(calibration.offset[2], offset.z, true, REG_TYPE_FLOAT),

@@ -45,6 +45,34 @@ typedef enum {
   cam_wifi_off
 } tim_delay_task_t;
 
+/* --- Define all possible flight states --- */
+typedef enum {
+    STATE_FLIGHT_ABORT,             // abort encountered
+    STATE_FLIGHT_STARTUP,           // startup
+    STATE_FLIGHT_INIT,              // initialization
+    STATE_FLIGHT_GNC_ALIGN,         // ekf filters converging
+    STATE_FLIGHT_CHECKOUTS,         // checkouts running
+    STATE_FLIGHT_ARMED,             // armed, awaiting liftoff
+    STATE_FLIGHT_BURN,              // motor burn phase
+    STATE_FLIGHT_COAST,             // ascending coast
+    STATE_FLIGHT_AWAIT_DROGUE,      // unbraked descend
+    STATE_FLIGHT_DESCEND_DROGUE,    // descend under drogue
+    STATE_FLIGHT_AWAIT_MAIN,        // descend under main
+    STATE_FLIGHT_DESCEND_MAIN,      // descend under main
+    STATE_FLIGHT_LANDED,            // touched down
+    STATE_FLIGHT_LANDED_SAFE,       // disarmed after landing
+    STATE_FLIGHT_LANDED_POWER_DOWN, // powered down after landing
+
+    STATE_TEST_INIT,
+    STATE_TEST_CALIB,
+
+    STATE_GROUNDSTATION,
+
+    STATE_MAX
+} primary_flight_state_t;
+
+extern primary_flight_state_t current_primary_flight_state;
+
 typedef struct {
   uint8_t state_errors;
   uint8_t gps_errors;

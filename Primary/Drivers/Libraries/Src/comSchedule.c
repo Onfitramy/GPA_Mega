@@ -44,11 +44,11 @@ extern StateMachine_t flight_sm;
 //                                  stat, pow, gps, imu, temp, pos, att, kalman, spark, mpc, state
 uint32_t comm_schedule_groundstation[] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // Frequencies for the groundstation (High speed sending of status packet to secondary to act as requests for all data arriving via radio)
 uint32_t comm_schedule0_frequencies[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-uint32_t comm_schedule1_frequencies[] = {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100}; // Frequencies for schedule 1 (10Hz for all packets, pre-launch)
-uint32_t comm_schedule2_frequencies[] = {100, 1000, 1000, 50, 500, 100, 100, 500, 1000, 1000, 1000}; // Frequencies for schedule 2 (Burn)
-uint32_t comm_schedule3_frequencies[] = {100, 200, 1000, 200, 100, 100, 100, 1000, 200, 100, 1000}; //Frequencies for schedule 3 (Coast)
-uint32_t comm_schedule4_frequencies[] = {100, 1000, 100, 1000, 1000, 500, 1000, 1000, 1000, 1000, 1000}; // Frequencies for schedule 4 (Descent)
-uint32_t comm_schedule5_frequencies[] = {1000, 0, 500, 0, 0, 0, 0, 0, 0, 0, 0}; // Frequencies for schedule 5 (Landed)
+uint32_t comm_schedule1_frequencies[] = {0, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100}; // Frequencies for schedule 1 (10Hz for all packets, pre-launch)
+uint32_t comm_schedule2_frequencies[] = {0, 1000, 1000, 50, 500, 100, 100, 500, 1000, 1000, 100}; // Frequencies for schedule 2 (Burn)
+uint32_t comm_schedule3_frequencies[] = {0, 200, 1000, 200, 100, 100, 100, 1000, 200, 100, 100}; //Frequencies for schedule 3 (Coast)
+uint32_t comm_schedule4_frequencies[] = {0, 1000, 100, 1000, 1000, 500, 1000, 1000, 1000, 1000, 100}; // Frequencies for schedule 4 (Descent)
+uint32_t comm_schedule5_frequencies[] = {0, 0, 500, 0, 0, 0, 0, 0, 0, 0, 1000}; // Frequencies for schedule 5 (Landed)
 uint32_t comm_schedule6_frequencies[] = {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100}; // Frequencies for schedule 6 (HIL Testing)
 uint32_t comm_schedule_no_data_frequencies[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // Frequencies for schedule "no data" (for testing the effect of sending no data at all)
 uint32_t comm_schedule_overload[] = {10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10}; // Overload test schedule (for testing the effect of sending all data at 100Hz, which is more than the radio can handle)
@@ -231,10 +231,14 @@ void ProcessDataSchedule(uint32_t current_tick) {
 void UpdatePacket(DataPacket_t *packet) {
     switch(packet->Packet_ID) {
         case PACKET_ID_STATUS:
-            UpdateStatusPacket(packet, HAL_GetTick(), /*status_flags*/0, /* sensor_flags */ 0, /* error_flags */ 0, /* flight_state */ 0);
+            UpdateStatusPacket(packet, HAL_GetTick(), status_data.status_flags, status_data.sensor_status_flags, status_data.error_flags, flight_sm.currentFlightState);
             break;
         case PACKET_ID_POWER:
-            UpdatePowerPacket(packet, HAL_GetTick(), /* PU_bat_volt */ 0, /* PU_out_pow */ 0, /* PU_out_curr */ 0, /* M2_bus_5V */ 0, /* M2_bus_GPA_bat_volt */ 0);
+            taskENTER_CRITICAL();
+            if (powerData.Packet_ID == PACKET_ID_POWER) {
+                *packet = powerData;
+            }
+            taskEXIT_CRITICAL();
             break;
         case PACKET_ID_GPS:
             UpdateGPSDataPacket(packet, HAL_GetTick(), &gps_data, bmp_data.pressure);
@@ -243,7 +247,7 @@ void UpdatePacket(DataPacket_t *packet) {
             UpdateIMUDataPacket(packet, HAL_GetTick(), &average_imu_data, &mag_data);
             break;
         case PACKET_ID_TEMPERATURE:
-            UpdateTemperaturePacket(packet, HAL_GetTick(), /* M1_DTS */ 0, /* M1_ADC */ 0, /* M1_BMP */ 0, /* M1_IMU1 */ 0, /* M1_IMU2 */ 0, /* M1_MAG */ 0, /* M2_3V3 */ 0, /* M2_XBee */ 0, /* PU_bat */ 0, /* pressure_static */ 0, /* pressure_total */ 0);
+            UpdateTemperaturePacket(packet, HAL_GetTick(), DTS_Temperature, ADC_Temperature, bmp_data.temperature, imu1_data.temp, imu2_data.temp, mag_data.temp, /* M2_3V3 */ 0, /* M2_XBee */ 0, /* PU_bat */ 0, bmp_data.pressure, /* pressure_total */ 0);
             break;
         case PACKET_ID_POSITION:
             UpdatePositionPacket(packet, HAL_GetTick(), /* posX */ 0.0f, /* posY */ 0.0f, /* posZ */ 0.0f, /* velX */ 0.0f, /* velY */ 0.0f, /* velZ */ 0.0f);

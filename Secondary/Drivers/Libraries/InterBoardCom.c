@@ -4,6 +4,8 @@
 #include <stdarg.h>
 #include <stdbool.h>
 
+#include "main.h"
+
 #include "packets.h"
 #include "W25Q1.h"
 #include "fatfs.h"
@@ -211,6 +213,11 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t packet) {
 
     uint8_t Interboard_OP = packet.InterBoardPacket_ID & 0x07; //Extract operation type
     uint8_t Interboard_Target = packet.InterBoardPacket_ID & 0xF8; //Extract Target type
+
+    if (dataPacket.Packet_ID == PACKET_ID_STATE) { //Update the current primary flight state if the packet is a state packet
+        current_primary_flight_state = dataPacket.Data.state.flight_state;
+    }
+    
     switch (Interboard_OP) {
         case INTERBOARD_OP_SAVE_SEND:
         {
