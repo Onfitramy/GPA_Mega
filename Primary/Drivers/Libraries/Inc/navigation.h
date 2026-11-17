@@ -24,8 +24,8 @@
 #define MAG_VAR 0.8*0.8
 
 // correction step discard threshold
-#define NIS_EKF3_MAG_THRESH 1.0f
-#define NIS_EKF3_ACC_THRESH 10.0f
+#define EKF_NIS_THRESH_MAG 1.0f
+#define EKF_NIS_THRESH_ACC 10.0f
 
 // convergence thresholds
 #define P_VAR_ANGLE_THRESH  0.01
@@ -40,9 +40,9 @@
 #define REFERENCE_PRESSURE_VAR 1e-6
 
 // correction step discard threshold
-#define NIS_EKF2_BARO_THRESH 9999.f // TODO: determine
-#define NIS_EKF2_GNSS_THRESH 1000.f
-#define NIS_EKF2_PTOT_THRESH 9999.f // TODO: determine
+#define EKF_NIS_THRESH_BARO 9999.f // TODO: determine
+#define EKF_NIS_THRESH_GNSS 1000.f
+#define EKF_NIS_THRESH_PTOT 9999.f // TODO: determine
 
 
 // convergence thresholds
@@ -50,6 +50,7 @@
 #define P_VAR_VELZ_THRESH   0.001
 #define P_VAR_PREF_THRESH   1
 
+#define NIS_EKF_UNUSED -1.0f
 
 /* --- Event detection Settings --- */
 #define ACC_BUFFER_SIZE 50
@@ -152,6 +153,7 @@ typedef struct {
     float *z;
 
     float NIS;
+    float NIS_threshold;
 
     arm_matrix_instance_f32 *H;
     arm_matrix_instance_f32 *K;
@@ -294,7 +296,8 @@ void EKFInit(ekf_data_t *ekf, ekf_instance_t kalman_type, uint8_t x_vec_size, ui
              arm_matrix_instance_f32 *B_mat, float *x_vec, float *u_vec);
 void EKFCorrectionInit(ekf_data_t ekf, ekf_corr_data_t *ekf_corr, ekf_correction_t corr_type, uint8_t z_vec_size,
                        arm_matrix_instance_f32 *H_mat, arm_matrix_instance_f32 *K_mat, arm_matrix_instance_f32 *R_mat,
-                       arm_matrix_instance_f32 *S_mat, arm_matrix_instance_f32 *S_inv_mat, float *z_vec, float *h_vec, float *v_vec);
+                       arm_matrix_instance_f32 *S_mat, arm_matrix_instance_f32 *S_inv_mat, 
+                       float *z_vec, float *h_vec, float *v_vec, float NIS_thresh);
 void EKFPredictStateV(ekf_data_t *Kalman);
 void EKFPredictCovariance(ekf_data_t *Kalman);
 void EKFPredictMeasurement(ekf_data_t *Kalman, ekf_corr_data_t *ekf_corr);
@@ -310,7 +313,8 @@ void EKFPredictionStep(ekf_data_t *Kalman);
 void EKFCorrectionStep(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr);
 
 void EKFgetNIS(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr);
-float getNISthreshold(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr);
+void setNISthreshold(ekf_corr_data_t *ekf_corr, float threshold);
+float getNISthreshold(ekf_corr_data_t *ekf_corr);
 bool EKFisAligned(ekf_data_t *ekf);
 
 void UpdateCircularBuffer(float *buffer, uint16_t buffer_size, uint16_t *index, float new_value);

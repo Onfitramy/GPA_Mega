@@ -520,10 +520,12 @@ void EKFInit(ekf_data_t *ekf, ekf_instance_t kalman_type, uint8_t x_vec_size, ui
 // Create new EKF correction step instance
 void EKFCorrectionInit(ekf_data_t ekf, ekf_corr_data_t *ekf_corr, ekf_correction_t corr_type, uint8_t z_vec_size,
                        arm_matrix_instance_f32 *H_mat, arm_matrix_instance_f32 *K_mat, arm_matrix_instance_f32 *R_mat,
-                       arm_matrix_instance_f32 *S_mat, arm_matrix_instance_f32 *S_inv_mat, float *z_vec, float *h_vec, float *v_vec)
+                       arm_matrix_instance_f32 *S_mat, arm_matrix_instance_f32 *S_inv_mat, 
+                       float *z_vec, float *h_vec, float *v_vec, float NIS_thresh)
 {
     // DEFAULT: correction step is inactive
     ekf_corr->correction_state = inactive;
+    ekf_corr->NIS_threshold = NIS_thresh;
 
     // set type and sizes
     ekf_corr->type = corr_type;
@@ -846,7 +848,7 @@ void EKFCorrectionStep(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
 
     // TODO: separate logic for gnc alignment vs armed through flight states
     // if NIS exceeds threshold, skip correction step
-    if (ekf_corr->NIS > getNISthreshold(ekf, ekf_corr)) return;
+    if (ekf_corr->NIS > getNISthreshold(ekf_corr)) return;
 
     // correct state vector based on innovation and Kalman Gain
     EKFCorrectStateV(ekf, ekf_corr);
@@ -864,23 +866,12 @@ void EKFgetNIS(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
     arm_vecN_dot_prod_f32(ekf_corr->z_size, ekf_corr->v, buffer, &ekf_corr->NIS);
 }
 
-float getNISthreshold(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
-    if (ekf->type == EKF2_type) {
-        if (ekf_corr->type == corr1_type) {
-            return NIS_EKF2_BARO_THRESH;
-        } else if (ekf_corr->type == corr2_type) {
-            return NIS_EKF2_GNSS_THRESH;
-        } else if (ekf_corr->type == corr3_type) {
-            return NIS_EKF2_PTOT_THRESH;
-        }
-    } else if (ekf->type == EKF3_type) {
-        if (ekf_corr->type == corr1_type) {
-            return NIS_EKF3_MAG_THRESH;
-        } else if (ekf_corr->type == corr2_type) {
-            return NIS_EKF3_ACC_THRESH;
-        }
-    }
-    return 0.f;
+void setNISthreshold(ekf_corr_data_t *ekf_corr, float threshold) {
+    ekf_corr->NIS_threshold = threshold;
+}
+
+float getNISthreshold(ekf_corr_data_t *ekf_corr) {
+    return ekf_corr->NIS_threshold;
 }
 
 // returns true if predicted variance obeys thresholds
