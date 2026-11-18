@@ -40,7 +40,7 @@
 #include "statemachine.h"
 #include "radio.h"
 
-#define IS_GROUND_STATION 1
+//#define IS_GROUND_STATION 1
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -119,8 +119,8 @@ extern radio_info_t radio_info;
 uint8_t rx_recieve_buf[NRF24L01P_PAYLOAD_LENGTH] = {0};
 
 //uint64_t XBee_transmit_addr = 0x0013a200426e530e; // XBee transmit address (to groundstation)
-//uint64_t XBee_transmit_addr = 0x0013a200426b848b; // XBee transmit address (to groundstation)
-uint64_t XBee_transmit_addr = 0x0013a200426e52e7; // XBee transmit address (to flight controller)
+uint64_t XBee_transmit_addr = 0x0013a200426b848b; // XBee transmit address (to groundstation)
+//uint64_t XBee_transmit_addr = 0x0013a200426e52e7; // XBee transmit address (to flight controller)
 /* USER CODE END Variables */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -323,7 +323,8 @@ void StartInterruptTask(void *argument)
   for(;;) {
 
      // Wait on the queue set with timeout (blocks efficiently)
-    QueueSetMemberHandle_t xActivatedMember = xQueueSelectFromSet(xQueueSet, portMAX_DELAY);
+    XBee_StartupPoll();
+    QueueSetMemberHandle_t xActivatedMember = xQueueSelectFromSet(xQueueSet, pdMS_TO_TICKS(20));
 
     if (xActivatedMember == InterruptQueue) {
       uint8_t int_pin;
@@ -382,6 +383,7 @@ void StartInterruptTask(void *argument)
       if (xQueueReceive(XBeeDataQueue, (uint8_t*)&packet, 0) == pdPASS) {
         XBEE_LastRxFrameType = packet.frame_data[0];
         if (packet.frame_data[0] == 0x88) { // Local AT Command Response
+          XBee_StartupHandleResponse(&packet);
           XBEE_ATResponses++;
           XBEE_LastATCommand = ((uint16_t)packet.frame_data[2] << 8) | packet.frame_data[3];
           XBEE_LastATStatus = packet.frame_data[4];
@@ -410,7 +412,7 @@ void StartInterruptTask(void *argument)
             // Check if command was successful
             if (packet.frame_data[4] == 0x00) {
                 uint16_t channelMask = (packet.frame_data[6] << 8) | packet.frame_data[7];
-                xBee_changeState(0); // Set state to OK
+                // Startup marks the radio ready only after all settings succeed.
                 // Process channel mask as needed
             }
           }

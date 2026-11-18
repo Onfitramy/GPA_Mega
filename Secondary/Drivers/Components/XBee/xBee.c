@@ -9,7 +9,8 @@ extern UART_HandleTypeDef huart1;
 
 DataCircularBuffer_t xBeeRxCircBuffer; // incoming buffer for outgoing packets
 
-int8_t XBee_Status = -1; // -1 = Not initialized, 0 = OK, 1 = Error
+volatile int8_t XBee_Status = -1; // -1 = Initializing, 0 = Ready, 1 = Error
+static void XBee_StartupBegin(void);
 
 uint8_t XBee_Init(void)
 {
@@ -22,7 +23,7 @@ uint8_t XBee_Init(void)
     XBee_UART_RestartReceive();
     XBee_changeBaudRate(115200); // Change XBee baudrate to 115200
     HAL_Delay(100);
-    XBee_changeDataRate(1);
+    XBee_StartupBegin();
     return 0;
 }
 
@@ -133,7 +134,7 @@ uint8_t UART_LOCK_ERROR = 0;
 volatile uint32_t XBEE_UART_TxStartOK = 0;
 volatile uint32_t XBEE_UART_TxStartBusy = 0;
 volatile uint32_t XBEE_UART_TxStartErrors = 0;
-void sendAPIFrame(uint8_t* frame, uint16_t frame_length)
+HAL_StatusTypeDef sendAPIFrame(uint8_t* frame, uint16_t frame_length)
 {
     /*if (XBee_Status != 0) {
         return; // XBee not initialized or in error state
@@ -146,6 +147,7 @@ void sendAPIFrame(uint8_t* frame, uint16_t frame_length)
     } else {
         XBEE_UART_TxStartErrors++;
     }
+    return res;
 }
 
 void xBee_changeState(uint8_t state)
@@ -187,6 +189,96 @@ void XBee_SetAPIMode(uint8_t mode) // mode: 0 = Passthrough 1 = API without esca
 }
 
 xbee_at_cmd_t at_frame;
+
+typedef struct {
+    char command[2];
+    uint8_t length;
+    uint8_t value[4];
+} XBee_StartupSetting;
+
+static const XBee_StartupSetting startup_settings[] = {
+    {{'B', 'R'}, 1, {1}},
+    {{'P', 'L'}, 1, {4}},
+    {{'D', 'R'}, 1, {1}},
+    {{'C', 'M'}, 4, {0x3E, 0xFF, 0xFD, 0xFF}},
+    {{'R', 'R'}, 1, {0x0A}},
+    {{'S', 'M'}, 1, {0}},
+    // Preserve the existing network ID on both boards.
+    {{'H', 'P'}, 1, {0}},
+    {{'A', 'P'}, 1, {1}},
+    {{'A', 'O'}, 1, {0}},
+    {{'A', 'C'}, 0, {0}}, // Apply changes; deliberately do not persist with WR.
+};
+static xbee_at_cmd_t startup_frame;
+static bool startup_active;
+static bool startup_waiting;
+static uint32_t startup_sent_at;
+volatile uint8_t XBEE_StartupStep;
+volatile uint8_t XBEE_StartupAttempts;
+volatile uint16_t XBEE_StartupCommand;
+volatile uint8_t XBEE_StartupLastStatus; // 0xFF = no response, 0xFE = UART failure
+
+static void XBee_StartupBegin(void)
+{
+    XBee_Status = -1;
+    XBEE_StartupStep = 0;
+    XBEE_StartupAttempts = 0;
+    XBEE_StartupLastStatus = 0xFF;
+    startup_waiting = false;
+    startup_active = true;
+}
+
+// Called by the interrupt task without blocking its response processing.
+void XBee_StartupPoll(void)
+{
+    if (!startup_active) return;
+    if (startup_waiting && (uint32_t)(HAL_GetTick() - startup_sent_at) < 500U) return;
+    if (XBEE_StartupAttempts >= 3) {
+        XBee_Status = 1;
+        startup_active = false;
+        return;
+    }
+    if (huart1.gState != HAL_UART_STATE_READY) return;
+
+    const XBee_StartupSetting *setting = &startup_settings[XBEE_StartupStep];
+    XBEE_StartupCommand = ((uint16_t)setting->command[0] << 8) | setting->command[1];
+    constructATFrame(&startup_frame, 0x80 + XBEE_StartupStep,
+                     XBEE_StartupCommand, (uint8_t *)setting->value, setting->length);
+    HAL_StatusTypeDef result = sendAPIFrame((uint8_t *)&startup_frame, 4 + setting->length);
+    XBEE_StartupAttempts++;
+    startup_sent_at = HAL_GetTick();
+    startup_waiting = true;
+    XBEE_StartupLastStatus = result == HAL_OK ? 0xFF : 0xFE;
+}
+
+void XBee_StartupHandleResponse(const xbee_frame_t *packet)
+{
+    uint16_t length = ((uint16_t)packet->frame_length[0] << 8) | packet->frame_length[1];
+    // Write/AC responses contain exactly five frame-data bytes. The queue
+    // copies raw UART bytes, so the checksum follows that variable-length data.
+    if (!startup_active || !startup_waiting || length != 5 ||
+        packet->frame_data[0] != 0x88 ||
+        packet->frame_data[1] != 0x80 + XBEE_StartupStep ||
+        (((uint16_t)packet->frame_data[2] << 8) | packet->frame_data[3]) != XBEE_StartupCommand)
+        return;
+    if (XBee_calcCRC((uint8_t *)packet->frame_data, length) != ((const uint8_t *)packet)[3 + length])
+        return;
+
+    XBEE_StartupLastStatus = packet->frame_data[4];
+    if (XBEE_StartupLastStatus != 0) {
+        XBee_Status = 1;
+        startup_active = false;
+        return;
+    }
+    startup_waiting = false;
+    XBEE_StartupAttempts = 0;
+    XBEE_StartupStep++;
+    if (XBEE_StartupStep == sizeof(startup_settings) / sizeof(startup_settings[0])) {
+        startup_active = false;
+        XBee_Status = 0;
+    }
+}
+
 void XBee_TestDeviceIdentifier()
 {
     constructATFrame(&at_frame, 0x01, ('D' << 8) | 'D', NULL, 0);
@@ -207,7 +299,7 @@ uint8_t XBee_QueueDataPacket(DataPacket_t* data)
 
 void XBee_TransmitQueue(uint64_t destinationAddress)
 {
-    if (UART_LOCK || huart1.gState != HAL_UART_STATE_READY) {
+    if (XBee_Status != 0 || UART_LOCK || huart1.gState != HAL_UART_STATE_READY) {
         return;
     }
     const uint16_t max_payload_bytes = sizeof(frame);
@@ -226,6 +318,7 @@ void XBee_TransmitQueue(uint64_t destinationAddress)
 
 void XBee_Transmit(uint8_t* data, uint16_t length, uint64_t destinationAddress)
 {
+    if (XBee_Status != 0) return;
     if (UART_LOCK) {
         UART_LOCK_ERROR += 1;
         return; // UART is busy
@@ -303,7 +396,7 @@ void XBee_changePowerLevel(uint8_t powerLevel)
 {
     uint8_t powerLevel_payload[1];
     powerLevel_payload[0] = powerLevel;
-    constructATFrame(&at_frame, 0x01, ('B' << 8) | 'P', powerLevel_payload, 1);
+    constructATFrame(&at_frame, 0x01, ('P' << 8) | 'L', powerLevel_payload, 1);
     sendAPIFrame((uint8_t*)&at_frame, at_frame.frame_length[0] << 8 | at_frame.frame_length[1]);
 }
 

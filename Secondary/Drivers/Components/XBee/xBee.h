@@ -61,5 +61,7 @@ typedef struct {
 #pragma pack(pop)
 
 void XBee_parseReceivedRFFrame(xbee_frame_t* frame);
+void XBee_StartupPoll(void);
+void XBee_StartupHandleResponse(const xbee_frame_t* frame);
 
 #endif /* XBEE_H_ */
