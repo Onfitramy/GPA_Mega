@@ -6,7 +6,6 @@
 #define XBEE_CS_GPIO_PORT GPIOD
 
 extern UART_HandleTypeDef huart1;
-extern uint8_t UART_RX_Buffer [64];
 
 DataCircularBuffer_t xBeeRxCircBuffer; // incoming buffer for outgoing packets
 
@@ -20,9 +19,8 @@ uint8_t XBee_Init(void)
     }
     DataCircBuffer_Init(&xBeeRxCircBuffer);
 
-    HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 3); // Start UART receive interrupt
+    XBee_UART_RestartReceive();
     XBee_changeBaudRate(115200); // Change XBee baudrate to 115200
-    HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 3); // Start UART receive interrupt
     HAL_Delay(100);
     XBee_changeDataRate(1);
     return 0;
@@ -209,6 +207,9 @@ uint8_t XBee_QueueDataPacket(DataPacket_t* data)
 
 void XBee_TransmitQueue(uint64_t destinationAddress)
 {
+    if (UART_LOCK || huart1.gState != HAL_UART_STATE_READY) {
+        return;
+    }
     const uint16_t max_payload_bytes = sizeof(frame);
     uint16_t curr_payload_bytes = 0;
 
@@ -274,6 +275,7 @@ void XBee_changeBaudRate(uint32_t baudrate)
     HAL_UART_Abort(&huart1);
     huart1.Init.BaudRate = baudrate;
     HAL_UART_Init(&huart1);
+    XBee_UART_RestartReceive(); // Discard any partial frame from the old baud rate
 }
 
 void XBee_ReadChannelMask()

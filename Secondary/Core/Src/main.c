@@ -178,7 +178,7 @@ int main(void)
   // set NRF24L01 frequency and data rate
   nrf24l01p_init(2462, _250kbps); // Set frequency to 2462 MHz and data rate to 250 kbps
   //radioSet(NRF_24_ACTIVE);
-  radioSet(NRF_24_ACTIVE);
+  radioSet(XBEE_ACTIVE);
   radioSetMode(RADIO_MODE_TRANSCEIVER);
 
   StateMachine_Init(&pu_sm, STATE_STARTUP);
@@ -213,6 +213,20 @@ volatile uint32_t XBEE_UART_RxQueueDrops = 0;
 volatile uint32_t XBEE_UART_TxComplete = 0;
 volatile uint32_t XBEE_UART_Errors = 0;
 volatile uint32_t XBEE_UART_LastError = 0;
+volatile uint32_t XBEE_UART_RxRestartErrors = 0;
+
+void XBee_UART_RestartReceive(void)
+{
+  // RX uses interrupts, not DMA: aborting RX here does not wait for DMA
+  // and leaves any ongoing UART transmission alone.
+  HAL_UART_AbortReceive(&huart1);
+  __HAL_UART_CLEAR_OREFLAG(&huart1); // SR/DR read clears RX errors and stale data
+  UART_PacketProgress = 0;
+  if (HAL_UART_Receive_IT(&huart1, UART_RX_Buffer, 3) != HAL_OK) {
+    XBEE_UART_RxRestartErrors++;
+  }
+}
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
   if(huart->Instance == USART1) {
     XBEE_UART_RxCallbacks++;
@@ -253,6 +267,7 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart){
   if (huart->Instance == USART1) {
     XBEE_UART_Errors++;
     XBEE_UART_LastError = huart->ErrorCode;
+    XBee_UART_RestartReceive(); // HAL stops RX on overrun; re-arm it explicitly
   }
 }
 

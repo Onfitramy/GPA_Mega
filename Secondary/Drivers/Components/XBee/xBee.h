@@ -5,6 +5,7 @@
 #include "packets.h"
 
 uint8_t XBee_Init(void);
+void XBee_UART_RestartReceive(void);
 void XBee_TestDeviceIdentifier();
 void XBee_SetAPIMode(uint8_t mode);
 void XBee_GetTemperature();
@@ -25,7 +26,7 @@ void XBee_ReadHardwareAddressLow(void);
 void xBee_changeState(uint8_t state);
 
 #define XBEE_MAX_FRAME_SIZE 64
-#define XBEE_MAX_RF_PAYLOAD_SIZE 256
+#define XBEE_MAX_RF_PAYLOAD_SIZE 268
 
 #pragma pack(push, 1)
 typedef struct {

@@ -119,7 +119,7 @@ extern radio_info_t radio_info;
 uint8_t rx_recieve_buf[NRF24L01P_PAYLOAD_LENGTH] = {0};
 
 //uint64_t XBee_transmit_addr = 0x0013a200426e530e; // XBee transmit address (to groundstation)
-//uint64_t XBee_transmit_addr = 0x0013a200426b848b; // XBee transmit address (to flight controller)
+//uint64_t XBee_transmit_addr = 0x0013a200426b848b; // XBee transmit address (to groundstation)
 uint64_t XBee_transmit_addr = 0x0013a200426e52e7; // XBee transmit address (to flight controller)
 /* USER CODE END Variables */
 
@@ -201,6 +201,8 @@ void StartDefaultTask(void *argument)
 
     StateMachine_DoActions(&pu_sm, 100);
 
+    XBee_TransmitQueue(XBee_transmit_addr); // Transmit data at 100Hz
+
     ShowStatus(pu_sm.currentState, 1, 100);
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 100Hz
   }
@@ -240,8 +242,6 @@ void Start10HzTask(void *argument){
     InterBoardCom_FillData(&powerPacket, &powerData);
     InterBoardCom_SendPacket(&powerPacket);
     #endif
-
-    XBee_TransmitQueue(XBee_transmit_addr); // Transmit data at 10Hz
 
     vTaskDelayUntil( &xLastWakeTime, xFrequency); // 10Hz
   }
@@ -317,6 +317,7 @@ void StartInterruptTask(void *argument)
   HAL_NVIC_EnableIRQ(USART1_IRQn); // Enable USART1 interrupt for XBee
   HAL_NVIC_EnableIRQ(EXTI2_IRQn); //Enable NRF24L01P interrupt, needs to be after queue set creation
 
+  osDelay(1000); // Give the XBee time to boot after power-on
   XBee_Init();
   /* Infinite loop */
   for(;;) {
