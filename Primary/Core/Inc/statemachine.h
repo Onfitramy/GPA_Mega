@@ -13,7 +13,7 @@
 #define MIN_DELAY_UNTIL_BURNOUT_DETECTED    3000
 #define MIN_DELAY_UNTIL_DROGUE_COMMANDED    2000
 #define MIN_DELAY_UNTIL_DROGUE_CONFIRMED    500
-#define MIN_DELAY_UNTIL_MAIN_COMMANDED      1000
+#define MIN_DELAY_UNTIL_MAIN_COMMANDED      0
 #define MIN_DELAY_UNTIL_MAIN_CONFIRMED      1000
 #define MIN_DELAY_UNTIL_TOUCHDOWN           15000
 #define MIN_DELAY_UNTIL_POWER_DOWN          10000
@@ -28,8 +28,9 @@
 #define MAX_DELAY_UNTIL_TOUCHDOWN_MAIN      170000
 #define MAX_DELAY_UNTIL_LANDED_SAFE         5000
 
-/* --- Define all possible flight states --- */
+/* --- Define all possible vehicle states --- */
 typedef enum {
+    // flight states
     STATE_FLIGHT_ABORT,             // abort encountered
     STATE_FLIGHT_STARTUP,           // startup
     STATE_FLIGHT_INIT,              // initialization
@@ -46,16 +47,20 @@ typedef enum {
     STATE_FLIGHT_LANDED_SAFE,       // disarmed after landing
     STATE_FLIGHT_LANDED_POWER_DOWN, // powered down after landing
 
+    // test states
     STATE_TEST_INIT,
     STATE_TEST_CALIB,
 
+    // groundstation state
     STATE_GROUNDSTATION,
 
-    STATE_MAX
+    // not an actual state; defines the total number of states
+    STATE_MAX,
 } flight_state_t;
 
 /* --- Define all possible flight events --- */
 typedef enum {
+    // flight events
     EVENT_FLIGHT_ABORT,
     EVENT_FLIGHT_STARTUP_COMPLETE,
     EVENT_FLIGHT_GNSS_FIX,
@@ -71,16 +76,22 @@ typedef enum {
     EVENT_FLIGHT_LANDED_SAFE,
     EVENT_FLIGHT_LANDED_POWER_DOWN,
 
+    // test events
     EVENT_TEST_MODE_ENTER,
     EVENT_TEST_CALIBRATE,
     EVENT_TEST_MODE_EXIT,
 
-    EVENT_MAX
+    // not an actual event; defines the total number of events
+    EVENT_MAX,
 } flight_event_t;
 
 typedef struct {
-    flight_state_t currentFlightState;  // Holds the current flight state
-    uint32_t timestamp_ms;              // Holds time of entering current state
+    flight_state_t currentFlightState;  // the current flight state
+    uint32_t timestamp_ms;              // the time of entering current state
+    flight_event_t tim_trigger_event;   // the event that is dispatched once the maximum delay timer triggers
+    uint32_t tim_trigger_time_ms;       // the maximum delay to be enforced for the current state
+    uint32_t tim_counter;               // the counter of the maximum delay timer
+    TIM_HandleTypeDef *htim;            // points to the maximum delay timer
 } StateMachine_t;
 
 typedef flight_state_t (*StateHandler_t)(flight_event_t event);
@@ -95,17 +106,17 @@ extern GPA_Mega gpa_mega;
 extern StatusPayload_t status_data;
 
 extern TIM_HandleTypeDef htim7;
-extern uint32_t tim7_target_ms;
-extern volatile uint32_t tim7_ms;
+
 extern TIM_HandleTypeDef htim14;
 extern uint32_t tim14_target_ms;
 extern TIM_HandleTypeDef htim16;
 extern uint32_t tim16_target_ms;
 
 /* --- Function declarations --- */
-void StateMachine_Init(StateMachine_t *sm, flight_state_t initialState);
+void StateMachine_Init(StateMachine_t *sm, flight_state_t initialState, TIM_HandleTypeDef *htim);
 void StateMachine_Dispatch(StateMachine_t *sm, flight_event_t event);
 void StateMachine_ForceState(StateMachine_t *sm, flight_state_t newState);
+void StateMachine_TimeHandler(StateMachine_t *sm, TIM_HandleTypeDef *htim);
 void StateMachine_DoActions(StateMachine_t *sm, uint16_t freq);
 
 #endif // STATEMACHINE_H

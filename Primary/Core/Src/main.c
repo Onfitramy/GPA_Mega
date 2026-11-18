@@ -56,8 +56,6 @@ extern uint8_t SPI1_State; // 0: Ready, 1: TX busy, 2: RX busy
 
 extern StateMachine_t flight_sm;
 
-volatile uint32_t tim7_ms = 0;
-uint32_t tim7_target_ms;
 volatile uint32_t tim13_ms = 0;
 uint32_t tim13_target_ms;
 volatile uint32_t tim14_ms = 0;
@@ -378,37 +376,15 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   /* USER CODE BEGIN Callback 0 */
-
+  StateMachine_TimeHandler(&flight_sm, htim);
   /* USER CODE END Callback 0 */
   if (htim->Instance == TIM6) {
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-  // Timer for handling maximum event delay times of StateMachine
-  else if (htim->Instance == TIM7) {
-    tim7_ms++;
-    if (tim7_ms >= tim7_target_ms) {
-      tim7_ms = 0;
-      HAL_TIM_Base_Stop_IT(&htim7);
 
-      // handle max state timer elapsed
-      // TODO: move to statemachine.c
-      switch (flight_sm.currentFlightState) {
-        case STATE_FLIGHT_GNC_ALIGN:        StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_FILTER_CONVERGED); break;
-        case STATE_FLIGHT_CHECKOUTS:        StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_CHECKOUTS_COMPLETE); break;
-        case STATE_FLIGHT_BURN:             StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_BURNOUT_DETECTED); break;
-        case STATE_FLIGHT_COAST:            StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_DROGUE_COMMANDED); break;
-        case STATE_FLIGHT_AWAIT_DROGUE:     StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_TOUCHDOWN); break;
-        case STATE_FLIGHT_DESCEND_DROGUE:   StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_MAIN_COMMANDED); break;
-        case STATE_FLIGHT_AWAIT_MAIN:       StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_TOUCHDOWN); break;
-        case STATE_FLIGHT_DESCEND_MAIN:     StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_TOUCHDOWN); break;
-        case STATE_FLIGHT_LANDED:           StateMachine_Dispatch(&flight_sm, EVENT_FLIGHT_LANDED_SAFE); break;
-        default: break; // error?
-      }
-    }
-  }
   // Timer for handling drogue deploy servo signal
-  else if (htim->Instance == TIM13) {
+  if (htim->Instance == TIM13) {
     tim13_ms++;
     if (tim13_ms >= tim13_target_ms) {
       tim13_ms = 0;

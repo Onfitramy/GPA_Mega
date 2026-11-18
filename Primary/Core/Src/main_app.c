@@ -63,10 +63,10 @@ void Startup() {
         cli_target_mode = CLI_TARGET_MODE_EXTERNAL; // Groundstation always uses external target mode
         signalPlotterSend = false; // Disable signal plotter by default on groundstation
 
-        StateMachine_Init(&flight_sm, STATE_GROUNDSTATION);
+        StateMachine_Init(&flight_sm, STATE_GROUNDSTATION, &htim7);
     } else {
         is_groundstation = false;
-        StateMachine_Init(&flight_sm, STATE_FLIGHT_STARTUP);
+        StateMachine_Init(&flight_sm, STATE_FLIGHT_STARTUP, &htim7);
     }
 
     // define output signal names

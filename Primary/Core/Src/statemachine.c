@@ -643,50 +643,88 @@ static StateExit_t stateExitTable[STATE_MAX] = {
 };
 
 /* --- Lookup tables for timing constraints --- */
+// this table specifies for each event the minimum time in ms between a state transition and the event
 uint32_t minEventDelayTable[EVENT_MAX] = {
-    0,
-    0,
-    0,
-    MIN_DELAY_UNTIL_FILTER_CONVERGED,
-    MIN_DELAY_UNTIL_CHECKOUTS_COMPLETE,
-    MIN_DELAY_UNTIL_LAUNCH_DETECTED,
-    MIN_DELAY_UNTIL_BURNOUT_DETECTED,
-    MIN_DELAY_UNTIL_DROGUE_COMMANDED,
-    MIN_DELAY_UNTIL_DROGUE_CONFIRMED,
-    MIN_DELAY_UNTIL_MAIN_COMMANDED,
-    MIN_DELAY_UNTIL_MAIN_CONFIRMED,
-    MIN_DELAY_UNTIL_TOUCHDOWN,
-    0,
-    MIN_DELAY_UNTIL_POWER_DOWN,
-    0,
-    0,
-    0
+    // flight events
+    [EVENT_FLIGHT_ABORT]              = 0,
+    [EVENT_FLIGHT_STARTUP_COMPLETE]   = 0,
+    [EVENT_FLIGHT_GNSS_FIX]           = 0,
+    [EVENT_FLIGHT_FILTER_CONVERGED]   = MIN_DELAY_UNTIL_FILTER_CONVERGED,
+    [EVENT_FLIGHT_CHECKOUTS_COMPLETE] = MIN_DELAY_UNTIL_CHECKOUTS_COMPLETE,
+    [EVENT_FLIGHT_LAUNCH_DETECTED]    = MIN_DELAY_UNTIL_LAUNCH_DETECTED,
+    [EVENT_FLIGHT_BURNOUT_DETECTED]   = MIN_DELAY_UNTIL_BURNOUT_DETECTED,
+    [EVENT_FLIGHT_DROGUE_COMMANDED]   = MIN_DELAY_UNTIL_DROGUE_COMMANDED,
+    [EVENT_FLIGHT_DROGUE_CONFIRMED]   = MIN_DELAY_UNTIL_DROGUE_CONFIRMED,
+    [EVENT_FLIGHT_MAIN_COMMANDED]     = MIN_DELAY_UNTIL_MAIN_COMMANDED,
+    [EVENT_FLIGHT_MAIN_CONFIRMED]     = MIN_DELAY_UNTIL_MAIN_CONFIRMED,
+    [EVENT_FLIGHT_TOUCHDOWN]          = MIN_DELAY_UNTIL_TOUCHDOWN,
+    [EVENT_FLIGHT_LANDED_SAFE]        = 0,
+    [EVENT_FLIGHT_LANDED_POWER_DOWN]  = MIN_DELAY_UNTIL_POWER_DOWN,
+
+    // test events
+    [EVENT_TEST_MODE_ENTER] = 0,
+    [EVENT_TEST_CALIBRATE]  = 0,
+    [EVENT_TEST_MODE_EXIT]  = 0,
 };
 
-uint32_t maxEventDelayTable[STATE_MAX] = {
-    MAX_DELAY_UNUSED,   // Abort Exit; LEAVE AT ZERO
-    MAX_DELAY_UNUSED,   // Startup complete
-    MAX_DELAY_UNUSED,   // GNSS Fix
-    #ifdef HIL_TESTING
-    2000,               // Filter converged
-    #else
-    MAX_DELAY_UNUSED,       // Filter converged
-    #endif
-    MAX_DELAY_UNUSED,   // GCS command
-    MAX_DELAY_UNUSED,   // Liftoff; LEAVE AT ZERO
-    MAX_DELAY_UNTIL_BURNOUT_DETECTED,
-    MAX_DELAY_UNTIL_DROGUE_COMMANDED,
-    MAX_DELAY_UNTIL_TOUCHDOWN_BAD,
-    MAX_DELAY_UNTIL_MAIN_COMMANDED,
-    MAX_DELAY_UNTIL_TOUCHDOWN_DROGUE,
-    MAX_DELAY_UNTIL_TOUCHDOWN_MAIN,
-    MAX_DELAY_UNTIL_LANDED_SAFE,
-    MAX_DELAY_UNUSED,
-    MAX_DELAY_UNUSED,
-    MAX_DELAY_UNUSED,
-    MAX_DELAY_UNUSED,
-    MAX_DELAY_UNUSED,
+// this table specifies for each state the maximum time until an event is dispatched
+uint32_t maxStateDurationTable[STATE_MAX] = {
+    // flight states
+    [STATE_FLIGHT_ABORT]   = MAX_DELAY_UNUSED,   // Abort Exit; LEAVE AT ZERO
+    [STATE_FLIGHT_STARTUP] = MAX_DELAY_UNUSED,   // Startup complete
+    [STATE_FLIGHT_INIT]    = MAX_DELAY_UNUSED,   // GNSS Fix
+#ifdef HIL_TESTING
+    [STATE_FLIGHT_GNC_ALIGN] = 2000,             // Filter converged
+#else
+    [STATE_FLIGHT_GNC_ALIGN] = MAX_DELAY_UNUSED, // Filter converged
+#endif
+    [STATE_FLIGHT_CHECKOUTS]         = MAX_DELAY_UNUSED,   // GCS command
+    [STATE_FLIGHT_ARMED]             = MAX_DELAY_UNUSED,   // Liftoff; LEAVE AT ZERO
+    [STATE_FLIGHT_BURN]              = MAX_DELAY_UNTIL_BURNOUT_DETECTED,
+    [STATE_FLIGHT_COAST]             = MAX_DELAY_UNTIL_DROGUE_COMMANDED,
+    [STATE_FLIGHT_AWAIT_DROGUE]      = MAX_DELAY_UNTIL_TOUCHDOWN_BAD,
+    [STATE_FLIGHT_DESCEND_DROGUE]    = MAX_DELAY_UNTIL_MAIN_COMMANDED,
+    [STATE_FLIGHT_AWAIT_MAIN]        = MAX_DELAY_UNTIL_TOUCHDOWN_DROGUE,
+    [STATE_FLIGHT_DESCEND_MAIN]      = MAX_DELAY_UNTIL_TOUCHDOWN_MAIN,
+    [STATE_FLIGHT_LANDED]            = MAX_DELAY_UNTIL_LANDED_SAFE,
+    [STATE_FLIGHT_LANDED_SAFE]       = MAX_DELAY_UNUSED,
+    [STATE_FLIGHT_LANDED_POWER_DOWN] = MAX_DELAY_UNUSED,
+
+    // test states
+    [STATE_TEST_INIT] = MAX_DELAY_UNUSED,
+    [STATE_TEST_CALIB] = MAX_DELAY_UNUSED,
+
+    // groundstation state
+    [STATE_GROUNDSTATION] = MAX_DELAY_UNUSED,
 };
+
+// this table specifies for each state which event is forced after the maximum state duration
+flight_event_t autoEventTriggerTable[STATE_MAX] = {
+    // flight states
+    [STATE_FLIGHT_ABORT]             = EVENT_MAX,
+    [STATE_FLIGHT_STARTUP]           = EVENT_MAX,
+    [STATE_FLIGHT_INIT]              = EVENT_MAX,
+    [STATE_FLIGHT_GNC_ALIGN]         = EVENT_FLIGHT_FILTER_CONVERGED,
+    [STATE_FLIGHT_CHECKOUTS]         = EVENT_FLIGHT_CHECKOUTS_COMPLETE,
+    [STATE_FLIGHT_ARMED]             = EVENT_MAX,
+    [STATE_FLIGHT_BURN]              = EVENT_FLIGHT_BURNOUT_DETECTED,
+    [STATE_FLIGHT_COAST]             = EVENT_FLIGHT_DROGUE_COMMANDED,
+    [STATE_FLIGHT_AWAIT_DROGUE]      = EVENT_FLIGHT_TOUCHDOWN,
+    [STATE_FLIGHT_DESCEND_DROGUE]    = EVENT_FLIGHT_MAIN_COMMANDED,
+    [STATE_FLIGHT_AWAIT_MAIN]        = EVENT_FLIGHT_TOUCHDOWN,
+    [STATE_FLIGHT_DESCEND_MAIN]      = EVENT_FLIGHT_TOUCHDOWN,
+    [STATE_FLIGHT_LANDED]            = EVENT_FLIGHT_LANDED_SAFE,
+    [STATE_FLIGHT_LANDED_SAFE]       = EVENT_MAX,
+    [STATE_FLIGHT_LANDED_POWER_DOWN] = EVENT_MAX,
+
+    // test states
+    [STATE_TEST_INIT]  = EVENT_MAX,
+    [STATE_TEST_CALIB] = EVENT_MAX,
+
+    // groundstation state
+    [STATE_GROUNDSTATION] = EVENT_MAX,
+};
+
 
 /* --- Action handler functions --- */
 static void StateEntryHandler(StateMachine_t *sm, flight_state_t state) {
@@ -706,7 +744,11 @@ static void StateDoHandler(StateMachine_t *sm, flight_state_t state, uint16_t fr
 }
 
 /* --- User functions --- */
-void StateMachine_Init(StateMachine_t *sm, flight_state_t initialState) {
+void StateMachine_Init(StateMachine_t *sm, flight_state_t initialState, TIM_HandleTypeDef *htim) {
+    // set the timer HAL pointer
+    sm->htim = htim;
+
+    // initial state
     sm->currentFlightState = initialState;
 
     // call entry action for initial state
@@ -714,7 +756,10 @@ void StateMachine_Init(StateMachine_t *sm, flight_state_t initialState) {
 }
 
 void StateMachine_Dispatch(StateMachine_t *sm, flight_event_t event) {
-    if (sm->currentFlightState >= STATE_MAX) return;
+    if (sm->currentFlightState >= STATE_MAX)
+        return;
+    if (event >= EVENT_MAX)
+        return;
 
     // TODO: store event on Flash & SD
     
@@ -725,10 +770,12 @@ void StateMachine_Dispatch(StateMachine_t *sm, flight_event_t event) {
     flight_state_t newState = stateHandlerTable[oldState](event);
 
     // prevent exit and entry actions if no state change
-    if (newState == oldState || newState >= STATE_MAX) return;
+    if (newState == oldState || newState >= STATE_MAX)
+        return;
 
     // don't update state if minimum entry time delay for event hasn't elapsed yet
-    if (minEventDelayTable[event] > (HAL_GetTick() - sm->timestamp_ms)) return;
+    if (minEventDelayTable[event] > (HAL_GetTick() - sm->timestamp_ms))
+        return;
     
     // exit old state
     StateExitHandler(sm, oldState);
@@ -738,12 +785,13 @@ void StateMachine_Dispatch(StateMachine_t *sm, flight_event_t event) {
     Buzzer_PlayBeepCode(flight_sm.currentFlightState);
 
     // stop timer
-    HAL_TIM_Base_Stop_IT(&htim7);
+    HAL_TIM_Base_Stop_IT(sm->htim);
 
     // start timer to enforce maximum delay until event
-    if ((tim7_target_ms = maxEventDelayTable[newState])) {
-        tim7_ms = 0;
-        HAL_TIM_Base_Start_IT(&htim7);
+    if ((sm->tim_trigger_time_ms = maxStateDurationTable[newState])) {
+        sm->tim_counter = 0;
+        sm->tim_trigger_event = autoEventTriggerTable[newState];
+        HAL_TIM_Base_Start_IT(sm->htim);
     }
 
     // enter new state
@@ -760,7 +808,8 @@ void StateMachine_ForceState(StateMachine_t *sm, flight_state_t newState) {
     flight_state_t oldState = sm->currentFlightState;
 
     // prevent exit and entry actions if no state change
-    if (newState == oldState || newState >= STATE_MAX) return;
+    if (newState == oldState || newState >= STATE_MAX)
+        return;
     
     // exit old state
     StateExitHandler(sm, oldState);
@@ -769,17 +818,38 @@ void StateMachine_ForceState(StateMachine_t *sm, flight_state_t newState) {
     sm->currentFlightState = newState;
 
     // stop timer
-    HAL_TIM_Base_Stop_IT(&htim7);
+    HAL_TIM_Base_Stop_IT(sm->htim);
 
     // start timer to enforce maximum delay until event
-    if ((tim7_target_ms = maxEventDelayTable[newState])) {
-        tim7_ms = 0;
-        HAL_TIM_Base_Start_IT(&htim7);
+    if ((sm->tim_trigger_time_ms = maxStateDurationTable[newState])) {
+        sm->tim_counter = 0;
+        sm->tim_trigger_event = autoEventTriggerTable[newState];
+        HAL_TIM_Base_Start_IT(sm->htim);
     }
 
     // enter new state
     StateEntryHandler(sm, newState);
     time_index = HAL_GetTick();
+}
+
+void StateMachine_TimeHandler(StateMachine_t *sm, TIM_HandleTypeDef *htim) {
+    // check whether our timer got called
+    if (sm->htim->Instance != htim->Instance)
+        return;
+    
+    // increment counter
+    sm->tim_counter++;
+
+    // have we reached the target time?
+    if (sm->tim_counter < sm->tim_trigger_time_ms)
+        return;
+
+    // halt & reset the timer
+    HAL_TIM_Base_Stop_IT(sm->htim);
+    sm->tim_counter = 0;
+
+    // dispatch the triggered event
+    StateMachine_Dispatch(sm, sm->tim_trigger_event);
 }
 
 void StateMachine_DoActions(StateMachine_t *sm, uint16_t freq) {
