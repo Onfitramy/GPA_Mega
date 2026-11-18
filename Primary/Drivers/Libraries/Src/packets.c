@@ -338,23 +338,9 @@ void Buzzer_PlaySongRepeat(uint8_t song_num, uint16_t period_ms) {
     sendcmdToTarget(&packet);
 }
 
-void Buzzer_PlayBeepCode(uint8_t flight_state) {
-    uint8_t parameters[1];
-
-    switch (flight_state) {
-    case STATE_FLIGHT_ARMED:
-        parameters[0] = BUZZER_PATTERN_CODE_PRIMARY_ARMED;
-        break;
-    case STATE_FLIGHT_ABORT:
-        parameters[0] = BUZZER_PATTERN_CODE_PRIMARY_ABORT;
-        break;
-    default:
-        parameters[0] = BUZZER_PATTERN_REPEAT_STOP;
-        break;
-    }
-
+void Buzzer_PlayBeepCode(BuzzerPattern_t pattern) {
     DataPacket_t packet;
-    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_BUZZER_PLAYBEEPCODE, parameters, sizeof(parameters));
+    CreateCommandPacket(&packet, HAL_GetTick(), COMMAND_TARGET_SECONDARY, COMMAND_ID_BUZZER_PLAYBEEPCODE, &pattern, sizeof(pattern));
     sendcmdToTarget(&packet);
 }
 

@@ -1128,8 +1128,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   }
   else if (htim->Instance == TIM10) {
     tim10_ms++;
-    switch (buzzerPattern) {
-      case BUZZER_PATTERN_PLAY_NOTE:
+    if (buzzerPattern == BUZZER_PATTERN_PLAY_NOTE) {
         if ((tim10_ms >= tim10_target1_ms) && (buzzerActivePeriod || !buzzerPeriodicMode)) {
           tim10_ms = 0;
           buzzerStop();
@@ -1145,65 +1144,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
         if (buzzerPeriodicMode) {
           HAL_TIM_Base_Start_IT(&htim10);
         }
-        break;
-
-      case BUZZER_PATTERN_PLAY_ASE_SONG:
-        if (tim10_ms >= tim10_target1_ms) {
-          tim10_ms = 0;
-          ASESongTable(buzzerEventNumber);
-          buzzerEventNumber++;
-        }
-        break;
-      case BUZZER_PATTERN_PLAY_FAILURE_SONG:
-        if (tim10_ms >= tim10_target1_ms) {
-          tim10_ms = 0;
-          FailureSongTable(buzzerEventNumber);
-          buzzerEventNumber++;
-        }
-        break;
-      // It is intended that only the last case does anything.
-      // The other cases fall through to the last case, because they shall execute the same code.
-      case BUZZER_PATTERN_STOP:
-        break;
-      case BUZZER_PATTERN_CODE_PRIMARY_ARMED:
-      case BUZZER_PATTERN_CODE_PRIMARY_ABORT:
-      case BUZZER_PATTERN_CODE_SECONDARY_BATTERY_LOW:
-      case BUZZER_PATTERN_CODE_SECONDARY_BATTERY_CRITICAL:
-      case BUZZER_PATTERN_CODE_SECONDARY_FAULT:
-        #ifdef BUZZER_BEEP_CODES
-        if (tim10_ms >= tim10_target1_ms) {
-          tim10_ms = 0;
-          BeepCodeTable(buzzerEventNumber, buzzerPattern);
-          buzzerEventNumber++;
-        }
-        #endif
-        break;
+    } else if (tim10_ms >= tim10_target1_ms) {
+      tim10_ms = 0;
+      buzzerPatternTable(buzzerPattern, buzzerEventNumber);
+      buzzerEventNumber++;
     }
-
   }
   else if (htim->Instance == TIM11) {
     tim11_ms++;
     if (tim11_ms >= tim11_target_ms) {
       tim11_ms = 0;
-
-      #ifdef BUZZER_BEEP_CODES
-      if (buzzerPattern != BUZZER_PATTERN_PLAY_NOTE &&
-          buzzerPattern != BUZZER_PATTERN_PLAY_ASE_SONG &&
-          buzzerPattern != BUZZER_PATTERN_PLAY_FAILURE_SONG) {
-        if (primaryActive) {
-          buzzerPattern = primaryPattern;
-          if (secondaryPattern != BUZZER_PATTERN_STOP) {
-            primaryActive = false;
-          }
-        } else {
-          buzzerPattern = secondaryPattern;
-          if (secondaryPattern != BUZZER_PATTERN_STOP) {
-            primaryActive = true;
-          }
-        }
-      }
-      #endif
-
       buzzerPlayPattern(buzzerPattern);
     }
   }

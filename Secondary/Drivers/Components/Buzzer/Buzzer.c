@@ -1,6 +1,10 @@
 #include "Buzzer.h"
+#include "packets.h"
 
 #define TIM_FREQ 84000000
+
+#define BUZZER_PAUSE(duration_ms) .note = "0", .duration = (uint32_t)(duration_ms)
+#define MELODY_LIST_ENTRY(mtable) .melody_table = mtable, .num_entries = sizeof(mtable) / sizeof(Melody_entry_t)
 
 bool buzzerPeriodicMode = false;
 bool buzzerActivePeriod = false;
@@ -10,121 +14,21 @@ BuzzerPattern_t secondaryPattern = BUZZER_PATTERN_STOP;
 bool primaryActive = true;
 uint8_t buzzerEventNumber = 0;
 
-static int prescalerForFrequency(float frequency) {
-	if (frequency == 0) return 0;
-	return (TIM_FREQ / (1000.f * frequency)) - 0.5f;
-}
-
-void buzzerInit() {
-	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 250);
-}
-
-static void buzzerSetFreq(float frequency) {
-	__HAL_TIM_SET_PRESCALER(&htim3, prescalerForFrequency(frequency));
-	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
-}
-
-void buzzerStop() {
-    buzzerActivePeriod = false;
-    HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_2);
-}
-
-void buzzerStart() {
-    buzzerActivePeriod = true;
-    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
-}
-
-void buzzerStopPeriodic() {
-    HAL_TIM_Base_Stop_IT(&htim10);
-    buzzerStop();
-}
-
-void buzzerStartPeriodic() {
-    HAL_TIM_Base_Start_IT(&htim10);
-    buzzerStart();
-}
-
-/*Set any note between C0 and B8 (C2 - B6 recommended, unless you want to be annoying)*/
-void buzzerPlayNote(char *note, uint32_t duration_ms) {
-    buzzerPeriodicMode = false;
-    HAL_TIM_Base_Stop_IT(&htim10);
-
-    float frequency;
-	if ((frequency = get_frequency(note)) == -1) return;
-	buzzerSetFreq(frequency);
-
-    tim10_target1_ms = duration_ms;
-    HAL_TIM_Base_Start_IT(&htim10);
-}
-
-void buzzerDelay(uint32_t duration_ms) {
-    buzzerStop();
-    tim10_target1_ms = duration_ms;
-    HAL_TIM_Base_Start_IT(&htim10);
-}
-
-void buzzerEnablePeriodicMode1(char *note, uint32_t duration_on_ms, uint32_t duration_off_ms) {
-    buzzerPattern = BUZZER_PATTERN_PLAY_NOTE;
-    buzzerPeriodicMode = true;
-    buzzerActivePeriod = true;
-    HAL_TIM_Base_Stop_IT(&htim10);
-
-    float frequency = get_frequency(note);
-	buzzerSetFreq(frequency);
-
-    tim10_target1_ms = duration_on_ms;
-    tim10_target2_ms = duration_off_ms;
-    HAL_TIM_Base_Start_IT(&htim10);
-}
-
-void buzzerEnablePeriodicMode2(BuzzerPattern_t pattern, uint32_t period_ms) {
-    tim11_target_ms = period_ms;
-    buzzerPattern = pattern;
-    HAL_TIM_Base_Start_IT(&htim11);
-}
-
-void buzzerPlayPattern(BuzzerPattern_t pattern) {
-    buzzerPattern = pattern;
-    buzzerPeriodicMode = false;
-    buzzerEventNumber = 0;
-    HAL_TIM_Base_Stop_IT(&htim10);
-
-    tim10_target1_ms = 0;
-    HAL_TIM_Base_Start_IT(&htim10);
-}
-
-void buzzerPlaySecondaryStatus(sm_state_t flight_state) {
-    #ifndef BUZZER_BEEP_CODES
-    return;
-    #endif
-    BuzzerPattern_t pattern;
-
-    switch (flight_state) {
-    case STATE_FAULT:
-        pattern = BUZZER_PATTERN_CODE_SECONDARY_FAULT;
-        break;
-    case STATE_BATTERY_LOW:
-        pattern = BUZZER_PATTERN_CODE_SECONDARY_BATTERY_LOW;
-        break;
-    case STATE_BATTERY_CRITICAL:
-        pattern = BUZZER_PATTERN_CODE_SECONDARY_BATTERY_CRITICAL;
-        break;
-    default:
-        pattern = BUZZER_PATTERN_STOP;
-        break;
-    }
-
-    buzzerStop();
-    secondaryPattern = pattern;
-    buzzerPlayPattern(pattern);
-    buzzerEnablePeriodicMode2(pattern, BUZZER_BEEP_REPEAT_TIME);
-}
-
 // Define the frequency for each note
 typedef struct {
     const char *name;  // Note name
     float frequency;   // Corresponding frequency in Hz
 } Note;
+
+typedef struct {
+    char *note;
+    uint32_t duration;
+} Melody_entry_t;
+
+typedef struct {
+    Melody_entry_t *melody_table;
+    uint8_t num_entries;
+} Melody_list_t;
 
 Note notes[] = {
     {"C0", 16.35f},
@@ -245,9 +149,278 @@ Note notes[] = {
     {"B8", 7902.13f}
 };
 
+#define DURATION_ASE_SONG_1_8 210
+#define DURATION_FIX_YOU_1_8  250
+#define DURATION_COW_1_8      100 // x62
+#define DURATION_PAUSE        10
+
+Melody_entry_t melodyTable_ASE[] = {
+    {.note = "B3", .duration = DURATION_ASE_SONG_1_8 - DURATION_PAUSE},
+    {BUZZER_PAUSE(DURATION_PAUSE)},
+    {.note = "B3", .duration = DURATION_ASE_SONG_1_8},
+    {.note = "A#3", .duration = DURATION_ASE_SONG_1_8},
+    {.note = "B3", .duration = DURATION_ASE_SONG_1_8},
+    {.note = "G#3", .duration = DURATION_ASE_SONG_1_8 - DURATION_PAUSE},
+    {BUZZER_PAUSE(DURATION_PAUSE)},
+    {.note = "G#3", .duration = DURATION_ASE_SONG_1_8 - DURATION_PAUSE},
+    {BUZZER_PAUSE(DURATION_PAUSE)},
+    {.note = "G#3", .duration = DURATION_ASE_SONG_1_8 - DURATION_PAUSE},
+    {BUZZER_PAUSE(DURATION_PAUSE)},
+    {.note = "G#3", .duration = DURATION_ASE_SONG_1_8 - DURATION_PAUSE},
+    {BUZZER_PAUSE(DURATION_PAUSE)},
+    {.note = "G#3", .duration = DURATION_ASE_SONG_1_8},
+    {.note = "D#4", .duration = DURATION_ASE_SONG_1_8},
+    {.note = "C#4", .duration = DURATION_ASE_SONG_1_8},
+    {.note = "B3", .duration = DURATION_ASE_SONG_1_8},
+    {.note = "C#4", .duration = 3 * DURATION_ASE_SONG_1_8 - DURATION_PAUSE},
+    {BUZZER_PAUSE(DURATION_PAUSE)},
+    {.note = "C#4", .duration = DURATION_ASE_SONG_1_8 - DURATION_PAUSE},
+    {BUZZER_PAUSE(DURATION_PAUSE)},
+    {.note = "C#4", .duration = DURATION_ASE_SONG_1_8 - DURATION_PAUSE},
+    {BUZZER_PAUSE(DURATION_PAUSE)},
+    {.note = "C#4", .duration = DURATION_ASE_SONG_1_8 - DURATION_PAUSE},
+    {BUZZER_PAUSE(DURATION_PAUSE)},
+    {.note = "C#4", .duration = DURATION_ASE_SONG_1_8 - DURATION_PAUSE},
+    {BUZZER_PAUSE(DURATION_PAUSE)},
+    {.note = "C#4", .duration = 2 * DURATION_ASE_SONG_1_8 - DURATION_PAUSE},
+    {BUZZER_PAUSE(DURATION_PAUSE)},
+    {.note = "C#4", .duration = DURATION_ASE_SONG_1_8},
+    {.note = "D#4", .duration = DURATION_ASE_SONG_1_8},
+    {.note = "A#3", .duration = DURATION_ASE_SONG_1_8},
+    {.note = "B3", .duration = 2 * DURATION_ASE_SONG_1_8},
+};
+
+Melody_entry_t melodyTable_FixYou[] = {
+    {.note = "A#3", .duration = DURATION_FIX_YOU_1_8 - DURATION_PAUSE},
+    {BUZZER_PAUSE(DURATION_PAUSE)},
+    {.note = "A#3", .duration = DURATION_FIX_YOU_1_8},
+    {.note = "G4", .duration = 2 * DURATION_FIX_YOU_1_8 - DURATION_PAUSE},
+    {BUZZER_PAUSE(DURATION_PAUSE)},
+    {.note = "G4", .duration = 2 * DURATION_FIX_YOU_1_8},
+    {.note = "D#4", .duration = 2 * DURATION_FIX_YOU_1_8},
+    {.note = "A#3", .duration = DURATION_FIX_YOU_1_8 - DURATION_PAUSE},
+    {BUZZER_PAUSE(DURATION_PAUSE)},
+    {.note = "A#3", .duration = DURATION_FIX_YOU_1_8},
+    {.note = "D4", .duration = 2 * DURATION_FIX_YOU_1_8},
+    {.note = "D#4", .duration = 2 * DURATION_FIX_YOU_1_8},
+    {.note = "D4", .duration = 4 * DURATION_FIX_YOU_1_8},
+    {.note = "C4", .duration = 4 * DURATION_FIX_YOU_1_8},
+};
+
+Melody_entry_t melodyTable_Cow[] = {
+    {.note = "A4", .duration = DURATION_COW_1_8},
+    {BUZZER_PAUSE(DURATION_COW_1_8)},
+    {.note = "A4", .duration = DURATION_COW_1_8},
+    {BUZZER_PAUSE(DURATION_COW_1_8)},
+    {.note = "A4", .duration = DURATION_COW_1_8},
+    {BUZZER_PAUSE(DURATION_COW_1_8)},
+    {.note = "A4", .duration = DURATION_COW_1_8},
+    {BUZZER_PAUSE(DURATION_COW_1_8)},
+    {.note = "A4", .duration = 3 * DURATION_COW_1_8},
+    {BUZZER_PAUSE(DURATION_COW_1_8)},
+    {.note = "A4", .duration = DURATION_COW_1_8},
+    {BUZZER_PAUSE(DURATION_COW_1_8)},
+    {.note = "E4", .duration = DURATION_COW_1_8},
+    {BUZZER_PAUSE(3 * DURATION_COW_1_8)},
+    {.note = "E4", .duration = DURATION_COW_1_8},
+    {BUZZER_PAUSE(DURATION_COW_1_8)},
+    {.note = "E4", .duration = DURATION_COW_1_8},
+    {BUZZER_PAUSE(DURATION_COW_1_8)},
+    {.note = "E4", .duration = DURATION_COW_1_8},
+    {BUZZER_PAUSE(DURATION_COW_1_8)},
+    {.note = "E4", .duration = 3 * DURATION_COW_1_8},
+    {BUZZER_PAUSE(DURATION_COW_1_8)},
+    {.note = "E4", .duration = DURATION_COW_1_8},
+    {BUZZER_PAUSE(DURATION_COW_1_8)},
+    {.note = "D4", .duration = DURATION_COW_1_8},
+    {BUZZER_PAUSE(3 * DURATION_COW_1_8)},
+    {.note = "D4", .duration = DURATION_COW_1_8},
+    {BUZZER_PAUSE(DURATION_COW_1_8)},
+    {.note = "D4", .duration = DURATION_COW_1_8},
+    {BUZZER_PAUSE(DURATION_COW_1_8)},
+    {.note = "D4", .duration = DURATION_COW_1_8},
+    {BUZZER_PAUSE(DURATION_COW_1_8)},
+    {.note = "D4", .duration = 3 * DURATION_COW_1_8},
+    {BUZZER_PAUSE(3 * DURATION_COW_1_8)},
+    {.note = "E4", .duration = DURATION_COW_1_8},
+    {BUZZER_PAUSE(DURATION_COW_1_8)},
+    {.note = "A4", .duration = DURATION_COW_1_8},
+    {BUZZER_PAUSE(DURATION_COW_1_8)},
+    {.note = "A4", .duration = DURATION_COW_1_8},
+    {BUZZER_PAUSE(DURATION_COW_1_8)},
+    {.note = "E4", .duration = DURATION_COW_1_8},
+    {BUZZER_PAUSE(DURATION_COW_1_8)},
+    {.note = "E4", .duration = DURATION_COW_1_8},
+    {BUZZER_PAUSE(DURATION_COW_1_8)},
+    {.note = "C4", .duration = 3 * DURATION_COW_1_8},
+    {BUZZER_PAUSE(DURATION_COW_1_8)},
+    {.note = "E4", .duration = DURATION_COW_1_8},
+};
+
+Melody_list_t melodyList[] = {
+    [BUZZER_PATTERN_SONG_ASE_SONG - 1] = {MELODY_LIST_ENTRY(melodyTable_ASE)},
+    [BUZZER_PATTERN_SONG_FIX_YOU - 1]  = {MELODY_LIST_ENTRY(melodyTable_FixYou)},
+    [BUZZER_PATTERN_SONG_COW - 1]      = {MELODY_LIST_ENTRY(melodyTable_Cow)},
+    [BUZZER_PATTERN_SONG_RESERVED_6 - 1] = { 0 },
+};
+
+#define BUZZER_BEEP_SHORT  200
+#define BUZZER_BEEP_LONG   500
+#define BUZZER_BEEP_DELAY  200
+#define BUZZER_BEEP_HIGH "D#6"
+#define BUZZER_BEEP_LOW "E2"
+
+static uint8_t BEEP_CODE_PRIMARY_ARMED_TABLE[]              = { 2, 2, 2, 2 };
+static uint8_t BEEP_CODE_PRIMARY_ABORT_TABLE[]              = { 3, 3, 3, 3 };
+static uint8_t BEEP_CODE_PRIMARY_RECOVERY_TABLE[]           = { 2, 2, 2, 2, 2, 2, 2, 2};
+static uint8_t BEEP_CODE_SECONDARY_BATTERY_LOW_TABLE[]      = { 3, 1 };
+static uint8_t BEEP_CODE_SECONDARY_BATTERY_CRITICAL_TABLE[] = { 0, 2, 0 };
+static uint8_t BEEP_CODE_SECONDARY_FAULT_TABLE[]            = { 1, 1, 1, 1 };
+
+static int prescalerForFrequency(float frequency) {
+	if (frequency == 0) return 0;
+	return (TIM_FREQ / (1000.f * frequency)) - 0.5f;
+}
+
+void buzzerInit() {
+	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, 250);
+}
+
+static void buzzerSetFreq(float frequency) {
+	__HAL_TIM_SET_PRESCALER(&htim3, prescalerForFrequency(frequency));
+	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
+}
+
+void buzzerStop() {
+    buzzerActivePeriod = false;
+    HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_2);
+}
+
+void buzzerStart() {
+    buzzerActivePeriod = true;
+    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
+}
+
+void buzzerStopPeriodic() {
+    HAL_TIM_Base_Stop_IT(&htim10);
+    buzzerStop();
+}
+
+void buzzerStartPeriodic() {
+    HAL_TIM_Base_Start_IT(&htim10);
+    buzzerStart();
+}
+
+/*Set any note between C0 and B8 (C2 - B6 recommended, unless you want to be annoying)*/
+void buzzerPlayNote(char *note, uint32_t duration_ms) {
+    strupr(note);
+    if (strcmp(note, "0") == 0) {
+        buzzerDelay(duration_ms);
+        return;
+    }
+
+    buzzerPeriodicMode = false;
+    HAL_TIM_Base_Stop_IT(&htim10);
+
+    float frequency;
+	if ((frequency = get_frequency(note)) == -1) return;
+	buzzerSetFreq(frequency);
+
+    tim10_target1_ms = duration_ms;
+    HAL_TIM_Base_Start_IT(&htim10);
+}
+
+void buzzerDelay(uint32_t duration_ms) {
+    buzzerStop();
+    tim10_target1_ms = duration_ms;
+    HAL_TIM_Base_Start_IT(&htim10);
+}
+
+void buzzerEnablePeriodicMode1(char *note, uint32_t duration_on_ms, uint32_t duration_off_ms) {
+    buzzerPattern = BUZZER_PATTERN_PLAY_NOTE;
+    buzzerPeriodicMode = true;
+    buzzerActivePeriod = true;
+    HAL_TIM_Base_Stop_IT(&htim10);
+
+    strupr(note);
+    float frequency = get_frequency(note);
+	buzzerSetFreq(frequency);
+
+    tim10_target1_ms = duration_on_ms;
+    tim10_target2_ms = duration_off_ms;
+    HAL_TIM_Base_Start_IT(&htim10);
+}
+
+void buzzerEnablePeriodicMode2(BuzzerPattern_t pattern, uint32_t period_ms) {
+    tim11_target_ms = period_ms;
+    tim11_ms = 0;
+    buzzerPattern = pattern;
+    HAL_TIM_Base_Start_IT(&htim11);
+}
+
+void buzzerDisablePeriodicMode2() {
+    tim11_ms = 0;
+    HAL_TIM_Base_Stop_IT(&htim11);
+}
+
+void buzzerPlayPattern(BuzzerPattern_t pattern) {
+
+#ifdef BUZZER_BEEP_CODES
+    if (pattern > sizeof(melodyList) / sizeof(Melody_list_t)) {
+        if (primaryActive) {
+            pattern = primaryPattern;
+            if (secondaryPattern != BUZZER_PATTERN_STOP) {
+                primaryActive = false;
+            }
+        } else {
+            pattern = secondaryPattern;
+            if (secondaryPattern != BUZZER_PATTERN_STOP) {
+                primaryActive = true;
+            }
+        }
+    }
+#endif
+
+    buzzerPattern = pattern;
+    buzzerPeriodicMode = false;
+    buzzerEventNumber = 0;
+    HAL_TIM_Base_Stop_IT(&htim10);
+
+    tim10_target1_ms = 0;
+    HAL_TIM_Base_Start_IT(&htim10);
+}
+
+void buzzerPlaySecondaryStatus(sm_state_t flight_state) {
+    #ifndef BUZZER_BEEP_CODES
+    return;
+    #endif
+    BuzzerPattern_t pattern;
+
+    switch (flight_state) {
+    case STATE_FAULT:
+        pattern = BUZZER_PATTERN_CODE_SECONDARY_FAULT;
+        break;
+    case STATE_BATTERY_LOW:
+        pattern = BUZZER_PATTERN_CODE_SECONDARY_BATTERY_LOW;
+        break;
+    case STATE_BATTERY_CRITICAL:
+        pattern = BUZZER_PATTERN_CODE_SECONDARY_BATTERY_CRITICAL;
+        break;
+    default:
+        pattern = BUZZER_PATTERN_STOP;
+        break;
+    }
+
+    buzzerStop();
+    secondaryPattern = pattern;
+    buzzerPlayPattern(pattern);
+    if (pattern != BUZZER_PATTERN_STOP)
+        buzzerEnablePeriodicMode2(pattern, BUZZER_BEEP_REPEAT_TIME);
+}
+
 // Function to get the frequency by note name
 float get_frequency(const char *note_name) {
-    for (int i = 0; i < sizeof(notes) / sizeof(notes[0]); i++) {
+    for (uint16_t i = 0; i < sizeof(notes) / sizeof(notes[0]); i++) {
         if (strcmp(notes[i].name, note_name) == 0) {
             return notes[i].frequency;
         }
@@ -255,176 +428,54 @@ float get_frequency(const char *note_name) {
     return -1.0f;  // Return -1 if the note isn't found
 }
 
-void FailureSongTable(uint8_t event_num) {
-    if (event_num == 0) {
-        buzzerPlayNote("C4", 200);
-    } else if (event_num == 1) {
-        buzzerDelay(10);
-    } else if (event_num == 2) {
-        buzzerPlayNote("C4", 200);
-    } else if (event_num == 3) {
-        buzzerDelay(10);
-    } else if (event_num == 4) {
-        buzzerPlayNote("A4", 410);
-    } else if (event_num == 5) {
-        buzzerDelay(10);
-    } else if (event_num == 6) {
-        buzzerPlayNote("A4", 410);
-    } else if (event_num == 7) {
-        buzzerDelay(10);
-    } else if (event_num == 8) {
-        buzzerPlayNote("F4", 410);
-    } else if (event_num == 9) {
-        buzzerDelay(10);
-    } else if (event_num == 10) {
-        buzzerPlayNote("C4", 200);
-    } else if (event_num == 11) {
-        buzzerDelay(10);
-    } else if (event_num == 12) {
-        buzzerPlayNote("C4", 200);
-    } else if (event_num == 13) {
-        buzzerDelay(10);
-    } else if (event_num == 14) {
-        buzzerPlayNote("E4", 410);
-    } else if (event_num == 15) {
-        buzzerDelay(10);
-    } else if (event_num == 16) {
-        buzzerPlayNote("F4", 410);
-    } else if (event_num == 17) {
-        buzzerDelay(10);
-    } else if (event_num == 18) {
-        buzzerPlayNote("E4", 830);
-    } else if (event_num == 19) {
-        buzzerDelay(10);
-    } else if (event_num == 20) {
-        buzzerPlayNote("D4", 830);
-    } else {
+void runMelodyTable(BuzzerPattern_t pattern, uint8_t event_num) {
+    uint8_t num = pattern - 1;
+    if (event_num >= melodyList[num].num_entries) {
         buzzerStopPeriodic();
-    }   
-}
-
-void ASESongTable(uint8_t event_num) {
-    if (event_num == 0) {
-        buzzerPlayNote("B3", 200);
-    } else if (event_num == 1) {
-        buzzerDelay(10);
-    } else if (event_num == 2) {
-        buzzerPlayNote("B3", 200);
-    } else if (event_num == 3) {
-        buzzerDelay(10);
-    } else if (event_num == 4) {
-        buzzerPlayNote("A#3", 200);
-    } else if (event_num == 5) {
-        buzzerDelay(10);
-    } else if (event_num == 6) {
-        buzzerPlayNote("B3", 200);
-    } else if (event_num == 7) {
-        buzzerDelay(10);
-    } else if (event_num == 8) {
-        buzzerPlayNote("G#3", 200);
-    } else if (event_num == 9) {
-        buzzerDelay(10);
-    } else if (event_num == 10) {
-        buzzerPlayNote("G#3", 200);
-    } else if (event_num == 11) {
-        buzzerDelay(10);
-    } else if (event_num == 12) {
-        buzzerPlayNote("G#3", 200);
-    } else if (event_num == 13) {
-        buzzerDelay(10);
-    } else if (event_num == 14) {
-        buzzerPlayNote("G#3", 200);
-    } else if (event_num == 15) {
-        buzzerDelay(10);
-    } else if (event_num == 16) {
-        buzzerPlayNote("G#3", 200);
-    } else if (event_num == 17) {
-        buzzerDelay(10);
-    } else if (event_num == 18) {
-        buzzerPlayNote("D#4", 200);
-    } else if (event_num == 19) {
-        buzzerDelay(10);
-    } else if (event_num == 20) {
-        buzzerPlayNote("C#4", 200);
-    } else if (event_num == 21) {
-        buzzerDelay(10);
-    } else if (event_num == 22) {
-        buzzerPlayNote("B3", 200);
-    } else if (event_num == 23) {
-        buzzerDelay(10);
-    } else if (event_num == 24) {
-        buzzerPlayNote("C#4", 620);
-    } else if (event_num == 25) {
-        buzzerDelay(10);
-    } else if (event_num == 26) {
-        buzzerPlayNote("C#4", 200);
-    } else if (event_num == 27) {
-        buzzerDelay(10);
-    } else if (event_num == 28) {
-        buzzerPlayNote("C#4", 200);
-    } else if (event_num == 29) {
-        buzzerDelay(10);
-    } else if (event_num == 30) {
-        buzzerPlayNote("C#4", 200);
-    } else if (event_num == 31) {
-        buzzerDelay(10);
-    } else if (event_num == 32) {
-        buzzerPlayNote("C#4", 200);
-    } else if (event_num == 33) {
-        buzzerDelay(10);
-    } else if (event_num == 34) {
-        buzzerPlayNote("C#4", 410);
-    } else if (event_num == 35) {
-        buzzerDelay(10);
-    } else if (event_num == 36) {
-        buzzerPlayNote("C#4", 200);
-    } else if (event_num == 37) {
-        buzzerDelay(10);
-    } else if (event_num == 38) {
-        buzzerPlayNote("D#4", 200);
-    } else if (event_num == 39) {
-        buzzerDelay(10);
-    } else if (event_num == 40) {
-        buzzerPlayNote("A#3", 200);
-    } else if (event_num == 41) {
-        buzzerDelay(10);
-    } else if (event_num == 42) {
-        buzzerPlayNote("B3", 410);
-    } else {
-        buzzerStopPeriodic();
+        return;
     }
+
+    buzzerPlayNote(melodyList[num].melody_table[event_num].note, melodyList[num].melody_table[event_num].duration);
 }
 
-void BeepCodeTable(uint8_t event_num, BuzzerPattern_t beep_code) {
+void buzzerPatternTable(BuzzerPattern_t pattern, uint8_t event_num) {
+    if (pattern <= sizeof(melodyList) / sizeof(Melody_list_t)) {
+        runMelodyTable(pattern, event_num);
+        return;
+    }
+
+#ifndef BUZZER_BEEP_CODES
+    return;
+#endif
+
     uint8_t* beeps;
     uint32_t size;
     char note[3];
 
-    switch (beep_code) {
-    case BUZZER_PATTERN_CODE_PRIMARY_ARMED:
-        beeps = BEEP_CODE_PRIMARY_ARMED_TABLE;
-        size = sizeof(BEEP_CODE_PRIMARY_ARMED_TABLE);
-        strcpy(note, BUZZER_BEEP_HIGH);
-        break;
+    switch (pattern) {
     case BUZZER_PATTERN_CODE_PRIMARY_ABORT:
         beeps = BEEP_CODE_PRIMARY_ABORT_TABLE;
         size = sizeof(BEEP_CODE_PRIMARY_ABORT_TABLE);
-        strcpy(note, BUZZER_BEEP_HIGH);
+        break;
+    case BUZZER_PATTERN_CODE_PRIMARY_ARMED:
+        beeps = BEEP_CODE_PRIMARY_ARMED_TABLE;
+        size = sizeof(BEEP_CODE_PRIMARY_ARMED_TABLE);
+        break;
+    case BUZZER_PATTERN_CODE_PRIMARY_RECOVERY:
+        beeps = BEEP_CODE_PRIMARY_RECOVERY_TABLE;
+        size = sizeof(BEEP_CODE_PRIMARY_RECOVERY_TABLE);
         break;
     case BUZZER_PATTERN_CODE_SECONDARY_FAULT:
         beeps = BEEP_CODE_SECONDARY_FAULT_TABLE;
         size = sizeof(BEEP_CODE_SECONDARY_FAULT_TABLE);
-        strcpy(note, BUZZER_BEEP_LOW);
         break;
     case BUZZER_PATTERN_CODE_SECONDARY_BATTERY_LOW:
         beeps = BEEP_CODE_SECONDARY_BATTERY_LOW_TABLE;
         size = sizeof(BEEP_CODE_SECONDARY_BATTERY_LOW_TABLE);
-        strcpy(note, BUZZER_BEEP_LOW);
         break;
     case BUZZER_PATTERN_CODE_SECONDARY_BATTERY_CRITICAL:
         beeps = BEEP_CODE_SECONDARY_BATTERY_CRITICAL_TABLE;
         size = sizeof(BEEP_CODE_SECONDARY_BATTERY_CRITICAL_TABLE);
-        strcpy(note, BUZZER_BEEP_LOW);
         break;
     default:
         return;
@@ -441,8 +492,16 @@ void BeepCodeTable(uint8_t event_num, BuzzerPattern_t beep_code) {
 
         if (beeps[beep_pos] == 0) {
             duration = BUZZER_BEEP_SHORT;
+            strcpy(note, BUZZER_BEEP_LOW);
         } else if (beeps[beep_pos] == 1) {
             duration = BUZZER_BEEP_LONG;
+            strcpy(note, BUZZER_BEEP_LOW);
+        } else if (beeps[beep_pos] == 2) {
+            duration = BUZZER_BEEP_SHORT;
+            strcpy(note, BUZZER_BEEP_HIGH);
+        } else if (beeps[beep_pos] == 3) {
+            duration = BUZZER_BEEP_LONG;
+            strcpy(note, BUZZER_BEEP_HIGH);
         } else {
             return;
         }

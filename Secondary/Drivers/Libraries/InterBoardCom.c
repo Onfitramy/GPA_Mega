@@ -414,14 +414,17 @@ void InterBoardCom_EvaluateCommand(DataPacket_t *dataPacket, PacketSource_t sour
                 buzzerPlayNote(note, playtime_ms);
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_BUZZER_PLAYSONG) {
                 buzzerPlayPattern(dataPacket->Data.command.params[0]);
+                buzzerDisablePeriodicMode2();
                 InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0, source);
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_BUZZER_PLAYSONGREPEAT) {
                 uint16_t repeattime_ms = 0;
                 repeattime_ms = dataPacket->Data.command.params[0] << 8;
                 repeattime_ms |= dataPacket->Data.command.params[1];
-                uint8_t song_pattern = dataPacket->Data.command.params[2];
-                buzzerPlayPattern(song_pattern);
-                buzzerEnablePeriodicMode2(song_pattern, repeattime_ms);
+                uint8_t pattern = dataPacket->Data.command.params[2];
+                buzzerPlayPattern(pattern);
+                buzzerEnablePeriodicMode2(pattern, repeattime_ms);
+
+                InterBoardCom_command_acknowledge(dataPacket->Data.command.command_target, dataPacket->Data.command.command_id, 0, source);
             } else if (dataPacket->Data.command.command_id == COMMAND_ID_BUZZER_PLAYBEEPCODE) {
                 uint8_t pattern = dataPacket->Data.command.params[0];
 

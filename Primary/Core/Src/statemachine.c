@@ -1,6 +1,7 @@
 #include "statemachine.h"
 #include "comSchedule.h"
 #include "navigation.h"
+#include "packets.h"
 
 StateMachine_t flight_sm;
 
@@ -144,11 +145,14 @@ static flight_state_t GroundstationHandler(flight_event_t event) {
 
 /* --- Entry actions --- */
 static void AbortEntry(StateMachine_t *sm) {
+    // disable PU outputs
     PU_setACS(DISABLE);
     PU_setREC(DISABLE);
     PU_setCAM(DISABLE);
-    // replaced by beep code
-    // Buzzer_PlaySong(2); // when you try your best...
+
+    // play beep code
+    Buzzer_PlaySong(BUZZER_PATTERN_SONG_FIX_YOU);
+    // Buzzer_PlayBeepCode(BUZZER_PATTERN_CODE_PRIMARY_ABORT);
 }
 static void StartupEntry(StateMachine_t *sm) {
     /* --- Initialize sensors --- */
@@ -208,7 +212,6 @@ static void StartupEntry(StateMachine_t *sm) {
     MPCInit(&a_mpc, PREDICTION_HORIZON, NUM_INEQUALITY_CONSTRAINTS, MPC_DELTA_T, u_star, x_star);
 }
 static void InitEntry(StateMachine_t *sm) {
-    //Buzzer_PlayNote("A4", 100);
     /* --- Read sensor data for EKF initialization --- */
     #ifndef HIL_TESTING
     imu1_status.hal_status |= IMU_Update(&imu1_data);
@@ -307,7 +310,10 @@ static void AwaitDrogueEntry(StateMachine_t *sm) {
 
     SetComSchedule(4); //Descent flight state, focus on GNSS and barometer data
 }
-static void DrogueDescendEntry(StateMachine_t *sm) {}
+static void DrogueDescendEntry(StateMachine_t *sm) {
+    // play beep code
+    Buzzer_PlaySong(BUZZER_PATTERN_SONG_COW);
+}
 static void AwaitMainEntry(StateMachine_t *sm) {
     // deplay main parachute
     DeployMain();
@@ -326,10 +332,15 @@ static void LandedSafeEntry(StateMachine_t *sm) {
     SetComSchedule(5); // Landed flight state, only GNSS and state
     SetSaveSchedule(0);
     Storage_FlashSave(DISABLE);
-    Buzzer_PlaySongRepeat(1, 20000);
+
+    // play beep code
+    Buzzer_PlaySong(BUZZER_PATTERN_SONG_ASE_SONG);
 }
 static void LandedPowerDownEntry(StateMachine_t *sm) {
     PU_setCAM(DISABLE);
+
+    // play beep code repeatidly
+    Buzzer_PlayBeepCode(BUZZER_PATTERN_CODE_PRIMARY_RECOVERY);
 }
 static void TestInitEntry(StateMachine_t *sm) {
     RetractMain(9000);
@@ -782,7 +793,6 @@ void StateMachine_Dispatch(StateMachine_t *sm, flight_event_t event) {
 
     // update flight state
     sm->currentFlightState = newState;
-    Buzzer_PlayBeepCode(flight_sm.currentFlightState);
 
     // stop timer
     HAL_TIM_Base_Stop_IT(sm->htim);

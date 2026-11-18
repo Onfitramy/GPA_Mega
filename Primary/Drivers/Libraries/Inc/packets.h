@@ -94,14 +94,21 @@ typedef enum __attribute__((packed)){
 
 typedef enum __attribute__((packed)) {
     BUZZER_PATTERN_PLAY_NOTE = 0,
-    BUZZER_PATTERN_PLAY_ASE_SONG = 1,
-    BUZZER_PATTERN_PLAY_FAILURE_SONG = 2,
-    BUZZER_PATTERN_CODE_PRIMARY_ARMED = 3,
-    BUZZER_PATTERN_CODE_PRIMARY_ABORT = 4,
-    BUZZER_PATTERN_CODE_SECONDARY_BATTERY_LOW = 5,
-    BUZZER_PATTERN_CODE_SECONDARY_BATTERY_CRITICAL = 6,
-    BUZZER_PATTERN_CODE_SECONDARY_FAULT = 7,
-    BUZZER_PATTERN_REPEAT_STOP = 8,
+    BUZZER_PATTERN_SONG_ASE_SONG = 1,
+    BUZZER_PATTERN_SONG_FIX_YOU = 2,
+    BUZZER_PATTERN_SONG_COW = 3,
+    BUZZER_PATTERN_SONG_RESERVED_2 = 4,
+    BUZZER_PATTERN_SONG_RESERVED_3 = 5,
+    BUZZER_PATTERN_SONG_RESERVED_4 = 6,
+    BUZZER_PATTERN_SONG_RESERVED_5 = 7,
+    BUZZER_PATTERN_SONG_RESERVED_6 = 8,
+    BUZZER_PATTERN_CODE_PRIMARY_ARMED = 9,
+    BUZZER_PATTERN_CODE_PRIMARY_ABORT = 10,
+    BUZZER_PATTERN_CODE_PRIMARY_RECOVERY = 11,
+    BUZZER_PATTERN_CODE_SECONDARY_BATTERY_LOW = 12,
+    BUZZER_PATTERN_CODE_SECONDARY_BATTERY_CRITICAL = 13,
+    BUZZER_PATTERN_CODE_SECONDARY_FAULT = 14,
+    BUZZER_PATTERN_STOP = 15,
 } BuzzerPattern_t;
 
 /* Packet and Payload structure definitions */
@@ -250,7 +257,7 @@ void PU_setACS(bool on);
 void Buzzer_PlayNote(char *note, uint32_t duration_ms);
 void Buzzer_PlaySong(uint8_t song_num);
 void Buzzer_PlaySongRepeat(uint8_t song_num, uint16_t period_ms);
-void Buzzer_PlayBeepCode(uint8_t flight_state);
+void Buzzer_PlayBeepCode(BuzzerPattern_t pattern);
 
 void Camera_Power(bool enable);
 void Camera_Recording(bool enable);
