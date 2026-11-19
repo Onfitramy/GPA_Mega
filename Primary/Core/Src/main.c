@@ -58,8 +58,6 @@ extern StateMachine_t flight_sm;
 
 volatile uint32_t tim14_ms = 0;
 uint32_t tim14_target_ms;
-volatile uint32_t tim16_ms = 0;
-uint32_t tim16_target_ms;
 volatile uint32_t tim17_ms = 0;
 uint32_t tim17_target_ms;
 
@@ -390,18 +388,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       HAL_TIM_Base_Stop_IT(&htim14);
 
       HILconfirmParachute(tim14_target_ms);
-    }
-  }
-  // Timer for handling main deploy servo retraction
-  else if (htim->Instance == TIM16) {
-    tim16_ms++;
-
-    // sweep main servo into retracted position
-    SERVO_MoveToAngle(&main_servo, MAIN_DEPLOY_ANGLE * (1.f - tim16_ms / tim16_target_ms) + MAIN_NEUTRAL_ANGLE);
-
-    if (tim16_ms >= tim16_target_ms) {
-      tim16_ms = 0;
-      HAL_TIM_Base_Stop_IT(&htim16);
     }
   }
   // Timer for handling general delay

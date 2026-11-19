@@ -34,7 +34,9 @@ typedef struct {
     TIM_HandleTypeDef *move_tim;    // timer used to schedule servo movements in the future
     uint32_t move_duration;         // the duration of the current position
     uint32_t move_tim_counter;      // counter used by move timer
-    float next_move_angle;          // the next angle after the current period has passed
+    uint8_t move_interpolate;       // 0 -> the angle is interpolated | 1 -> abrupt change
+    float start_angle;
+    float end_angle;
 } SERVO_Instance_t;
 
 extern SERVO_Instance_t drogue_servo;
@@ -48,10 +50,7 @@ void SERVO_Init(SERVO_CfgType *config_list, SERVO_Instance_t *instance, uint16_t
                 TIM_HandleTypeDef *delay_tim, uint16_t MinPulse_us, uint16_t MaxPulse_us, uint16_t max_angle);
 void SERVO_RawMove(SERVO_Instance_t *instance, uint16_t Pulse_us);
 void SERVO_MoveToAngle(SERVO_Instance_t *instance, float af_Angle);
-
-void DeployDrogue(SERVO_Instance_t *instance, float angle_deploy, float move_delay);
-void RetractMain(SERVO_Instance_t *instance, uint16_t move_time_ms);
-
+void SERVO_MoveSequence(SERVO_Instance_t *instance, float start_angle, float end_angle, uint16_t duration_ms, uint8_t interpolate);
 void Servo_TimeHandler(SERVO_Instance_t *instance, TIM_HandleTypeDef *htim);
 
 #endif /* SERVO_H_ */

@@ -314,7 +314,8 @@ static void CoastEntry(StateMachine_t *sm) {
 }
 static void AwaitDrogueEntry(StateMachine_t *sm) {
     // deploy drogue parachute
-    DeployDrogue(&drogue_servo, DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
+    SERVO_MoveSequence(&drogue_servo, DROGUE_DEPLOY_ANGLE, DROGUE_NEUTRAL_ANGLE, DROGUE_MOVE_DELAY_MS, 0);
+    drogue_deploy_attempts++;
 #ifdef HIL_TESTING
     tim14_target_ms = HIL_DROGUE_DEPLOY_TIME;
     HAL_TIM_Base_Start_IT(&htim14);
@@ -359,7 +360,7 @@ static void LandedPowerDownEntry(StateMachine_t *sm) {
     Buzzer_PlayBeepCode(BUZZER_PATTERN_CODE_PRIMARY_RECOVERY);
 }
 static void TestInitEntry(StateMachine_t *sm) {
-    RetractMain(&main_servo, 9000);
+    SERVO_MoveSequence(&main_servo, MAIN_DEPLOY_ANGLE, MAIN_NEUTRAL_ANGLE, 9000, 1);
 }
 static void TestCalibEntry(StateMachine_t *sm) {}
 static void GroundstationEntry(StateMachine_t *sm) {}
@@ -496,7 +497,8 @@ static void AwaitDrogueDo(StateMachine_t *sm, uint16_t freq) {
 
         // attempt further deployment attempts
         if ((elapsed_time >= drogue_deploy_attempts * DROGUE_ATTEMPT_PERIOD) && (drogue_deploy_attempts < DROGUE_MAX_NUM_ATTEMPTS)) {
-            DeployDrogue(&drogue_servo, DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
+            SERVO_MoveSequence(&drogue_servo, DROGUE_DEPLOY_ANGLE, DROGUE_NEUTRAL_ANGLE, DROGUE_MOVE_DELAY_MS, 0);
+            drogue_deploy_attempts++;
         }
     }
 

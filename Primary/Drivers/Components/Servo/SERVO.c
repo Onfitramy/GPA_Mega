@@ -86,7 +86,7 @@ void SERVO_RawMove(SERVO_Instance_t *instance, uint16_t Pulse_us) {
 	*(instance->config->TIM_CCRx) = au16_Pulse;
 }
 
-/*Move Servo to specific degree*/
+/* Move Servo to specific angle in degrees */
 void SERVO_MoveToAngle(SERVO_Instance_t *instance, float af_Angle) {
     // calculate the pulse width
     uint16_t au16_Pulse = 0;
@@ -96,23 +96,24 @@ void SERVO_MoveToAngle(SERVO_Instance_t *instance, float af_Angle) {
     *(instance->config->TIM_CCRx) = au16_Pulse;
 }
 
-void DeployDrogue(SERVO_Instance_t *instance, float angle_deploy, float move_delay) {
-    SERVO_MoveToAngle(instance, angle_deploy);
-    drogue_deploy_attempts++;
-
-    instance->move_duration = move_delay;
-    HAL_TIM_Base_Start_IT(instance->move_tim);
-}
-
-void RetractMain(SERVO_Instance_t *instance, uint16_t move_time_ms) {
-    if (move_time_ms == 0) {
-        SERVO_MoveToAngle(instance, MAIN_NEUTRAL_ANGLE);
+void SERVO_MoveSequence(SERVO_Instance_t *instance, float start_angle, float end_angle, uint16_t duration_ms, uint8_t interpolate) {
+    if (duration_ms == 0) {
+        SERVO_MoveToAngle(instance, end_angle);
         return;
     }
-    SERVO_MoveToAngle(instance, MAIN_DEPLOY_ANGLE);
 
-    tim16_target_ms = move_time_ms;
-    HAL_TIM_Base_Start_IT(&htim16);
+    // move to start angle
+    SERVO_MoveToAngle(instance, start_angle);
+
+    // store start and end angles, duration, and interpolate flag
+    instance->start_angle      = start_angle;
+    instance->end_angle        = end_angle;
+    instance->move_duration    = duration_ms;
+    instance->move_interpolate = !(interpolate == 0);
+
+    // start timer
+    instance->move_tim_counter = 0;
+    HAL_TIM_Base_Start_IT(instance->move_tim);
 }
 
 void Servo_TimeHandler(SERVO_Instance_t *instance, TIM_HandleTypeDef *htim) {
@@ -124,13 +125,20 @@ void Servo_TimeHandler(SERVO_Instance_t *instance, TIM_HandleTypeDef *htim) {
     instance->move_tim_counter++;
 
     // have we reached the target time?
-    if (instance->move_tim_counter < instance->move_duration)
+    if (instance->move_tim_counter < instance->move_duration) {
+        // move to interpolated angle if desired
+        if (instance->move_interpolate) {
+            float progress = instance->move_tim_counter / instance->move_duration;
+            float angle_inter = instance->start_angle * (1.0f - progress) + instance->end_angle * progress;
+            SERVO_MoveToAngle(&main_servo, angle_inter);
+        }
         return;
+    }
 
     // halt & reset the timer
     HAL_TIM_Base_Stop_IT(instance->move_tim);
     instance->move_tim_counter = 0;
 
     // move to the target position
-    SERVO_MoveToAngle(instance, instance->next_move_angle);
+    SERVO_MoveToAngle(instance, instance->end_angle);
 }

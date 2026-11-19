@@ -111,7 +111,6 @@ extern TIM_HandleTypeDef htim13;
 extern TIM_HandleTypeDef htim14;
 extern uint32_t tim14_target_ms;
 extern TIM_HandleTypeDef htim16;
-extern uint32_t tim16_target_ms;
 
 /* --- Function declarations --- */
 void StateMachine_Init(StateMachine_t *sm, flight_state_t initialState, TIM_HandleTypeDef *htim);
