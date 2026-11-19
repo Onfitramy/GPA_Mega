@@ -14,7 +14,7 @@
 #define DROGUE_MOVE_DELAY_MS    300
 
 #define MAIN_SERVO              2
-#define MAIN_NEUTRAL_ANGLE      -40.f
+#define MAIN_NEUTRAL_ANGLE      0.f
 #define MAIN_DEPLOY_ANGLE       90.f
 
 typedef struct {
