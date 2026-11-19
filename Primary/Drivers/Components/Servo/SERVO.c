@@ -12,14 +12,19 @@
 
 uint8_t drogue_deploy_attempts = 0;
 
-SERVO_Instance_t servo_instance;
+SERVO_Instance_t drogue_servo;
+SERVO_Instance_t main_servo;
 
 /*Initiate a Servo defined by a 16bit number */
-void SERVO_Init(SERVO_Instance_t *instance, uint16_t servo_num, uint16_t MinPulse_us, uint16_t MaxPulse_us, uint16_t max_angle) {
+void SERVO_Init(SERVO_CfgType *config_list, SERVO_Instance_t *instance, uint16_t servo_num,
+                TIM_HandleTypeDef *delay_tim, uint16_t MinPulse_us, uint16_t MaxPulse_us, uint16_t max_angle) {
     servo_num--; // Convert to 0 based index
-    instance->configs[servo_num].MinPulse = MinPulse_us;
-    instance->configs[servo_num].MaxPulse = MaxPulse_us;
-    instance->configs[servo_num].MaxAngle = max_angle;
+    instance->servo_index = servo_num;
+    instance->config = &config_list[servo_num];
+    instance->move_tim = delay_tim;
+    instance->config->MinPulse = MinPulse_us;
+    instance->config->MaxPulse = MaxPulse_us;
+    instance->config->MaxAngle = max_angle;
 
     // Channel Number 1 - 8
     TIM_HandleTypeDef htim;
@@ -29,7 +34,7 @@ void SERVO_Init(SERVO_Instance_t *instance, uint16_t servo_num, uint16_t MinPuls
     TIM_OC_InitTypeDef sConfigOC = {0};
 
     /*Configure general TIM_HandleTypeDef settings*/
-    htim.Instance = instance->configs[servo_num].TIM_Instance; 
+    htim.Instance = instance->config->TIM_Instance; 
     htim.Init.Prescaler = SERVO_TIM_PRESCALER - 1; // 125 MHz / (250 * 10000) = 50 Hz
     htim.Init.CounterMode = TIM_COUNTERMODE_UP;
     htim.Init.Period = SERVO_TIM_PERIOD - 1;
@@ -55,54 +60,44 @@ void SERVO_Init(SERVO_Instance_t *instance, uint16_t servo_num, uint16_t MinPuls
     sConfigOC.Pulse = 0;
     sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
     sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-    if (HAL_TIM_PWM_ConfigChannel(&htim, &sConfigOC, instance->configs[servo_num].PWM_TIM_CH) != HAL_OK)
+    if (HAL_TIM_PWM_ConfigChannel(&htim, &sConfigOC, instance->config->PWM_TIM_CH) != HAL_OK)
     {
         Error_Handler();
     }
 
     /*Calculate & Save The Servo Pulse Information*/
-	instance->configs[servo_num].MinPeriod = (uint16_t)(SERVO_TIM_PERIOD * (instance->configs[servo_num].MinPulse * 1e-6 * SERVO_TIM_FREQ));
-	instance->configs[servo_num].MaxPeriod = (uint16_t)(SERVO_TIM_PERIOD * (instance->configs[servo_num].MaxPulse * 1e-6 * SERVO_TIM_FREQ));
+	instance->config->MinPeriod = (uint16_t)(SERVO_TIM_PERIOD * (instance->config->MinPulse * 1e-6 * SERVO_TIM_FREQ));
+	instance->config->MaxPeriod = (uint16_t)(SERVO_TIM_PERIOD * (instance->config->MaxPulse * 1e-6 * SERVO_TIM_FREQ));
 
     /*Finish Initialisation*/
     HAL_TIM_MspPostInit(&htim);
 
     /*Startup current Servo*/
-    HAL_TIM_PWM_Start(&htim, instance->configs[servo_num].PWM_TIM_CH);
+    HAL_TIM_PWM_Start(&htim, instance->config->PWM_TIM_CH);
 
 }
 
 /* Moves A Specific Motor With A Raw Pulse Width Value 1 is Min, 1.5 Mid, 2 high */
-void SERVO_RawMove(SERVO_Instance_t *instance, uint16_t servo_num, uint16_t Pulse_us)
-{
-    servo_num--; // Convert to 0 based index
-
+void SERVO_RawMove(SERVO_Instance_t *instance, uint16_t Pulse_us) {
+    // calculate the pulse width
     uint16_t au16_Pulse = (uint16_t)round((1e-6 * SERVO_TIM_PERIOD * Pulse_us * SERVO_TIM_FREQ));
+
     // Set the CCRx register to the calculated pulse width
-	*(instance->configs[servo_num].TIM_CCRx) = au16_Pulse;
+	*(instance->config->TIM_CCRx) = au16_Pulse;
 }
 
 /*Move Servo to specific degree*/
-void SERVO_MoveToAngle(SERVO_Instance_t *instance, uint16_t servo_num, float af_Angle)
-{
-    servo_num--; // Convert to 0 based index
-
-    // Channel Number 1 - 8
+void SERVO_MoveToAngle(SERVO_Instance_t *instance, float af_Angle) {
+    // calculate the pulse width
     uint16_t au16_Pulse = 0;
+    au16_Pulse = instance->config->MinPeriod + (af_Angle/instance->config->MaxAngle)*(instance->config->MaxPeriod - instance->config->MinPeriod);
 
-    au16_Pulse = instance->configs[servo_num].MinPeriod + (af_Angle/instance->configs[servo_num].MaxAngle)*(instance->configs[servo_num].MaxPeriod - instance->configs[servo_num].MinPeriod);
-
-    *(instance->configs[servo_num].TIM_CCRx) = au16_Pulse;
+    // Set the CCRx register to the calculated pulse width
+    *(instance->config->TIM_CCRx) = au16_Pulse;
 }
 
-void SERVO_ZeroAll(SERVO_Instance_t *instance) {
-    for(uint16_t i = 1; i <= SERVO_NUM; i++) {
-        SERVO_MoveToAngle(instance, i, 0);
-    }
-}
-
-void DeployDrogue(SERVO_Instance_t *instance, uint16_t servo_num, float angle_deploy, float move_delay) {
-    SERVO_MoveToAngle(instance, servo_num, angle_deploy);
+void DeployDrogue(SERVO_Instance_t *instance, float angle_deploy, float move_delay) {
+    SERVO_MoveToAngle(instance, angle_deploy);
     drogue_deploy_attempts++;
 
     instance->move_duration = move_delay;
@@ -111,11 +106,11 @@ void DeployDrogue(SERVO_Instance_t *instance, uint16_t servo_num, float angle_de
 
 void RetractMain(SERVO_Instance_t *instance, uint16_t move_time_ms) {
     if (move_time_ms == 0) {
-        SERVO_MoveToAngle(instance, MAIN_SERVO, MAIN_NEUTRAL_ANGLE);
+        SERVO_MoveToAngle(instance, MAIN_NEUTRAL_ANGLE);
         return;
     }
-    SERVO_MoveToAngle(instance, MAIN_SERVO, MAIN_DEPLOY_ANGLE);
-    
+    SERVO_MoveToAngle(instance, MAIN_DEPLOY_ANGLE);
+
     tim16_target_ms = move_time_ms;
     HAL_TIM_Base_Start_IT(&htim16);
 }
@@ -137,5 +132,5 @@ void Servo_TimeHandler(SERVO_Instance_t *instance, TIM_HandleTypeDef *htim) {
     instance->move_tim_counter = 0;
 
     // move to the target position
-    SERVO_MoveToAngle(instance, instance->move_servo_num, instance->next_move_angle);
+    SERVO_MoveToAngle(instance, instance->next_move_angle);
 }

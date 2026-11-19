@@ -61,19 +61,19 @@ test_result_t test_parachute(char *test_write_buffer, size_t test_write_buffer_l
     PU_setCAM(ENABLE);
     PU_setREC(ENABLE);
 
-    SERVO_MoveToAngle(&servo_instance, MAIN_SERVO, MAIN_DEPLOY_ANGLE);
-    DeployDrogue(&servo_instance, DROGUE_SERVO, DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
+    SERVO_MoveToAngle(&main_servo, MAIN_DEPLOY_ANGLE);
+    DeployDrogue(&drogue_servo, DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
 
 
     snprintf(test_write_buffer, test_write_buffer_len, "Running parachute tests. 30s to ejection...\r\n");
     Buzzer_PlayNote("A4", 100); // Signal start of test
     vTaskDelay(pdMS_TO_TICKS(30000)); // 30 second delay to simulate time before ejection
     Buzzer_PlayNote("A2", 1000); // Signal drogue deployment
-    DeployDrogue(&servo_instance, DROGUE_SERVO, DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
+    DeployDrogue(&drogue_servo, DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
 
     vTaskDelay(pdMS_TO_TICKS(10000)); // 10 second delay to allow for drogue deployment
     Buzzer_PlayNote("A2", 1000); // Signal main deployment
-    SERVO_MoveToAngle(&servo_instance, MAIN_SERVO, MAIN_DEPLOY_ANGLE);
+    SERVO_MoveToAngle(&main_servo, MAIN_DEPLOY_ANGLE);
 
     // For demonstration, we'll just print a success message
     snprintf(test_write_buffer + strlen(test_write_buffer), test_write_buffer_len - strlen(test_write_buffer), "Parachute Tests completed\r\n");
@@ -88,7 +88,7 @@ test_result_t test_main_deploy(char *test_write_buffer, size_t test_write_buffer
 {
     test_result_t test_result = {.test_name = "test_main_deploy", .test_status = TEST_STATUS_NOT_RUN, .execution_time_ms = 0};
 
-    SERVO_MoveToAngle(&servo_instance, MAIN_SERVO, MAIN_DEPLOY_ANGLE);
+    SERVO_MoveToAngle(&main_servo, MAIN_DEPLOY_ANGLE);
 
     test_result.test_status = TEST_STATUS_PASS;
     test_result.execution_time_ms = 0; // Update with actual execution time
@@ -100,7 +100,7 @@ test_result_t test_main_retract(char *test_write_buffer, size_t test_write_buffe
 {
     test_result_t test_result = {.test_name = "test_main_retract", .test_status = TEST_STATUS_NOT_RUN, .execution_time_ms = 0};
 
-    RetractMain(&servo_instance, 1);
+    RetractMain(&main_servo, 1);
 
     test_result.test_status = TEST_STATUS_PASS;
     test_result.execution_time_ms = 0; // Update with actual execution time
@@ -113,13 +113,13 @@ test_result_t test_max_power_delay(char *test_write_buffer, size_t test_write_bu
 
     PU_setACS(DISABLE); // Ensure ACS is disabled before starting the test
     PU_setCAM(DISABLE); // Ensure Camera is disabled before starting the test
-    SERVO_MoveToAngle(&servo_instance, DROGUE_SERVO, DROGUE_NEUTRAL_ANGLE); // Ensure Drogue Servo motor is retracted before starting the test
+    SERVO_MoveToAngle(&drogue_servo, DROGUE_NEUTRAL_ANGLE); // Ensure Drogue Servo motor is retracted before starting the test
     snprintf(test_write_buffer, test_write_buffer_len, "Running max power delay test...\r\n");
     vTaskDelay(pdMS_TO_TICKS(5000)); // 5 second delay to simulate max power delay
 
     PU_setACS(ENABLE);
     PU_setCAM(ENABLE);
-    DeployDrogue(&servo_instance, DROGUE_SERVO, DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
+    DeployDrogue(&drogue_servo, DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
 
     snprintf(test_write_buffer + strlen(test_write_buffer), test_write_buffer_len - strlen(test_write_buffer), "Max power delay test completed successfully.\r\n");
 

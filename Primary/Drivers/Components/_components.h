@@ -12,6 +12,7 @@
 #include "NRF24L01P.h"
 #include "Pyro.h"
 #include "SERVO.h"
+#include "SERVO_cfg.h"
 
 #include "arm_math.h" // Added here as its needed a lot later
 #include "armMathAddon.h"

@@ -375,7 +375,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   /* USER CODE BEGIN Callback 0 */
   StateMachine_TimeHandler(&flight_sm, htim);
-  Servo_TimeHandler(&servo_instance, htim);
+  Servo_TimeHandler(&drogue_servo, htim);
+  Servo_TimeHandler(&main_servo, htim);
   /* USER CODE END Callback 0 */
   if (htim->Instance == TIM6) {
     HAL_IncTick();
@@ -396,7 +397,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     tim16_ms++;
 
     // sweep main servo into retracted position
-    SERVO_MoveToAngle(&servo_instance, MAIN_SERVO, MAIN_DEPLOY_ANGLE * (1.f - tim16_ms / tim16_target_ms) + MAIN_NEUTRAL_ANGLE);
+    SERVO_MoveToAngle(&main_servo, MAIN_DEPLOY_ANGLE * (1.f - tim16_ms / tim16_target_ms) + MAIN_NEUTRAL_ANGLE);
 
     if (tim16_ms >= tim16_target_ms) {
       tim16_ms = 0;

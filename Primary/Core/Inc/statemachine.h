@@ -107,6 +107,7 @@ extern StatusPayload_t status_data;
 
 extern TIM_HandleTypeDef htim7;
 
+extern TIM_HandleTypeDef htim13;
 extern TIM_HandleTypeDef htim14;
 extern uint32_t tim14_target_ms;
 extern TIM_HandleTypeDef htim16;
