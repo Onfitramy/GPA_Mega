@@ -4,15 +4,6 @@
 #include "_components.h"
 #include <stdbool.h>
 
-//#define SIGNAL_PLOTTER_OUT_1 // imu testing
-#define SIGNAL_PLOTTER_OUT_2 // raw sensor data
-// #define SIGNAL_PLOTTER_OUT_3 // orientation ekf testing
-//#define SIGNAL_PLOTTER_OUT_4 // height ekf testing
-//#define SIGNAL_PLOTTER_OUT_5 // state machine testing
-//#define SIGNAL_PLOTTER_OUT_6 // spark testing
-//#define SIGNAL_PLOTTER_OUT_7 // HIL and MPC testing
-//#define SIGNAL_PLOTTER_OUT_GROUND // ground station data
-
 typedef enum {
   SIGNAL_PLOTTER_OUT_1_ID = 0,
   SIGNAL_PLOTTER_OUT_2_ID,
