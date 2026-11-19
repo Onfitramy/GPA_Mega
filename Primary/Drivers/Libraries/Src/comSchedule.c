@@ -35,7 +35,7 @@ extern ekf_data_t EKF2;
 // Spark data
 extern DataPacket_t spark_data;
 // MPC data
-extern uint32_t dt_1000Hz;
+extern uint32_t dt_mpc;
 extern float acs_est_angle_deg;
 extern float acs_target_angle_deg;
 // State machine data
@@ -44,12 +44,18 @@ extern StateMachine_t flight_sm;
 //                                  stat, pow, gps, imu, temp, pos, att, kalman, spark, mpc, state
 uint32_t comm_schedule_groundstation[] = {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // Frequencies for the groundstation (High speed sending of status packet to secondary to act as requests for all data arriving via radio)
 uint32_t comm_schedule0_frequencies[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-uint32_t comm_schedule1_frequencies[] = {0, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100}; // Frequencies for schedule 1 (10Hz for all packets, pre-launch)
-uint32_t comm_schedule2_frequencies[] = {0, 1000, 1000, 50, 500, 100, 100, 500, 1000, 1000, 100}; // Frequencies for schedule 2 (Burn)
-uint32_t comm_schedule3_frequencies[] = {0, 200, 1000, 200, 100, 100, 100, 1000, 200, 100, 100}; //Frequencies for schedule 3 (Coast)
-uint32_t comm_schedule4_frequencies[] = {0, 1000, 100, 1000, 1000, 500, 1000, 1000, 1000, 1000, 100}; // Frequencies for schedule 4 (Descent)
+
+// Data rates for XBee and NRF with 80kbps
+uint32_t comm_schedule1_frequencies[] = {0, 100, 100, 50, 1000, 0, 50, 50, 50, 100, 0}; // Frequencies for schedule 1 
+
+// Low data rate for XBee 10kbps
+uint32_t comm_schedule2_frequencies[] = {0, 1000, 200, 1000, 1000, 0, 200, 1000, 200, 200, 0}; // Frequencies for schedule 2 (Burn)
+
+// Unused for now
+uint32_t comm_schedule3_frequencies[] = {0, 200, 1000, 200, 100, 0, 100, 1000, 200, 100, 100}; //Frequencies for schedule 3 (Coast)
+uint32_t comm_schedule4_frequencies[] = {0, 1000, 100, 1000, 1000, 0, 1000, 1000, 1000, 1000, 100}; // Frequencies for schedule 4 (Descent)
 uint32_t comm_schedule5_frequencies[] = {0, 0, 500, 0, 0, 0, 0, 0, 0, 0, 1000}; // Frequencies for schedule 5 (Landed)
-uint32_t comm_schedule6_frequencies[] = {100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100}; // Frequencies for schedule 6 (HIL Testing)
+uint32_t comm_schedule6_frequencies[] = {100, 100, 100, 100, 100, 0, 100, 100, 100, 100, 100}; // Frequencies for schedule 6 (HIL Testing)
 uint32_t comm_schedule_no_data_frequencies[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // Frequencies for schedule "no data" (for testing the effect of sending no data at all)
 uint32_t comm_schedule_overload[] = {10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10}; // Overload test schedule (for testing the effect of sending all data at 100Hz, which is more than the radio can handle)
 
@@ -152,9 +158,9 @@ bool SetComSchedule(uint8_t schedule_id) {
 
 // units are in ms, not Hz
 //                                       stat,  pow,    gps,    imu,    temp,   pos,    att,    kalman, spark,  mpc,    state
-uint32_t save_schedule1_frequencies[] = {0,     0,      0,      0,      0,      0,      0,      0,      0,      0,      50}; // preflight save schedule frequencies
-uint32_t save_schedule2_frequencies[] = {0,     0,      1000,   1000,   0,      0,      1000,   1000,   0,      1000,   1000}; // preflight save schedule frequencies
-uint32_t save_schedule3_frequencies[] = {0,     0,      100,    20,     0,      0,      20,     200,    0,      100,    100}; // flight save schedule frequencies
+uint32_t save_schedule1_frequencies[] = {0,     0,      0,      0,      0,      0,      0,      0,      0,      0,      0}; // preflight save schedule frequencies
+uint32_t save_schedule2_frequencies[] = {0,     0,      1000,   1000,   0,      0,      1000,   1000,   0,      1000,   0}; // preflight save schedule frequencies
+uint32_t save_schedule3_frequencies[] = {0,     0,      100,    20,     0,      0,      20,     200,    0,      100,    0}; // flight save schedule frequencies
 
 void SetSaveSchedule(uint8_t schedule_id) {
     switch(schedule_id) {
@@ -241,13 +247,13 @@ void UpdatePacket(DataPacket_t *packet) {
             taskEXIT_CRITICAL();
             break;
         case PACKET_ID_GPS:
-            UpdateGPSDataPacket(packet, HAL_GetTick(), &gps_data, bmp_data.pressure);
+            UpdateGPSDataPacket(packet, HAL_GetTick(), &gps_data);
             break;
         case PACKET_ID_IMU:
-            UpdateIMUDataPacket(packet, HAL_GetTick(), &average_imu_data, &mag_data);
+            UpdateIMUDataPacket(packet, HAL_GetTick(), &average_imu_data, &mag_data, flight_sm.currentFlightState);
             break;
         case PACKET_ID_TEMPERATURE:
-            UpdateTemperaturePacket(packet, HAL_GetTick(), DTS_Temperature, ADC_Temperature, bmp_data.temperature, imu1_data.temp, imu2_data.temp, mag_data.temp, /* M2_3V3 */ 0, /* M2_XBee */ 0, /* PU_bat */ 0, bmp_data.pressure, /* pressure_total */ 0);
+            UpdateTemperaturePacket(packet, HAL_GetTick(), DTS_Temperature, ADC_Temperature, bmp_data.temperature, imu1_data.temp, imu2_data.temp, mag_data.temp, /* M2_3V3 */ 0, /* M2_XBee */ 0, /* PU_bat */ 0, bmp_data.pressure, flight_sm.timestamp_ms);
             break;
         case PACKET_ID_POSITION:
             UpdatePositionPacket(packet, HAL_GetTick(), /* posX */ 0.0f, /* posY */ 0.0f, /* posZ */ 0.0f, /* velX */ 0.0f, /* velY */ 0.0f, /* velZ */ 0.0f);
@@ -256,10 +262,11 @@ void UpdatePacket(DataPacket_t *packet) {
             UpdateAttitudePacket(packet, HAL_GetTick(), body_euler[0], body_euler[1], body_euler[2], x3[4], x3[5], x3[6]);
             break;
         case PACKET_ID_KALMANMATRIX:
-            UpdateKalmanMatrixPacket(packet, HAL_GetTick(), arm_mat_get_entry_f32(&P2, 0, 0), arm_mat_get_entry_f32(&P2, 1, 1), arm_mat_get_entry_f32(&P2, 2, 2), EKF2.x[0], EKF2.x[1], EKF2.x[2]);
+            UpdateKalmanMatrixPacket(packet, HAL_GetTick(), arm_mat_get_entry_f32(&P2, 0, 0), arm_mat_get_entry_f32(&P2, 1, 1), arm_mat_get_entry_f32(&P2, 2, 2));
             break;
         case PACKET_ID_MPC_INFO:
-            UpdateMPCInfoPacket(packet, HAL_GetTick(), dt_1000Hz, acs_est_angle_deg, acs_target_angle_deg);
+            UpdateMPCInfoPacket(packet, HAL_GetTick(), dt_mpc, acs_est_angle_deg, acs_target_angle_deg,
+                                a_mpc.tsolve, a_mpc.tsetup, a_mpc.iterations, a_mpc.ExitCode);
             break;
         case PACKET_ID_SPARK:
             if (spark_data.Packet_ID == PACKET_ID_SPARK) {

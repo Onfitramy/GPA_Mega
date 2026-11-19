@@ -129,29 +129,28 @@ typedef struct {
     uint32_t M1_5V_bus, M1_BAT_bus_volt, unused1; // 12 bytes
     uint16_t M2_bus_5V, M2_bus_GPA_bat_volt, unused2; // 18 bytes
     uint16_t PU_pow, PU_curr, PU_bat_bus_volt; //24
-    uint16_t Unused3;  // 26 bytes
+    uint16_t pu_state;  // 26 bytes
 } PowerPayload_t;
 
 typedef struct {
     int32_t latitude, longitude, altitude;
-    int16_t speed, course; 
-    float pressure;
-    int16_t unused1, unused2, unused3;
+    float EKF2_Heigth, EKF2_vel, EKF2_refPres;
+    uint8_t numSats, gpsFix;  // 26 bytes
 } GPSPayload_t;
 
 typedef struct {
     int16_t gyroX, gyroY, gyroZ; // 6 bytes
     int32_t accelX, accelY, accelZ; // 18 bytes
     int16_t magX, magY, magZ; // 24 bytes
-    uint16_t unused1; // 26 bytes
+    uint16_t flight_state; // 26 bytes
 } IMUPayload_t;
 
 typedef struct {
     int16_t M1_DTS, M1_ADC, M1_BMP, M1_IMU1, M1_IMU2, M1_MAG; // 12 bytes
     int16_t M2_3V3, M2_XBee; // 16 bytes
-    uint16_t PU_bat; // 18 bytes
-    float pressure; // 22 bytes
-    uint16_t unused1, unused2; // 26 bytes
+    int16_t PU_bat; // 18 bytes
+    float pressure_static; // 22 bytes
+    uint32_t state_timestamp; // 26 bytes
 } TemperaturePayload_t;
 
 typedef struct {
@@ -162,14 +161,14 @@ typedef struct {
 
 typedef struct {
     float phi, theta, psi;
-    uint32_t unused1, unused2, unused3;
+    float gyro_biasX, gyro_biasY, gyro_biasZ;
     uint16_t unused4;
 } AttitudePayload_t;
 
 typedef struct {
     float P11, P22, P33;
-    float EKF2_Heigth, EKF2_vel, EKF2_refPres;
-    uint16_t unused1;
+    float unused1, unused2, unused3;
+    uint16_t unused4; // 26 bytes 
 } KalmanMatrixPayload_t;
 
 typedef struct {
@@ -184,10 +183,13 @@ typedef struct {
 } SPARKPayload_t;
 
 typedef struct {
-    CommandTarget_t command_target;
-    CommandID_t command_id;
-    uint8_t params[24];
-} CommandPayload_t;
+    float MPC_freq; // Legacy name: MPC execution duration in microseconds (dt_mpc).
+    float Airbreak_deflection;
+    float Target_Angle;
+    float t_solve, t_setup; // Solver timings in seconds.
+    uint32_t unused1;
+    uint8_t num_iterations, exit_code; // 26 bytes
+} MPCInfoPayload_t;
 
 typedef struct {
     float test1, test2, test3, test4, test5, test6; // 24 bytes
@@ -195,8 +197,14 @@ typedef struct {
 } TestPayload_t;
 
 typedef struct {
+    CommandTarget_t command_target;
+    CommandID_t command_id;
+    uint8_t params[24];
+} CommandPayload_t;
+
+typedef struct {
     uint8_t flight_state;
-    uint32_t timestamp_us;
+    uint32_t timestamp_ms;
 } StateData_t;
 
 typedef struct {
@@ -212,9 +220,10 @@ typedef union {
     PositionPayload_t position;
     AttitudePayload_t attitude;
     KalmanMatrixPayload_t kalman;
+    MPCInfoPayload_t mpc_info;
     SPARKPayload_t spark;
-    CommandPayload_t command;
     TestPayload_t test;
+    CommandPayload_t command;
     StateData_t state;
     SerialData_t serial;
     uint8_t raw[26];
@@ -241,7 +250,9 @@ DataPacket_t CreateDataPacket(PacketType_t Packet_ID);
 void calcCRC(DataPacket_t *packet);
 uint8_t getCRC(DataPacket_t *packet);
 
-void UpdatePowerPacket(DataPacket_t *power_packet, uint32_t timestamp, float PU_bat_volt, float PU_out_pow, float PU_out_curr, float M2_bus_5V, float M2_bus_GPA_bat_volt);
+void UpdatePowerPacket(DataPacket_t *power_packet, uint32_t timestamp, float PU_bat_volt, float PU_out_pow, float PU_out_curr, float M2_bus_5V, float M2_bus_GPA_bat_volt, uint16_t pu_state);
+void UpdateTemperaturePacket(DataPacket_t *temp_packet, uint32_t timestamp, int32_t M1_DTS, int32_t M1_ADC, float M1_BMP, float M1_IMU1, float M1_IMU2, float M1_MAG, float M2_3V3, int16_t M2_XBee, float PU_bat, float pressure_static, uint32_t state_timestamp);
+void UpdateKalmanMatrixPacket(DataPacket_t *kalman_packet, uint32_t timestamp, float P11, float P22, float P33);
 DataPacket_t CreateSerialPacket(bool start_stop);
 
 void DataCircBuffer_Init(DataCircularBuffer_t* cb);

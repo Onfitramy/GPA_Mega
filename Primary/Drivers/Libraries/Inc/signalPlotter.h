@@ -5,8 +5,8 @@
 #include <stdbool.h>
 
 //#define SIGNAL_PLOTTER_OUT_1 // imu testing
-//#define SIGNAL_PLOTTER_OUT_2 // raw sensor data
-#define SIGNAL_PLOTTER_OUT_3 // orientation ekf testing
+#define SIGNAL_PLOTTER_OUT_2 // raw sensor data
+// #define SIGNAL_PLOTTER_OUT_3 // orientation ekf testing
 //#define SIGNAL_PLOTTER_OUT_4 // height ekf testing
 //#define SIGNAL_PLOTTER_OUT_5 // state machine testing
 //#define SIGNAL_PLOTTER_OUT_6 // spark testing
@@ -26,7 +26,7 @@ typedef enum {
 
 extern signal_plotter_output_t signal_plotter_output;
 
-extern uint32_t dt_1000Hz;
+extern uint32_t dt_mpc;
 
 extern bool signalPlotterSend;
 

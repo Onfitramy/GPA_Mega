@@ -588,57 +588,122 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t *packet) {
                             printf("\nFinished dumping serial output");
                         }
                         break;
-                    case PACKET_ID_STATUS:
-                        printf("\nID:%d, TS:%lu, StatFl:%lu, SensFl:%lu, ErrFl:%lu, STATE:%d",
-                                packet_type, data_packet->timestamp,
-                                data_packet->Data.status.status_flags, data_packet->Data.status.sensor_status_flags, data_packet->Data.status.error_flags, data_packet->Data.status.State);
-                        break;
-                    case PACKET_ID_POWER:
-                        printf("\nID:%d, TS:%lu, M25VBUS:%u, M2BATV:%u, PUPOW:%u, PUCURR:%u, PUBATV:%u",
-                                packet_type, data_packet->timestamp,
-                                data_packet->Data.power.M2_bus_5V, data_packet->Data.power.M2_bus_GPA_bat_volt,
-                                data_packet->Data.power.PU_pow, data_packet->Data.power.PU_curr, data_packet->Data.power.PU_bat_bus_volt);
-                        break;
-                    case PACKET_ID_GPS:
-                        printf("\nID:%d, TS:%lu, Lat:%ld, Lon:%ld, Alt:%ld, Spd:%d, Crs:%d",
-                                packet_type, data_packet->timestamp,
-                                data_packet->Data.gps.latitude, data_packet->Data.gps.longitude, data_packet->Data.gps.altitude,
-                                data_packet->Data.gps.speed, data_packet->Data.gps.course);
-                        break;
                     case PACKET_ID_IMU:
-                        printf("\nID:%d, TS:%lu, GyrX:%d, GyrY:%d, GyrZ:%d, AccX:%ld, AccY:%ld, AccZ:%ld, MagX:%d, MagY:%d, MagZ:%d",
-                                packet_type, data_packet->timestamp,
-                                data_packet->Data.imu.gyroX, data_packet->Data.imu.gyroY, data_packet->Data.imu.gyroZ,
-                                data_packet->Data.imu.accelX, data_packet->Data.imu.accelY, data_packet->Data.imu.accelZ,
-                                data_packet->Data.imu.magX, data_packet->Data.imu.magY, data_packet->Data.imu.magZ);
-                        break;
-                    case PACKET_ID_TEMPERATURE:
-                        printf("\nID:%d, TS:%lu, M1DTS:%d, M1ADC:%d, M1BMP:%d, M1IMU1:%d, M1IMU2:%d, M1MAG:%d, M23V3:%d, M2XBee:%d, PUBAT:%d, Pressure:%.6f",
-                                packet_type, data_packet->timestamp,
-                                data_packet->Data.temperature.M1_DTS, data_packet->Data.temperature.M1_ADC,
-                                data_packet->Data.temperature.M1_BMP, data_packet->Data.temperature.M1_IMU1,
-                                data_packet->Data.temperature.M1_IMU2, data_packet->Data.temperature.M1_MAG,
-                                data_packet->Data.temperature.M2_3V3, data_packet->Data.temperature.M2_XBee,
-                                data_packet->Data.temperature.PU_bat, data_packet->Data.temperature.pressure_static);
+                        printf("\nID:%d, TS:%lu, accelX:%ld, accelY:%ld, accelZ:%ld, gyroX:%d, gyroY:%d, gyroZ:%d, magX:%d, magY:%d, magZ:%d, flight_state:%u",
+                                (int)packet_type, (unsigned long)data_packet->timestamp,
+                                (long)data_packet->Data.imu.accelX,
+                    (long)data_packet->Data.imu.accelY,
+                    (long)data_packet->Data.imu.accelZ,
+                    (int)data_packet->Data.imu.gyroX,
+                    (int)data_packet->Data.imu.gyroY,
+                    (int)data_packet->Data.imu.gyroZ,
+                    (int)data_packet->Data.imu.magX,
+                    (int)data_packet->Data.imu.magY,
+                    (int)data_packet->Data.imu.magZ,
+                    (unsigned int)data_packet->Data.imu.flight_state);
                         break;
                     case PACKET_ID_ATTITUDE:
-                        printf("\nID:%d, TS:%lu, phi:%f, theta:%f, psi:%f",
-                                packet_type, data_packet->timestamp,
-                                data_packet->Data.attitude.phi, data_packet->Data.attitude.theta, data_packet->Data.attitude.psi);
+                        printf("\nID:%d, TS:%lu, phi:%.9g, theta:%.9g, psi:%.9g, gyro_biasX:%.9g, gyro_biasY:%.9g, gyro_biasZ:%.9g",
+                                (int)packet_type, (unsigned long)data_packet->timestamp,
+                                (double)data_packet->Data.attitude.phi,
+                    (double)data_packet->Data.attitude.theta,
+                    (double)data_packet->Data.attitude.psi,
+                    (double)data_packet->Data.attitude.gyro_biasX,
+                    (double)data_packet->Data.attitude.gyro_biasY,
+                    (double)data_packet->Data.attitude.gyro_biasZ);
+                        break;
+                    case PACKET_ID_GPS:
+                        printf("\nID:%d, TS:%lu, latitude:%ld, longitude:%ld, altitude:%ld, EKF2_Heigth:%.9g, EKF2_vel:%.9g, EKF2_refPres:%.9g, numSats:%u, gpsFix:%u",
+                                (int)packet_type, (unsigned long)data_packet->timestamp,
+                                (long)data_packet->Data.gps.latitude,
+                    (long)data_packet->Data.gps.longitude,
+                    (long)data_packet->Data.gps.altitude,
+                    (double)data_packet->Data.gps.EKF2_Heigth,
+                    (double)data_packet->Data.gps.EKF2_vel,
+                    (double)data_packet->Data.gps.EKF2_refPres,
+                    (unsigned int)data_packet->Data.gps.numSats,
+                    (unsigned int)data_packet->Data.gps.gpsFix);
+                        break;
+                    case PACKET_ID_POSITION:
+                        printf("\nID:%d, TS:%lu, posX:%ld, posY:%ld, posZ:%ld, velX:%ld, velY:%ld, velZ:%ld",
+                                (int)packet_type, (unsigned long)data_packet->timestamp,
+                                (long)data_packet->Data.position.posX,
+                    (long)data_packet->Data.position.posY,
+                    (long)data_packet->Data.position.posZ,
+                    (long)data_packet->Data.position.velX,
+                    (long)data_packet->Data.position.velY,
+                    (long)data_packet->Data.position.velZ);
+                        break;
+                    case PACKET_ID_POWER:
+                        printf("\nID:%d, TS:%lu, M1_5V_bus:%lu, M1_BAT_bus_volt:%lu, M2_bus_5V:%u, M2_bus_GPA_bat_volt:%u, PU_bat_bus_volt:%u, PU_curr:%u, PU_pow:%u, pu_state:%u",
+                                (int)packet_type, (unsigned long)data_packet->timestamp,
+                                (unsigned long)data_packet->Data.power.M1_5V_bus,
+                    (unsigned long)data_packet->Data.power.M1_BAT_bus_volt,
+                    (unsigned int)data_packet->Data.power.M2_bus_5V,
+                    (unsigned int)data_packet->Data.power.M2_bus_GPA_bat_volt,
+                    (unsigned int)data_packet->Data.power.PU_bat_bus_volt,
+                    (unsigned int)data_packet->Data.power.PU_curr,
+                    (unsigned int)data_packet->Data.power.PU_pow,
+                    (unsigned int)data_packet->Data.power.pu_state);
+                        break;
+                    case PACKET_ID_TEMPERATURE:
+                        printf("\nID:%d, TS:%lu, M1_ADC:%d, M1_BMP:%d, M1_DTS:%d, M1_IMU1:%d, M1_MAG:%d, M2_3V3:%d, M2_XBee:%d, M1_IMU2:%d, PU_bat:%d, pressure_static:%.9g, state_timestamp:%lu",
+                                (int)packet_type, (unsigned long)data_packet->timestamp,
+                                (int)data_packet->Data.temperature.M1_ADC,
+                    (int)data_packet->Data.temperature.M1_BMP,
+                    (int)data_packet->Data.temperature.M1_DTS,
+                    (int)data_packet->Data.temperature.M1_IMU1,
+                    (int)data_packet->Data.temperature.M1_MAG,
+                    (int)data_packet->Data.temperature.M2_3V3,
+                    (int)data_packet->Data.temperature.M2_XBee,
+                    (int)data_packet->Data.temperature.M1_IMU2,
+                    (int)data_packet->Data.temperature.PU_bat,
+                    (double)data_packet->Data.temperature.pressure_static,
+                    (unsigned long)data_packet->Data.temperature.state_timestamp);
+                        break;
+                    case PACKET_ID_STATUS:
+                        printf("\nID:%d, TS:%lu, status_flags:%ld, sensor_status_flags:%ld, error_flags:%ld, State:%d",
+                                (int)packet_type, (unsigned long)data_packet->timestamp,
+                                (long)data_packet->Data.status.status_flags,
+                    (long)data_packet->Data.status.sensor_status_flags,
+                    (long)data_packet->Data.status.error_flags,
+                    (int)data_packet->Data.status.State);
                         break;
                     case PACKET_ID_KALMANMATRIX:
-                        printf("\nID:%d, TS:%lu, P11:%f, P22:%f, P33:%f, EKF2_Height:%f, EKF2_Vel:%f, EKF2_RefPres:%f",
-                                packet_type, data_packet->timestamp,
-                                data_packet->Data.kalman.P11, data_packet->Data.kalman.P22, data_packet->Data.kalman.P33,
-                                data_packet->Data.kalman.EKF2_Heigth, data_packet->Data.kalman.EKF2_vel, data_packet->Data.kalman.EKF2_refPres);
+                        printf("\nID:%d, TS:%lu, P11:%.9g, P22:%.9g, P33:%.9g",
+                                (int)packet_type, (unsigned long)data_packet->timestamp,
+                                (double)data_packet->Data.kalman.P11,
+                    (double)data_packet->Data.kalman.P22,
+                    (double)data_packet->Data.kalman.P33);
                         break;
                     case PACKET_ID_MPC_INFO:
-                        printf("\nID:%d, TS:%lu, Freq:%f, BrkDefl:%f, TgtAng:%f",
-                                packet_type, data_packet->timestamp, data_packet->Data.mpc_info.MPC_freq,
-                                data_packet->Data.mpc_info.Airbreak_deflection, data_packet->Data.mpc_info.Target_Angle);
+                        printf("\nID:%d, TS:%lu, MPC_freq:%.9g, Airbreak_deflection:%.9g, Target_Angle:%.9g, t_solve:%.9g, t_setup:%.9g, num_iterations:%u, exit_code:%u",
+                                (int)packet_type, (unsigned long)data_packet->timestamp,
+                                (double)data_packet->Data.mpc_info.MPC_freq,
+                    (double)data_packet->Data.mpc_info.Airbreak_deflection,
+                    (double)data_packet->Data.mpc_info.Target_Angle,
+                    (double)data_packet->Data.mpc_info.t_solve,
+                    (double)data_packet->Data.mpc_info.t_setup,
+                    (unsigned int)data_packet->Data.mpc_info.num_iterations,
+                    (unsigned int)data_packet->Data.mpc_info.exit_code);
+                        break;
+                    case PACKET_ID_SPARK:
+                        printf("\nID:%d, TS:%lu, magAngle:%.9g, magSpeed:%.9g, posDeviation:%.9g, voltage_driver:%.9g, temperature_driver:%.9g, temperature_converter:%.9g, sparkStatus:%u, as5600_status:%u",
+                                (int)packet_type, (unsigned long)data_packet->timestamp,
+                                (double)data_packet->Data.spark.magAngle,
+                    (double)data_packet->Data.spark.magSpeed,
+                    (double)data_packet->Data.spark.posDeviation,
+                    (double)data_packet->Data.spark.voltage_driver,
+                    (double)data_packet->Data.spark.temperature_driver,
+                    (double)data_packet->Data.spark.temperature_converter,
+                    (unsigned int)data_packet->Data.spark.sparkStatus,
+                    (unsigned int)data_packet->Data.spark.as5600_status);
                         break;
                     case PACKET_ID_STATE:
-                        printf("\nID:%d, TS:%lu, STATE:%d, STATE_TS:%lu", packet_type, data_packet->timestamp, data_packet->Data.state.flight_state, data_packet->Data.state.timestamp_ms);
+                        printf("\nID:%d, TS:%lu, flight_state:%u, timestamp_ms:%lu",
+                                (int)packet_type, (unsigned long)data_packet->timestamp,
+                                (unsigned int)data_packet->Data.state.flight_state,
+                    (unsigned long)data_packet->Data.state.timestamp_ms);
                         break;
                     default:
                         printf("\nID:%d", packet_type);
@@ -688,86 +753,143 @@ uint8_t USB_QueueDataPacket(DataPacket_t *packet) {
 }
 
 uint8_t USB_OutputDataPacket(DataPacket_t *packet) {
-    if (packet == NULL) {
-        return 0;
-    }
-
-    switch(packet->Packet_ID) {
+    if (packet == NULL) return USBD_FAIL;
+    int length;
+    switch (packet->Packet_ID) {
         case PACKET_ID_IMU:
-            sprintf((char *)usb_packet_buffer, "ID%d,%lu,%ld,%ld,%ld,%d,%d,%d,%d,%d,%d\n",
-                    packet->Packet_ID , packet->timestamp, packet->Data.imu.accelX, packet->Data.imu.accelY, packet->Data.imu.accelZ,
-                    packet->Data.imu.gyroX, packet->Data.imu.gyroY, packet->Data.imu.gyroZ, packet->Data.imu.magX, packet->Data.imu.magY, packet->Data.imu.magZ);
+            length = snprintf((char *)usb_packet_buffer, sizeof(usb_packet_buffer),
+                    "ID%d,%lu,%ld,%ld,%ld,%d,%d,%d,%d,%d,%d,%u\n",
+                    (int)packet->Packet_ID, (unsigned long)packet->timestamp,
+                    (long)packet->Data.imu.accelX,
+                    (long)packet->Data.imu.accelY,
+                    (long)packet->Data.imu.accelZ,
+                    (int)packet->Data.imu.gyroX,
+                    (int)packet->Data.imu.gyroY,
+                    (int)packet->Data.imu.gyroZ,
+                    (int)packet->Data.imu.magX,
+                    (int)packet->Data.imu.magY,
+                    (int)packet->Data.imu.magZ,
+                    (unsigned int)packet->Data.imu.flight_state);
             break;
         case PACKET_ID_ATTITUDE:
-            sprintf((char *)usb_packet_buffer, "ID%d,%lu,%f,%f,%f,%f,%f,%f\n",
-                    packet->Packet_ID , packet->timestamp, 
-                    packet->Data.attitude.phi, packet->Data.attitude.theta, packet->Data.attitude.psi,
-                    packet->Data.attitude.gyro_biasX, packet->Data.attitude.gyro_biasY, packet->Data.attitude.gyro_biasZ);
+            length = snprintf((char *)usb_packet_buffer, sizeof(usb_packet_buffer),
+                    "ID%d,%lu,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g\n",
+                    (int)packet->Packet_ID, (unsigned long)packet->timestamp,
+                    (double)packet->Data.attitude.phi,
+                    (double)packet->Data.attitude.theta,
+                    (double)packet->Data.attitude.psi,
+                    (double)packet->Data.attitude.gyro_biasX,
+                    (double)packet->Data.attitude.gyro_biasY,
+                    (double)packet->Data.attitude.gyro_biasZ);
             break;
         case PACKET_ID_GPS:
-            sprintf((char *)usb_packet_buffer, "ID%d,%lu,%ld,%ld,%ld,%d,%d,%f\n",
-                    packet->Packet_ID , packet->timestamp, packet->Data.gps.latitude, packet->Data.gps.longitude, packet->Data.gps.altitude, packet->Data.gps.course, packet->Data.gps.speed, packet->Data.gps.pressure);
+            length = snprintf((char *)usb_packet_buffer, sizeof(usb_packet_buffer),
+                    "ID%d,%lu,%ld,%ld,%ld,%.9g,%.9g,%.9g,%u,%u\n",
+                    (int)packet->Packet_ID, (unsigned long)packet->timestamp,
+                    (long)packet->Data.gps.latitude,
+                    (long)packet->Data.gps.longitude,
+                    (long)packet->Data.gps.altitude,
+                    (double)packet->Data.gps.EKF2_Heigth,
+                    (double)packet->Data.gps.EKF2_vel,
+                    (double)packet->Data.gps.EKF2_refPres,
+                    (unsigned int)packet->Data.gps.numSats,
+                    (unsigned int)packet->Data.gps.gpsFix);
             break;
         case PACKET_ID_POSITION:
-            sprintf((char *)usb_packet_buffer, "ID%d,%lu,%ld,%ld,%ld,%ld,%ld,%ld\n",
-                    packet->Packet_ID , packet->timestamp, packet->Data.position.posX, packet->Data.position.posY, packet->Data.position.posZ,
-                    packet->Data.position.velX, packet->Data.position.velY, packet->Data.position.velZ);
+            length = snprintf((char *)usb_packet_buffer, sizeof(usb_packet_buffer),
+                    "ID%d,%lu,%ld,%ld,%ld,%ld,%ld,%ld\n",
+                    (int)packet->Packet_ID, (unsigned long)packet->timestamp,
+                    (long)packet->Data.position.posX,
+                    (long)packet->Data.position.posY,
+                    (long)packet->Data.position.posZ,
+                    (long)packet->Data.position.velX,
+                    (long)packet->Data.position.velY,
+                    (long)packet->Data.position.velZ);
             break;
         case PACKET_ID_POWER:
-            sprintf((char *)usb_packet_buffer, "ID%d,%lu,%ld,%ld,%d,%d,%d,%d,%d\n",
-                    packet->Packet_ID , packet->timestamp, packet->Data.power.M1_5V_bus, packet->Data.power.M1_BAT_bus_volt,
-                    packet->Data.power.M2_bus_5V, packet->Data.power.M2_bus_GPA_bat_volt, packet->Data.power.PU_bat_bus_volt,
-                    packet->Data.power.PU_curr, packet->Data.power.PU_pow);
-            break;
-        case PACKET_ID_TEMPERATURE: {
-            int length = snprintf((char *)usb_packet_buffer, sizeof(usb_packet_buffer),
-                    "ID%d,%lu,%d,%d,%d,%d,%d,%d,%d,%d,%u,%.9g,%.9g\n",
+            length = snprintf((char *)usb_packet_buffer, sizeof(usb_packet_buffer),
+                    "ID%d,%lu,%lu,%lu,%u,%u,%u,%u,%u,%u\n",
                     (int)packet->Packet_ID, (unsigned long)packet->timestamp,
-                    packet->Data.temperature.M1_ADC, packet->Data.temperature.M1_BMP,
-                    packet->Data.temperature.M1_DTS, packet->Data.temperature.M1_IMU1, packet->Data.temperature.M1_MAG,
-                    packet->Data.temperature.M2_3V3, packet->Data.temperature.M2_XBee,
-                    packet->Data.temperature.M1_IMU2, (unsigned int)packet->Data.temperature.PU_bat,
-                    packet->Data.temperature.pressure_static, packet->Data.temperature.pressure_total);
-            if (length < 0 || (size_t)length >= sizeof(usb_packet_buffer)) {
-                return USBD_FAIL;
-            }
+                    (unsigned long)packet->Data.power.M1_5V_bus,
+                    (unsigned long)packet->Data.power.M1_BAT_bus_volt,
+                    (unsigned int)packet->Data.power.M2_bus_5V,
+                    (unsigned int)packet->Data.power.M2_bus_GPA_bat_volt,
+                    (unsigned int)packet->Data.power.PU_bat_bus_volt,
+                    (unsigned int)packet->Data.power.PU_curr,
+                    (unsigned int)packet->Data.power.PU_pow,
+                    (unsigned int)packet->Data.power.pu_state);
             break;
-        }
+        case PACKET_ID_TEMPERATURE:
+            length = snprintf((char *)usb_packet_buffer, sizeof(usb_packet_buffer),
+                    "ID%d,%lu,%d,%d,%d,%d,%d,%d,%d,%d,%d,%.9g,%lu\n",
+                    (int)packet->Packet_ID, (unsigned long)packet->timestamp,
+                    (int)packet->Data.temperature.M1_ADC,
+                    (int)packet->Data.temperature.M1_BMP,
+                    (int)packet->Data.temperature.M1_DTS,
+                    (int)packet->Data.temperature.M1_IMU1,
+                    (int)packet->Data.temperature.M1_MAG,
+                    (int)packet->Data.temperature.M2_3V3,
+                    (int)packet->Data.temperature.M2_XBee,
+                    (int)packet->Data.temperature.M1_IMU2,
+                    (int)packet->Data.temperature.PU_bat,
+                    (double)packet->Data.temperature.pressure_static,
+                    (unsigned long)packet->Data.temperature.state_timestamp);
+            break;
         case PACKET_ID_STATUS:
-            sprintf((char *)usb_packet_buffer, "ID%d,%lu,%ld,%ld,%ld,%d\n",
-                    packet->Packet_ID , packet->timestamp, packet->Data.status.status_flags, packet->Data.status.sensor_status_flags, packet->Data.status.error_flags, packet->Data.status.State);
+            length = snprintf((char *)usb_packet_buffer, sizeof(usb_packet_buffer),
+                    "ID%d,%lu,%ld,%ld,%ld,%d\n",
+                    (int)packet->Packet_ID, (unsigned long)packet->timestamp,
+                    (long)packet->Data.status.status_flags,
+                    (long)packet->Data.status.sensor_status_flags,
+                    (long)packet->Data.status.error_flags,
+                    (int)packet->Data.status.State);
             break;
         case PACKET_ID_KALMANMATRIX:
-            sprintf((char *)usb_packet_buffer, "ID%d,%lu,%f,%f,%f,%f,%f,%f\n",
-                    packet->Packet_ID , packet->timestamp, packet->Data.kalman.P11, packet->Data.kalman.P22, packet->Data.kalman.P33, packet->Data.kalman.EKF2_Heigth, packet->Data.kalman.EKF2_vel, packet->Data.kalman.EKF2_refPres);
+            length = snprintf((char *)usb_packet_buffer, sizeof(usb_packet_buffer),
+                    "ID%d,%lu,%.9g,%.9g,%.9g\n",
+                    (int)packet->Packet_ID, (unsigned long)packet->timestamp,
+                    (double)packet->Data.kalman.P11,
+                    (double)packet->Data.kalman.P22,
+                    (double)packet->Data.kalman.P33);
             break;
         case PACKET_ID_MPC_INFO:
-            sprintf((char *)usb_packet_buffer, "ID%d,%lu,%f,%f,%f\n",
-                    packet->Packet_ID , packet->timestamp, packet->Data.mpc_info.MPC_freq, packet->Data.mpc_info.Airbreak_deflection, packet->Data.mpc_info.Target_Angle);
-            break;
-        case PACKET_ID_SPARK: {
-            // Nine significant digits preserve float precision and bound line length.
-            int length = snprintf((char *)usb_packet_buffer, sizeof(usb_packet_buffer),
-                    "ID%d,%lu,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%u\n",
+            length = snprintf((char *)usb_packet_buffer, sizeof(usb_packet_buffer),
+                    "ID%d,%lu,%.9g,%.9g,%.9g,%.9g,%.9g,%u,%u\n",
                     (int)packet->Packet_ID, (unsigned long)packet->timestamp,
-                    packet->Data.spark.magAngle, packet->Data.spark.magSpeed,
-                    packet->Data.spark.posDeviation, packet->Data.spark.voltage_driver,
-                    packet->Data.spark.temperature_driver, packet->Data.spark.temperature_converter,
-                    (unsigned int)packet->Data.spark.sparkStatus);
-            if (length < 0 || (size_t)length >= sizeof(usb_packet_buffer)) {
-                return USBD_FAIL;
-            }
+                    (double)packet->Data.mpc_info.MPC_freq,
+                    (double)packet->Data.mpc_info.Airbreak_deflection,
+                    (double)packet->Data.mpc_info.Target_Angle,
+                    (double)packet->Data.mpc_info.t_solve,
+                    (double)packet->Data.mpc_info.t_setup,
+                    (unsigned int)packet->Data.mpc_info.num_iterations,
+                    (unsigned int)packet->Data.mpc_info.exit_code);
             break;
-        }
+        case PACKET_ID_SPARK:
+            length = snprintf((char *)usb_packet_buffer, sizeof(usb_packet_buffer),
+                    "ID%d,%lu,%.9g,%.9g,%.9g,%.9g,%.9g,%.9g,%u,%u\n",
+                    (int)packet->Packet_ID, (unsigned long)packet->timestamp,
+                    (double)packet->Data.spark.magAngle,
+                    (double)packet->Data.spark.magSpeed,
+                    (double)packet->Data.spark.posDeviation,
+                    (double)packet->Data.spark.voltage_driver,
+                    (double)packet->Data.spark.temperature_driver,
+                    (double)packet->Data.spark.temperature_converter,
+                    (unsigned int)packet->Data.spark.sparkStatus,
+                    (unsigned int)packet->Data.spark.as5600_status);
+            break;
         case PACKET_ID_STATE:
-            sprintf((char *)usb_packet_buffer, "ID%d,%lu,%d,%ld\n",
-                    packet->Packet_ID , packet->timestamp, packet->Data.state.flight_state, packet->Data.state.timestamp_ms);
+            length = snprintf((char *)usb_packet_buffer, sizeof(usb_packet_buffer),
+                    "ID%d,%lu,%u,%lu\n",
+                    (int)packet->Packet_ID, (unsigned long)packet->timestamp,
+                    (unsigned int)packet->Data.state.flight_state,
+                    (unsigned long)packet->Data.state.timestamp_ms);
             break;
         default:
-            break;
-            // return; // Unsupported packet type
+            // Consume unsupported packets without retransmitting the old buffer.
+            return USBD_OK;
     }
-    return CDC_Transmit_HS(usb_packet_buffer, strlen((char *)usb_packet_buffer));
+    if (length < 0 || (size_t)length >= sizeof(usb_packet_buffer)) return USBD_FAIL;
+    return CDC_Transmit_HS(usb_packet_buffer, (uint16_t)length);
 }
 
 InterBoardPacket_t TestPacket;

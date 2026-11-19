@@ -64,7 +64,11 @@ static const reg_descriptor_t registers[] = {
     REG_ENTRY(system_version, system.version, "System version number", false, REG_TYPE_U32),
     REG_ENTRY(flight_sm.currentFlightState, system.flightState, "Current flight state", false, REG_TYPE_U8),
     REG_ENTRY(flight_sm.timestamp_ms, system.flightStateTimestamp, "Timestamp of current flight state", false, REG_TYPE_U32),
-    REG_ENTRY(dt_1000Hz, system.mpc.runtime, "Runtime in ms", false, REG_TYPE_U32),
+    REG_ENTRY(dt_mpc, system.mpc.runtime, "Runtime in ms", false, REG_TYPE_U32),
+    REG_ENTRY(a_mpc.tsolve, system.mpc.t_solve, "Solver time in seconds", false, REG_TYPE_FLOAT),
+    REG_ENTRY(a_mpc.tsetup, system.mpc.t_setup, "Solver setup time in seconds", false, REG_TYPE_FLOAT),
+    REG_ENTRY(a_mpc.iterations, system.mpc.num_iterations, "Solver iteration count", false, REG_TYPE_U8),
+    REG_ENTRY(a_mpc.ExitCode, system.mpc.exit_code, "Solver exit code", false, REG_TYPE_U8),
     {
         .name = "system.FHPlotter.mode",
         .description = "0=imu testing, 1=raw sensor data, 2=orientation ekf testing, 3=height ekf testing, 4=variable testing, 5=spark testing, 6=ground station data, 7=HIL and MPC testing",
@@ -130,6 +134,9 @@ static const reg_descriptor_t registers[] = {
     REG_ENTRY(x2[0], vehicle.height, "Height from EKF", false, REG_TYPE_FLOAT),
     REG_ENTRY(x2[1], vehicle.velZ, "Vertical velocity from EKF", false, REG_TYPE_FLOAT),
     REG_ENTRY(x2[2], vehicle.quaternion.p0, "EKF reference pressure", false, REG_TYPE_FLOAT),
+    REG_ENTRY(P2_data[0], vehicle.kalman.P11, "Height covariance", false, REG_TYPE_FLOAT),
+    REG_ENTRY(P2_data[x_size2 + 1], vehicle.kalman.P22, "Vertical velocity covariance", false, REG_TYPE_FLOAT),
+    REG_ENTRY(P2_data[2 * x_size2 + 2], vehicle.kalman.P33, "Reference pressure covariance", false, REG_TYPE_FLOAT),
     REG_ENTRY(acs_est_angle_deg, vehicle.acs.estimated_angle, "Estimated angle of ACS", false, REG_TYPE_FLOAT),
     REG_ENTRY(acs_target_angle_deg, vehicle.acs.target_angle, "Target angle of ACS", false, REG_TYPE_FLOAT),
     REG_ENTRY(spark_data.Data.spark.magAngle, vehicle.spark.magAngle, "Spark magAngle", false, REG_TYPE_FLOAT),
@@ -147,6 +154,29 @@ static const reg_descriptor_t registers[] = {
     REG_ENTRY(powerData.Data.power.M2_bus_GPA_bat_volt, sensor.power.M2_bus_GPA_bat_volt, "Power M2_bus_GPA_bat_volt", false, REG_TYPE_U16),
     REG_ENTRY(powerData.Data.power.PU_curr, sensor.power.PU_curr, "Power PU_curr", false, REG_TYPE_U16),
     REG_ENTRY(powerData.Data.power.PU_pow, sensor.power.PU_pow, "Power PU_pow", false, REG_TYPE_U16),
+    REG_ENTRY(powerData.Data.power.pu_state, sensor.power.pu_state, "Power unit state", false, REG_TYPE_U16),
+    // Discovery-only fields: no Secondary temperature source is connected yet.
+    {
+        .name = "sensor.temperature.M2_3V3",
+        .description = "Secondary regulator temperature in 0.01 C; unavailable",
+        .type = REG_TYPE_I16,
+        .access = REG_ACCESS_READ,
+        .address = NULL,
+    },
+    {
+        .name = "sensor.temperature.M2_XBee",
+        .description = "Secondary XBee temperature; unavailable",
+        .type = REG_TYPE_I16,
+        .access = REG_ACCESS_READ,
+        .address = NULL,
+    },
+    {
+        .name = "sensor.temperature.PU_bat",
+        .description = "Battery temperature in 0.01 C; unavailable",
+        .type = REG_TYPE_I16,
+        .access = REG_ACCESS_READ,
+        .address = NULL,
+    },
     REG_ENTRY(bmp_data.pressure, sensor.bmp.pressure, "Pressure", false, REG_TYPE_FLOAT),
     REG_ENTRY(bmp_data.temperature, sensor.bmp.temperature, "Temperature", false, REG_TYPE_FLOAT),
     REG_ENTRY(DTS_Temperature, sensor.DTS_Temperature, "DTS Temperature", false, REG_TYPE_I32),
@@ -395,6 +425,8 @@ BaseType_t cmd_regGet(char *pcWriteBuffer, size_t xWriteBufferLen, const char *p
                     if (!registers[i].custom_read(pcWriteBuffer)) {
                         snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Custom read failed\r\n");
                     }
+                } else if (registers[i].address == NULL) {
+                    snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Register value unavailable\r\n");
                 } else {
                     switch (registers[i].type) {
                         case REG_TYPE_U32:
@@ -1005,6 +1037,52 @@ BaseType_t cmd_ACS_SetAngle(char *pcWriteBuffer, size_t xWriteBufferLen, const c
 
     /* Write the response to the buffer */
     snprintf(pcWriteBuffer, 50, "Setting ACS Target Angle to %.2f°...\r\n", acs_target_angle_deg);
+
+    return pdFALSE;
+}
+
+BaseType_t cmd_Main_SetAngle(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString) {
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+    float main_angle = strtof(pcParameter, &endPtr);
+
+    SERVO_MoveToAngle(MAIN_SERVO, main_angle);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 50, "Setting Main Angle to %.2f°...\r\n", main_angle);
+
+    return pdFALSE;
+}
+
+BaseType_t cmd_Drogue_SetAngle(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString) {
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+    float drogue_angle = strtof(pcParameter, &endPtr);
+
+    SERVO_MoveToAngle(DROGUE_SERVO, drogue_angle);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 50, "Setting Drogue Angle to %.2f°...\r\n", drogue_angle);
 
     return pdFALSE;
 }
@@ -1692,6 +1770,18 @@ const CLI_Command_Definition_t xCommandList[] = {
         .cExpectedNumberOfParameters = 1
     },
     {
+        .pcCommand = "Main_SetAngle", /* The command string to type. */
+        .pcHelpString = "Main_SetAngle <float>: Sets Main Angle\r\n\r\n",
+        .pxCommandInterpreter = cmd_Main_SetAngle, /* The function to run. */
+        .cExpectedNumberOfParameters = 1
+    },
+    {
+        .pcCommand = "Drogue_SetAngle", /* The command string to type. */
+        .pcHelpString = "Drogue_SetAngle <float>: Sets Drogue Angle\r\n\r\n",
+        .pxCommandInterpreter = cmd_Drogue_SetAngle, /* The function to run. */
+        .cExpectedNumberOfParameters = 1
+    },
+{
         .pcCommand = "SPARK_SetNeutralAngle", /* The command string to type. */
         .pcHelpString = "SPARK_SetNeutralAngle <float>: Sets Stepper Neutral Angle\r\n\r\n",
         .pxCommandInterpreter = cmd_SPARK_SetNeutralAngle, /* The function to run. */

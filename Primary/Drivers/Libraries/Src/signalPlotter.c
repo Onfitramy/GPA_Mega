@@ -20,7 +20,7 @@ uint32_t TimeMeasureTick = 0;
 
 uint32_t TimerOverflow = 0;
 
-uint32_t dt_1000Hz;
+uint32_t dt_mpc;
 
 #ifdef HIL_TESTING
 signal_plotter_output_t signal_plotter_output = SIGNAL_PLOTTER_OUT_7_ID;
@@ -287,7 +287,7 @@ void signalPlotter_updateSignalNames(void) {
 
 void signalPlotter_sendAll(void) {
   if (signal_plotter_output == SIGNAL_PLOTTER_OUT_1_ID) {
-  signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
+  signalPlotter_sendData(0, (float)dt_mpc / 1000.0f);
   signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
   signalPlotter_sendData(2, imu1_data.accel[0]);
   signalPlotter_sendData(3, imu1_data.accel[1]);
@@ -303,7 +303,7 @@ void signalPlotter_sendAll(void) {
 
 
   if (signal_plotter_output == SIGNAL_PLOTTER_OUT_2_ID) { // signal plotter outputs raw sensor data
-  signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
+  signalPlotter_sendData(0, (float)dt_mpc / 1000.0f);
   signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
   signalPlotter_sendData(2, mag_data.field[0]);
   signalPlotter_sendData(3, mag_data.field[1]);
@@ -330,7 +330,7 @@ void signalPlotter_sendAll(void) {
   }
 
   if (signal_plotter_output == SIGNAL_PLOTTER_OUT_3_ID) { // signal plotter outputs quaternion ekf testing
-  signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
+  signalPlotter_sendData(0, (float)dt_mpc / 1000.0f);
   signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
   signalPlotter_sendData(2, body_euler[0]);
   signalPlotter_sendData(3, body_euler[1]);
@@ -365,7 +365,7 @@ void signalPlotter_sendAll(void) {
     }
 
   if (signal_plotter_output == SIGNAL_PLOTTER_OUT_4_ID) { // signal plotter outputs height ekf testing
-  signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
+  signalPlotter_sendData(0, (float)dt_mpc / 1000.0f);
   signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
   signalPlotter_sendData(2, body_euler[0]);
   signalPlotter_sendData(3, body_euler[1]);
@@ -398,7 +398,7 @@ void signalPlotter_sendAll(void) {
     }
 
   if (signal_plotter_output == SIGNAL_PLOTTER_OUT_5_ID) { // signal plotter outputs testing data
-  signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
+  signalPlotter_sendData(0, (float)dt_mpc / 1000.0f);
   signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
   signalPlotter_sendData(2, (float)flight_sm.timestamp_ms);
   signalPlotter_sendData(3, (float)gps_data.numSV);
@@ -413,7 +413,7 @@ void signalPlotter_sendAll(void) {
     }
 
   if (signal_plotter_output == SIGNAL_PLOTTER_OUT_6_ID) { // SPARK
-  signalPlotter_sendData(0, (float)dt_1000Hz / 1000.0f);
+  signalPlotter_sendData(0, (float)dt_mpc / 1000.0f);
   signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
   signalPlotter_sendData(2, (float)flight_sm.timestamp_ms);
   signalPlotter_sendData(3, spark_data.Data.spark.magAngle);
@@ -429,7 +429,7 @@ void signalPlotter_sendAll(void) {
     }
 
   if (signal_plotter_output == SIGNAL_PLOTTER_OUT_7_ID) { // HIL & MPC
-  signalPlotter_sendData(0, (float)dt_1000Hz);
+  signalPlotter_sendData(0, (float)dt_mpc);
   signalPlotter_sendData(1, (float)flight_sm.currentFlightState);
   signalPlotter_sendData(2, (float)flight_sm.timestamp_ms);
   signalPlotter_sendData(3, HIL.r_i[0]);
