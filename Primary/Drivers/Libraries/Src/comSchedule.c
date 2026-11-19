@@ -236,7 +236,7 @@ void ProcessDataSchedule(uint32_t current_tick) {
 // This function Updates the packet data based on its type and then send it via the appropriate communication interface (e.g., USB, Radio)
 void UpdatePacket(DataPacket_t *packet) {
     switch(packet->Packet_ID) {
-        case PACKET_ID_STATUS:
+        case PACKET_ID_STATUS: // unused
             UpdateStatusPacket(packet, HAL_GetTick(), status_data.status_flags, status_data.sensor_status_flags, status_data.error_flags, flight_sm.currentFlightState);
             break;
         case PACKET_ID_POWER:
@@ -255,7 +255,7 @@ void UpdatePacket(DataPacket_t *packet) {
         case PACKET_ID_TEMPERATURE:
             UpdateTemperaturePacket(packet, HAL_GetTick(), DTS_Temperature, ADC_Temperature, bmp_data.temperature, imu1_data.temp, imu2_data.temp, mag_data.temp, /* M2_3V3 */ 0, /* M2_XBee */ 0, /* PU_bat */ 0, bmp_data.pressure, flight_sm.timestamp_ms);
             break;
-        case PACKET_ID_POSITION:
+        case PACKET_ID_POSITION: // unused
             UpdatePositionPacket(packet, HAL_GetTick(), /* posX */ 0.0f, /* posY */ 0.0f, /* posZ */ 0.0f, /* velX */ 0.0f, /* velY */ 0.0f, /* velZ */ 0.0f);
             break;
         case PACKET_ID_ATTITUDE:
@@ -273,7 +273,7 @@ void UpdatePacket(DataPacket_t *packet) {
                 *packet = spark_data;
             }// Assuming spark_data is already updated with the latest data, we can just point to it here
             break;
-        case PACKET_ID_STATE:
+        case PACKET_ID_STATE: // unused
             UpdateStatePacket(packet, HAL_GetTick(), flight_sm.currentFlightState, flight_sm.timestamp_ms);
             break;
         default:

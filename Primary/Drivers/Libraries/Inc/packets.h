@@ -118,7 +118,7 @@ typedef struct {
     int32_t status_flags, sensor_status_flags, error_flags;
     int16_t State;
     int32_t  Unused1, Unused2, Unused3;
-} StatusPayload_t;
+} StatusPayload_t; // unused
 
 typedef struct {
     uint32_t M1_5V_bus, M1_BAT_bus_volt, unused1; // 12 bytes
@@ -152,7 +152,7 @@ typedef struct {
     int32_t posX, posY, posZ;
     int32_t velX, velY, velZ;
     uint16_t unused1;
-} PositionPayload_t;
+} PositionPayload_t; // unused
 
 typedef struct {
     float phi, theta, psi;
@@ -189,7 +189,7 @@ typedef struct {
 typedef struct {
     float test1, test2, test3, test4, test5, test6; // 24 bytes
     uint16_t unused1; // 26 bytes
-} TestPayload_t;
+} TestPayload_t; // unused
 
 typedef struct {
     CommandTarget_t command_target;
@@ -200,26 +200,26 @@ typedef struct {
 typedef struct {
     uint8_t flight_state;
     uint32_t timestamp_ms;
-} StateData_t;
+} StateData_t; // unused
 
 typedef struct {
     bool start_stop; // true = start, false = stop
 } SerialData_t;
 
 typedef union {
-    StatusPayload_t status;
+    StatusPayload_t status; // unused
     PowerPayload_t power;
     GPSPayload_t gps;
     IMUPayload_t imu;
     TemperaturePayload_t temperature;
-    PositionPayload_t position;
+    PositionPayload_t position; // unused
     AttitudePayload_t attitude;
     KalmanMatrixPayload_t kalman;
     MPCInfoPayload_t mpc_info;
     SPARKPayload_t spark;
-    TestPayload_t test;
+    TestPayload_t test; // unused
     CommandPayload_t command;
-    StateData_t state;
+    StateData_t state; // unused
     SerialData_t serial;
     uint8_t raw[26];
 } PayloadData_u;

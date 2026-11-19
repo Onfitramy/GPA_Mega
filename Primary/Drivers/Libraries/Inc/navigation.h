@@ -36,7 +36,6 @@
 /* --- Height EKF Settings --- */
 #define ACCEL_VAR   0.5*0.5
 #define BARO_VAR    2*2
-#define PTOT_VAR    133*133
 #define REFERENCE_PRESSURE_VAR 1e-6
 
 // correction step discard threshold
@@ -103,24 +102,23 @@
 // DCM rotation type
 typedef enum {
     DCM_bi_WorldToBody = -1,
-    DCM_ib_BodyToWorld = 1
+    DCM_ib_BodyToWorld = 1,
 } direct_cosine_matrix_t;
 
 typedef enum {
     EKF1_type,
     EKF2_type,
-    EKF3_type
+    EKF3_type,
 } ekf_instance_t;
 
 typedef enum {
     corr1_type,
     corr2_type,
-    corr3_type
 } ekf_correction_t;
 
 typedef enum {
     inactive = 0,
-    active = 1
+    active = 1,
 } state_t;
 
 // standard EKF variables
@@ -156,6 +154,9 @@ typedef struct {
 
     float NIS;
     float NIS_threshold;
+
+    uint32_t NIS_rejection_count;
+    float NIS_rejection_avg;
 
     arm_matrix_instance_f32 *H;
     arm_matrix_instance_f32 *K;

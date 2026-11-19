@@ -526,6 +526,8 @@ void EKFCorrectionInit(ekf_data_t ekf, ekf_corr_data_t *ekf_corr, ekf_correction
     // DEFAULT: correction step is inactive
     ekf_corr->correction_state = inactive;
     ekf_corr->NIS_threshold = NIS_thresh;
+    ekf_corr->NIS_rejection_count = 0;
+    ekf_corr->NIS_rejection_avg = 0;
 
     // set type and sizes
     ekf_corr->type = corr_type;
@@ -552,8 +554,6 @@ void EKFCorrectionInit(ekf_data_t ekf, ekf_corr_data_t *ekf_corr, ekf_correction
             arm_mat_set_entry_f32(ekf_corr->R, 0, 0, BARO_VAR);
         } else if (corr_type == corr2_type) {
             // from GNSS readings
-        } else if (corr_type == corr3_type) {
-            arm_mat_set_entry_f32(ekf_corr->R, 0, 0, PTOT_VAR);
         }
     } else if (ekf.type == EKF3_type) {
         // configure Quaternion EKF correction matrices
@@ -644,9 +644,6 @@ void EKFPredictMeasurement(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
             // measurement prediction of type 2 correction step
             ekf_corr->h[0] = ekf->x[0] + h_ref;
             ekf_corr->h[1] = ekf->x[1];
-        } else if (ekf_corr->type == corr3_type) {
-            // measurement predicition of type 3 correction step
-            CalculateTotalPressure(ekf->x[0] + h_ref, ekf->x[2], ekf->x[1], ekf_corr->h);
         }
 
     } else if (ekf->type == EKF3_type) {
@@ -781,10 +778,6 @@ void EKFGetObservationJacobian(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
 
         } else if (ekf_corr->type == corr2_type) {
             arm_mat_set_diag_f32(ekf_corr->H, 0, 0, 2, 1);
-        } else if (ekf_corr->type == corr3_type) {
-            arm_mat_set_entry_f32(ekf_corr->H, 0, 0, ekf_corr->h[0]/T_static*(g0_const/R_const+kappa*L_const*vel_abs*vel_abs/((kappa-1)*vel_abs*vel_abs+2*kappa*R_const*T_static)));
-            arm_mat_set_entry_f32(ekf_corr->H, 0, 1, vel_abs*ekf_corr->h[0]/(R_const*T_static*cosf(flightpath_angle)));
-            arm_mat_set_entry_f32(ekf_corr->H, 0, 2, ekf_corr->h[0] / ekf->x[2]);
         }
 
     } else if (ekf->type == EKF3_type) {
@@ -846,9 +839,13 @@ void EKFCorrectionStep(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
     // calculate Normalized Innovation Squared (NIS)
     EKFgetNIS(ekf, ekf_corr);
 
-    // TODO: separate logic for gnc alignment vs armed through flight states
     // if NIS exceeds threshold, skip correction step
-    if (ekf_corr->NIS > getNISthreshold(ekf_corr)) return;
+    if (ekf_corr->NIS > getNISthreshold(ekf_corr)) {
+        // update average rejected NIS and counter
+        ekf_corr->NIS_rejection_count++;
+        ekf_corr->NIS_rejection_avg += (ekf_corr->NIS - ekf_corr->NIS_rejection_avg) / (float)ekf_corr->NIS_rejection_count;
+        return;
+    }
 
     // correct state vector based on innovation and Kalman Gain
     EKFCorrectStateV(ekf, ekf_corr);

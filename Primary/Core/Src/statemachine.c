@@ -264,7 +264,11 @@ static void InitEntry(StateMachine_t *sm) {
     SPARK_ExitMode();
 }
 static void AlignGNCEntry(StateMachine_t *sm) {
+    // activate GNSS correction step
     EKF2_corr2.correction_state = active;
+
+    // disable NIS thresholds
+
     PU_setCAM(ENABLE);
     // TODO:
 }
