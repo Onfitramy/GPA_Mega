@@ -77,6 +77,8 @@
 #define MAIN_MAX_VELOCITY       15  // m/s
 #define MAIN_MIN_VELOCITY       5   // m/s
 #define MAIN_MIN_ACCELERATION   5   // m/s²
+#define MAIN_MAX_NUM_ATTEMPTS   5
+#define MAIN_ATTEMPT_PERIOD     3000    //ms
 
 #define LANDED_MAX_VELOCITY     1   // m/s
 #define LANDED_MAX_ACCELERATION 11  // m/s²

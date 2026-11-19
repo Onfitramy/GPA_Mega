@@ -322,7 +322,8 @@ static void DrogueDescendEntry(StateMachine_t *sm) {
 }
 static void AwaitMainEntry(StateMachine_t *sm) {
     // deplay main parachute
-    SERVO_MoveToAngle(&main_servo, MAIN_DEPLOY_ANGLE);
+    SERVO_MoveSequence(&main_servo, MAIN_DEPLOY_ANGLE, MAIN_NEUTRAL_ANGLE, MAIN_MOVE_DELAY_MS, 0);
+    main_deploy_attempts++;
 #ifdef HIL_TESTING
     tim14_target_ms = HIL_MAIN_DEPLOY_TIME;
     HAL_TIM_Base_Start_IT(&htim14);
@@ -521,6 +522,16 @@ static void DrogueDescendDo(StateMachine_t *sm, uint16_t freq) {
     SPARK_SetAngle(stepper_target_angle_deg);
 }
 static void AwaitMainDo(StateMachine_t *sm, uint16_t freq) {
+    if (freq == 100) {
+        uint32_t elapsed_time = HAL_GetTick() - sm->timestamp_ms;
+
+        // attempt further deployment attempts
+        if ((elapsed_time >= main_deploy_attempts * MAIN_ATTEMPT_PERIOD) && (main_deploy_attempts < MAIN_MAX_NUM_ATTEMPTS)) {
+            SERVO_MoveSequence(&main_servo, MAIN_DEPLOY_ANGLE, MAIN_NEUTRAL_ANGLE, MAIN_MOVE_DELAY_MS, 0);
+            main_deploy_attempts++;
+        }
+    }
+
     // check for main with 1000 Hz
     if (freq == 1000) {
         // option 2

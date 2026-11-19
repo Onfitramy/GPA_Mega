@@ -16,6 +16,7 @@
 #define MAIN_SERVO              2
 #define MAIN_NEUTRAL_ANGLE      0.f
 #define MAIN_DEPLOY_ANGLE       -90.f
+#define MAIN_MOVE_DELAY_MS      700
 
 typedef struct {
     TIM_TypeDef*   TIM_Instance;
@@ -43,7 +44,8 @@ extern SERVO_Instance_t drogue_servo;
 extern SERVO_Instance_t main_servo;
 
 extern uint8_t drogue_deploy_attempts;
- 
+extern uint8_t main_deploy_attempts;
+
 /*-----[ Prototypes For All Functions ]-----*/
  
 void SERVO_Init(SERVO_CfgType *config_list, SERVO_Instance_t *instance, uint16_t servo_num,
