@@ -264,21 +264,20 @@ static void InitEntry(StateMachine_t *sm) {
     SPARK_ExitMode();
 }
 static void AlignGNCEntry(StateMachine_t *sm) {
+    // enable the GNSS correction step
     EKF2_corr2.correction_state = active;
+
+    // enable camera power
     PU_setCAM(ENABLE);
-    // TODO:
 }
 static void CheckoutsEntry(StateMachine_t *sm) {
+    // enable ACS power and switch camera on
     PU_setACS(ENABLE);
     Camera_Power(ENABLE);
-    #ifndef HIL_TESTING
-    //HAL_Delay(5);
-    #endif
+
     // TODO: Re-enable
     // Storage_FlashSave(true);
     SetSaveSchedule(1); // start saving pre-flight data to flash
-    // TODO:
-    // notify ground station that it now needs to command the checkouts
 }
 static void ArmedEntry(StateMachine_t *sm) {
     PU_setREC(ENABLE);
@@ -287,14 +286,17 @@ static void ArmedEntry(StateMachine_t *sm) {
     SERVO_MoveSequence(&main_servo, MAIN_NEUTRAL_ANGLE - 5.0f, MAIN_NEUTRAL_ANGLE, 1000, 1);
     SERVO_MoveSequence(&drogue_servo, DROGUE_NEUTRAL_ANGLE - 15.0f, DROGUE_NEUTRAL_ANGLE, 1000, 1);
     SPARK_ZeroStepper();
-    Camera_Recording(1);
+
+    // start the video recording
+    Camera_Recording(ENABLE);
     SetSaveSchedule(2);
     // TODO:
     // lock ACS
     // start data logging
 }
 static void BurnEntry(StateMachine_t *sm) {
-    EKF3_corr1.correction_state = inactive; // mag & accel
+    EKF2_corr2.correction_state = inactive; // gnss
+    EKF3_corr2.correction_state = inactive; // accel
     SPARK_TargetPositionMode(16);
 }
 static void CoastEntry(StateMachine_t *sm) {
@@ -307,6 +309,9 @@ static void CoastEntry(StateMachine_t *sm) {
 
 }
 static void AwaitDrogueEntry(StateMachine_t *sm) {
+    // update Kalman filter NIS thresholds
+    setNISthreshold(&EKF3_corr1, EKF_NIS_THRESH_ACC);
+
     // deploy drogue parachute
     SERVO_MoveSequence(&drogue_servo, DROGUE_DEPLOY_ANGLE, DROGUE_NEUTRAL_ANGLE, DROGUE_MOVE_DELAY_MS, 0);
     drogue_deploy_attempts++;
@@ -317,6 +322,11 @@ static void AwaitDrogueEntry(StateMachine_t *sm) {
 
 }
 static void DrogueDescendEntry(StateMachine_t *sm) {
+    // update Kalman filter NIS thresholds
+    EKF2_corr2.correction_state = active; // gnss
+    setNISthreshold(&EKF2_corr1, 1000.0f); // baro
+    setNISthreshold(&EKF2_corr2, 1000.0f); // gnss
+
     // play beep code
     Buzzer_PlaySong(BUZZER_PATTERN_SONG_COW);
 }
@@ -428,7 +438,7 @@ static void ArmedDo(StateMachine_t *sm, uint16_t freq) {
     // Check for liftoff with 1000 Hz
     if (freq != 1000) return;
 
-    if (a_BodyFrame_i[1] < LIFTOFF_ACC_THRESHOLD) {
+    if (average_imu_data.accel[1] < LIFTOFF_ACC_THRESHOLD) {
         time_index = HAL_GetTick();
     } else if ((HAL_GetTick() - time_index) > LIFTOFF_MIN_DURATION) {
         StateMachine_Dispatch(sm, EVENT_FLIGHT_LAUNCH_DETECTED);
@@ -438,7 +448,7 @@ static void BurnDo(StateMachine_t *sm, uint16_t freq) {
     // Check for burnout with 1000 Hz
     if (freq != 1000) return;
 
-    if (a_BodyFrame_i[1] > BURNOUT_ACC_THRESHOLD) {
+    if (average_imu_data.accel[1] > BURNOUT_ACC_THRESHOLD) {
         time_index = HAL_GetTick();
     } else if ((HAL_GetTick() - time_index) > BURNOUT_MIN_DURATION) {
         StateMachine_Dispatch(sm, EVENT_FLIGHT_BURNOUT_DETECTED);
