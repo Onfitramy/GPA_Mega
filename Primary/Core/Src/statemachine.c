@@ -286,7 +286,7 @@ static void ArmedEntry(StateMachine_t *sm) {
     // The servo position can be off from the actual position if the arm is rotated manually.
     // This is fixed by moving the servo to a different position and returning to the neutral angle.
     SERVO_MoveSequence(&main_servo, MAIN_NEUTRAL_ANGLE - 5.0f, MAIN_NEUTRAL_ANGLE, 1000, 1);
-    SERVO_MoveSequence(&main_servo, DROGUE_NEUTRAL_ANGLE - 15.0f, DROGUE_NEUTRAL_ANGLE, 1000, 1);
+    SERVO_MoveSequence(&drogue_servo, DROGUE_NEUTRAL_ANGLE - 15.0f, DROGUE_NEUTRAL_ANGLE, 1000, 1);
     SPARK_ZeroStepper();
     Camera_Recording(1);
     SetSaveSchedule(2);
