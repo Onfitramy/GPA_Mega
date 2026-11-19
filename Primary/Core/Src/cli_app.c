@@ -1041,6 +1041,52 @@ BaseType_t cmd_ACS_SetAngle(char *pcWriteBuffer, size_t xWriteBufferLen, const c
     return pdFALSE;
 }
 
+BaseType_t cmd_Main_SetAngle(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString) {
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+    float main_angle = strtof(pcParameter, &endPtr);
+
+    SERVO_MoveToAngle(MAIN_SERVO, main_angle);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 50, "Setting Main Angle to %.2f°...\r\n", main_angle);
+
+    return pdFALSE;
+}
+
+BaseType_t cmd_Drogue_SetAngle(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString) {
+    (void)pcCommandString;
+    (void)xWriteBufferLen;
+
+    const char *pcParameter;
+    BaseType_t xParameterStringLength;
+    char *endPtr;  // Pointer to track invalid characters
+
+    pcParameter = FreeRTOS_CLIGetParameter(pcCommandString, 1, &xParameterStringLength);
+    if (pcParameter == NULL) { //Handle to missing Input
+        snprintf(pcWriteBuffer, xWriteBufferLen, "Error: Missing parameter 1\r\n");
+        return pdFALSE;
+    }
+    float drogue_angle = strtof(pcParameter, &endPtr);
+
+    SERVO_MoveToAngle(DROGUE_SERVO, drogue_angle);
+
+    /* Write the response to the buffer */
+    snprintf(pcWriteBuffer, 50, "Setting Drogue Angle to %.2f°...\r\n", drogue_angle);
+
+    return pdFALSE;
+}
+
 //*****************************************************************************
 BaseType_t cmd_SPARK_SetNeutralAngle(char *pcWriteBuffer, size_t xWriteBufferLen, const char *pcCommandString)
 {
@@ -1724,6 +1770,18 @@ const CLI_Command_Definition_t xCommandList[] = {
         .cExpectedNumberOfParameters = 1
     },
     {
+        .pcCommand = "Main_SetAngle", /* The command string to type. */
+        .pcHelpString = "Main_SetAngle <float>: Sets Main Angle\r\n\r\n",
+        .pxCommandInterpreter = cmd_Main_SetAngle, /* The function to run. */
+        .cExpectedNumberOfParameters = 1
+    },
+    {
+        .pcCommand = "Drogue_SetAngle", /* The command string to type. */
+        .pcHelpString = "Drogue_SetAngle <float>: Sets Drogue Angle\r\n\r\n",
+        .pxCommandInterpreter = cmd_Drogue_SetAngle, /* The function to run. */
+        .cExpectedNumberOfParameters = 1
+    },
+{
         .pcCommand = "SPARK_SetNeutralAngle", /* The command string to type. */
         .pcHelpString = "SPARK_SetNeutralAngle <float>: Sets Stepper Neutral Angle\r\n\r\n",
         .pxCommandInterpreter = cmd_SPARK_SetNeutralAngle, /* The function to run. */
