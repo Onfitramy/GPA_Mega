@@ -267,10 +267,22 @@ static void AlignGNCEntry(StateMachine_t *sm) {
     // enable the GNSS correction step
     EKF2_corr2.correction_state = active;
 
+    // disable all NIS thresholds for alignment phase
+    setNISthreshold(&EKF2_corr1, NIS_EKF_UNUSED);
+    setNISthreshold(&EKF2_corr2, NIS_EKF_UNUSED);
+    setNISthreshold(&EKF3_corr1, NIS_EKF_UNUSED);
+    setNISthreshold(&EKF3_corr2, NIS_EKF_UNUSED);
+
     // enable camera power
     PU_setCAM(ENABLE);
 }
 static void CheckoutsEntry(StateMachine_t *sm) {
+    // enable the NIS thresholds again
+    setNISthreshold(&EKF2_corr1, EKF_NIS_THRESH_BARO);
+    setNISthreshold(&EKF2_corr2, EKF_NIS_THRESH_GNSS);
+    setNISthreshold(&EKF3_corr1, EKF_NIS_THRESH_MAG);
+    setNISthreshold(&EKF3_corr2, EKF_NIS_THRESH_ACC);
+
     // enable ACS power and switch camera on
     PU_setACS(ENABLE);
     Camera_Power(ENABLE);
@@ -280,7 +292,9 @@ static void CheckoutsEntry(StateMachine_t *sm) {
     SetSaveSchedule(1); // start saving pre-flight data to flash
 }
 static void ArmedEntry(StateMachine_t *sm) {
+    // enable recovery power
     PU_setREC(ENABLE);
+
     // The servo position can be off from the actual position if the arm is rotated manually.
     // This is fixed by moving the servo to a different position and returning to the neutral angle.
     SERVO_MoveSequence(&main_servo, MAIN_NEUTRAL_ANGLE - 5.0f, MAIN_NEUTRAL_ANGLE, 1000, 1);
@@ -295,8 +309,14 @@ static void ArmedEntry(StateMachine_t *sm) {
     // start data logging
 }
 static void BurnEntry(StateMachine_t *sm) {
+    // inflate baro threshold
+    setNISthreshold(&EKF2_corr1, 100.0f * EKF_NIS_THRESH_BARO);
+
+    // deactivate correction steps
     EKF2_corr2.correction_state = inactive; // gnss
     EKF3_corr2.correction_state = inactive; // accel
+
+    // set stepper motor to max current
     SPARK_TargetPositionMode(16);
 }
 static void CoastEntry(StateMachine_t *sm) {
@@ -309,9 +329,6 @@ static void CoastEntry(StateMachine_t *sm) {
 
 }
 static void AwaitDrogueEntry(StateMachine_t *sm) {
-    // update Kalman filter NIS thresholds
-    setNISthreshold(&EKF3_corr1, EKF_NIS_THRESH_ACC);
-
     // deploy drogue parachute
     SERVO_MoveSequence(&drogue_servo, DROGUE_DEPLOY_ANGLE, DROGUE_NEUTRAL_ANGLE, DROGUE_MOVE_DELAY_MS, 0);
     drogue_deploy_attempts++;
@@ -324,8 +341,8 @@ static void AwaitDrogueEntry(StateMachine_t *sm) {
 static void DrogueDescendEntry(StateMachine_t *sm) {
     // update Kalman filter NIS thresholds
     EKF2_corr2.correction_state = active; // gnss
-    setNISthreshold(&EKF2_corr1, 1000.0f); // baro
-    setNISthreshold(&EKF2_corr2, 1000.0f); // gnss
+    setNISthreshold(&EKF2_corr1, 100.0f * EKF_NIS_THRESH_BARO); // baro
+    setNISthreshold(&EKF2_corr2, 100.0f * EKF_NIS_THRESH_GNSS); // gnss
 
     // play beep code
     Buzzer_PlaySong(BUZZER_PATTERN_SONG_COW);
@@ -453,6 +470,17 @@ static void BurnDo(StateMachine_t *sm, uint16_t freq) {
     } else if ((HAL_GetTick() - time_index) > BURNOUT_MIN_DURATION) {
         StateMachine_Dispatch(sm, EVENT_FLIGHT_BURNOUT_DETECTED);
     }
+
+    // update baro NIS based on vertical velocity
+    if (EKF2.x[2] > 100.0f) {
+        float NIS_factor = (EKF2.x[2] - 100.0f) / 200.0f;
+        if (NIS_factor > 1.0f)
+            NIS_factor = 1.0f;
+        float new_NIS = 100.0f * EKF_NIS_THRESH_BARO * (1.0f - NIS_factor) + EKF_NIS_THRESH_BARO * NIS_factor;
+        setNISthreshold(&EKF2_corr1, new_NIS);
+    } else {
+        setNISthreshold(&EKF2_corr1, 100.0f * EKF_NIS_THRESH_BARO);
+    }
 }
 static void CoastDo(StateMachine_t *sm, uint16_t freq) {
     // check for apogee with 1000 Hz
@@ -461,6 +489,17 @@ static void CoastDo(StateMachine_t *sm, uint16_t freq) {
             time_index = HAL_GetTick();
         } else if ((HAL_GetTick() - time_index) > APOGEE_MIN_DURATION) {
             StateMachine_Dispatch(sm, EVENT_FLIGHT_DROGUE_COMMANDED);
+        }
+
+        // update baro NIS based on vertical velocity
+        if (EKF2.x[2] > 100.0f) {
+            float NIS_factor = (EKF2.x[2] - 100.0f) / 200.0f;
+            if (NIS_factor > 1.0f)
+                NIS_factor = 1.0f;
+            float new_NIS = 100.0f * EKF_NIS_THRESH_BARO * (1.0f - NIS_factor) + EKF_NIS_THRESH_BARO * NIS_factor;
+            setNISthreshold(&EKF2_corr1, new_NIS);
+        } else {
+            setNISthreshold(&EKF2_corr1, 100.0f * EKF_NIS_THRESH_BARO);
         }
     }
 
