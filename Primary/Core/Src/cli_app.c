@@ -1056,7 +1056,7 @@ BaseType_t cmd_Main_SetAngle(char *pcWriteBuffer, size_t xWriteBufferLen, const 
     }
     float main_angle = strtof(pcParameter, &endPtr);
 
-    SERVO_MoveToAngle(MAIN_SERVO, main_angle);
+    SERVO_MoveToAngle(&main_servo, main_angle);
 
     /* Write the response to the buffer */
     snprintf(pcWriteBuffer, 50, "Setting Main Angle to %.2f°...\r\n", main_angle);
@@ -1079,7 +1079,7 @@ BaseType_t cmd_Drogue_SetAngle(char *pcWriteBuffer, size_t xWriteBufferLen, cons
     }
     float drogue_angle = strtof(pcParameter, &endPtr);
 
-    SERVO_MoveToAngle(DROGUE_SERVO, drogue_angle);
+    SERVO_MoveToAngle(&drogue_servo, drogue_angle);
 
     /* Write the response to the buffer */
     snprintf(pcWriteBuffer, 50, "Setting Drogue Angle to %.2f°...\r\n", drogue_angle);
