@@ -11,6 +11,7 @@
 #include "tim.h"
 
 uint8_t drogue_deploy_attempts = 0;
+uint8_t main_deploy_attempts = 0;
 
 SERVO_Instance_t drogue_servo;
 SERVO_Instance_t main_servo;
