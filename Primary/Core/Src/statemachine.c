@@ -256,6 +256,7 @@ static void InitEntry(StateMachine_t *sm) {
     EKF3_corr1.correction_state = active;   // mag
     EKF3_corr2.correction_state = active;   // accel
 
+    SetComSchedule(1); // Main comm schedule
     // calculate stepper position for closed ACS position
     StepperPositionFromACSAngle(0.f, &stepper_zero_position);
     stepper_zero_position += stepper_neutral_angle / 360.f * ROD_SLOPE;
@@ -265,8 +266,6 @@ static void AlignGNCEntry(StateMachine_t *sm) {
     EKF2_corr2.correction_state = active;
     PU_setCAM(ENABLE);
     // TODO:
-    SetComSchedule(1); //10Hz all preflight schedule
-    // begin xBee comms
 }
 static void CheckoutsEntry(StateMachine_t *sm) {
     PU_setACS(ENABLE);
@@ -295,7 +294,6 @@ static void ArmedEntry(StateMachine_t *sm) {
     // TODO:
     // lock ACS
     // start data logging
-    SetComSchedule(2); //Prepare for Burn flight state by reducing data rate
 }
 static void BurnEntry(StateMachine_t *sm) {
     EKF3_corr1.correction_state = inactive; // mag & accel
@@ -309,13 +307,11 @@ static void CoastEntry(StateMachine_t *sm) {
     vel_vec_input[2] = EKF2.x[1];
     predictFutureStateGamma(EKF2.x[0], vel_vec_input, AREF, DRYMASS, 0, a_mpc.dt*a_mpc.N, 0.1, &a_mpc.xstar[0], &a_mpc.xstar[1]);
 
-    SetComSchedule(3); //Coast flight state by reducing data rate
 }
 static void AwaitDrogueEntry(StateMachine_t *sm) {
     // deploy drogue parachute
     DeployDrogue(DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
 
-    SetComSchedule(4); //Descent flight state, focus on GNSS and barometer data
 }
 static void DrogueDescendEntry(StateMachine_t *sm) {
     // play beep code
@@ -463,7 +459,7 @@ static void CoastDo(StateMachine_t *sm, uint16_t freq) {
 
     // solve optimization problem
     acs_target_angle_deg = runMPC(&a_mpc, EKF2.x[0], vel_vec_input);
-    dt_1000Hz = TimeMeasureStop();
+    dt_mpc = TimeMeasureStop();
 
     // send airbrake deflection angle command to SPARK
     StepperPositionFromACSAngle(acs_target_angle_deg, &stepper_target_position);

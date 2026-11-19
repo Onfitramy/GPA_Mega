@@ -26,7 +26,7 @@ typedef enum {
 
 extern signal_plotter_output_t signal_plotter_output;
 
-extern uint32_t dt_1000Hz;
+extern uint32_t dt_mpc;
 
 extern bool signalPlotterSend;
 

@@ -236,7 +236,8 @@ void Start10HzTask(void *argument){
                       health.power.out_pu,
                       health.current.out_pu,
                       health.voltage.bus_5V,
-                      health.voltage.bus_gpa_bat);
+                      health.voltage.bus_gpa_bat,
+                      (uint16_t)pu_sm.currentState);
 
     InterBoardPacket_t powerPacket = InterBoardCom_CreatePacket(INTERBOARD_OP_SAVE_SEND | INTERBOARD_TARGET_MCU);
     InterBoardCom_FillData(&powerPacket, &powerData);

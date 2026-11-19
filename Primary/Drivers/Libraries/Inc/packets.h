@@ -124,30 +124,28 @@ typedef struct {
     uint32_t M1_5V_bus, M1_BAT_bus_volt, unused1; // 12 bytes
     uint16_t M2_bus_5V, M2_bus_GPA_bat_volt, unused2; // 18 bytes
     uint16_t PU_pow, PU_curr, PU_bat_bus_volt; //24
-    uint16_t Unused3;  // 26 bytes
+    uint16_t pu_state;  // 26 bytes
 } PowerPayload_t;
 
 typedef struct {
     int32_t latitude, longitude, altitude;
-    int16_t speed;
-    uint16_t course; 
-    float pressure;
-    int16_t unused1, unused2, unused3;
+    float EKF2_Heigth, EKF2_vel, EKF2_refPres;
+    uint8_t numSats, gpsFix;  // 26 bytes
 } GPSPayload_t;
 
 typedef struct {
     int16_t gyroX, gyroY, gyroZ; // 6 bytes
     int32_t accelX, accelY, accelZ; // 18 bytes
     int16_t magX, magY, magZ; // 24 bytes
-    uint16_t unused1; // 26 bytes
+    uint16_t flight_state; // 26 bytes
 } IMUPayload_t;
 
 typedef struct {
     int16_t M1_DTS, M1_ADC, M1_BMP, M1_IMU1, M1_IMU2, M1_MAG; // 12 bytes
     int16_t M2_3V3, M2_XBee; // 16 bytes
-    uint16_t PU_bat; // 18 bytes
+    int16_t PU_bat; // 18 bytes
     float pressure_static; // 22 bytes
-    float pressure_total; // 26 bytes
+    uint32_t state_timestamp; // 26 bytes
 } TemperaturePayload_t;
 
 typedef struct {
@@ -164,8 +162,8 @@ typedef struct {
 
 typedef struct {
     float P11, P22, P33;
-    float EKF2_Heigth, EKF2_vel, EKF2_refPres;
-    uint16_t unused1;
+    float unused1, unused2, unused3;
+    uint16_t unused4; // 26 bytes 
 } KalmanMatrixPayload_t;
 
 typedef struct {
@@ -180,11 +178,12 @@ typedef struct {
 } SPARKPayload_t;
 
 typedef struct {
-    float MPC_freq;
+    float MPC_freq; // Legacy name: MPC execution duration in microseconds (dt_mpc).
     float Airbreak_deflection;
     float Target_Angle;
-    uint32_t unused1, unused2, unused3;
-    uint16_t unused4; // 26 bytes
+    float t_solve, t_setup; // Solver timings in seconds.
+    uint32_t unused1;
+    uint8_t num_iterations, exit_code; // 26 bytes
 } MPCInfoPayload_t;
 
 typedef struct {
@@ -238,14 +237,14 @@ DataPacket_t CreateDataPacket(PacketType_t Packet_ID);
 void calcCRC(DataPacket_t *packet);
 uint8_t getCRC(DataPacket_t *packet);
 void UpdateStatusPacket(DataPacket_t *status_packet, uint32_t timestamp, int32_t status_flags, int32_t sensor_flags, int32_t error_flags, uint32_t flight_state);
-void UpdateIMUDataPacket(DataPacket_t *imu_packet, uint32_t timestamp, IMU_AverageData_t *imu_data, LIS3MDL_Data_t *mag_data);
-void UpdateGPSDataPacket(DataPacket_t *gps_packet, uint32_t timestamp, UBX_NAV_PVT *gps_data, float pressure);
-void UpdateTemperaturePacket(DataPacket_t *temp_packet, uint32_t timestamp, int32_t M1_DTS, int32_t M1_ADC, float M1_BMP, float M1_IMU1, float M1_IMU2, float M1_MAG, float M2_3V3, uint16_t M2_XBee, float PU_bat, float pressure_static, float pressure_total);
-void UpdatePowerPacket(DataPacket_t *power_packet, uint32_t timestamp, float PU_bat_volt, float PU_out_pow, float PU_out_curr, float M2_bus_5V, float M2_bus_GPA_bat_volt);
-void UpdateKalmanMatrixPacket(DataPacket_t *kalman_packet, uint32_t timestamp, float P11, float P22, float P33, float EKF2_Heigth, float EKF2_vel, float EKF2_refPres);
+void UpdateIMUDataPacket(DataPacket_t *imu_packet, uint32_t timestamp, IMU_AverageData_t *imu_data, LIS3MDL_Data_t *mag_data, uint16_t flight_state);
+void UpdateGPSDataPacket(DataPacket_t *gps_packet, uint32_t timestamp, UBX_NAV_PVT *gps_data);
+void UpdateTemperaturePacket(DataPacket_t *temp_packet, uint32_t timestamp, int32_t M1_DTS, int32_t M1_ADC, float M1_BMP, float M1_IMU1, float M1_IMU2, float M1_MAG, float M2_3V3, int16_t M2_XBee, float PU_bat, float pressure_static, uint32_t state_timestamp);
+void UpdatePowerPacket(DataPacket_t *power_packet, uint32_t timestamp, float PU_bat_volt, float PU_out_pow, float PU_out_curr, float M2_bus_5V, float M2_bus_GPA_bat_volt, uint16_t pu_state);
+void UpdateKalmanMatrixPacket(DataPacket_t *kalman_packet, uint32_t timestamp, float P11, float P22, float P33);
 void UpdatePositionPacket(DataPacket_t *position_packet, uint32_t timestamp, float posX, float posY, float posZ, float velX, float velY, float velZ);
 void UpdateAttitudePacket(DataPacket_t *attitude_packet, uint32_t timestamp, float phi, float theta, float psi, float gyro_biasX, float gyro_biasY, float gyro_biasZ);
-void UpdateMPCInfoPacket(DataPacket_t *mpc_info_packet, uint32_t timestamp, float MPC_freq, float Airbreak_deflection, float Target_Angle);
+void UpdateMPCInfoPacket(DataPacket_t *mpc_info_packet, uint32_t timestamp, float MPC_freq, float Airbreak_deflection, float Target_Angle, float t_solve, float t_setup, uint8_t num_iterations, uint8_t exit_code);
 void PlotDataPacket(DataPacket_t *packet);
 void CreateCommandPacket(DataPacket_t *command_packet, uint32_t timestamp, CommandTarget_t command_target, uint8_t command_id, uint8_t *params, size_t params_length);
 void UpdateStatePacket(DataPacket_t *state_packet, uint32_t timestamp, uint8_t flight_state, uint32_t timestamp_ms);
