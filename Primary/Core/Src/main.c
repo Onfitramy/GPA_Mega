@@ -56,8 +56,6 @@ extern uint8_t SPI1_State; // 0: Ready, 1: TX busy, 2: RX busy
 
 extern StateMachine_t flight_sm;
 
-volatile uint32_t tim13_ms = 0;
-uint32_t tim13_target_ms;
 volatile uint32_t tim14_ms = 0;
 uint32_t tim14_target_ms;
 volatile uint32_t tim16_ms = 0;
@@ -377,22 +375,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   /* USER CODE BEGIN Callback 0 */
   StateMachine_TimeHandler(&flight_sm, htim);
+  Servo_TimeHandler(&servo_instance, htim);
   /* USER CODE END Callback 0 */
   if (htim->Instance == TIM6) {
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-
-  // Timer for handling drogue deploy servo signal
-  if (htim->Instance == TIM13) {
-    tim13_ms++;
-    if (tim13_ms >= tim13_target_ms) {
-      tim13_ms = 0;
-      HAL_TIM_Base_Stop_IT(&htim13);
-
-      RetractDrogue();
-    }
-  }
   // Timer for handling HIL stuff
   else if (htim->Instance == TIM14) {
     tim14_ms++;
@@ -407,7 +395,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   else if (htim->Instance == TIM16) {
     tim16_ms++;
 
-    RetractMainHandler(tim16_ms);
+    // sweep main servo into retracted position
+    SERVO_MoveToAngle(&servo_instance, MAIN_SERVO, MAIN_DEPLOY_ANGLE * (1.f - tim16_ms / tim16_target_ms) + MAIN_NEUTRAL_ANGLE);
 
     if (tim16_ms >= tim16_target_ms) {
       tim16_ms = 0;

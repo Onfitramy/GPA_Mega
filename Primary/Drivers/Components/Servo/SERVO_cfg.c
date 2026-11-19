@@ -11,11 +11,11 @@ SERVO_CfgType SERVO_Data[SERVO_NUM] =
 		TIM2,           // TIM Instance
 		&TIM2->CCR1, 	// Pointer to Capture/Compare Register
 		TIM_CHANNEL_1,  // Timer Channel
-		1500,              // Min Pulse in microseconds
-		2500,              // Max Pulse in microseconds
+		1500,           // Min Pulse in microseconds
+		2500,           // Max Pulse in microseconds
 		0,              // Min Period in microseconds
 		0,              // Max Period in microseconds
-		135               // Max Angle in degrees
+		135             // Max Angle in degrees
 	},
 
     /* CH2 (PA1) PWM Configurations */

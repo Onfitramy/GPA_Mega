@@ -188,10 +188,10 @@ static void StartupEntry(StateMachine_t *sm) {
     BMP_Read_Calibration_Params(&bmp_handle);
 
     // initialize Servo PWM timers to neutral position
-    SERVO_Init(DROGUE_SERVO, 1500, 2500, 135);
-    SERVO_Init(MAIN_SERVO, 1500, 2500, 135);
-    SERVO_MoveToAngle(DROGUE_SERVO, DROGUE_NEUTRAL_ANGLE);
-    SERVO_MoveToAngle(MAIN_SERVO, MAIN_NEUTRAL_ANGLE);
+    SERVO_Init(&servo_instance, DROGUE_SERVO, 1500, 2500, 135);
+    SERVO_Init(&servo_instance, MAIN_SERVO, 1500, 2500, 135);
+    SERVO_MoveToAngle(&servo_instance, DROGUE_SERVO, DROGUE_NEUTRAL_ANGLE);
+    SERVO_MoveToAngle(&servo_instance, MAIN_SERVO, MAIN_NEUTRAL_ANGLE);
 
     /* --- Initialize (Extended) Kalman Filters --- */
     // define Kalman Filter dimensions and pointers for velocity and position
@@ -284,11 +284,11 @@ static void ArmedEntry(StateMachine_t *sm) {
     PU_setREC(ENABLE);
     // The servo position can be off from the actual position if the arm is rotated manually.
     // This is fixed by moving the servo to a different position and returning to the neutral angle.
-    SERVO_MoveToAngle(MAIN_SERVO, MAIN_NEUTRAL_ANGLE - 5.f);
-    SERVO_MoveToAngle(DROGUE_SERVO, DROGUE_NEUTRAL_ANGLE - 5.f);
+    SERVO_MoveToAngle(&servo_instance, MAIN_SERVO, MAIN_NEUTRAL_ANGLE - 5.f);
+    SERVO_MoveToAngle(&servo_instance, DROGUE_SERVO, DROGUE_NEUTRAL_ANGLE - 5.f);
     vTaskDelay(pdMS_TO_TICKS(1000));
-    SERVO_MoveToAngle(MAIN_SERVO, MAIN_NEUTRAL_ANGLE);
-    SERVO_MoveToAngle(DROGUE_SERVO, DROGUE_NEUTRAL_ANGLE);
+    SERVO_MoveToAngle(&servo_instance, MAIN_SERVO, MAIN_NEUTRAL_ANGLE);
+    SERVO_MoveToAngle(&servo_instance, DROGUE_SERVO, DROGUE_NEUTRAL_ANGLE);
     SPARK_ZeroStepper();
     Camera_Recording(1);
     SetSaveSchedule(2);
@@ -313,7 +313,11 @@ static void CoastEntry(StateMachine_t *sm) {
 }
 static void AwaitDrogueEntry(StateMachine_t *sm) {
     // deploy drogue parachute
-    DeployDrogue(DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
+    DeployDrogue(&servo_instance, DROGUE_SERVO, DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
+#ifdef HIL_TESTING
+    tim14_target_ms = HIL_DROGUE_DEPLOY_TIME;
+    HAL_TIM_Base_Start_IT(&htim14);
+#endif
 
     SetComSchedule(4); //Descent flight state, focus on GNSS and barometer data
 }
@@ -323,7 +327,11 @@ static void DrogueDescendEntry(StateMachine_t *sm) {
 }
 static void AwaitMainEntry(StateMachine_t *sm) {
     // deplay main parachute
-    DeployMain();
+    SERVO_MoveToAngle(&servo_instance, MAIN_SERVO, MAIN_DEPLOY_ANGLE);
+#ifdef HIL_TESTING
+    tim14_target_ms = HIL_MAIN_DEPLOY_TIME;
+    HAL_TIM_Base_Start_IT(&htim14);
+#endif
 }
 static void MainDescendEntry(StateMachine_t *sm) {}
 static void LandedEntry(StateMachine_t *sm) {
@@ -350,7 +358,7 @@ static void LandedPowerDownEntry(StateMachine_t *sm) {
     Buzzer_PlayBeepCode(BUZZER_PATTERN_CODE_PRIMARY_RECOVERY);
 }
 static void TestInitEntry(StateMachine_t *sm) {
-    RetractMain(9000);
+    RetractMain(&servo_instance, 9000);
 }
 static void TestCalibEntry(StateMachine_t *sm) {}
 static void GroundstationEntry(StateMachine_t *sm) {}
@@ -487,7 +495,7 @@ static void AwaitDrogueDo(StateMachine_t *sm, uint16_t freq) {
 
         // attempt further deployment attempts
         if ((elapsed_time >= drogue_deploy_attempts * DROGUE_ATTEMPT_PERIOD) && (drogue_deploy_attempts < DROGUE_MAX_NUM_ATTEMPTS)) {
-            DeployDrogue(DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
+            DeployDrogue(&servo_instance, DROGUE_SERVO, DROGUE_DEPLOY_ANGLE, DROGUE_MOVE_DELAY_MS);
         }
     }
 

@@ -28,31 +28,33 @@ typedef struct {
     uint16_t       MaxAngle;
 } SERVO_CfgType;
 
-extern TIM_HandleTypeDef htim13;
-extern uint32_t tim13_target_ms;
+typedef struct {
+    SERVO_CfgType *configs;
+    TIM_HandleTypeDef *move_tim;    // timer used to schedule servo movements in the future
+    uint32_t move_duration;         // the duration of the current position
+    uint32_t move_tim_counter;      // counter used by move timer
+    uint16_t move_servo_num;        // the servo number that the timer currently addresses
+    float next_move_angle;          // the next angle after the current period has passed
+} SERVO_Instance_t;
+
+extern SERVO_Instance_t servo_instance;
 
 extern uint8_t drogue_deploy_attempts;
  
 /*-----[ Prototypes For All Functions ]-----*/
  
-void SERVO_Init(uint16_t au16_SERVO_Instance, uint16_t MinPulse_us, uint16_t MaxPulse_us, uint16_t max_angle);
+void SERVO_Init(SERVO_Instance_t *instance, uint16_t servo_num, uint16_t MinPulse_us, uint16_t MaxPulse_us, uint16_t max_angle);
 
-void SERVO_RawMove(uint16_t au16_SERVO_Instance, uint16_t Pulse_us);
+void SERVO_RawMove(SERVO_Instance_t *instance, uint16_t servo_num, uint16_t Pulse_us);
 
-void SERVO_MoveToAngle(uint16_t au16_SERVO_Instance, float af_Angle);
+void SERVO_MoveToAngle(SERVO_Instance_t *instance, uint16_t servo_num, float af_Angle);
 
-void SERVO_Test(uint8_t Servo, uint8_t Zero_val, int8_t angle, uint8_t dt);
+void SERVO_ZeroAll(SERVO_Instance_t *instance);
 
-void SERVO_ZeroAll();
+void DeployDrogue(SERVO_Instance_t *instance, uint16_t servo_num, float angle_deploy, float move_delay);
 
-void DeployDrogue(float angle_deploy, float move_delay);
+void RetractMain(SERVO_Instance_t *instance, uint16_t move_time_ms);
 
-void DeployMain();
-
-void RetractDrogue();
-
-void RetractMain(uint16_t move_time_ms);
-
-void RetractMainHandler(uint32_t tick_tim16);
+void Servo_TimeHandler(SERVO_Instance_t *instance, TIM_HandleTypeDef *htim);
 
 #endif /* SERVO_H_ */
