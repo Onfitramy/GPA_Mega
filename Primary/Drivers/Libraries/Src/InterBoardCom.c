@@ -746,10 +746,15 @@ uint8_t USB_QueueDataPacket(DataPacket_t *packet) {
     if (packet == NULL) {
         return 0;
     }
-    if (xQueueSend(USB_Tx_Queue, packet, 0) == pdTRUE) {
-        return 1; // Successfully queued
+    BaseType_t queued = xQueueSend(USB_Tx_Queue, packet, 0);
+    uint32_t primask = InterBoardCom_DiagnosticsEnterCritical();
+    if (queued == pdTRUE) {
+        InterBoardCom_Diagnostics.usb_queue_enqueued++;
+    } else {
+        InterBoardCom_Diagnostics.usb_queue_full++;
     }
-    return 0; // Queue full or error
+    InterBoardCom_DiagnosticsExitCritical(primask);
+    return queued == pdTRUE;
 }
 
 uint8_t USB_OutputDataPacket(DataPacket_t *packet) {

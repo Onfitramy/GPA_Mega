@@ -25,6 +25,7 @@
 #include "cmsis_os2.h"
 #include "stream_buffer.h"
 #include "task.h"
+#include <string.h>
 
 extern osThreadId_t cmdLineTaskHandle;
 
@@ -307,6 +308,10 @@ uint8_t CDC_Transmit_HS(uint8_t* Buf, uint16_t Len)
 {
     uint8_t result = USBD_FAIL;
 
+    if (Buf == NULL || Len > sizeof(UserTxBufferHS)) {
+        return USBD_FAIL;
+    }
+
     uint32_t saved_primask = __get_PRIMASK();
     __disable_irq();
 
@@ -317,7 +322,9 @@ uint8_t CDC_Transmit_HS(uint8_t* Buf, uint16_t Len)
         if (hcdc->TxState != 0U) {
             result = USBD_BUSY;
         } else {
-            result = USBD_CDC_SetTxBuffer(&hUsbDeviceHS, Buf, Len);
+            // Keep the transmitted bytes stable until USB completes the transfer.
+            memcpy(UserTxBufferHS, Buf, Len);
+            result = USBD_CDC_SetTxBuffer(&hUsbDeviceHS, UserTxBufferHS, Len);
 
             if (result == USBD_OK) {
                 result = USBD_CDC_TransmitPacket(&hUsbDeviceHS);

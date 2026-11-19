@@ -119,8 +119,8 @@ extern radio_info_t radio_info;
 uint8_t rx_recieve_buf[NRF24L01P_PAYLOAD_LENGTH] = {0};
 
 //uint64_t XBee_transmit_addr = 0x0013a200426e530e; // XBee transmit address (to groundstation)
-uint64_t XBee_transmit_addr = 0x0013a200426b848b; // XBee transmit address (to groundstation)
-//uint64_t XBee_transmit_addr = 0x0013a200426e52e7; // XBee transmit address (to flight controller)
+//uint64_t XBee_transmit_addr = 0x0013a200426b848b; // XBee transmit address (to groundstation)
+uint64_t XBee_transmit_addr = 0x0013a200426e52e7; // XBee transmit address (to flight controller)
 /* USER CODE END Variables */
 
 /* Private function prototypes -----------------------------------------------*/
