@@ -338,7 +338,7 @@ BaseType_t cmd_InterBoardDiag(char *pcWriteBuffer, size_t xWriteBufferLen, const
             output_page = 5U;
             return pdTRUE;
 
-        default:
+        case 5:
             snprintf(pcWriteBuffer, xWriteBufferLen,
                      "RX queue ok/full/processed=%lu/%lu/%lu waits/zero=%lu/%lu last-id=0x%02lX crc-calc/rx=%02lX/%02lX\r\n",
                      (unsigned long)snapshot.rx_queue_enqueued,
@@ -349,6 +349,13 @@ BaseType_t cmd_InterBoardDiag(char *pcWriteBuffer, size_t xWriteBufferLen, const
                      (unsigned long)snapshot.last_rx_id,
                      (unsigned long)snapshot.last_rx_crc_calculated,
                      (unsigned long)snapshot.last_rx_crc_received);
+            output_page = 6U;
+            return pdTRUE;
+
+        default:
+            snprintf(pcWriteBuffer, xWriteBufferLen, "USB queue: accepted=%lu full=%lu\r\n",
+                     (unsigned long)snapshot.usb_queue_enqueued,
+                     (unsigned long)snapshot.usb_queue_full);
             output_page = 0U;
             return pdFALSE;
     }

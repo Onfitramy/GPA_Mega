@@ -94,6 +94,8 @@ typedef struct {
     uint32_t rx_queue_enqueued;
     uint32_t rx_queue_full;
     uint32_t rx_processed;
+    uint32_t usb_queue_enqueued;
+    uint32_t usb_queue_full;
     uint32_t last_rx_ms;
     uint32_t last_rx_id;
     uint32_t last_rx_crc_calculated;

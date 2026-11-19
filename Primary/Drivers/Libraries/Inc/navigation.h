@@ -23,9 +23,6 @@
 
 #define MAG_VAR 0.8*0.8
 
-// correction step discard threshold
-#define EKF_NIS_THRESH_MAG 1.0f
-#define EKF_NIS_THRESH_ACC 10.0f
 
 // convergence thresholds
 #define P_VAR_ANGLE_THRESH  0.01
@@ -38,10 +35,12 @@
 #define BARO_VAR    2*2
 #define REFERENCE_PRESSURE_VAR 1e-6
 
-// correction step discard threshold
-#define EKF_NIS_THRESH_BARO 9999.f // TODO: determine
-#define EKF_NIS_THRESH_GNSS 1000.f
-#define EKF_NIS_THRESH_PTOT 9999.f // TODO: determine
+// correction step discard thresholds
+#define EKF_NIS_THRESH_MAG 1.0f
+#define EKF_NIS_THRESH_ACC 10.0f
+#define EKF_NIS_THRESH_BARO 10.0f
+#define EKF_NIS_THRESH_GNSS 10.0f
+#define EKF_NIS_THRESH_PTOT 9999.f
 
 
 // convergence thresholds
@@ -53,15 +52,13 @@
 
 /* --- Event detection Settings --- */
 #define ACC_BUFFER_SIZE 50
-#define LIFTOFF_MIN_OVERSHOOTS  45
 #define LIFTOFF_ACC_THRESHOLD   20  // m/s²
 #define LIFTOFF_MIN_DURATION    100 // ms
 
-#define BURNOUT_MIN_UNDERSHOOTS 40
 #define BURNOUT_ACC_THRESHOLD   0   // m/s²
 #define BURNOUT_MIN_DURATION    100 // ms
 
-#define APOGEE_VEL_THRESHOLD    0   // m/s
+#define APOGEE_VEL_THRESHOLD    1   // m/s
 #define APOGEE_MIN_DURATION     100 // ms
 
 #define DROGUE_MAX_VELOCITY     40  // m/s

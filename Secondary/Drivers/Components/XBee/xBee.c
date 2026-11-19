@@ -294,6 +294,9 @@ uint8_t xbee_frame_buffer[350]; // 256 bytes max payload + overhead
 
 uint8_t XBee_QueueDataPacket(DataPacket_t* data)
 {
+    if (XBee_Status != 0) {
+        return 0;
+    }
     return DataCircBuffer_Push(&xBeeRxCircBuffer, data);
 }
 
