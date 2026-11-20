@@ -670,11 +670,16 @@ void InterBoardCom_ParsePacket(InterBoardPacket_t *packet) {
                     (int)data_packet->Data.status.State);
                         break;
                     case PACKET_ID_KALMANMATRIX:
-                        printf("\nID:%d, TS:%lu, P11:%.9g, P22:%.9g, P33:%.9g",
+                        printf("\nID:%d, TS:%lu, var_h:%.9g, var_vz:%.9g, var_p0:%.9g, var_angle:%.9g, baro_reject_count:%u, gnss_reject_count:%u, mag_reject_count:%u, acc_reject_count:%u",
                                 (int)packet_type, (unsigned long)data_packet->timestamp,
-                                (double)data_packet->Data.kalman.P11,
-                    (double)data_packet->Data.kalman.P22,
-                    (double)data_packet->Data.kalman.P33);
+                                (double)data_packet->Data.kalman.var_h,
+                    (double)data_packet->Data.kalman.var_vz,
+                    (double)data_packet->Data.kalman.var_p0,
+                    (double)data_packet->Data.kalman.var_angle,
+                    (unsigned int)data_packet->Data.kalman.baro_reject_count,
+                    (unsigned int)data_packet->Data.kalman.gnss_reject_count,
+                    (unsigned int)data_packet->Data.kalman.mag_reject_count,
+                    (unsigned int)data_packet->Data.kalman.acc_reject_count);
                         break;
                     case PACKET_ID_MPC_INFO:
                         printf("\nID:%d, TS:%lu, MPC_freq:%.9g, Airbreak_deflection:%.9g, Target_Angle:%.9g, t_solve:%.9g, t_setup:%.9g, num_iterations:%u, exit_code:%u",
@@ -851,11 +856,16 @@ uint8_t USB_OutputDataPacket(DataPacket_t *packet) {
             break;
         case PACKET_ID_KALMANMATRIX:
             length = snprintf((char *)usb_packet_buffer, sizeof(usb_packet_buffer),
-                    "ID%d,%lu,%.9g,%.9g,%.9g\n",
+                    "ID%d,%lu,%.9g,%.9g,%.9g,%.9g,%u,%u,%u,%u,\n",
                     (int)packet->Packet_ID, (unsigned long)packet->timestamp,
-                    (double)packet->Data.kalman.P11,
-                    (double)packet->Data.kalman.P22,
-                    (double)packet->Data.kalman.P33);
+                    (double)packet->Data.kalman.var_h,
+                    (double)packet->Data.kalman.var_vz,
+                    (double)packet->Data.kalman.var_p0,
+                    (double)packet->Data.kalman.var_angle,
+                    (unsigned int)packet->Data.kalman.baro_reject_count,
+                    (unsigned int)packet->Data.kalman.gnss_reject_count,
+                    (unsigned int)packet->Data.kalman.mag_reject_count,
+                    (unsigned int)packet->Data.kalman.acc_reject_count);
             break;
         case PACKET_ID_MPC_INFO:
             length = snprintf((char *)usb_packet_buffer, sizeof(usb_packet_buffer),

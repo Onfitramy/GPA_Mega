@@ -262,7 +262,8 @@ void UpdatePacket(DataPacket_t *packet) {
             UpdateAttitudePacket(packet, HAL_GetTick(), body_euler[0], body_euler[1], body_euler[2], x3[4], x3[5], x3[6]);
             break;
         case PACKET_ID_KALMANMATRIX:
-            UpdateKalmanMatrixPacket(packet, HAL_GetTick(), arm_mat_get_entry_f32(&P2, 0, 0), arm_mat_get_entry_f32(&P2, 1, 1), arm_mat_get_entry_f32(&P2, 2, 2));
+            UpdateKalmanMatrixPacket(packet, HAL_GetTick(), arm_mat_get_entry_f32(&P2, 0, 0), arm_mat_get_entry_f32(&P2, 1, 1), arm_mat_get_entry_f32(&P2, 2, 2),
+                                     VAR_vec3_abs, EKF2_corr1.NIS_rejection_count, EKF2_corr2.NIS_rejection_count, EKF3_corr1.NIS_rejection_count, EKF3_corr2.NIS_rejection_count);
             break;
         case PACKET_ID_MPC_INFO:
             UpdateMPCInfoPacket(packet, HAL_GetTick(), dt_mpc, acs_est_angle_deg, acs_target_angle_deg,

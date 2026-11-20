@@ -840,7 +840,7 @@ void EKFCorrectionStep(ekf_data_t *ekf, ekf_corr_data_t *ekf_corr) {
     EKFgetNIS(ekf, ekf_corr);
 
     // if NIS exceeds threshold, skip correction step
-    if (ekf_corr->NIS > getNISthreshold(ekf_corr)) {
+    if ((getNISthreshold(ekf_corr) >= 0.0f) && (ekf_corr->NIS > getNISthreshold(ekf_corr))) {
         // update average rejected NIS and counter
         ekf_corr->NIS_rejection_count++;
         ekf_corr->NIS_rejection_avg += (ekf_corr->NIS - ekf_corr->NIS_rejection_avg) / (float)ekf_corr->NIS_rejection_count;

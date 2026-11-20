@@ -161,9 +161,11 @@ typedef struct {
 } AttitudePayload_t;
 
 typedef struct {
-    float P11, P22, P33;
-    float unused1, unused2, unused3;
-    uint16_t unused4; // 26 bytes 
+    float var_h, var_vz, var_p0;
+    float var_angle;
+    uint16_t baro_reject_count, gnss_reject_count;
+    uint16_t mag_reject_count, acc_reject_count;
+    uint16_t unused6; // 26 bytes 
 } KalmanMatrixPayload_t;
 
 typedef struct {
@@ -241,7 +243,7 @@ void UpdateIMUDataPacket(DataPacket_t *imu_packet, uint32_t timestamp, IMU_Avera
 void UpdateGPSDataPacket(DataPacket_t *gps_packet, uint32_t timestamp, UBX_NAV_PVT *gps_data);
 void UpdateTemperaturePacket(DataPacket_t *temp_packet, uint32_t timestamp, int32_t M1_DTS, int32_t M1_ADC, float M1_BMP, float M1_IMU1, float M1_IMU2, float M1_MAG, float M2_3V3, int16_t M2_XBee, float PU_bat, float pressure_static, uint32_t state_timestamp);
 void UpdatePowerPacket(DataPacket_t *power_packet, uint32_t timestamp, float PU_bat_volt, float PU_out_pow, float PU_out_curr, float M2_bus_5V, float M2_bus_GPA_bat_volt, uint16_t pu_state);
-void UpdateKalmanMatrixPacket(DataPacket_t *kalman_packet, uint32_t timestamp, float P11, float P22, float P33);
+void UpdateKalmanMatrixPacket(DataPacket_t *kalman_packet, uint32_t timestamp, float var_h, float var_vz, float var_p0, float var_angle, uint16_t baro_rej_count, uint16_t gnss_rej_count, uint16_t mag_rej_count, uint16_t acc_rej_count);
 void UpdatePositionPacket(DataPacket_t *position_packet, uint32_t timestamp, float posX, float posY, float posZ, float velX, float velY, float velZ);
 void UpdateAttitudePacket(DataPacket_t *attitude_packet, uint32_t timestamp, float phi, float theta, float psi, float gyro_biasX, float gyro_biasY, float gyro_biasZ);
 void UpdateMPCInfoPacket(DataPacket_t *mpc_info_packet, uint32_t timestamp, float MPC_freq, float Airbreak_deflection, float Target_Angle, float t_solve, float t_setup, uint8_t num_iterations, uint8_t exit_code);

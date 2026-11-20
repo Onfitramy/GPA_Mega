@@ -150,17 +150,18 @@ void UpdateTemperaturePacket(DataPacket_t *temp_packet, uint32_t timestamp, int3
     calcCRC(temp_packet);
 }
 
-void UpdateKalmanMatrixPacket(DataPacket_t *kalman_packet, uint32_t timestamp, float P11, float P22, float P33) {
+void UpdateKalmanMatrixPacket(DataPacket_t *kalman_packet, uint32_t timestamp, float var_h, float var_vz, float var_p0, float var_angle, uint16_t baro_rej_count, uint16_t gnss_rej_count, uint16_t mag_rej_count, uint16_t acc_rej_count) {
     kalman_packet->timestamp = timestamp;
 
     // Update the Kalman Matrix packet with the latest Kalman matrix information
-    kalman_packet->Data.kalman.P11 = P11;
-    kalman_packet->Data.kalman.P22 = P22;
-    kalman_packet->Data.kalman.P33 = P33;
-    kalman_packet->Data.kalman.unused1 = 0;
-    kalman_packet->Data.kalman.unused2 = 0;
-    kalman_packet->Data.kalman.unused3 = 0;
-    kalman_packet->Data.kalman.unused4 = 0;
+    kalman_packet->Data.kalman.var_h = var_h;
+    kalman_packet->Data.kalman.var_vz = var_vz;
+    kalman_packet->Data.kalman.var_p0 = var_p0;
+    kalman_packet->Data.kalman.var_angle = var_angle;
+    kalman_packet->Data.kalman.baro_reject_count = baro_rej_count;
+    kalman_packet->Data.kalman.gnss_reject_count = gnss_rej_count;
+    kalman_packet->Data.kalman.mag_reject_count = mag_rej_count;
+    kalman_packet->Data.kalman.acc_reject_count = acc_rej_count;
 
     calcCRC(kalman_packet);
 }
